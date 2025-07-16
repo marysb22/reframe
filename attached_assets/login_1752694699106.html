@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Reframe MHS</title>
+    <meta name="description" content="Login to access your Reframe MHS account and exclusive professional resources.">
+    <link rel="stylesheet" href="styles/main.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+ 
+   <nav class="navbar">
+  <div class="nav-container">
+    <div class="nav-logo">
+      <a href="index.html"><h2>Reframe MHS</h2></a>
+    </div>
+
+    <!-- القائمة العادية (لابتوب) -->
+    <ul class="nav-menu">
+      <li><a href="about.html" class="nav-link">About</a></li>
+      <li class="nav-dropdown">
+        <a href="#" class="nav-link">Services <i class="fas fa-chevron-down"></i></a>
+        <ul class="dropdown-menu">
+          <li><a href="services/consultation.html">Technical Consultation & Support</a></li>
+          <li><a href="services/training.html">Empowerment Hub & Training</a></li>
+          <li><a href="services/lab.html">Mental Health Lab</a></li>
+          <li><a href="services/translation.html">Professional Translation</a></li>
+        </ul>
+      </li>
+      <li><a href="contact.html" class="nav-link">Contact Us</a></li>
+      <li><a href="login.html" class="nav-link active">Login</a></li>
+    </ul>
+
+    <!-- مبدّل اللغة -->
+    <div class="language-switcher">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <span class="lang-separator">|</span>
+      <button class="lang-btn" data-lang="ar">AR</button>
+    </div>
+
+    <!-- زر الهمبرغر (للموبايل فقط) -->
+    <div class="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  </div>
+</nav>
+
+<!-- القائمة fullscreen overlay (تظهر بالموبايل فقط عند الضغط على الهمبرغر) -->
+<div class="overlay" id="mobile-menu" role="dialog" aria-modal="true" aria-hidden="true">
+  <nav class="overlay-nav">
+    <ul>
+      <li><a href="about.html" class="nav-link">About</a></li>
+      <li class="nav-dropdown">
+        <a href="#" class="nav-link">Services <i class="fas fa-chevron-down"></i></a>
+        <ul class="dropdown-menu">
+          <li><a href="services/consultation.html">Technical Consultation & Support</a></li>
+          <li><a href="services/training.html">Empowerment Hub & Training</a></li>
+          <li><a href="services/lab.html">Mental Health Lab</a></li>
+          <li><a href="services/translation.html">Professional Translation</a></li>
+        </ul>
+      </li>
+      <li><a href="contact.html" class="nav-link">Contact Us</a></li>
+      <li><a href="login.html" class="nav-link active">Login</a></li>
+      </li>
+    </ul>
+  </nav>
+  <button class="close-btn" aria-label="Close menu">Close</button>
+</div>
+
+    <!-- Login Section -->
+    <section class="login-section">
+        <div class="container">
+            <div class="login-container">
+                <div class="login-form-wrapper">
+                    <div class="login-header">
+                        <h1>Welcome Back</h1>
+                        <p>Sign in to access your professional dashboard and exclusive resources</p>
+                    </div>
+                    
+                    <form class="login-form" id="loginForm">
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-envelope"></i>
+                                <input type="email" id="email" name="email" required placeholder="Enter your email">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="password" name="password" required placeholder="Enter your password">
+                                <button type="button" class="password-toggle" onclick="togglePassword()">
+                                    <i class="fas fa-eye" id="passwordIcon"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="remember">
+                                <span class="checkmark"></span>
+                                Remember me
+                            </label>
+                            <a href="#" class="forgot-password">Forgot password?</a>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary login-btn">Sign In</button>
+                        
+                        <div class="login-divider">
+                            <span>Don't have an account?</span>
+                        </div>
+                        
+                        <a href="#" class="btn btn-outline register-btn">Create Account</a>
+                    </form>
+                </div>
+                
+                <div class="login-info">
+                    <div class="info-content">
+                        <h2>Access Professional Resources</h2>
+                        <ul class="benefits-list">
+                            <li><i class="fas fa-check-circle"></i> Exclusive training materials</li>
+                            <li><i class="fas fa-check-circle"></i> Research publications</li>
+                            <li><i class="fas fa-check-circle"></i> Event registration priority</li>
+                            <li><i class="fas fa-check-circle"></i> Professional networking</li>
+                            <li><i class="fas fa-check-circle"></i> Certificate downloads</li>
+                        </ul>
+                        <div class="contact-support">
+                            <h3>Need Help?</h3>
+                            <p>Contact our support team for assistance with your account.</p>
+                            <a href="contact.html" class="support-link">Get Support</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section contact-info">
+                    <h3>Reframe MHS</h3>
+                    <p>Unlocking the innate potential and resilience within each person and group across the Middle East.</p>
+                    <div class="contact-details">
+                        <div class="contact-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Professional Services Hub<br>Middle East Region</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <span>+961 XX XXX XXX</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>info@reframemhs.com</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Services</h4>
+                    <ul>
+                        <li><a href="services/consultation.html">Technical Consultation</a></li>
+                        <li><a href="services/training.html">Training & Empowerment</a></li>
+                        <li><a href="services/lab.html">Mental Health Lab</a></li>
+                        <li><a href="services/translation.html">Professional Translation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Follow Us</h4>
+                    <p>Stay connected with our latest updates and insights</p>
+                    <div class="social-links-large">
+                        <a href="#" aria-label="Facebook" class="social-facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" aria-label="Instagram" class="social-instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" aria-label="LinkedIn" class="social-linkedin">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Reframe MHS. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="scripts/main.js"></script>
+    <script>
+        // Login form functionality
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitButton = this.querySelector('.login-btn');
+            const originalText = submitButton.textContent;
+            
+            submitButton.textContent = 'Signing In...';
+            submitButton.disabled = true;
+            
+            // Simulate login process
+            setTimeout(() => {
+                showMessage('Login functionality will be implemented with backend integration.', 'info');
+                
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
+            }, 1500);
+        });
+        
+        // Password toggle functionality
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const passwordIcon = document.getElementById('passwordIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                passwordIcon.classList.remove('fa-eye');
+                passwordIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                passwordIcon.classList.remove('fa-eye-slash');
+                passwordIcon.classList.add('fa-eye');
+            }
+        }
+    </script>
+</body>
+</html>
+
+<style>
+    .login-section {
+    margin-top: 70px;
+    padding: 80px 0;
+    background: linear-gradient(135deg, #F5F7F9 0%, #E0E7EC 100%);
+    min-height: calc(100vh - 70px);
+    display: flex;
+    align-items: center;
+}
+
+.login-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.login-form-wrapper {
+    background: white;
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.login-header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #4D9794;
+    margin-bottom: 10px;
+}
+
+.login-header p {
+    color: #3F4B5B;
+    font-size: 1rem;
+}
+
+.login-form .form-group {
+    margin-bottom: 25px;
+}
+
+.login-form label {
+    display: block;
+    font-weight: 500;
+    color: #2E3A59;
+    margin-bottom: 8px;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper i {
+    position: absolute;
+    left: 15px;
+    color: #3F4B5B;
+    z-index: 2;
+}
+
+.input-wrapper input {
+    width: 100%;
+    padding: 15px 15px 15px 45px;
+    border: 2px solid #d2d8df;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.input-wrapper input:focus {
+    outline: none;
+    border-color: #4D9794;
+    box-shadow: 0 0 0 3px rgba(77, 151, 148, 0.15);
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    background: none;
+    border: none;
+    color: #3F4B5B;
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.3s ease;
+}
+
+.password-toggle:hover {
+    color: #2b6f6d;
+}
+
+.form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: #3F4B5B;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #4D9794;
+}
+
+.forgot-password {
+    color: #4D9794;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.forgot-password:hover {
+    color: #2b6f6d;
+}
+
+.login-btn,
+.register-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.login-divider {
+    text-align: center;
+    margin: 20px 0;
+    position: relative;
+}
+
+.login-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #d2d8df;
+    z-index: 1;
+}
+
+.login-divider span {
+    background: white;
+    padding: 0 20px;
+    color: #3F4B5B;
+    font-size: 0.95rem;
+    position: relative;
+    z-index: 2;
+}
+
+.login-info {
+    padding: 40px;
+}
+
+.info-content h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #4D9794;
+    margin-bottom: 25px;
+}
+
+.benefits-list {
+    list-style: none;
+    margin-bottom: 40px;
+}
+
+.benefits-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    font-weight: 500;
+    color: #2E3A59;
+}
+
+.benefits-list i {
+    color: #44B77B;
+    font-size: 1.1rem;
+}
+
+.contact-support {
+    background: #F5F7F9;
+    padding: 25px;
+    border-radius: 12px;
+    border-left: 4px solid #4D9794;
+}
+
+.contact-support h3 {
+    color: #4D9794;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+}
+
+.contact-support p {
+    color: #3F4B5B;
+    margin-bottom: 15px;
+}
+
+.support-link {
+    color: #4D9794;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.support-link:hover {
+    color: #2b6f6d;
+}
+
+@media (max-width: 768px) {
+    .login-container {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .login-form-wrapper {
+        padding: 30px;
+    }
+
+    .form-options {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+}
+
+
+</style>
