@@ -58,226 +58,143 @@
         </nav>
     </div>
 
-    <!-- Projects Hero Section -->
-    <section class="projects-hero">
+    <!-- Projects Section -->
+    <section class="projects-section">
         <div class="container">
-            <div class="hero-content">
-                <h1 data-translate="projects_hero_title">Our Research & Projects</h1>
-                <p data-translate="projects_hero_subtitle">Advancing mental health care through innovative research and collaborative initiatives across the Middle East region.</p>
+            <!-- Support Our Work Banner -->
+            <div class="support-banner">
+                <div class="support-content">
+                    <span data-translate="support_our_work">Support Our Work</span>
+                    <i class="fas fa-heart"></i>
+                </div>
             </div>
-        </div>
-    </section>
 
-    <!-- Project Categories Filter -->
-    <section class="project-filters">
-        <div class="container">
-            <div class="filter-buttons">
-                <button class="filter-btn active" data-filter="all" data-translate="filter_all">All Projects</button>
-                <button class="filter-btn" data-filter="research" data-translate="filter_research">Research</button>
-                <button class="filter-btn" data-filter="training" data-translate="filter_training">Training</button>
-                <button class="filter-btn" data-filter="community" data-translate="filter_community">Community</button>
-                <button class="filter-btn" data-filter="collaboration" data-translate="filter_collaboration">Collaboration</button>
-            </div>
-        </div>
-    </section>
-
-    <!-- Featured Projects -->
-    <section class="featured-projects">
-        <div class="container">
-            <div class="section-header">
-                <h2 data-translate="featured_projects_title">Featured Projects</h2>
-                <p data-translate="featured_projects_subtitle">Leading initiatives that are transforming mental health services in the region</p>
-            </div>
-            <div class="projects-grid">
-                <article class="project-card featured" data-category="research">
-                    <div class="project-image">
-                        <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/9176dc89-77a5-4027-a1c2-2e9c867654ed/Pic-1.png" alt="Mental Health Research">
-                        <div class="project-status">
-                            <span class="status-badge ongoing" data-translate="status_ongoing">Ongoing</span>
-                        </div>
+            <!-- Project List -->
+            <div class="project-list">
+                <!-- Experiences of HIV+ Families -->
+                <div class="project-item">
+                    <div class="project-header" onclick="toggleProject(this)">
+                        <h3 data-translate="project_hiv_families">Experiences of HIV+ Families</h3>
+                        <button class="expand-btn" aria-label="Expand project details">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
                     <div class="project-content">
-                        <div class="project-meta">
-                            <span class="project-type" data-translate="project_type_research">Research</span>
-                            <span class="project-duration">2024 - 2026</span>
+                        <p data-translate="project_hiv_description">Research study examining the psychosocial experiences and support needs of families living with HIV in the Middle East region, focusing on stigma reduction and community-based interventions.</p>
+                        <div class="project-details">
+                            <span class="project-location" data-translate="location_lebanon">Lebanon</span>
+                            <span class="project-duration">2023-2025</span>
+                            <span class="project-status ongoing" data-translate="status_ongoing">Ongoing</span>
                         </div>
-                        <h3 data-translate="project_1_title">Evaluating Comprehensive Mental Health Services for Vulnerable Refugees in Jordan</h3>
+                    </div>
+                </div>
+
+                <!-- Evaluating Comprehensive Mental Health Services -->
+                <div class="project-item">
+                    <div class="project-header" onclick="toggleProject(this)">
+                        <h3 data-translate="project_1_title">Evaluating a Comprehensive Mental Health and Psychosocial Support Services for Vulnerable Refugees in Jordan</h3>
+                        <button class="expand-btn" aria-label="Expand project details">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="project-content">
                         <p data-translate="project_1_description">A longitudinal study examining the effectiveness of culturally-adapted mental health interventions for refugee populations, with a focus on trauma-informed care and community integration.</p>
                         <div class="project-details">
-                            <div class="detail-item">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span data-translate="project_location_jordan">Jordan</span>
-                            </div>
-                            <div class="detail-item">
-                                <i class="fas fa-users"></i>
-                                <span data-translate="project_participants_500">500+ Participants</span>
-                            </div>
-                            <div class="detail-item">
-                                <i class="fas fa-university"></i>
-                                <span data-translate="project_partner_columbia">Columbia University</span>
-                            </div>
-                        </div>
-                        <div class="project-actions">
-                            <a href="#" class="btn btn-primary" data-translate="project_learn_more">Learn More</a>
-                            <a href="#" class="btn btn-outline" data-translate="project_view_results">View Results</a>
+                            <span class="project-location" data-translate="project_location_jordan">Jordan</span>
+                            <span class="project-duration">2024-2026</span>
+                            <span class="project-status ongoing" data-translate="status_ongoing">Ongoing</span>
                         </div>
                     </div>
-                </article>
+                </div>
 
-                <article class="project-card featured" data-category="training">
-                    <div class="project-image">
-                        <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/1751356129482-QYL2IZDXHXP3WBCPM39X/May+Aoun+%26+Oussama+Safa+copy.jpg" alt="Training Program">
-                        <div class="project-status">
-                            <span class="status-badge completed" data-translate="status_completed">Completed</span>
-                        </div>
+                <!-- Project Ankur -->
+                <div class="project-item">
+                    <div class="project-header" onclick="toggleProject(this)">
+                        <h3 data-translate="project_ankur_title">Project Ankur: Health Needs of Home Based Sex-Workers in India</h3>
+                        <button class="expand-btn" aria-label="Expand project details">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
                     <div class="project-content">
-                        <div class="project-meta">
-                            <span class="project-type" data-translate="project_type_training">Training</span>
-                            <span class="project-duration">2023 - 2024</span>
+                        <p data-translate="project_3_description">Comprehensive study examining mental health needs and access barriers among home-based workers, informing policy recommendations.</p>
+                        <div class="project-details">
+                            <span class="project-location" data-translate="location_india">India</span>
+                            <span class="project-duration">2024</span>
+                            <span class="project-status completed" data-translate="status_completed">Completed</span>
                         </div>
-                        <h3 data-translate="project_2_title">Building Excellence Center for Arab Women's Mental Health in Abu Dhabi</h3>
+                    </div>
+                </div>
+
+                <!-- IPT Dissemination in Haiti -->
+                <div class="project-item">
+                    <div class="project-header" onclick="toggleProject(this)">
+                        <h3 data-translate="project_ipt_haiti">IPT Dissemination in Haiti</h3>
+                        <button class="expand-btn" aria-label="Expand project details">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="project-content">
+                        <p data-translate="project_ipt_haiti_description">Training program to disseminate Interpersonal Therapy (IPT) techniques among mental health professionals in Haiti, building local capacity for evidence-based treatment.</p>
+                        <div class="project-details">
+                            <span class="project-location" data-translate="location_haiti">Haiti</span>
+                            <span class="project-duration">2023-2024</span>
+                            <span class="project-status completed" data-translate="status_completed">Completed</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IPT in Colombia -->
+                <div class="project-item">
+                    <div class="project-header" onclick="toggleProject(this)">
+                        <h3 data-translate="project_ipt_colombia">IPT in Colombia</h3>
+                        <button class="expand-btn" aria-label="Expand project details">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="project-content">
+                        <p data-translate="project_4_description">Multi-country training initiative to build IPT capacity among mental health professionals in Haiti and Colombia.</p>
+                        <div class="project-details">
+                            <span class="project-location" data-translate="location_colombia">Colombia</span>
+                            <span class="project-duration">2023-2024</span>
+                            <span class="project-status completed" data-translate="status_completed">Completed</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Building Excellence Center -->
+                <div class="project-item">
+                    <div class="project-header" onclick="toggleProject(this)">
+                        <h3 data-translate="project_2_title">Building the Columbia University-Teachers College Center of Excellence for Arab Women's Mental Health in Abu Dhabi</h3>
+                        <button class="expand-btn" aria-label="Expand project details">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="project-content">
                         <p data-translate="project_2_description">Comprehensive training program for mental health professionals working with Arab women, focusing on culturally-sensitive approaches and gender-specific considerations.</p>
                         <div class="project-details">
-                            <div class="detail-item">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span data-translate="project_location_uae">UAE</span>
-                            </div>
-                            <div class="detail-item">
-                                <i class="fas fa-graduation-cap"></i>
-                                <span data-translate="project_trained_150">150+ Trained</span>
-                            </div>
-                            <div class="detail-item">
-                                <i class="fas fa-award"></i>
-                                <span data-translate="project_certification">Certification Program</span>
-                            </div>
-                        </div>
-                        <div class="project-actions">
-                            <a href="#" class="btn btn-primary" data-translate="project_learn_more">Learn More</a>
-                            <a href="#" class="btn btn-outline" data-translate="project_view_impact">View Impact</a>
+                            <span class="project-location" data-translate="project_location_uae">UAE</span>
+                            <span class="project-duration">2023-2024</span>
+                            <span class="project-status completed" data-translate="status_completed">Completed</span>
                         </div>
                     </div>
-                </article>
-            </div>
-        </div>
-    </section>
+                </div>
 
-    <!-- All Projects Grid -->
-    <section class="all-projects">
-        <div class="container">
-            <div class="section-header">
-                <h2 data-translate="all_projects_title">All Projects</h2>
-                <p data-translate="all_projects_subtitle">Comprehensive overview of our research initiatives and collaborative programs</p>
-            </div>
-            <div class="projects-grid">
-                <article class="project-card" data-category="research">
-                    <div class="project-image">
-                        <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/1751355314215-7U3OFUQGVGHMISSRFH6O/1.png" alt="Health Needs Study">
+                <!-- PREMIUM Program -->
+                <div class="project-item">
+                    <div class="project-header" onclick="toggleProject(this)">
+                        <h3 data-translate="project_5_title">PREMIUM: A Program for Effective Mental Health Interventions in Under-Resourced Health Systems</h3>
+                        <button class="expand-btn" aria-label="Expand project details">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
                     <div class="project-content">
-                        <div class="project-meta">
-                            <span class="project-type" data-translate="project_type_research">Research</span>
-                            <span class="project-duration">2024</span>
-                        </div>
-                        <h3 data-translate="project_3_title">Health Needs Assessment of Home-Based Workers in India</h3>
-                        <p data-translate="project_3_description">Comprehensive study examining mental health needs and access barriers among home-based workers, informing policy recommendations.</p>
-                        <div class="project-actions">
-                            <a href="#" class="btn btn-outline" data-translate="project_view_details">View Details</a>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="project-card" data-category="training">
-                    <div class="project-image">
-                        <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/e3656fd8-e7f9-41fa-80e1-e9fda6a21eb7/Reframe+Meeting+Space" alt="IPT Training">
-                    </div>
-                    <div class="project-content">
-                        <div class="project-meta">
-                            <span class="project-type" data-translate="project_type_training">Training</span>
-                            <span class="project-duration">2023 - 2024</span>
-                        </div>
-                        <h3 data-translate="project_4_title">Interpersonal Therapy (IPT) Dissemination Program</h3>
-                        <p data-translate="project_4_description">Multi-country training initiative to build IPT capacity among mental health professionals in Haiti and Colombia.</p>
-                        <div class="project-actions">
-                            <a href="#" class="btn btn-outline" data-translate="project_view_details">View Details</a>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="project-card" data-category="community">
-                    <div class="project-image">
-                        <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/0659213d-87af-43fb-ba35-801b2635a949/Workshops+done+at+Reframe" alt="Community Program">
-                    </div>
-                    <div class="project-content">
-                        <div class="project-meta">
-                            <span class="project-type" data-translate="project_type_community">Community</span>
-                            <span class="project-duration">2024 - 2025</span>
-                        </div>
-                        <h3 data-translate="project_5_title">PREMIUM: Mental Health Interventions in Under-Resourced Health Systems</h3>
                         <p data-translate="project_5_description">Community-based program developing sustainable mental health interventions for resource-constrained healthcare settings.</p>
-                        <div class="project-actions">
-                            <a href="#" class="btn btn-outline" data-translate="project_view_details">View Details</a>
+                        <div class="project-details">
+                            <span class="project-location" data-translate="location_regional">Regional</span>
+                            <span class="project-duration">2024-2025</span>
+                            <span class="project-status ongoing" data-translate="status_ongoing">Ongoing</span>
                         </div>
                     </div>
-                </article>
-
-                <article class="project-card" data-category="collaboration">
-                    <div class="project-image">
-                        <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/229b439d-44a2-4cfd-97b3-e37982df699d/3.png" alt="Regional Collaboration">
-                    </div>
-                    <div class="project-content">
-                        <div class="project-meta">
-                            <span class="project-type" data-translate="project_type_collaboration">Collaboration</span>
-                            <span class="project-duration">2023 - 2025</span>
-                        </div>
-                        <h3 data-translate="project_6_title">Middle East Mental Health Research Consortium</h3>
-                        <p data-translate="project_6_description">Regional partnership initiative bringing together researchers and practitioners to advance evidence-based mental health care.</p>
-                        <div class="project-actions">
-                            <a href="#" class="btn btn-outline" data-translate="project_view_details">View Details</a>
-                        </div>
-                    </div>
-                </article>
-            </div>
-        </div>
-    </section>
-
-    <!-- Project Impact Section -->
-    <section class="project-impact">
-        <div class="container">
-            <div class="section-header">
-                <h2 data-translate="project_impact_title">Our Impact</h2>
-                <p data-translate="project_impact_subtitle">Measuring the difference our projects make in mental health care across the region</p>
-            </div>
-            <div class="impact-stats">
-                <div class="stat-item">
-                    <div class="stat-number">15+</div>
-                    <div class="stat-label" data-translate="stat_active_projects">Active Projects</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">2,500+</div>
-                    <div class="stat-label" data-translate="stat_people_reached">People Reached</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">8</div>
-                    <div class="stat-label" data-translate="stat_countries">Countries</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">25+</div>
-                    <div class="stat-label" data-translate="stat_partnerships">Research Partnerships</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Collaboration CTA -->
-    <section class="collaboration-cta">
-        <div class="container">
-            <div class="cta-content">
-                <h2 data-translate="collaboration_title">Collaborate With Us</h2>
-                <p data-translate="collaboration_subtitle">Join our network of researchers, practitioners, and organizations working to advance mental health services in the Middle East.</p>
-                <div class="cta-actions">
-                    <a href="contact.html" class="btn btn-primary" data-translate="collaboration_contact">Contact Us</a>
-                    <a href="#" class="btn btn-secondary" data-translate="collaboration_proposal">Submit Proposal</a>
                 </div>
             </div>
         </div>
@@ -328,5 +245,27 @@
 
     <script src="scripts/translations.js"></script>
     <script src="scripts/main.js"></script>
+    <script>
+        // Project expand/collapse functionality
+        function toggleProject(headerElement) {
+            const projectItem = headerElement.parentElement;
+            const content = projectItem.querySelector('.project-content');
+            const expandBtn = headerElement.querySelector('.expand-btn i');
+            
+            // Toggle the expanded class
+            projectItem.classList.toggle('expanded');
+            
+            // Toggle icon
+            if (projectItem.classList.contains('expanded')) {
+                expandBtn.classList.remove('fa-plus');
+                expandBtn.classList.add('fa-minus');
+                content.style.maxHeight = content.scrollHeight + 'px';
+            } else {
+                expandBtn.classList.remove('fa-minus');
+                expandBtn.classList.add('fa-plus');
+                content.style.maxHeight = '0';
+            }
+        }
+    </script>
 </body>
 </html>

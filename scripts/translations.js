@@ -189,6 +189,20 @@ const translations = {
         collaboration_contact: "Contact Us",
         collaboration_proposal: "Submit Proposal",
         
+        // Additional Projects page translations
+        support_our_work: "Support Our Work",
+        project_hiv_families: "Experiences of HIV+ Families",
+        project_hiv_description: "Research study examining the psychosocial experiences and support needs of families living with HIV in the Middle East region, focusing on stigma reduction and community-based interventions.",
+        project_ankur_title: "Project Ankur: Health Needs of Home Based Sex-Workers in India",
+        project_ipt_haiti: "IPT Dissemination in Haiti",
+        project_ipt_haiti_description: "Training program to disseminate Interpersonal Therapy (IPT) techniques among mental health professionals in Haiti, building local capacity for evidence-based treatment.",
+        project_ipt_colombia: "IPT in Colombia",
+        location_lebanon: "Lebanon",
+        location_india: "India",
+        location_haiti: "Haiti",
+        location_colombia: "Colombia",
+        location_regional: "Regional",
+        
         // Hub page
         hub_hero_title: "Professional Hub",
         hub_hero_subtitle: "Access resources, connect with peers, and advance your professional development in mental health services.",
@@ -470,6 +484,20 @@ const translations = {
         collaboration_subtitle: "انضم إلى شبكتنا من الباحثين والممارسين والمؤسسات التي تعمل على تطوير خدمات الصحة النفسية في الشرق الأوسط.",
         collaboration_contact: "اتصل بنا",
         collaboration_proposal: "قدم مقترح",
+        
+        // Additional Projects page translations
+        support_our_work: "ادعم عملنا",
+        project_hiv_families: "تجارب العائلات المصابة بفيروس نقص المناعة المكتسبة",
+        project_hiv_description: "دراسة بحثية تفحص التجارب النفسية الاجتماعية واحتياجات الدعم للعائلات التي تعيش مع فيروس نقص المناعة المكتسبة في منطقة الشرق الأوسط، مع التركيز على تقليل الوصمة والتدخلات المجتمعية.",
+        project_ankur_title: "مشروع أنكور: الاحتياجات الصحية للعاملات الجنسيات المنزليات في الهند",
+        project_ipt_haiti: "نشر العلاج النفسي التفاعلي في هايتي",
+        project_ipt_haiti_description: "برنامج تدريبي لنشر تقنيات العلاج النفسي التفاعلي (IPT) بين المختصين في الصحة النفسية في هايتي، وبناء القدرات المحلية للعلاج القائم على الأدلة.",
+        project_ipt_colombia: "العلاج النفسي التفاعلي في كولومبيا",
+        location_lebanon: "لبنان",
+        location_india: "الهند",
+        location_haiti: "هايتي",
+        location_colombia: "كولومبيا",
+        location_regional: "إقليمي",
         
         // Hub page
         hub_hero_title: "المحور المهني",
