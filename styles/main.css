@@ -2432,3 +2432,568 @@ body {
         padding-right: 0;
     }
 }
+
+/* Calendar and Lab Section */
+.calendar-lab-section {
+    padding: 80px 0;
+    background: var(--bg-secondary);
+}
+
+.calendar-lab-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: start;
+}
+
+/* Mental Health Lab Styles */
+.lab-half {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.lab-announcement {
+    text-align: center;
+}
+
+.lab-logo {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary-blue), #4a90e2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 25px;
+}
+
+.lab-logo i {
+    font-size: 2rem;
+    color: white;
+}
+
+.lab-announcement h2 {
+    color: var(--primary-blue);
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+}
+
+.lab-announcement p {
+    color: var(--text-secondary);
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+.collaboration-question h3 {
+    color: var(--text-primary);
+    margin-bottom: 25px;
+    font-size: 1.2rem;
+}
+
+.collaboration-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Calendar Styles */
+.calendar-half {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-widget {
+    margin-top: 25px;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.calendar-header h3 {
+    color: var(--primary-blue);
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+.calendar-nav {
+    display: flex;
+    gap: 10px;
+}
+
+.calendar-nav button {
+    background: none;
+    border: none;
+    color: var(--primary-blue);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.calendar-nav button:hover {
+    background: var(--bg-secondary);
+}
+
+.calendar-grid {
+    margin-bottom: 25px;
+}
+
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.calendar-days span {
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 8px 0;
+}
+
+.calendar-dates {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+}
+
+.calendar-dates span {
+    text-align: center;
+    padding: 12px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    position: relative;
+    font-size: 0.9rem;
+}
+
+.calendar-dates span:not(:empty):hover {
+    background: var(--bg-secondary);
+}
+
+.event-date {
+    background: var(--primary-blue);
+    color: white !important;
+}
+
+.event-dot {
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.upcoming-events {
+    border-top: 1px solid var(--border-light);
+    padding-top: 20px;
+}
+
+.upcoming-events h4 {
+    color: var(--primary-blue);
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.event-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.event-item:last-child {
+    border-bottom: none;
+}
+
+.event-date-small {
+    background: var(--primary-blue);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    min-width: 50px;
+    text-align: center;
+}
+
+.event-title {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+/* Our Story Timeline Section */
+.horizontal-timeline-section {
+    padding: 80px 0;
+    background: white;
+}
+
+.horizontal-tabs {
+    margin-top: 40px;
+}
+
+.tab-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    background: var(--bg-secondary);
+    border: none;
+    padding: 15px 25px;
+    border-radius: 25px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.tab-btn.active,
+.tab-btn:hover {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.tab-contents {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.tab-content {
+    display: none;
+    text-align: center;
+    padding: 30px;
+    background: var(--bg-secondary);
+    border-radius: 16px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.tab-content p {
+    color: var(--text-secondary);
+    line-height: 1.7;
+    font-size: 1.1rem;
+}
+
+/* Milestones Section */
+.milestones-section {
+    padding: 80px 0;
+    background: var(--primary-blue);
+    color: white;
+}
+
+.milestones-section .section-header h2,
+.milestones-section .section-header p {
+    color: white;
+}
+
+.milestones-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 40px;
+    margin-top: 50px;
+}
+
+.milestone-card {
+    text-align: center;
+    padding: 30px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+}
+
+.milestone-number {
+    font-size: 3rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 10px;
+}
+
+.milestone-card h3 {
+    color: white;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+}
+
+.milestone-card p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* Partners Carousel Section */
+.partners-carousel-section {
+    padding: 80px 0;
+    background: var(--bg-secondary);
+}
+
+.partners-carousel {
+    margin-top: 50px;
+    overflow: hidden;
+}
+
+.carousel-track {
+    display: flex;
+    gap: 40px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.partner-item {
+    text-align: center;
+    padding: 30px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+    min-width: 180px;
+}
+
+.partner-item:hover {
+    transform: translateY(-5px);
+}
+
+.partner-placeholder {
+    width: 80px;
+    height: 80px;
+    background: var(--primary-blue);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+}
+
+.partner-placeholder i {
+    font-size: 2rem;
+    color: white;
+}
+
+.partner-item span {
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+/* Testimonials Section */
+.testimonials-section {
+    padding: 80px 0;
+    background: white;
+}
+
+.testimonial-card {
+    max-width: 800px;
+    margin: 40px auto 0;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 30px;
+    align-items: center;
+    padding: 40px;
+    background: var(--bg-secondary);
+    border-radius: 16px;
+}
+
+.testimonial-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.testimonial-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.testimonial-content p {
+    color: var(--text-secondary);
+    font-style: italic;
+    line-height: 1.6;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.testimonial-author {
+    text-align: right;
+}
+
+.testimonial-author strong {
+    color: var(--primary-blue);
+    display: block;
+    margin-bottom: 5px;
+}
+
+.testimonial-author span {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Corporate Services Section */
+.corporate-services-section {
+    padding: 80px 0;
+    background: var(--bg-secondary);
+}
+
+.corporate-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+}
+
+.corporate-text h2 {
+    color: var(--primary-blue);
+    margin-bottom: 20px;
+    font-size: 2rem;
+}
+
+.corporate-text p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.service-highlights {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 30px 0;
+}
+
+.service-highlights li {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px 0;
+    color: var(--text-secondary);
+}
+
+.service-highlights i {
+    color: var(--primary-blue);
+    font-size: 1.2rem;
+}
+
+.corporate-image {
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.corporate-image img {
+    width: 100%;
+    height: 400px;
+    object-fit: cover;
+}
+
+/* Mobile Responsiveness for New Sections */
+@media (max-width: 768px) {
+    .calendar-lab-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+    
+    .lab-half,
+    .calendar-half {
+        padding: 30px 20px;
+    }
+    
+    .collaboration-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .tab-buttons {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .tab-btn {
+        padding: 12px 20px;
+        font-size: 0.8rem;
+    }
+    
+    .milestones-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    
+    .milestone-number {
+        font-size: 2.5rem;
+    }
+    
+    .carousel-track {
+        gap: 20px;
+    }
+    
+    .partner-item {
+        min-width: 150px;
+        padding: 20px 15px;
+    }
+    
+    .testimonial-card {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 20px;
+        padding: 30px 20px;
+    }
+    
+    .testimonial-author {
+        text-align: center;
+    }
+    
+    .corporate-content {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+    
+    .corporate-image img {
+        height: 250px;
+    }
+}
+
+/* RTL Support for New Sections */
+[dir="rtl"] .calendar-nav {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .event-item {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .testimonial-card {
+    grid-template-columns: auto 1fr auto;
+}
+
+[dir="rtl"] .testimonial-author {
+    text-align: left;
+}
+
+[dir="rtl"] .service-highlights li {
+    flex-direction: row-reverse;
+}

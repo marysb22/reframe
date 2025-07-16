@@ -10,6 +10,10 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeSmoothScrolling();
     initializeProjectFilters();
     initializeAccessibility();
+    initializeTimelineTabs();
+    initializeCalendarNavigation();
+    initializeProjectExpansion();
+    initializePartnersCarousel();
     
     // Load saved language preference
     loadLanguagePreference();
@@ -624,3 +628,123 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Initialize Timeline Tabs
+function initializeTimelineTabs() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    if (tabBtns.length === 0) return;
+    
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.getAttribute('data-tab');
+            
+            // Remove active class from all buttons and contents
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked button and corresponding content
+            btn.classList.add('active');
+            const targetContent = document.getElementById(targetTab);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+}
+
+// Initialize Calendar Navigation
+function initializeCalendarNavigation() {
+    const prevBtn = document.querySelector('.prev-month');
+    const nextBtn = document.querySelector('.next-month');
+    const monthTitle = document.querySelector('.calendar-header h3');
+    
+    if (!prevBtn || !nextBtn || !monthTitle) return;
+    
+    const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    const arabicMonths = [
+        'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    
+    let currentMonth = 6; // July (0-indexed)
+    let currentYear = 2025;
+    
+    function updateCalendar() {
+        const lang = document.documentElement.lang || 'en';
+        const monthNames = lang === 'ar' ? arabicMonths : months;
+        monthTitle.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+    }
+    
+    prevBtn.addEventListener('click', () => {
+        currentMonth--;
+        if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+        }
+        updateCalendar();
+    });
+    
+    nextBtn.addEventListener('click', () => {
+        currentMonth++;
+        if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        }
+        updateCalendar();
+    });
+}
+
+// Initialize Project Expansion (for Projects page)
+function initializeProjectExpansion() {
+    const projectHeaders = document.querySelectorAll('.project-header');
+    
+    projectHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+            const projectItem = header.closest('.project-item');
+            const content = projectItem.querySelector('.project-content');
+            const expandBtn = header.querySelector('.expand-btn i');
+            
+            // Toggle expanded state
+            projectItem.classList.toggle('expanded');
+            
+            if (projectItem.classList.contains('expanded')) {
+                // Expand
+                content.style.maxHeight = content.scrollHeight + 'px';
+                expandBtn.style.transform = 'rotate(45deg)';
+            } else {
+                // Collapse
+                content.style.maxHeight = '0px';
+                expandBtn.style.transform = 'rotate(0deg)';
+            }
+        });
+    });
+}
+
+// Initialize Partners Carousel (optional animation)
+function initializePartnersCarousel() {
+    const carouselTrack = document.querySelector('.carousel-track');
+    if (!carouselTrack) return;
+    
+    // Optional: Add auto-scroll animation for partners
+    let scrollPosition = 0;
+    const scrollSpeed = 1;
+    
+    function autoScroll() {
+        if (carouselTrack.scrollWidth > carouselTrack.clientWidth) {
+            scrollPosition += scrollSpeed;
+            if (scrollPosition >= carouselTrack.scrollWidth - carouselTrack.clientWidth) {
+                scrollPosition = 0;
+            }
+            carouselTrack.scrollLeft = scrollPosition;
+        }
+    }
+    
+    // Uncomment the line below to enable auto-scrolling
+    // setInterval(autoScroll, 50);
+}
