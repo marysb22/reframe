@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="page_title_events">Events - Reframe MHS</title>
+    <meta name="description" data-translate="page_description_events" content="Upcoming training events, workshops, and conferences by Reframe MHS for mental health professionals.">
+    <link rel="stylesheet" href="styles/main.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <!-- Logo -->
+            <div class="nav-logo">
+                <a href="index.html"><h2>Reframe MHS</h2></a>
+            </div>
+
+            <!-- Links for desktop -->
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+                <li><a href="insights.html" class="nav-link" data-translate="nav_insights">Insights</a></li>
+                <li><a href="events.html" class="nav-link active" data-translate="nav_events">Events</a></li>
+                <li><a href="projects.html" class="nav-link" data-translate="nav_projects">Projects</a></li>
+                <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+                <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+            </ul>
+
+            <!-- Language Switcher -->
+            <div class="language-switcher">
+                <button class="lang-btn active" data-lang="en">EN</button>
+                <span class="lang-separator">|</span>
+                <button class="lang-btn" data-lang="ar">AR</button>
+            </div>
+
+            <!-- Hamburger button -->
+            <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Overlay menu for mobile -->
+    <div class="overlay" id="mobile-menu" aria-hidden="true">
+        <nav class="overlay-nav">
+            <ul>
+                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+                <li><a href="insights.html" class="nav-link" data-translate="nav_insights">Insights</a></li>
+                <li><a href="events.html" class="nav-link active" data-translate="nav_events">Events</a></li>
+                <li><a href="projects.html" class="nav-link" data-translate="nav_projects">Projects</a></li>
+                <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+                <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+            </ul>
+        </nav>
+        <button class="close-btn" aria-label="Close menu" data-translate="close">Close</button>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="events-hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1 data-translate="events_hero_title">Upcoming Events</h1>
+                <p data-translate="events_hero_subtitle">Join our professional development programs, workshops, and training sessions designed for mental health professionals</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Calendar Integration -->
+    <section class="calendar-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-translate="calendar_title">July 2025</h2>
+                <p data-translate="calendar_subtitle">View our upcoming training sessions and workshops</p>
+            </div>
+            <div class="calendar-container">
+                <div class="calendar-grid">
+                    <div class="calendar-header">
+                        <div class="day-header" data-translate="calendar_sun">Sun</div>
+                        <div class="day-header" data-translate="calendar_mon">Mon</div>
+                        <div class="day-header" data-translate="calendar_tue">Tue</div>
+                        <div class="day-header" data-translate="calendar_wed">Wed</div>
+                        <div class="day-header" data-translate="calendar_thu">Thu</div>
+                        <div class="day-header" data-translate="calendar_fri">Fri</div>
+                        <div class="day-header" data-translate="calendar_sat">Sat</div>
+                    </div>
+                    <div class="calendar-body">
+                        <div class="calendar-day"></div>
+                        <div class="calendar-day"></div>
+                        <div class="calendar-day">1</div>
+                        <div class="calendar-day">2</div>
+                        <div class="calendar-day event-day">
+                            <span class="day-number">3</span>
+                            <div class="event-indicator">
+                                <i class="fas fa-circle"></i>
+                            </div>
+                        </div>
+                        <div class="calendar-day">4</div>
+                        <div class="calendar-day">5</div>
+                        <div class="calendar-day">6</div>
+                        <div class="calendar-day">7</div>
+                        <div class="calendar-day">8</div>
+                        <div class="calendar-day">9</div>
+                        <div class="calendar-day">10</div>
+                        <div class="calendar-day">11</div>
+                        <div class="calendar-day">12</div>
+                        <div class="calendar-day">13</div>
+                        <div class="calendar-day">14</div>
+                        <div class="calendar-day">15</div>
+                        <div class="calendar-day">16</div>
+                        <div class="calendar-day">17</div>
+                        <div class="calendar-day">18</div>
+                        <div class="calendar-day">19</div>
+                        <div class="calendar-day">20</div>
+                        <div class="calendar-day">21</div>
+                        <div class="calendar-day">22</div>
+                        <div class="calendar-day">23</div>
+                        <div class="calendar-day">24</div>
+                        <div class="calendar-day">25</div>
+                        <div class="calendar-day">26</div>
+                        <div class="calendar-day">27</div>
+                        <div class="calendar-day">28</div>
+                        <div class="calendar-day">29</div>
+                        <div class="calendar-day event-day">
+                            <span class="day-number">30</span>
+                            <div class="event-indicator">
+                                <i class="fas fa-circle"></i>
+                            </div>
+                        </div>
+                        <div class="calendar-day">31</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Events -->
+    <section class="featured-events">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-translate="featured_events_title">Featured Events</h2>
+                <p data-translate="featured_events_subtitle">Don't miss these upcoming professional development opportunities</p>
+            </div>
+            <div class="events-grid">
+                <article class="event-card featured">
+                    <div class="event-image">
+                        <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/1751356129482-QYL2IZDXHXP3WBCPM39X/May+Aoun+%26+Oussama+Safa+copy.jpg" alt="Peacebuilding Training">
+                        <div class="event-date">
+                            <span class="month" data-translate="month_jul">Jul</span>
+                            <span class="day">03</span>
+                        </div>
+                    </div>
+                    <div class="event-content">
+                        <div class="event-meta">
+                            <span class="event-type" data-translate="event_type_training">Training</span>
+                            <span class="event-time">8:00 PM - 10:00 PM</span>
+                        </div>
+                        <h3 data-translate="event_1_title">Peacebuilding and Psychosocial Support for Children: A Practical Toolkit</h3>
+                        <p data-translate="event_1_description">This comprehensive training will equip mental health professionals with practical tools and strategies for supporting children in conflict-affected areas. Learn evidence-based approaches to peacebuilding and psychosocial support.</p>
+                        <div class="event-details">
+                            <div class="detail-item">
+                                <i class="fas fa-clock"></i>
+                                <span data-translate="event_duration_2h">2 Hours</span>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-users"></i>
+                                <span data-translate="event_max_30">Max 30 Participants</span>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-certificate"></i>
+                                <span data-translate="event_certificate">Certificate Provided</span>
+                            </div>
+                        </div>
+                        <a href="#" class="btn btn-primary" data-translate="event_register">Register Now</a>
+                    </div>
+                </article>
+                <article class="event-card featured">
+                    <div class="event-image">
+                        <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/1751355314215-7U3OFUQGVGHMISSRFH6O/1.png" alt="Eating Disorder Training">
+                        <div class="event-date">
+                            <span class="month" data-translate="month_jul">Jul</span>
+                            <span class="day">30</span>
+                        </div>
+                    </div>
+                    <div class="event-content">
+                        <div class="event-meta">
+                            <span class="event-type" data-translate="event_type_training">Training</span>
+                            <span class="event-time">8:00 PM - 9:00 PM</span>
+                        </div>
+                        <h3 data-translate="event_2_title">The Invisible Weight: Foundations of Eating Disorder Care for Dietitians</h3>
+                        <p data-translate="event_2_description">Essential training for dietitians and healthcare professionals on eating disorder treatment approaches. Learn to recognize signs, provide appropriate support, and collaborate effectively with mental health professionals.</p>
+                        <div class="event-details">
+                            <div class="detail-item">
+                                <i class="fas fa-clock"></i>
+                                <span data-translate="event_duration_1h">1 Hour</span>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-users"></i>
+                                <span data-translate="event_max_25">Max 25 Participants</span>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-certificate"></i>
+                                <span data-translate="event_certificate">Certificate Provided</span>
+                            </div>
+                        </div>
+                        <a href="#" class="btn btn-primary" data-translate="event_register">Register Now</a>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- Event Categories -->
+    <section class="event-categories">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-translate="event_categories_title">Event Categories</h2>
+                <p data-translate="event_categories_subtitle">Explore our diverse range of professional development opportunities</p>
+            </div>
+            <div class="categories-grid">
+                <div class="category-card">
+                    <div class="category-icon">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <h3 data-translate="category_training_title">Training Programs</h3>
+                    <p data-translate="category_training_description">Comprehensive training sessions covering various aspects of mental health care and therapy techniques.</p>
+                    <div class="category-stats">
+                        <span data-translate="category_training_count">15+ Programs</span>
+                        <span data-translate="event_certificate">Certificate Provided</span>
+                    </div>
+                </div>
+                <div class="category-card">
+                    <div class="category-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3 data-translate="category_workshops_title">Workshops</h3>
+                    <p data-translate="category_workshops_description">Interactive workshops focused on specific skills and techniques for mental health professionals.</p>
+                    <div class="category-stats">
+                        <span data-translate="category_workshops_count">10+ Workshops</span>
+                        <span data-translate="category_hands_on">Hands-on Learning</span>
+                    </div>
+                </div>
+                <div class="category-card">
+                    <div class="category-icon">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <h3 data-translate="category_conferences_title">Conferences</h3>
+                    <p data-translate="category_conferences_description">Multi-day conferences bringing together experts and practitioners from across the region.</p>
+                    <div class="category-stats">
+                        <span data-translate="category_conferences_count">2+ Conferences</span>
+                        <span data-translate="category_networking">Networking Opportunities</span>
+                    </div>
+                </div>
+                <div class="category-card">
+                    <div class="category-icon">
+                        <i class="fas fa-laptop"></i>
+                    </div>
+                    <h3 data-translate="category_online_title">Online Sessions</h3>
+                    <p data-translate="category_online_description">Virtual training sessions and webinars accessible from anywhere in the Middle East.</p>
+                    <div class="category-stats">
+                        <span data-translate="category_online_count">20+ Online Events</span>
+                        <span data-translate="category_remote">Remote Access</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Newsletter Section -->
+    <section class="newsletter-signup">
+        <div class="container">
+            <div class="newsletter-content">
+                <h2 data-translate="newsletter_events_title">Stay Updated on Events</h2>
+                <h3 data-translate="newsletter_events_subtitle">Subscribe to receive notifications about upcoming training sessions, workshops, and conferences.</h3>
+                <a href="#" class="btn btn-primary" data-translate="newsletter_events_cta">Get Notified</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Reframe MHS</h3>
+                    <p data-translate="footer_description">Unlocking the innate potential and resilience within each person and group across the Middle East.</p>
+                </div>
+                <div class="footer-section">
+                    <h4 data-translate="footer_quick_links">Quick Links</h4>
+                    <ul>
+                        <li><a href="about.html" data-translate="nav_about">About Us</a></li>
+                        <li><a href="insights.html" data-translate="nav_insights">Insights</a></li>
+                        <li><a href="events.html" data-translate="nav_events">Events</a></li>
+                        <li><a href="projects.html" data-translate="nav_projects">Projects</a></li>
+                        <li><a href="hub.html" data-translate="nav_hub">Hub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4 data-translate="footer_services">Services</h4>
+                    <ul>
+                        <li><a href="#" data-translate="footer_training">Training Programs</a></li>
+                        <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
+                        <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
+                        <li><a href="#" data-translate="footer_resources">Resources</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4 data-translate="footer_connect">Connect</h4>
+                    <div class="social-links">
+                        <a href="#" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p data-translate="footer_copyright">&copy; 2025 Reframe MHS. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="scripts/translations.js"></script>
+    <script src="scripts/main.js"></script>
+</body>
+</html>
