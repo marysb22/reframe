@@ -2060,15 +2060,13 @@ body {
   transform:translateY(-1px);
 }
 
-/* ===== Footer Bottom ===== */
 .footer-bottom {
-  text-align:center;
-  margin-top:40px;
-  border-top:1px solid #ffffff33;
-  padding:15px 0;
-  font-size:13px;
-  color:#ccc;
-  width:100%;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 20px 0 25px;
+  font-size: 13px;
+  color: #f0f0f0;
+  line-height: 1.6;
 }
 
 /* ====== Mobile Layout ====== */
@@ -2142,14 +2140,7 @@ body {
     width:100%;
   }
 
-  .footer-bottom {
-    margin-top:40px;
-    padding-top:15px;
-    font-size:12.5px;
-    border-top:1px solid rgba(255,255,255,0.25);
-    color:#e6e6e6;
-  }
-}
+  
 
 
 footer p {
@@ -2161,7 +2152,7 @@ footer p {
 
 footer p span {
   display: block; /* يجعلها على سطر جديد أيضًا */
-  color: #4d9794;
+  color:white;
   font-weight: 600;
 }
 
