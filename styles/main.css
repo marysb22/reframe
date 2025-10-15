@@ -1701,7 +1701,7 @@ body {
 
 /* ===== Paragraphs ===== */
 .footer-section p {
-  font-size: 14px;
+  font-size: 12px;
   margin-bottom: 20px;
   color: #d1d1d1;
   line-height: 1.7;
@@ -1756,7 +1756,7 @@ body {
 
 /* ===== Subscribe Section ===== */
 .subscribe-section {
-  margin-top: 25px;
+  margin-top: 20px;
   display: flex;
   align-items: center;
   gap: 20px;
