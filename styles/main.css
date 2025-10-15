@@ -1649,275 +1649,112 @@ body {
   border-radius: 12px;
 }
 
-/* If any wrapper had borders/padding, remove to avoid “double border” feel */
+
 .form-group { border: 0; padding: 0; background: transparent; }
-/* ================================
-   🌿 FOOTER - FULL WIDTH, FIXED LAYOUT ON DESKTOP
-================================ */
+
+/* 🌿 Compact Footer - Elegant & Balanced Size */
 .footer {
   background: #4D9794;
   color: #ffffff;
-  padding: 40px 0;
+  padding: 25px 0 15px; /* ← تم تقليل الارتفاع العام */
   font-family: 'Segoe UI', sans-serif;
-  font-size: 12px;
-  line-height: 1.5;
-  position: relative;
-  overflow: hidden;
-  z-index: 0;
+  font-size: 13px;      /* ← نص أصغر قليلًا */
+  line-height: 1.6;
   margin: 0;
 }
 
 .footer .container {
   max-width: 100%;
-  margin: 0;
-  padding: 0;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
-/* ✅ ثابت على الديسكتوب */
-@media (min-width: 1024px) {
-  .footer-content {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    gap: 80px;
-    padding: 0 40px;
-    flex-wrap: nowrap;       /* ❌ ما يخلي الأعمدة تنزل تحت بعض */
-  }
-
-  .footer-section {
-    flex: 1;
-    min-width: 240px;
-    max-width: 300px;
-  }
+/* ترتيب المحتوى */
+.footer-content {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 50px; /* ← تقليل المسافة بين الأعمدة */
 }
 
-/* ===== Titles ===== */
+/* كل قسم */
+.footer-section {
+  min-width: 200px;
+  max-width: 260px;
+}
+
+/* العناوين */
 .footer-section h3,
 .footer-section h4 {
-  font-size: 18px;
-  margin-bottom: 25px;
-  color: #f0f0f0;
-}
-
-/* ===== Paragraphs ===== */
-.footer-section p {
-  font-size: 12px;
-  margin-bottom: 20px;
-  color: #d1d1d1;
-  line-height: 1.7;
-}
-
-/* ===== Links ===== */
-.footer-section ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.footer-section ul li {
-  margin-bottom: 10px;
-}
-
-.footer-section ul li a {
-  color: #d1d1d1;
-  text-decoration: none;
-  transition: color 0.3s ease;
-}
-
-.footer-section ul li a:hover {
+  font-size: 15px;
+  margin-bottom: 15px;
   color: #ffffff;
 }
 
-/* ===== Social Links ===== */
+/* النصوص والروابط */
+.footer-section p,
+.footer-section a {
+  font-size: 12.5px;
+  color: #e0e0e0;
+}
+
+.footer-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.footer-section ul li {
+  margin-bottom: 6px;
+}
+
+/* روابط التواصل */
 .social-links {
   display: flex;
-  gap: 18px;
-  margin-top: 20px;
+  gap: 12px;
+  margin-top: 10px;
 }
 
 .social-links a {
+  width: 30px;
+  height: 30px;
   display: flex;
   justify-content: center;
   align-items: center;
   background-color: #ffffff1a;
-  width: 34px;
-  height: 34px;
   border-radius: 50%;
-  color: #ffffff;
-  font-size: 16px;
-  transition: background 0.3s, transform 0.3s;
+  font-size: 14px;
+  color: white;
+  transition: all 0.3s ease;
 }
 
 .social-links a:hover {
   background-color: white;
   color: #4D9794;
-  transform: scale(1.1);
 }
 
-/* ===== Subscribe Section ===== */
-.subscribe-section {
-  margin-top: 20px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.subscribe-box h2 {
-  font-size: 15px;
-  margin-bottom: 10px;
-  color: #fff;
-  font-weight: 700;
-}
-
-.subscribe-box p {
-  font-size: 13px;
-  margin-bottom: 15px;
-  line-height: 1.5;
-  color: #d1d1d1;
-}
-
-/* ===== Form Layout ===== */
-.subscribe-form {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.subscribe-form input[type="email"] {
-  padding: 10px 14px;
-  border-radius: 6px;
-  border: 1px solid #ddd;
-  flex: 1;
-  font-size: 13px;
-  background: #fff;
-  color: #333;
-}
-
-.subscribe-form input::placeholder {
-  color: #999;
-}
-
-.subscribe-form button {
-  padding: 10px 16px;
-  border-radius: 6px;
-  border: none;
-  background-color: #ffffff;
-  color: #4D9794;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.3s ease, color 0.3s ease, transform 0.2s ease;
-}
-
-.subscribe-form button:hover {
-  background-color: #3d7e7b;
-  color: #fff;
-  transform: translateY(-1px);
-}
-
-/* ===== Footer Bottom ===== */
+/* ===== Footer Bottom (smaller height & clean) ===== */
 .footer-bottom {
   text-align: center;
-  margin-top: 30px;
-  border-top: 1px solid #ffffff33;
-  padding: 15px 0;
-  font-size: 13px;
-  color: #cccccc;
-  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 10px 0 12px;  /* ← صغير جدًا */
+  font-size: 12.5px;
+  color: #e8e8e8;
+  line-height: 1.6;
+}
+
+.footer-bottom p {
+  margin: 0;
+}
+
+.footer-bottom span {
   display: block;
+  color: #ffffff;
+  margin-top: 3px;
+  font-weight: 500;
 }
 
-/* ================================
-   📱 Responsive (Mobile & Tablet)
-================================ */
-@media (max-width: 1023px) {
-  .footer-content {
-    display: grid;
-    grid-template-columns: 1fr;
-    text-align: center;
-    gap: 40px;
-    padding: 0 20px;
-  }
-
-  .footer-section {
-    width: 100%;
-    max-width: 340px;
-    margin: 0 auto;
-  }
-
-  .footer-section h3,
-  .footer-section h4 {
-    font-size: 17px;
-    color: #ffffff;
-    margin-bottom: 14px;
-  }
-
-  .footer-section p {
-    font-size: 13px;
-    line-height: 1.6;
-    color: #e2e2e2;
-  }
-
-  .footer-section ul li {
-    margin-bottom: 10px;
-  }
-
-  .footer-section ul li a {
-    color: #d8d8d8;
-    font-size: 13px;
-  }
-
-  .social-links {
-    justify-content: center;
-    margin-top: 15px;
-    gap: 15px;
-  }
-
-  .social-links a {
-    width: 36px;
-    height: 36px;
-    font-size: 15px;
-  }
-
-  .subscribe-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 12px;
-  }
-
-  .subscribe-box h2 {
-    font-size: 15px;
-    margin-bottom: 6px;
-  }
-
-  .subscribe-box p {
-    font-size: 13px;
-    max-width: 260px;
-  }
-
-  .subscribe-form {
-    width: 100%;
-    max-width: 320px;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .subscribe-form input[type="email"],
-  .subscribe-form button {
-    width: 100%;
-  }
-
-  .footer-bottom {
-    margin-top: 20px;
-    padding-top: 10px;
-    font-size: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.25);
-    color: #e6e6e6;
-  }
-}
 /* ==== FOOTER STYLES (FIXED ON DESKTOP / FLEXIBLE ON MOBILE) ==== */
 .footer {
   background:#4D9794;
