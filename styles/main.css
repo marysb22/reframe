@@ -361,6 +361,7 @@ body {
   pointer-events: none;
 }
 
+
 /* ===== Overlay Sidebar Modern 2025 ===== */
 .overlay {
   position: fixed;
@@ -599,43 +600,97 @@ body {
 }
 
 
-/* ====== Responsive ====== */
+/* ================= 📱 PERFECT MOBILE VERSION ================= */
 @media (max-width: 992px) {
   .hero {
     height: 420px;
+    margin-top: 85px;
   }
-  .bento-grid {
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(3, 1fr);
-  }
-}
 
-@media (max-width: 768px) {
-  .hero {
-    height: 380px;
-  }
   .bento-grid {
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: repeat(4, 1fr);
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .hero {
-    height: auto;
-
-
+    height: 350px;
+    position: relative;
+    overflow: hidden;
   }
+
+  /* 🔹 اجعل الصور مرتبة كخلفية ناعمة */
   .bento-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(6, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 0;
   }
+
   .bento-item {
-    height: 180px;
+    height: 90px;
+    object-fit: cover;
+    filter: brightness(0.8);
+    opacity: 0.9;
+  }
+
+  /* 🔹 تدرّج جميل فوق الصور */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.15));
+    z-index: 1;
+  }
+
+  /* 🔹 النص فوق الصور */
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    text-align: center;
+    padding: 30px 20px;
+    z-index: 2;
+    background: transparent;
+  }
+
+  .hero-text {
+    color: #fff;
+    max-width: 90%;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+
+  .hero-text h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .hero-text p {
+    font-size: 0.95rem;
+    line-height: 1.4;
   }
 }
 
+@media (max-width: 480px) {
+  .hero {
+    height: 300px;
+  }
 
+  .bento-item {
+    height: 70px;
+  }
+
+  .hero-text h1 {
+    font-size: 1.3rem;
+  }
+
+  .hero-text p {
+    font-size: 0.85rem;
+  }
+}
 /* Section Headers */
 .section-header {
     text-align: center;
@@ -2591,5 +2646,21 @@ h1{text-align:center; margin-bottom:100px;}
   }
   .modal-content img {
     max-height: 180px; /* أصغر أكثر للموبايل */
+  }
+}
+/* ✅ Show Login on desktop, hide on mobile */
+@media (max-width: 992px) {
+  .nav-actions .btn-login,
+  .nav-actions a[href*="login"],
+  .nav-actions button.login {
+    display: none !important;
+  }
+}
+
+@media (min-width: 993px) {
+  .nav-actions .btn-login,
+  .nav-actions a[href*="login"],
+  .nav-actions button.login {
+    display: inline-flex !important;
   }
 }
