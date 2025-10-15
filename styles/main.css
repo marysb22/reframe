@@ -223,6 +223,58 @@ body {
   transition: all 0.3s ease;
 }
 
+/* --- Hamburger button perfectly aligned --- */
+.hamburger {
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: 10px;  /* ✅ صار ملتصق بالحافة */
+  transform: translateY(-50%);
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  background: #ffffff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  z-index: 1001; /* فوق الكل */
+}
+
+.hamburger span {
+  width: 22px;
+  height: 2.5px;
+  background: #333;
+  border-radius: 2px;
+  transition: 0.3s;
+}
+
+/* ✅ يظهر بس على الموبايل */
+@media (max-width: 992px) {
+  .hamburger {
+    display: flex;
+  }
+
+  .language-switcher {
+    gap: 4px;
+    font-size: 0.9rem;
+  }
+
+  .nav-actions {
+    right: 60px; /* يخلي المسافة بين اللغة والهامبرغر ممتازة */
+  }
+}
+
+/* ✅ يمنع أي قص أو خروج */
+.navbar {
+  overflow: visible;
+  position: relative;
+  z-index: 1000;
+}
 
 
 
@@ -240,99 +292,6 @@ body {
 [dir="rtl"] .nav-actions {
   right: auto;
   left: 40px;
-}
-
-/* Language Switcher */
-.language-switcher {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--primary-neutral, #f3f4f6);
-  padding: 0.4rem 0.8rem;
-  border-radius: 20px;
-}
-
-.lang-btn {
-  background: none;
-  border: none;
-  color: #444;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0.3rem 0.7rem;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-}
-
-.lang-btn.active,
-.lang-btn:hover {
-  color: var(--primary-blue, #0d3b66);
-  background: #fff;
-}
-
-.lang-separator {
-  color: #888;
-  font-weight: 300;
-}
-
-/* Login (Desktop) */
-.login-btn {
-  text-decoration: none;
-  color: var(--text-secondary, #333);
-  font-weight: 600;
-  font-size: 1.05rem;
-  padding: 0.6rem 1rem;
-  border-radius: 0.5rem;
-  transition: all 0.3s ease;
-}
-
-.login-btn:hover {
-  color: var(--primary-color, #0d3b66);
-  background-color: rgba(13,59,102,0.06);
-  transform: translateY(-2px);
-}
-
-.login-btn.active {
-  color: #fff;
-  background: var(--primary-color, #0d3b66);
-  box-shadow: 0 4px 12px rgba(13,59,102,0.25);
-}
-/* Hide login button on mobile */
-@media (max-width: 992px) {
-  .login-btn {
-    display: none !important;
-  }
-}
-
-
-/* ===== Hamburger Menu ===== */
-.hamburger {
-  display: none; /* يظهر بس عالشاشات الصغيرة */
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-  width: 45px;
-  height: 45px;
-  cursor: pointer;
-  background: #ffffff;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 0.5rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-
-.hamburger:hover {
-  background: #f3f4f6;
-  transform: scale(1.05);
-}
-
-.hamburger span {
-  width: 25px;
-  height: 3px;
-  background: #333;
-  border-radius: 2px;
-  transition: 0.3s;
 }
 
 /* Animation when active */
@@ -353,6 +312,53 @@ body {
   .hamburger {
     display: flex;
   }
+}
+/* 🌍 Modern Compact Language Switcher */
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1.2px solid #d9d9d9;
+  border-radius: 30px;
+  padding: 4px 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.language-switcher:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Buttons inside */
+.lang-btn {
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  padding: 0;
+  margin: 0;
+}
+
+.lang-btn.active {
+  color: #4D9794; /* highlight color */
+}
+
+.lang-btn:hover {
+  color: #4D9794;
+}
+
+/* Separator “–” */
+.lang-separator {
+  color: #b5b5b5;
+  font-weight: 400;
+  user-select: none;
+  pointer-events: none;
 }
 
 /* ===== Overlay Sidebar Modern 2025 ===== */
@@ -1886,8 +1892,8 @@ body {
   border:none;
   background:#fff;
   color:#4D9794;
-  font-weight:700;
-  font-size:13px;
+  font-weight:100;
+  font-size:8px;
   cursor:pointer;
   transition:background .3s,color .3s,transform .2s;
 }
@@ -2260,8 +2266,6 @@ input:focus {
     100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-
-<style>
 
 
   /* --- Calendar Section --- */
