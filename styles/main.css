@@ -1675,12 +1675,13 @@ body {
   justify-content: center;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 50px; /* ← تقليل المسافة بين الأعمدة */
+  gap: 20px; /* ← تقليل المسافة بين الأعمدة */
+    padding: 0 1git0px;  
 }
 
 /* كل قسم */
 .footer-section {
-  min-width: 200px;
+  min-width: 150px;
   max-width: 260px;
 }
 
@@ -1993,7 +1994,7 @@ footer p span {
 }
 
 
-
+}
 
 /* ================= RTL Support ================= */
 [dir="rtl"] .footer-content {
