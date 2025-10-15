@@ -1846,27 +1846,27 @@ body {
 
 /* ===== Subscribe Section ===== */
 .subscribe-section {
-  margin-top:25px;
+  margin-top:15px;
   display:flex;
   align-items:center;
   gap:20px;
   flex-wrap:wrap;
 }
 .subscribe-box h2 {
-  font-size:15px;
+  font-size:10px;
   margin-bottom:10px;
   color:#fff;
-  font-weight:700;
+  font-weight:50;
 }
 .subscribe-box p {
   font-size:13px;
-  margin-bottom:15px;
+  margin-bottom:5px;
   line-height:1.5;
   color:#d1d1d1;
 }
 .subscribe-form {
   display:flex;
-  gap:10px;
+  gap: 10px;
   align-items:center;
 }
 .subscribe-form input[type="email"] {
