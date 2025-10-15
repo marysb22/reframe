@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-translate="page_title_consultations">Technical Consultations - Reframe MHS</title>
+  <meta 
+    name="description" 
+    data-translate="page_description_consultations"
+    content="Professional technical consultations for corporations, focusing on staff well-being, resilience, and organizational success."
+  />
+
+  <!-- Styles & Fonts -->
+  <link rel="stylesheet" href="styles/main.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- ================== NAVIGATION ================== -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <!-- Logo -->
+      <div class="nav-logo">
+        <a href="index.html">
+          <img src="logo.gif" alt="Reframe Logo" width="220">
+        </a>
+      </div>
+
+      <!-- Main Menu -->
+      <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+
+        <!-- Dropdown -->
+        <li class="nav-dropdown">
+          <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
+            Services <i class="fa fa-chevron-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+            <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+            <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+            <li><a href="t.html" class="nav-link active" data-translate="nav_consultations">TechnicalConsultations</a></li>
+          </ul>
+        </li>
+
+        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+      </ul>
+
+      <!-- Language Switcher -->
+      <div class="language-switcher">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <span class="lang-separator">|</span>
+        <button class="lang-btn" data-lang="ar">AR</button>
+      </div>
+
+      <!-- Login Button -->
+      <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
+
+      <!-- Hamburger -->
+      <button class="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ================== OVERLAY MENU (Mobile) ================== -->
+  <div class="overlay" id="mobile-menu" aria-hidden="true">
+    <nav class="overlay-nav">
+      <ul>
+        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+        <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+        <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+        <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+        <li><a href="t.html" class="nav-link active" data-translate="nav_consultations">Technical Consultations</a></li>
+        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+        <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
+      </ul>
+      <button class="close-btn" data-translate="close">Close</button>
+    </nav>
+  </div>
+
+  <style>
+   
+
+ 
+   
+
+
+ /* ================= ABOUT SECTION ================= */
+  .about {
+    max-width: 1200px;
+    margin: 100px auto;
+    padding: 0 30px;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+
+  .about h2 {
+    font-size: clamp(1.8rem, 1.2rem + 1vw, 2.4rem);
+    font-weight: 800;
+    color: #1e3f5a;
+    margin-bottom: 20px;
+  }
+
+  .about p {
+    color: #475569;
+    margin-bottom: 14px;
+    font-size: 1.05rem;
+    line-height: 1.6;
+  }
+
+  .about-quote {
+    font-style: italic;
+    font-weight: 500;
+    color: #1e3f5a;
+    margin-top: 25px;
+    line-height: 1.7;
+  }
+
+  .cta-btn {
+    display: inline-block;
+    margin-top: 25px;
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #4d9794, #1e3f5a);
+    color: #fff;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .cta-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(77, 151, 148, 0.4);
+  }
+
+  /* ===== CIRCLE ===== */
+  .circle-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 280px;
+  }
+
+  .circle-box {
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: #4d9794;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #fff;
+    text-align: center;
+    transition: background-color 0.6s, opacity 0.6s, transform 0.4s;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+    animation: pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.07); opacity: 0.95; }
+  }
+
+  .circle-decor {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    border: 2px dashed rgba(77, 151, 148, 0.3);
+    animation: spin 15s linear infinite;
+  }
+
+  .circle-decor.small {
+    width: 170px;
+    height: 170px;
+    border: 2px solid rgba(0, 0, 0, 0.05);
+    animation: spin 10s linear infinite reverse;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ================= SERVICES SECTION ================= */
+  .services {
+    max-width: 1200px;
+    margin: 120px auto;
+    padding: 0 30px;
+    text-align: center;
+  }
+
+  .services h2 {
+    font-size: clamp(2rem, 1.5rem + 1vw, 2.4rem);
+    font-weight: 900;
+    margin-bottom: 60px;
+    position: relative;
+    color: #1e3f5a;
+  }
+
+  .services h2::after {
+    content: "";
+    width: 70%;
+    height: 4px;
+    background: linear-gradient(90deg, #4d9794, #1e3f5a);
+    position: absolute;
+    left: 15%;
+    bottom: -10px;
+    border-radius: 2px;
+  }
+
+  .consultation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 30px;
+  }
+
+  .consultation-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 30px;
+    text-align: left;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.07);
+    transition: 0.4s;
+    overflow: hidden;
+  }
+
+  .consultation-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  }
+
+  .consultation-card h2 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #0f172a;
+  }
+
+  .consultation-card h2 i {
+    color: #4d9794;
+    font-size: 1.3rem;
+  }
+
+  .consultation-card li {
+    margin-bottom: 12px;
+    color: #475569;
+    padding-left: 22px;
+    position: relative;
+    font-size: 0.97rem;
+    line-height: 1.6;
+  }
+
+  .consultation-card li::before {
+    content: "✔";
+    color: #1e3f5a;
+    font-size: 0.9rem;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 900px) {
+    .about {
+      grid-template-columns: 1fr;
+      text-align: center;
+    }
+    .circle-box { width: 180px; height: 180px; font-size: 1.1rem; }
+    .cta-btn { margin: 25px auto 0; display: inline-block; }
+  }
+
+  @media (max-width: 600px) {
+    .consultation-card { padding: 22px; }
+    .consultation-card h2 { font-size: 1.1rem; }
+    .consultation-card li { font-size: 0.9rem; }
+  }
+  </style>
+
+  </style>
+
+
+
+</head>
+
+<!-- ===== ABOUT SECTION ===== -->
+<div class="about">
+  <div class="about-text">
+    <h2 data-translate="consultations_about_title">About Us</h2>
+    <p data-translate="consultations_about_subtitle">Technical Consultations</p>
+    <p data-translate="consultations_hero_subtitle">Bringing resources, relational health, and systemic harmony to support your teams.</p>
+  </div>
+
+  <div class="circle-wrapper">
+    <div class="circle-box" id="changing-word" data-translate="consultations_changing_word">Vision</div>
+    <!-- Decorative Circles -->
+    <div class="circle-decor"></div>
+    <div class="circle-decor small"></div>
+  </div>
+</div>
+
+<!-- ===== SERVICES SECTION ===== -->
+<section class="services">
+  <h2 data-translate="consultations_services_title">Our Services</h2>
+  <div class="consultation-grid">
+
+    <!-- Individual Support -->
+    <section class="consultation-card">
+      <h2><i class="fa-solid fa-user"></i> <span data-translate="consultations_individual_title">Individual Support</span></h2>
+      <ul>
+        <li data-translate="consultations_individual_1">Confidential counseling sessions (short-term, solution-focused).</li>
+        <li data-translate="consultations_individual_2">Psychological first aid for staff exposed to crises.</li>
+        <li data-translate="consultations_individual_3">Coaching for stress management and resilience.</li>
+        <li data-translate="consultations_individual_4">Referrals and follow-up support when needed.</li>
+      </ul>
+    </section>
+
+    <!-- Group Support -->
+    <section class="consultation-card">
+      <h2><i class="fa-solid fa-people-group"></i> <span data-translate="consultations_group_title">Group Support</span></h2>
+      <ul>
+        <li data-translate="consultations_group_1">Stress management sessions (post-crisis, burnout, workload).</li>
+        <li data-translate="consultations_group_2">Peer support groups (safe space to share experiences).</li>
+        <li data-translate="consultations_group_3">Resilience circles using art, storytelling, and movement.</li>
+        <li data-translate="consultations_group_4">Team-building with therapeutic methods.</li>
+      </ul>
+    </section>
+
+    <!-- Workshops & Training -->
+    <section class="consultation-card">
+      <h2><i class="fa-solid fa-chalkboard-user"></i> <span data-translate="consultations_workshops_title">Workshops & Training</span></h2>
+      <ul>
+        <li data-translate="consultations_workshops_1">Stress management & burnout prevention.</li>
+        <li data-translate="consultations_workshops_2">Resilience skills for high-pressure environments.</li>
+        <li data-translate="consultations_workshops_3">Emotional regulation & coping strategies.</li>
+        <li data-translate="consultations_workshops_4">Trauma-informed care for high-stress contexts.</li>
+        <li data-translate="consultations_workshops_5">Mental health awareness & stigma reduction.</li>
+      </ul>
+    </section>
+
+    <!-- Organizational Services -->
+    <section class="consultation-card">
+      <h2><i class="fa-solid fa-building"></i> <span data-translate="consultations_org_title">Organizational Services</span></h2>
+      <ul>
+        <li data-translate="consultations_org_1">Psychosocial risk assessments.</li>
+        <li data-translate="consultations_org_2">Monitoring and evaluation system for staff well-being.</li>
+        <li data-translate="consultations_org_3">Management reports: risks, staff needs, recommendations.</li>
+        <li data-translate="consultations_org_4">Mediation during workplace conflicts.</li>
+      </ul>
+    </section>
+
+    <!-- Specialized Interventions -->
+    <section class="consultation-card">
+      <h2><i class="fa-solid fa-star-half-stroke"></i> <span data-translate="consultations_special_title">Specialized Interventions</span></h2>
+      <ul>
+        <li data-translate="consultations_special_1">Thematic staff-care days (art, music, mindfulness).</li>
+        <li data-translate="consultations_special_2">Support for managers on leading with mental health awareness.</li>
+        <li data-translate="consultations_special_3">Transition support for staff leaving organizations.</li>
+        <li data-translate="consultations_special_4">Emergency response packages for crises.</li>
+      </ul>
+    </section>
+
+  </div>
+</section>
+<script>
+  let i = 0;
+  function changeWord() {
+    const lang = localStorage.getItem("preferredLanguage") || "en";
+    const words = [
+      translations[lang].changing_words_1,
+      translations[lang].changing_words_2,
+      translations[lang].changing_words_3,
+      translations[lang].changing_words_4,
+      translations[lang].changing_words_5
+    ];
+
+    i = (i + 1) % words.length;
+    const el = document.getElementById("changing-word");
+    el.style.opacity = 0;
+    setTimeout(() => {
+      el.textContent = words[i];
+      el.style.opacity = 1;
+      el.style.backgroundColor = (i % 2 === 0) ? "#4D9794" : "#1E3F5A";
+    }, 300);
+  }
+
+  setInterval(changeWord, 2000);
+</script>
+
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      
+      <!-- وصف -->
+      <div class="footer-section">
+        <h3 data-translate="footer_brand">Reframe MHS</h3>
+        <p data-translate="footer_description">
+          Unlocking the innate potential and resilience within each person and group across the Middle East.
+        </p>
+      </div>
+
+      <!-- روابط سريعة -->
+      <div class="footer-section">
+        <h4 data-translate="footer_quick_links">Quick Links</h4>
+        <ul>
+          <li><a href="about.html" data-translate="nav_about">About Us</a></li>
+          <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
+          <li><a href="training.html" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
+        </ul>
+      </div>
+
+      <!-- خدمات -->
+      <div class="footer-section">
+        <h4 data-translate="footer_services">Services</h4>
+        <ul>
+          <li><a href="#" data-translate="footer_training">Training Programs</a></li>
+          <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
+          <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
+          <li><a href="#" data-translate="footer_resources">Resources</a></li>
+        </ul>
+      </div>
+
+      <!-- تواصل -->
+      <div class="footer-section">
+        <h4 data-translate="footer_connect">Connect</h4>
+        <div class="social-links">
+          <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+          <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        </div>
+
+        <!-- Newsletter -->
+        <div class="subscribe-section">
+          <div class="subscribe-box">
+            <h2 data-translate="footer_subscribe_title">Stay Connected</h2>
+            <p data-translate="footer_subscribe_text">
+              Subscribe to our newsletter for updates, workshops, and events.
+            </p>
+            <form class="subscribe-form" action="#" method="post">
+              <input type="email" name="email" placeholder="Enter your email" 
+                     data-translate-placeholder="footer_subscribe_placeholder" required>
+              <button type="submit" class="btn btn-primary" data-translate="footer_subscribe_btn">Subscribe</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- حقوق -->
+    <div class="footer-bottom">
+      <p data-translate="footer_copyright">
+        &copy;2025 Reframe Mental Health Services. All rights reserved.
+      </p>
+    </div>
+  </div>
+</footer>
+  
+
+
+
+<script src="scripts/main.js"></script>
+
+
+</body>
+</html>

@@ -1,332 +1,1316 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-translate="page_title_events">Events - Reframe MHS</title>
-    <meta name="description" data-translate="page_description_events" content="Upcoming training events, workshops, and conferences by Reframe MHS for mental health professionals.">
-    <link rel="stylesheet" href="styles/main.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-translate="page_title_events">Events - Reframe MHS</title>
+  <meta
+    name="description"
+    data-translate="page_description_events"
+    content="Upcoming training events, workshops, and conferences by Reframe MHS for mental health professionals."
+  />
+  <link rel="stylesheet" href="styles/main.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+ 
+ 
+ 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+
+  <style>
+
+
+  /* --- Calendar Section --- */
+.calendar-section {
+  padding: 50px 20px;
+  background: #f9fafb;
+}
+
+.calendar-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+/* Calendar header (days of week) */
+.calendar-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #4D9794;
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 0.95rem;
+}
+
+/* Calendar grid */
+.calendar-body {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 130px;   /* 👈 كل خانة نفس الحجم */
+  background: #e5e7eb;
+  gap: 1px;
+}
+
+/* Each day */
+.calendar-day {
+  background: #fff;
+  border-radius: 6px;
+  position: relative;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #1e293b;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.calendar-day:hover {
+  background: #f1f5f9;
+  transform: scale(1.02);
+  cursor: pointer;
+}
+
+/* Day number */
+.calendar-day .day-number {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #334155;
+  z-index: 2;
+}
+
+/* Events inside a day */
+.calendar-day .event {
+  margin-top: auto;
+  background: #4D9794;
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+/* If event has image */
+.calendar-day.event-day img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  opacity: 0.85;
+  z-index: 0;
+}
+
+
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .calendar-body {
+    grid-auto-rows: 80px; /* أصغر للموبايل */
+  }
+
+  .calendar-day {
+    font-size: 0.7rem;
+    padding: 3px;
+  }
+
+  .calendar-day .day-number {
+    font-size: 0.7rem;
+    padding: 2px 4px;
+  }
+
+  .event-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .step {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* Section headers */
+.section-header h2 {
+  font-size: 3rem;                
+  font-weight: 900;
+    margin-top: 120px;
+  color: #0F172A;
+  margin-bottom: 40px;           /* مسافة معقولة تحت العنوان */
+  letter-spacing: 1.5px;
+  position: relative;
+  display: inline-block;         /* يخلي الخط تحته بنفس عرض النص */
+  text-align: center;            /* يوسطن النص */
+}
+
+/* Decorative line */
+.section-header h2::after {
+  content: '';
+  display: block;
+  width: 100px;                   /* طول الخط */
+  height: 10px;                   /* سماكة الخط */
+  margin: 12px auto 0;           /* يجي قريب من النص ويتوسّط */
+  border-radius: 3px;
+  background: linear-gradient(90deg, #4D9794, #0F172A);
+}
+
+.section-header p {
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.4;
+  max-width: 400px;
+  margin: 0 auto;
+  letter-spacing: 0.3px;
+  font-weight: 400;
+  text-align: center;
+}
+
+
+ .events-container {
+  width: 90%;
+  max-width: 1200px;
+  margin: auto;
+  padding: 30px 0;
+}
+
+h1,h2,h3 {color:#0F172A;}
+h1{text-align:center; margin-bottom:100px;}
+.grid-events {display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px;}
+.card {background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.1); cursor:pointer; transition:transform 0.2s;}
+.card:hover {transform:translateY(-5px);}
+.card img {width:100%; height:180px; object-fit:cover;}
+.card-body {padding:15px;}
+.card-title {font-size:1.2rem; font-weight:bold; margin-bottom:5px;}
+.card-date {font-size:0.9rem; color:#64748b; margin-bottom:10px;}
+.view-btn {display:inline-block; background:#4d9794; color:#fff; padding:8px 14px; border-radius:6px; text-decoration:none; transition:background 0.2s;}
+.view-btn:hover {background:#2c6b6b;}
+
+.list-events {margin-top:40px;}
+.list-item {display:flex; background:#fff; border-radius:12px; margin-bottom:15px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.05); cursor:pointer;}
+.list-item img {width:150px; object-fit:cover;}
+.list-item-body {padding:15px; flex:1;}
+.list-item-body h3 {margin:0 0 5px 0;}
+.list-item-body p {margin:0 0 10px 0; font-size:0.9rem; color:#64748b;}
+
+/* ==== Modal Overlay ==== */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 1000;
+  padding: 30px 15px;
+  overflow-y: auto;
+}
+
+/* ==== Modal Content Box ==== */
+.modal-content {
+  background: #fff;
+  border-radius: 16px;
+  max-width: 600px;        /* أصغر حجم */
+  margin: auto;
+  display: flex;
+  flex-direction: column;  /* صورة فوق - نص تحت */
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.25);
+  animation: fadeIn 0.3s ease;
+}
+
+/* ==== Close Button ==== */
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 1.5rem;
+  color: #475569;
+  cursor: pointer;
+  z-index: 10;
+}
+.modal-close:hover { color: #0f172a; }
+
+
+
+/* ==== Body ==== */
+.modal-body {
+  padding: 20px 24px;
+}
+
+.modal-body h2 {
+  margin: 0 0 12px 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.modal-body .event-meta {
+  font-size: 0.9rem;
+  color: #475569;
+  margin-bottom: 14px;
+  line-height: 1.5;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+/* ==== Sections ==== */
+.modal-body section {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.modal-body h3 {
+  margin-bottom: 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #166534;
+}
+
+.modal-body p,
+.modal-body ul {
+  font-size: 0.88rem;
+  color: #334155;
+  line-height: 1.55;
+}
+
+.modal-body ul {
+  padding-left: 18px;
+  margin: 0;
+}
+.modal-body li { margin-bottom: 6px; }
+
+/* ==== Buttons ==== */
+.modal-buttons {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.view-btn {
+  background: #4d9794;
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.view-btn:hover { background: #2c6b6b; }
+
+.back-btn {
+  background: #fff;
+  color: #475569;
+  border: 2px solid #475569;
+  padding: 9px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.back-btn:hover { background: #475569; color: #fff; }
+
+/* ==== Animation ==== */
+@keyframes fadeIn {
+  from {opacity:0; transform: translateY(-10px);}
+  to {opacity:1; transform: translateY(0);}
+}
+
+/* ==== Mobile ==== */
+@media (max-width: 768px) {
+  .modal-content {
+    max-width: 95%;
+    margin: 20px auto;
+  }
+  .modal-content img {
+    max-height: 180px; /* أصغر أكثر للموبايل */
+  }
+}
+
+
+/* ==== Mobile fix: keep image perfect and proportional ==== */
+@media (max-width: 768px) {
+  .card img {
+    height: 160px !important;   /* smaller but same proportions */
+    object-fit: cover !important;
+    border-radius: 0 !important; /* clean edges inside grid */
+  }
+
+  .modal-content img {
+    height: 190px !important;   /* balanced top image inside modal */
+    object-fit: cover !important;
+  }
+
+  .modal-content {
+    max-width: 95%;
+    margin: 25px auto;
+    border-radius: 16px;
+  }
+
+  .modal-body {
+    padding: 18px 16px;
+  }
+}
+
+   
+        /* ===== Our Packages - Smart Pro CSS ===== */
+.our-packages {
+    padding: 80px 20px;
+    background: #f4f7fa;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+}
+.our-packages h2 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: #222;
+    margin-bottom: 50px;
+    position: relative;
+}
+.our-packages h2::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #4D9794, #3e7d74);
+    margin: 15px auto 0;
+    border-radius: 2px;
+}
+
+/* ===== Grid Layout ===== */
+.packages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 30px;
+    justify-items: center;
+}
+
+/* ===== Package Card ===== */
+.package-card {
+    background: linear-gradient(145deg, #ffffff, #e6f2f1);
+    border-radius: 16px;
+    padding: 25px 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+    transition: transform 0.35s ease, box-shadow 0.35s ease, background 0.35s ease;
+}
+.package-card:hover {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.18);
+    background: linear-gradient(145deg, #f0f9f8, #e0f2f1);
+}
+
+/* ===== Badge Ribbon ===== */
+.package-card::before {
+    content: attr(data-package);
+    position: absolute;
+    top: 12px;
+    left: -10px;
+    background: linear-gradient(45deg,#4D9794,#3e7d74);
+    color: #fff;
+    padding: 6px 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 0 10px 10px 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* ===== Title & Description ===== */
+.package-card h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 10px;
+}
+.package-card p {
+    font-size: 0.95rem;
+    color: #555;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+/* ===== Includes List ===== */
+.package-card ul {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 15px;
+}
+.package-card ul li {
+    position: relative;
+    padding-left: 25px;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    color: #555;
+    transition: color 0.3s;
+}
+.package-card ul li::before {
+    content: '✔';
+    position: absolute;
+    left: 0;
+    color: #4D9794;
+    font-weight: bold;
+    transition: transform 0.3s, color 0.3s;
+}
+.package-card:hover ul li::before {
+    transform: scale(1.2) rotate(15deg);
+    color: #3e7d74;
+}
+
+/* ===== Price ===== */
+.package-card .price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 12px;
+}
+
+/* ===== Terms ===== */
+.package-card .terms{
+    font-size:0.8rem;
+    color:#777;
+    margin-bottom:12px;
+}
+
+/* ===== Book Button ===== */
+.package-card .btn-book {
+    display: inline-block;
+    padding: 10px 25px;
+    background: linear-gradient(45deg,#4D9794,#3e7d74);
+    color: #fff;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+.package-card .btn-book:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    background: linear-gradient(45deg,#3e7d74,#2c615f);
+}
+
+/* ===== Responsive ===== */
+@media(max-width:768px){
+    .packages-grid{
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    .package-card{
+        padding: 20px 15px;
+    }
+    .package-card h3{
+        font-size:1.2rem;
+    }
+    .package-card p, .package-card .price{
+        font-size:0.85rem;
+    }
+}
+@media(max-width:480px){
+    .packages-grid{
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .package-card{
+        padding: 18px 12px;
+    }
+    .package-card h3{
+        font-size:1.1rem;
+    }
+    .package-card p, .package-card .price{
+        font-size:0.8rem;
+    }
+}
+
+</style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <!-- Logo -->
-            <div class="nav-logo">
-                <a href="index.html"><h2>Reframe MHS</h2></a>
-            </div>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <!-- Logo -->
+      <div class="nav-logo">
+        <a href="index.html">
+          <img src="logo.gif" alt="Company Logo" width="220" />
+        </a>
+      </div>
 
-            <!-- Links for desktop -->
-            <ul class="nav-menu">
-                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-                <li><a href="insights.html" class="nav-link" data-translate="nav_insights">Insights</a></li>
-                <li><a href="events.html" class="nav-link active" data-translate="nav_events">Events</a></li>
-                <li><a href="projects.html" class="nav-link" data-translate="nav_projects">Projects</a></li>
-                <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-                <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
-            </ul>
+      <!-- Desktop Menu -->
+      <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+        
+        <li class="nav-dropdown">
+          <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
+            Services <i class="fa fa-chevron-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+            <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+            <li><a href="events.html" class="nav-link active" data-translate="nav_training">Training</a></li>
+            <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+          </ul>
+        </li>
 
-            <!-- Language Switcher -->
-            <div class="language-switcher">
-                <button class="lang-btn active" data-lang="en">EN</button>
-                <span class="lang-separator">|</span>
-                <button class="lang-btn" data-lang="ar">AR</button>
-            </div>
+        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+      </ul>
 
-            <!-- Hamburger button -->
-            <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
+      <!-- Language Switcher -->
+      <div class="language-switcher">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <span class="lang-separator">|</span>
+        <button class="lang-btn" data-lang="ar">AR</button>
+      </div>
+
+      <!-- Login Button -->
+      <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
+
+      <!-- Hamburger -->
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Overlay Menu for Mobile -->
+  <div class="overlay" id="mobile-menu" aria-hidden="true">
+    <nav class="overlay-nav" aria-label="Mobile">
+      <ul>
+        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+        <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+        <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+        <li><a href="events.html" class="nav-link active" data-translate="nav_training">Training </a></li>
+        <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+        <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
+      </ul>
+      <button class="close-btn" aria-label="Close menu" data-translate="close">Close</button>
     </nav>
+  </div>
 
-    <!-- Overlay menu for mobile -->
-    <div class="overlay" id="mobile-menu" aria-hidden="true">
-        <nav class="overlay-nav">
-            <ul>
-                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-                <li><a href="insights.html" class="nav-link" data-translate="nav_insights">Insights</a></li>
-                <li><a href="events.html" class="nav-link active" data-translate="nav_events">Events</a></li>
-                <li><a href="projects.html" class="nav-link" data-translate="nav_projects">Projects</a></li>
-                <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-                <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
-            </ul>
-        </nav>
-        <button class="close-btn" aria-label="Close menu" data-translate="close">Close</button>
+  <!-- Section Header -->
+  <div class="section-header">
+    <h2 id="calendar-title"></h2>
+    <p data-translate="calendar_subtitle">
+      View our upcoming training sessions and workshops
+    </p>
+  </div>
+
+  <!-- Calendar -->
+  <div class="calendar-container">
+    <div class="calendar-header">
+      <div>Sun</div>
+      <div>Mon</div>
+      <div>Tue</div>
+      <div>Wed</div>
+      <div>Thu</div>
+      <div>Fri</div>
+      <div>Sat</div>
     </div>
 
-    <!-- Hero Section -->
-    <section class="events-hero">
-        <div class="container">
-            <div class="hero-content">
-                <h1 data-translate="events_hero_title">Upcoming Events</h1>
-                <p data-translate="events_hero_subtitle">Join our professional development programs, workshops, and training sessions designed for mental health professionals</p>
-            </div>
-        </div>
-    </section>
+    <div class="calendar-body">
+      <!-- Week 1 -->
+      <div class="calendar-day"></div>
+      <div class="calendar-day"><span class="day-number">1</span></div>
+      <div class="calendar-day"><span class="day-number">2</span></div>
+      <div class="calendar-day event-day">
+        <img src="Evnet1.webp" alt="Event 1">
+        <span class="day-number">3</span>
+      </div>
+      <div class="calendar-day"><span class="day-number">4</span></div>
+      <div class="calendar-day"><span class="day-number">5</span></div>
+      <div class="calendar-day"><span class="day-number">6</span></div>
 
-    <!-- Calendar Integration -->
-    <section class="calendar-section">
-        <div class="container">
-            <div class="section-header">
-                <h2 data-translate="calendar_title">July 2025</h2>
-                <p data-translate="calendar_subtitle">View our upcoming training sessions and workshops</p>
-            </div>
-            <div class="calendar-container">
-                <div class="calendar-grid">
-                    <div class="calendar-header">
-                        <div class="day-header" data-translate="calendar_sun">Sun</div>
-                        <div class="day-header" data-translate="calendar_mon">Mon</div>
-                        <div class="day-header" data-translate="calendar_tue">Tue</div>
-                        <div class="day-header" data-translate="calendar_wed">Wed</div>
-                        <div class="day-header" data-translate="calendar_thu">Thu</div>
-                        <div class="day-header" data-translate="calendar_fri">Fri</div>
-                        <div class="day-header" data-translate="calendar_sat">Sat</div>
-                    </div>
-                    <div class="calendar-body">
-                        <div class="calendar-day"></div>
-                        <div class="calendar-day"></div>
-                        <div class="calendar-day">1</div>
-                        <div class="calendar-day">2</div>
-                        <div class="calendar-day event-day">
-                            <span class="day-number">3</span>
-                            <div class="event-indicator">
-                                <i class="fas fa-circle"></i>
-                            </div>
-                        </div>
-                        <div class="calendar-day">4</div>
-                        <div class="calendar-day">5</div>
-                        <div class="calendar-day">6</div>
-                        <div class="calendar-day">7</div>
-                        <div class="calendar-day">8</div>
-                        <div class="calendar-day">9</div>
-                        <div class="calendar-day">10</div>
-                        <div class="calendar-day">11</div>
-                        <div class="calendar-day">12</div>
-                        <div class="calendar-day">13</div>
-                        <div class="calendar-day">14</div>
-                        <div class="calendar-day">15</div>
-                        <div class="calendar-day">16</div>
-                        <div class="calendar-day">17</div>
-                        <div class="calendar-day">18</div>
-                        <div class="calendar-day">19</div>
-                        <div class="calendar-day">20</div>
-                        <div class="calendar-day">21</div>
-                        <div class="calendar-day">22</div>
-                        <div class="calendar-day">23</div>
-                        <div class="calendar-day">24</div>
-                        <div class="calendar-day">25</div>
-                        <div class="calendar-day">26</div>
-                        <div class="calendar-day">27</div>
-                        <div class="calendar-day">28</div>
-                        <div class="calendar-day">29</div>
-                        <div class="calendar-day event-day">
-                            <span class="day-number">30</span>
-                            <div class="event-indicator">
-                                <i class="fas fa-circle"></i>
-                            </div>
-                        </div>
-                        <div class="calendar-day">31</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+      <!-- Week 2 -->
+      <div class="calendar-day"><span class="day-number">7</span></div>
+      <div class="calendar-day"><span class="day-number">8</span></div>
+      <div class="calendar-day"><span class="day-number">9</span></div>
+      <div class="calendar-day"><span class="day-number">10</span></div>
+      <div class="calendar-day"><span class="day-number">11</span></div>
+      <div class="calendar-day"><span class="day-number">12</span></div>
+      <div class="calendar-day"><span class="day-number">13</span></div>
 
-    <!-- Featured Events -->
-    <section class="featured-events">
-        <div class="container">
-            <div class="section-header">
-                <h2 data-translate="featured_events_title">Featured Events</h2>
-                <p data-translate="featured_events_subtitle">Don't miss these upcoming professional development opportunities</p>
-            </div>
-            <div class="events-grid">
-                <article class="event-card featured">
-                    <div class="event-image">
-                        <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/1751356129482-QYL2IZDXHXP3WBCPM39X/May+Aoun+%26+Oussama+Safa+copy.jpg" alt="Peacebuilding Training">
-                        <div class="event-date">
-                            <span class="month" data-translate="month_jul">Jul</span>
-                            <span class="day">03</span>
-                        </div>
-                    </div>
-                    <div class="event-content">
-                        <div class="event-meta">
-                            <span class="event-type" data-translate="event_type_training">Training</span>
-                            <span class="event-time">8:00 PM - 10:00 PM</span>
-                        </div>
-                        <h3 data-translate="event_1_title">Peacebuilding and Psychosocial Support for Children: A Practical Toolkit</h3>
-                        <p data-translate="event_1_description">This comprehensive training will equip mental health professionals with practical tools and strategies for supporting children in conflict-affected areas. Learn evidence-based approaches to peacebuilding and psychosocial support.</p>
-                        <div class="event-details">
-                            <div class="detail-item">
-                                <i class="fas fa-clock"></i>
-                                <span data-translate="event_duration_2h">2 Hours</span>
-                            </div>
-                            <div class="detail-item">
-                                <i class="fas fa-users"></i>
-                                <span data-translate="event_max_30">Max 30 Participants</span>
-                            </div>
-                            <div class="detail-item">
-                                <i class="fas fa-certificate"></i>
-                                <span data-translate="event_certificate">Certificate Provided</span>
-                            </div>
-                        </div>
-                        <a href="#" class="btn btn-primary" data-translate="event_register">Register Now</a>
-                    </div>
-                </article>
-                <article class="event-card featured">
-                    <div class="event-image">
-                        <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/1751355314215-7U3OFUQGVGHMISSRFH6O/1.png" alt="Eating Disorder Training">
-                        <div class="event-date">
-                            <span class="month" data-translate="month_jul">Jul</span>
-                            <span class="day">30</span>
-                        </div>
-                    </div>
-                    <div class="event-content">
-                        <div class="event-meta">
-                            <span class="event-type" data-translate="event_type_training">Training</span>
-                            <span class="event-time">8:00 PM - 9:00 PM</span>
-                        </div>
-                        <h3 data-translate="event_2_title">The Invisible Weight: Foundations of Eating Disorder Care for Dietitians</h3>
-                        <p data-translate="event_2_description">Essential training for dietitians and healthcare professionals on eating disorder treatment approaches. Learn to recognize signs, provide appropriate support, and collaborate effectively with mental health professionals.</p>
-                        <div class="event-details">
-                            <div class="detail-item">
-                                <i class="fas fa-clock"></i>
-                                <span data-translate="event_duration_1h">1 Hour</span>
-                            </div>
-                            <div class="detail-item">
-                                <i class="fas fa-users"></i>
-                                <span data-translate="event_max_25">Max 25 Participants</span>
-                            </div>
-                            <div class="detail-item">
-                                <i class="fas fa-certificate"></i>
-                                <span data-translate="event_certificate">Certificate Provided</span>
-                            </div>
-                        </div>
-                        <a href="#" class="btn btn-primary" data-translate="event_register">Register Now</a>
-                    </div>
-                </article>
-            </div>
-        </div>
-    </section>
+      <!-- Week 3 -->
+      <div class="calendar-day"><span class="day-number">14</span></div>
+      <div class="calendar-day"><span class="day-number">15</span></div>
+      <div class="calendar-day"><span class="day-number">16</span></div>
+      <div class="calendar-day"><span class="day-number">17</span></div>
+      <div class="calendar-day"><span class="day-number">18</span></div>
+      <div class="calendar-day"><span class="day-number">19</span></div>
+      <div class="calendar-day"><span class="day-number">20</span></div>
 
-    <!-- Event Categories -->
-    <section class="event-categories">
-        <div class="container">
-            <div class="section-header">
-                <h2 data-translate="event_categories_title">Event Categories</h2>
-                <p data-translate="event_categories_subtitle">Explore our diverse range of professional development opportunities</p>
-            </div>
-            <div class="categories-grid">
-                <div class="category-card">
-                    <div class="category-icon">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                    </div>
-                    <h3 data-translate="category_training_title">Training Programs</h3>
-                    <p data-translate="category_training_description">Comprehensive training sessions covering various aspects of mental health care and therapy techniques.</p>
-                    <div class="category-stats">
-                        <span data-translate="category_training_count">15+ Programs</span>
-                        <span data-translate="event_certificate">Certificate Provided</span>
-                    </div>
-                </div>
-                <div class="category-card">
-                    <div class="category-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <h3 data-translate="category_workshops_title">Workshops</h3>
-                    <p data-translate="category_workshops_description">Interactive workshops focused on specific skills and techniques for mental health professionals.</p>
-                    <div class="category-stats">
-                        <span data-translate="category_workshops_count">10+ Workshops</span>
-                        <span data-translate="category_hands_on">Hands-on Learning</span>
-                    </div>
-                </div>
-                <div class="category-card">
-                    <div class="category-icon">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
-                    <h3 data-translate="category_conferences_title">Conferences</h3>
-                    <p data-translate="category_conferences_description">Multi-day conferences bringing together experts and practitioners from across the region.</p>
-                    <div class="category-stats">
-                        <span data-translate="category_conferences_count">2+ Conferences</span>
-                        <span data-translate="category_networking">Networking Opportunities</span>
-                    </div>
-                </div>
-                <div class="category-card">
-                    <div class="category-icon">
-                        <i class="fas fa-laptop"></i>
-                    </div>
-                    <h3 data-translate="category_online_title">Online Sessions</h3>
-                    <p data-translate="category_online_description">Virtual training sessions and webinars accessible from anywhere in the Middle East.</p>
-                    <div class="category-stats">
-                        <span data-translate="category_online_count">20+ Online Events</span>
-                        <span data-translate="category_remote">Remote Access</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+      <!-- Week 4 -->
+      <div class="calendar-day"><span class="day-number">21</span></div>
+      <div class="calendar-day"><span class="day-number">22</span></div>
+      <div class="calendar-day"><span class="day-number">23</span></div>
+      <div class="calendar-day"><span class="day-number">24</span></div>
+      <div class="calendar-day"><span class="day-number">25</span></div>
+      <div class="calendar-day"><span class="day-number">26</span></div>
+      <div class="calendar-day"><span class="day-number">27</span></div>
 
-    <!-- Newsletter Section -->
-    <section class="newsletter-signup">
-        <div class="container">
-            <div class="newsletter-content">
-                <h2 data-translate="newsletter_events_title">Stay Updated on Events</h2>
-                <h3 data-translate="newsletter_events_subtitle">Subscribe to receive notifications about upcoming training sessions, workshops, and conferences.</h3>
-                <a href="#" class="btn btn-primary" data-translate="newsletter_events_cta">Get Notified</a>
-            </div>
-        </div>
-    </section>
+      <!-- Week 5 -->
+      <div class="calendar-day"><span class="day-number">28</span></div>
+      <div class="calendar-day"><span class="day-number">29</span></div>
+      <div class="calendar-day event-day">
+        <img src="Event7.webp" alt="Event 2">
+        <span class="day-number">30</span>
+      </div>
+    </div>
+  </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Reframe MHS</h3>
-                    <p data-translate="footer_description">Unlocking the innate potential and resilience within each person and group across the Middle East.</p>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_quick_links">Quick Links</h4>
-                    <ul>
-                        <li><a href="about.html" data-translate="nav_about">About Us</a></li>
-                        <li><a href="insights.html" data-translate="nav_insights">Insights</a></li>
-                        <li><a href="events.html" data-translate="nav_events">Events</a></li>
-                        <li><a href="projects.html" data-translate="nav_projects">Projects</a></li>
-                        <li><a href="hub.html" data-translate="nav_hub">Hub</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_services">Services</h4>
-                    <ul>
-                        <li><a href="#" data-translate="footer_training">Training Programs</a></li>
-                        <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
-                        <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
-                        <li><a href="#" data-translate="footer_resources">Resources</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_connect">Connect</h4>
-                    <div class="social-links">
-                        <a href="#" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                        <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p data-translate="footer_copyright">&copy; 2025 Reframe MHS. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
+  <!-- Script at the end -->
+  <script>
+    const monthNames = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
 
-    <script src="scripts/translations.js"></script>
-    <script src="scripts/main.js"></script>
-</body>
-</html>
+    const today = new Date();
+    const month = monthNames[today.getMonth()];
+    const year = today.getFullYear();
+
+    document.getElementById("calendar-title").textContent = `${month} ${year}`;
+  </script>
+  
+
+
+   
+<!-- ===== Our Packages ===== -->
+<section class="our-packages">
+  <h2 data-translate="our_packages_title">Our Packages</h2>
+  <div class="packages-grid">
+    <!-- Starter Package -->
+    <div class="package-card">
+      <h3 data-translate="package_starter_title">Starter Package: Basic Training</h3>
+      <p data-translate="package_starter_desc">A one-day foundational workshop for mental health professionals.</p>
+      <p><strong data-translate="modality_label">Modality:</strong> 
+         <span data-translate="modality_value">In-Person or Online</span></p>
+      <ul>
+        <li data-translate="package_starter_li1">Practical training</li>
+        <li data-translate="package_starter_li2">Coffee break and lunch (In-Person)</li>
+        <li data-translate="package_starter_li3">LOPSI Accreditation (based on content)</li>
+      </ul>
+      <p class="price" data-translate="package_starter_price">In-Person: $80 | Online: $60</p>
+      <p class="terms" data-translate="package_starter_terms">Eligible for student, group, and early bird discounts. 100% refund if canceled 20+ days in advance.</p>
+      <a href="#" class="btn-book" data-translate="btn_book">Book Your Session Now</a>
+    </div>
+
+    <!-- Professional Growth Package -->
+    <div class="package-card">
+      <h3 data-translate="package_pro_title">Professional Growth Package: Advanced Techniques</h3>
+      <p data-translate="package_pro_desc">Two-day intensive training focused on enhancing clinical skills and methods.</p>
+      <p><strong data-translate="modality_label">Modality:</strong> 
+         <span data-translate="modality_value">In-Person or Online</span></p>
+      <ul>
+        <li data-translate="package_pro_li1">Deep-dive into advanced techniques</li>
+        <li data-translate="package_pro_li2">Coffee break and lunch (In-Person)</li>
+        <li data-translate="package_pro_li3">LOPSI Accreditation (based on content)</li>
+      </ul>
+      <p class="price" data-translate="package_pro_price">In-Person: $150 | Online: $80</p>
+      <p class="terms" data-translate="package_pro_terms">Discounts: early bird, student, and group. Cancellation policy applies.</p>
+      <a href="#" class="btn-book" data-translate="btn_book">Book Your Session Now</a>
+    </div>
+
+    <!-- Specialized Focus Package -->
+    <div class="package-card">
+      <h3 data-translate="package_special_title">Specialized Focus Package</h3>
+      <p data-translate="package_special_desc">Three-day workshop covering complex cases such as trauma, impossible grief, and more.</p>
+      <p><strong data-translate="modality_label">Modality:</strong> 
+         <span data-translate="modality_value">In-Person or Online</span></p>
+      <ul>
+        <li data-translate="package_special_li1">Topic-specific training</li>
+        <li data-translate="package_special_li2">Coffee break and lunch (In-Person)</li>
+        <li data-translate="package_special_li3">LOPSI Accreditation (based on content)</li>
+      </ul>
+      <p class="price" data-translate="package_special_price">In-Person: $200 | Online: $120</p>
+      <p class="terms" data-translate="package_special_terms">Discounts apply (student, group, early bird). Subject to refund policy.</p>
+      <a href="#" class="btn-book" data-translate="btn_book">Book Your Session Now</a>
+    </div>
+
+    <!-- Support Circle Package -->
+    <div class="package-card">
+      <h3 data-translate="package_support_title">Support Circle Package: Monthly Peer Sessions</h3>
+      <p data-translate="package_support_desc">Monthly supervision, intervision, or peer support group for ongoing professional development.</p>
+      <p><strong data-translate="modality_label">Modality:</strong> 
+         <span data-translate="modality_value">Online or In-Person</span></p>
+      <p class="price" data-translate="package_support_price">$100 per session</p>
+      <p class="terms" data-translate="package_support_terms">No bundled discounts. Cancellable under standard refund policy.</p>
+      <a href="#" class="btn-book" data-translate="btn_book">Book Your Session Now</a>
+    </div>
+  </div>
+</section>
+
+<section class="events-section">
+  <div class="events-container">
+    <h1>The events listed below have concluded</h1>
+
+    <div class="list-events">
+      <div class="list-item" data-event="event1">
+        <img src="Evnet1.webp" alt="Event 1">
+        <div class="list-item-body">
+          <h3>The Invisible Weight</h3>
+          <p>Wednesday, July 30, 2025</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+
+      <div class="list-item" data-event="event2">
+        <img src="Evnet2.webp" alt="Event 2">
+        <div class="list-item-body">
+          <h3>Peacebuilding & Psychosocial Support</h3>
+          <p>Thursday, July 3, 2025</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+
+      <div class="list-item" data-event="event3">
+        <img src="Evnet3.webp" alt="Event 3">
+        <div class="list-item-body">
+          <h3>Staff Care Toolkit</h3>
+          <p>Tuesday, June 24, 2025</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+
+      <div class="list-item" data-event="event4">
+        <img src="Evnet4.webp" alt="Event 4">
+        <div class="list-item-body">
+          <h3>Beyond Post-Traumatic Stress</h3>
+          <p>Thursday, May 29, 2025</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+
+      <div class="list-item" data-event="event5">
+        <img src="Evnet6.jpeg" alt="Event 5">
+        <div class="list-item-body">
+          <h3>Bedwetting Care</h3>
+          <p>Monday, May 26, 2025</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+
+      <div class="list-item" data-event="event6">
+        <img src="Evnet5.jpeg" alt="Event 6">
+        <div class="list-item-body">
+          <h3>Beyond Post-Traumatic Stress (In-person)</h3>
+          <p>May 22 & 24, 2025</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+
+      <div class="list-item" data-event="event7">
+        <img src="Evnet7.webp" alt="Event 7">
+        <div class="list-item-body">
+          <h3>How Dietitians Can Support Clients</h3>
+          <p>Saturday, May 3, 2025</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+
+      <div class="list-item" data-event="event8">
+        <img src="Evnet9.webp" alt="Event 8">
+        <div class="list-item-body">
+          <h3>Peacebuilding with Psychosocial Support</h3>
+          <p>Thursday, May 1, 2025</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+
+      <div class="list-item" data-event="event9">
+        <img src="Evnet8.webp" alt="Event 9">
+        <div class="list-item-body">
+          <h3>Adapting and Implementing IPT</h3>
+          <p>Monday, April 28, 2025</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+      
+      <div class="list-item" data-event="event10">
+        <img src="Evnet10.jpeg" alt="Event 10">
+        <div class="list-item-body">
+          <h3>Creative Puppetry for Healing: Working with Children in Gaza and Lebanon</h3>
+          <p>Saturday, August 16, 2025 | 9:30 AM – 11:30 AM Beirut Time</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==== MODAL ==== -->
+<div id="eventModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close">&times;</span>
+    <img src="" alt="Event Image" id="modalImg">
+    <div class="modal-body">
+      <h2 id="modalTitle"></h2>
+      <p id="modalDate"></p>
+      <p id="modalFormat"></p>
+      <p id="modalFacilitator"></p>
+      <p id="modalAbout"></p>
+      <h3>What You’ll Learn</h3>
+      <ul id="modalLearn"></ul>
+      <h3>Who Should Attend?</h3>
+      <ul id="modalWho"></ul>
+      <h3>Workshop Outcomes</h3>
+      <ul id="modalOutcomes"></ul>
+      <h3>About the Facilitator</h3>
+      <p id="modalFacilitatorBio"></p>
+      <p id="modalFee"></p>
+      <a href="#" class="view-btn" id="modalRegister">Register Now</a>
+      <a class="back-btn" id="modalBack">Back to All Events</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const events = {
+ event1: {
+  img: "Evnet1.webp",
+  title: "The Invisible Weight: Foundations of Eating Disorder Care for Dietitians",
+  date: "Wednesday, July 30, 2025 | 8:00 PM – 9:00 PM Beirut Time",
+  format: "Zoom Link via Reframe",
+  facilitator: "Dr. Tala Abdallah",
+  about: `As a dietitian, you may be one of the first, and sometimes the only, professionals clients struggling with disordered eating turn to. 
+Yet many in the field receive limited training on how to recognize, support, or refer those navigating eating disorders. 
+This workshop is designed to bridge that gap.
+
+Led by Dr. Tala Abdallah, a UK-licensed Clinical Psychologist and Lebanese-licensed Dietitian, this training offers a practical foundation in eating disorder care, with a focus on providing sensitive, psychologically-informed support in a post-pandemic, body-conscious world.
+
+This isn’t just a workshop, it’s a call to elevate the standard of care in dietetics and empower dietitians to confidently meet the growing mental health needs of their clients.`,
+  
+  learn: [
+    "Recognize signs of disordered eating and understand when and how to refer to mental health professionals.",
+    "Clarify your role as a dietitian in the eating disorder treatment process.",
+    "Gain an overview of screening, assessment, and intervention techniques used in eating disorder care."
+  ],
+
+  who: [
+    "Registered Dietitians.",
+    "Nutritionists.",
+    "Dietetic Students.",
+    "Health professionals working in clinical or outpatient nutrition settings."
+  ],
+
+  outcomes: [
+    "Increased confidence in supporting clients with disordered eating.",
+    "A clearer understanding of how to navigate conversations around food and body image.",
+    "Practical tools to provide compassionate, non-harmful care."
+  ],
+
+  facilitatorBio: `Dr. Tala Abdallah is a UK-licensed Clinical Psychologist and Lebanese-licensed Dietitian with over a decade of experience across psychology and nutrition. 
+She holds a Doctorate in Clinical Psychology and a Master’s in Health Psychology from University College London, alongside dual Bachelor’s degrees in Nutrition & Dietetics and Psychology from the American University of Beirut.
+
+Her clinical experience spans the UK’s NHS and private settings in London and Beirut. She specializes in eating disorders, body image, anxiety, and self-worth, working with clients from diverse cultural backgrounds.
+
+Tala is the founder of Ginger & Walnut, a practice blending gut and mental health for holistic healing. Through her work, she aims to make compassionate, evidence-based care more accessible, especially for Arab and expat communities.
+
+She delivers trainings and psychoeducational workshops for health professionals across Lebanon, focusing on eating disorder awareness, culturally informed care, and capacity building. Therapy is offered in English, Arabic, and French.`,
+
+  fee: "Workshop Fee: Starting $20 contribution",
+  register: "#"
+},
+
+event2: {
+  img: "Evnet2.webp",
+  title: "Peacebuilding and Psychosocial Support for Children: A Practical Toolkit",
+  date: "Thursday, July 3, 2025 | 8:00 PM – 10:00 PM Beirut Time",
+  format: "Online",
+  facilitator: "May Aoun and Oussama Safa",
+  about: `Peacebuilding and Psychosocial Support for Children: A Practical Toolkit Workshop with Oussama Safa and May Aoun.
+
+This workshop will take a deep dive into the connection between peacebuilding and psychosocial support by introducing a groundbreaking intervention toolkit developed for that purpose.`,
+
+  learn: [
+    "Develop an understanding of the intersection between peacebuilding, non-violent approaches, and psychosocial support (PSS).",
+    "Explore an innovative intervention toolkit designed for children, and appreciate the role of storytelling and experiential learning in child learning.",
+    "Recognize the importance of integrating essential life skills—such as peacebuilding and psychosocial support—at an early age."
+  ],
+
+  who: [
+    "Psychosocial support (PSS) specialists, officers, and facilitators.",
+    "Conflict resolution practitioners.",
+    "Professionals in the NGO and humanitarian sectors working with children, either directly or indirectly.",
+    "Members of the general public with an interest in child-focused interventions."
+  ],
+
+  outcomes: [
+    "Increased confidence in supporting clients with disordered eating.",
+    "A clearer understanding of how to navigate conversations around food and body image.",
+    "Practical tools to provide compassionate, non-harmful care."
+  ],
+
+  facilitatorBio: `This event will be recorded and you can use the ticket function to pre-purchase the recording before the event. 
+This will be useful for colleagues who are not able to attend the event live and also for those who attend the event live and want to watch it again.
+
+This event will be hosted on the Zoom meeting platform where we will use our cameras and microphones to interact with each other as a group.`,
+
+  fee: "Workshop Fee: Starting $20 contribution",
+  register: "#"
+},
+
+
+  event3: {
+    img: "Evnet3.webp",
+    title: "Staff Care Toolkit: Mediator, Symbol, and Story Methods for Conflict Zones",
+    date: "Tuesday, June 24, 2025 | 8:00 PM – 10:00 PM Beirut Time",
+    format: "Live Online Session via Onlinevents",
+    facilitator: "Ali El Attar",
+    about: `In regions affected by war and instability, staff and frontline professionals are often left without adequate tools to process their own experiences while supporting others. This online workshop offers an integrative approach rooted in mediation, symbolic expression, and narrative techniques.`,
+    learn: [
+      "Apply mediators, third objects, and expressive methods to facilitate safe communication in high-risk environments.",
+      "Use stories and proverbs as catalysts for transformation.",
+      "Practice field-tested staff care exercises: Dixsyst, The Table, and The Anchor."
+    ],
+    who: ["Psychologists", "Counselors", "Staff care consultants", "HR professionals"],
+    outcomes: [
+      "Fresh perspectives on staff care",
+      "Applicable tools for self-care",
+      "Enhanced resilience strategies"
+    ],
+    fee: "Pay what you can – contributions start at $20",
+    translation: "Translation provided to English",
+    register: "#"
+  },
+  event4: {
+  img: "Evnet4.webp",
+  title: "Metaphor in Psychotherapy",
+  date: "Wednesday, June 11 – Saturday, June 14, 2025",
+  format: "In-person at Reframe",
+  facilitator: "Karim Dakroub",
+
+  about: `Metaphor is more than a linguistic device — it is a doorway to transformation. 
+In this 4-day in-person training, Dr. Karim Dakroub invites participants to rediscover metaphor as a dynamic, lived experience in psychotherapy. 
+Integrating approaches from psychoanalysis, systemic therapy, psychodrama, and art therapy, this workshop highlights metaphor’s role as a transitional object, expressive tool, and bridge to deeper psychological insight.
+
+Through a balance of theory and hands-on exercises, participants will engage with creative modalities such as drama, storytelling, art, and craftwork. 
+The goal: to expand the therapist’s toolkit with accessible, imaginative techniques that deepen emotional processing and self-expression.`,
+
+  learn: [
+    "Integrates theoretical foundations from diverse psychotherapeutic schools.",
+    "Focuses on experiential and artistic techniques including drama, storywriting, visual arts, and crafts.",
+    "Offers practical tools that can be tested and applied directly within clinical practice."
+  ],
+
+  who: [
+    "Psychotherapists.",
+    "Clinical psychology students.",
+    "Psychosocial support workers.",
+    "Professionals seeking to integrate creative, evidence-based methods into their therapeutic approach."
+  ],
+
+  outcomes: [
+    "Empowers professionals with new expressive tools.",
+    "Enhances emotional access within therapy sessions.",
+    "Provides practical, creative strategies for facilitating deeper client engagement."
+  ],
+
+  facilitatorBio: `Dr. Karim Dakroub is a leading psychotherapist and educator recognized for integrating creative arts and systemic approaches in psychotherapy. 
+He has extensive experience training professionals across the Middle East and beyond, with a focus on expressive, culturally grounded therapeutic methods.`,
+
+  fee: "Workshop Fee: $350",
+  register: "#"
+},
+
+  event5: {
+    img: "Evnet6.jpeg",
+    title: "Bedwetting Care",
+    date: "Monday, May 26, 2025 | 8:00 PM – 10:00 PM Beirut Time",
+    format: "Live Online Session via Onlinevents",
+    facilitator: "Eliane Ibrahim",
+    about: `Enuresis (bedwetting) can be deeply distressing for children. This workshop introduces a psychosomatic approach based on the work of Professor Sami Ali, using theater and movement to address emotional roots.`,
+    learn: [
+      "Understand somatic imprinting and its role in enuresis.",
+      "Use creative, non-verbal techniques in therapy.",
+      "Bridge mind-body connections in child therapy."
+    ],
+    who: [
+      "Child therapists and counselors",
+      "Psychologists and psychotherapists",
+      "Social workers and psychomotor therapists"
+    ],
+    outcomes: [
+      "New somatic approaches to therapy",
+      "Creative tools for child healing",
+      "Holistic therapeutic frameworks"
+    ],
+    fee: "Pay what you can – contributions start at $20",
+    translation: "Translation provided to English",
+    register: "#"
+  },
+
+  event6: {
+    img: "Evnet5.jpeg",
+    title: "Beyond Post-Traumatic Stress",
+    date: "May 22 & 24, 2025 | 9:30 AM – 4:00 PM Beirut Time",
+    location: "In-person at Reframe",
+    facilitator: "Myra Saad",
+    fee: "150$",
+    about: `The Beyond Post-Traumatic Stress workshop reframes trauma through the lens of Continuous Traumatic Stress (CTS). Led by Myra Saad, this immersive two-day experience empowers professionals to create culturally relevant psychosocial support frameworks.`,
+    learn: [
+      "Understand continuous traumatic stress in unstable environments.",
+      "Set culturally relevant goals in psychosocial practice.",
+      "Apply creative tools for emotional healing and resilience."
+    ],
+    who: [
+      "Mental health professionals in conflict zones",
+      "Psychotherapists expanding trauma practice",
+      "Frontliners and social workers"
+    ],
+    outcomes: [
+      "Reframe trauma from a Global South perspective",
+      "Gain actionable knowledge on CTS",
+      "Collaborate through creative reflective practices"
+    ],
+    register: "#"
+  },
+
+  event7: {
+    img: "Evnet7.webp",
+    title: "How Dietitians Can Support Clients with Eating Disorders - Beyond the Meal Plan",
+    date: "Saturday, May 3, 2025 | 9:30 AM – 1:00 PM Beirut Time",
+    format: "Live Online via Reframe",
+    facilitator: "Tala Abdallah",
+    fee: "50$",
+    about: `This workshop explores how dietitians can support clients with eating disorders using compassionate, non-diet approaches.`,
+    learn: [
+      "Recognize signs of eating disorders in different settings.",
+      "Know when to refer clients for specialized care.",
+      "Apply screening and assessment tools effectively.",
+      "Promote intuitive eating and holistic recovery."
+    ],
+    who: [
+      "Registered Dietitians and Nutritionists",
+      "Dietetic interns and students",
+      "Allied health professionals"
+    ],
+    outcomes: [
+      "Increased confidence in supporting ED clients",
+      "Improved screening and referral skills",
+      "Deeper understanding of non-diet interventions"
+    ],
+    register: "#"
+  },
+
+  event8: {
+    img: "Evnet9.webp",
+    title: "Peacebuilding with Psychosocial Support",
+    date: "Thursday, May 1, 2025 | 8:00 PM – 10:00 PM Beirut Time",
+    format: "Online via Onlinevents",
+    facilitators: "Oussama Safa & May Aoun",
+    about: `This workshop introduces a peacebuilding toolkit that integrates psychosocial support and non-violent conflict resolution for children.`,
+    learn: [
+      "Understand peacebuilding principles in PSS contexts.",
+      "Explore storytelling and experiential learning methods.",
+      "Integrate life skills like emotional regulation and cooperation."
+    ],
+    who: [
+      "PSS professionals and child specialists",
+      "Peacebuilding practitioners",
+      "NGO workers and educators"
+    ],
+    outcomes: [
+      "Field-tested PSS and peacebuilding integration",
+      "Creative intervention tools for children",
+      "Enhanced community-based resilience"
+    ],
+    fee: "Pay what you can – contributions start at $20",
+    translation: "Translation provided to English",
+    register: "#"
+  },
+
+  event9: {
+    img: "Evnet8.webp",
+    title: "Adapting and Implementing IPT in Humanitarian Settings",
+    date: "Monday, April 28, 2025 | 8:00 PM – 10:00 PM Beirut Time",
+    format: "Online",
+    facilitator: "Lena Verdelli – Psychologist & IPT Expert",
+    about: `For clinicians and humanitarian workers seeking to adapt Interpersonal Therapy (IPT) to crisis and diverse cultural contexts. Learn from real-world case studies from Peru and Bangladesh.`,
+    learn: [
+      "Adapt IPT to diverse cultural and crisis contexts.",
+      "Overcome barriers to effective implementation.",
+      "Understand IPT’s impact on depression and PTSD."
+    ],
+    who: [
+      "Clinicians and humanitarian workers",
+      "Policy makers and program managers",
+      "Mental health professionals in global settings"
+    ],
+    outcomes: [
+      "Improved adaptability in IPT implementation",
+      "Enhanced understanding of IPT in humanitarian work"
+    ],
+    fee: "Pay what you can – contributions start at $20",
+    translation: "Translation provided to Arabic",
+    register: "#"
+  },
+  event10: {
+  img: "Evnet10.jpeg",
+  title: "Creative Puppetry for Healing: Working with Children in Gaza and Lebanon",
+  date: "Saturday, August 16, 2025 | 9:30 AM – 11:30 AM Beirut Time",
+  format: "In-person at Reframe",
+  facilitator: "Suzanne Groothuis – Artist & Theatre Maker",
+  
+  about: `Suzanne Groothuis is an artist and theatre maker from Holland who has collaborated for many years with artists and psychologists in Gaza who work with children. She will soon visit Beirut as part of her research on the use of puppets with children who have experienced trauma. 
+The goal of this session is to bring together psychotherapists and artists to share personal and professional experiences, ideas, and questions about how creative puppetry-making can support healing and resilience in communal and social contexts in places like Gaza and Lebanon.`,
+
+  learn: [
+    "How can we create safe, creative spaces for children who have experienced trauma through puppetry?",
+    "What specific issues need to be addressed in the context of Gaza and Lebanon that are often overlooked in Western research?",
+    "What skills do creative facilitators need to ensure safety and well-being for children?"
+  ],
+
+  who: [
+    "Psychotherapists",
+    "Artists and creative facilitators",
+    "Mental health professionals working with children",
+    "Community workers interested in creative expression"
+  ],
+
+  outcomes: [
+    "Enhanced understanding of creative tools for trauma recovery",
+    "Cultural reflection on local challenges and healing practices",
+    "Collaboration between art and psychology for child well-being"
+  ],
+
+  facilitatorBio: `Suzanne Groothuis is a Dutch artist and theatre maker with extensive experience in using creative methods to address trauma. 
+She has worked closely with professionals in Gaza on projects supporting children’s emotional resilience through art and performance. 
+Her current research explores how puppetry can become a healing and educational tool, aiming to develop a “trainer-to-trainer” model to empower facilitators working with children in crisis settings.`,
+
+  fee: "Free Event – Limited to 20 participants (confirmation required)",
+  translation: "Discussion held in English with Arabic facilitation support",
+  register: "#"
+},
+
+};
+
+
+
+// Modal Logic
+const modal = document.getElementById('eventModal');
+const modalImg = document.getElementById('modalImg');
+const modalTitle = document.getElementById('modalTitle');
+const modalDate = document.getElementById('modalDate');
+const modalFormat = document.getElementById('modalFormat');
+const modalFacilitator = document.getElementById('modalFacilitator');
+const modalAbout = document.getElementById('modalAbout');
+const modalLearn = document.getElementById('modalLearn');
+const modalWho = document.getElementById('modalWho');
+const modalOutcomes = document.getElementById('modalOutcomes');
+const modalFacilitatorBio = document.getElementById('modalFacilitatorBio');
+const modalFee = document.getElementById('modalFee');
+const modalRegister = document.getElementById('modalRegister');
+
+document.querySelectorAll('.card, .list-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    const e=events[item.dataset.event];
+    modalImg.src=e.img;
+    modalTitle.innerText=e.title;
+    modalDate.innerText=e.date;
+    modalFormat.innerText="Format: "+e.format;
+    modalFacilitator.innerText="Facilitator: "+e.facilitator;
+    modalAbout.innerText=e.about;
+    modalLearn.innerHTML=""; e.learn.forEach(l=>modalLearn.innerHTML+=`<li>${l}</li>`);
+    modalWho.innerHTML=""; e.who.forEach(w=>modalWho.innerHTML+=`<li>${w}</li>`);
+    modalOutcomes.innerHTML=""; e.outcomes.forEach(o=>modalOutcomes.innerHTML+=`<li>${o}</li>`);
+    modalFacilitatorBio.innerText = e.facilitatorBio || "";
+    modalFee.innerText=e.fee;
+    modalRegister.href=e.register;
+    modal.style.display="block";
+  });
+});
+
+document.querySelector('.modal-close').onclick = ()=>modal.style.display="none";
+document.getElementById('modalBack').onclick = ()=>modal.style.display="none";
+window.onclick = e=>{if(e.target==modal) modal.style.display='none';};
+</script>
+
+
+</section>
+
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      
+      <div class="footer-section">
+        <h3>Reframe MHS</h3>
+        <p data-translate="footer_description">Unlocking the innate potential and resilience within each person and group across the Middle East.</p>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_quick_links">Quick Links</h4>
+        <ul>
+          <li><a href="about.html" data-translate="nav_about">About Us</a></li>
+          <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
+          <li><a href="training.html" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_services">Services</h4>
+        <ul>
+          <li><a href="#" data-translate="footer_training">Training Programs</a></li>
+          <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
+          <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
+          <li><a href="#" data-translate="footer_resources">Resources</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_connect">Connect</h4>
+        <div class="social-links">
+          <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+          <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        </div>
+
+        <!-- Newsletter -->
+        <div class="subscribe-section">
+          <div class="subscribe-box">
+            <h2 data-translate="footer_subscribe_title">Stay Connected</h2>
+            <p data-translate="footer_subscribe_text">Subscribe to our newsletter for updates, workshops, and events.</p>
+            <form class="subscribe-form" action="#" method="post">
+              <input type="email" name="email" placeholder="Enter your email" required>
+              <button type="submit" class="btn btn-primary">Subscribe</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      <p data-translate="footer_copyright">&copy;2025 Reframe Mental Health Services. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+  
+
+
+
+<script src="scripts/main.js"></script>

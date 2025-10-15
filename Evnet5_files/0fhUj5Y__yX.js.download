@@ -1,0 +1,3 @@
+;/*FB_PKG_DELIM*/
+
+__d("PolarisLoggedOutLimits",[],(function(a,b,c,d,e,f){"use strict";var g=4;function a(){return g}var h=7;function b(){return h}var i=17;function c(){return i}var j=36;function d(){return j}var k=8;function e(a){return Math.min(Math.max(a,1),k)}var l=4;function m(){return l}f.usePolarisLoggedOutPageImpressionLimit=a;f.usePolarisLoggedOutPostChainingImpressionLimit=b;f.usePolarisLoggedOutPostImpressionLimit=c;f.usePolarisLoggedOutProfileReelsTabImpressionLimit=d;f.usePolarisLoggedReelsTabImpressionLimit=e;f.usePolarisLoggedOutStoryHighlightsImpressionLimit=m}),66);

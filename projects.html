@@ -1,271 +1,436 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-translate="page_title_projects">Projects - Reframe MHS</title>
-    <meta name="description" data-translate="page_description_projects" content="Explore our research projects and initiatives advancing mental health services across the Middle East.">
-    <link rel="stylesheet" href="styles/main.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-translate="page_title_projects">Projects - Reframe MHS</title>
+  <meta
+    name="description"
+    data-translate="page_description_projects"
+    content="Explore our research projects and initiatives advancing mental health services across the Middle East."
+  />
+  <link rel="stylesheet" href="styles/main.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+  />
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-logo">
-                <a href="index.html"><h2>Reframe MHS</h2></a>
-            </div>
 
-            <ul class="nav-menu">
-                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-                <li><a href="insights.html" class="nav-link" data-translate="nav_insights">Insights</a></li>
-                <li><a href="events.html" class="nav-link" data-translate="nav_events">Events</a></li>
-                <li><a href="projects.html" class="nav-link active" data-translate="nav_projects">Projects</a></li>
-                <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-                <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
-            </ul>
+  <!-- ================== NAVIGATION ================== -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <!-- Logo -->
+      <div class="nav-logo">
+        <a href="index.html">
+          <img src="logo.gif" alt="Company Logo" width="220" />
+        </a>
+      </div>
 
-            <div class="language-switcher">
-                <button class="lang-btn active" data-lang="en">EN</button>
-                <span class="lang-separator">|</span>
-                <button class="lang-btn" data-lang="ar">AR</button>
-            </div>
+      <!-- Main Menu -->
+      <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
 
-            <div class="hamburger" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
+        <!-- Dropdown -->
+        <li class="nav-dropdown">
+          <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
+            Services <i class="fa fa-chevron-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="projects.html" class="nav-link active" data-translate="nav_mhlab">Projects</a></li>
+            <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+            <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+            <li><a href="t.html" class="nav-link" data-translate="nav_consultations">TechnicalConsultations</a></li>
+          </ul>
+        </li>
+
+        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+      </ul>
+
+      <!-- Language Switcher -->
+      <div class="language-switcher">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <span class="lang-separator">|</span>
+        <button class="lang-btn" data-lang="ar">AR</button>
+      </div>
+
+      <!-- Login Button -->
+      <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
+
+      <!-- Hamburger button (mobile) -->
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ================== OVERLAY MENU (Mobile) ================== -->
+  <div class="overlay" id="mobile-menu" aria-hidden="true">
+    <nav class="overlay-nav" aria-label="Mobile">
+      <ul>
+        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+        <li><a href="projects.html" class="nav-link active" data-translate="nav_mhlab">Projects</a></li>
+        <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+        <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+        <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+        <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
+      </ul>
+      <button class="close-btn" aria-label="Close menu" data-translate="close">Close</button>
     </nav>
+  </div>
 
-    <!-- Overlay Menu -->
-    <div class="overlay">
-        <nav class="overlay-nav">
-            <ul>
-                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-                <li><a href="insights.html" class="nav-link" data-translate="nav_insights">Insights</a></li>
-                <li><a href="events.html" class="nav-link" data-translate="nav_events">Events</a></li>
-                <li><a href="projects.html" class="nav-link" data-translate="nav_projects">Projects</a></li>
-                <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-                <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
-            </ul>
-            <button class="close-btn" data-translate="close">Close</button>
-        </nav>
+</body>
+
+<section class="hero-header">
+  <h1 data-translate="projects_hero_title">The Mental Health Lab</h1>
+  <p data-translate="projects_hero_subtitle">
+    The Mental Health Lab is a non-profit dedicated to advancing mental health research and practice.
+    We conduct studies and experiments that generate evidence tailored to the cultural and social realities of our community.
+  </p>
+</section>
+
+<div class="projects-container">
+  <!-- Project 1 -->
+  <div class="project-item">
+    <div class="project-header" onclick="toggleFiles(this)">
+      <div class="header-left">
+        <i class="fas fa-flask"></i>
+        <h4 data-translate="project1_title">
+          MH LAB, project one: Developing a panic attack scale for the Lebanese and Arabic context
+        </h4>
+      </div>
+      <div class="expand-btn"><i class="fas fa-plus"></i></div>
     </div>
 
-    <!-- Projects Section -->
-    <section class="projects-section">
-        <div class="container">
-            <!-- Support Our Work Banner -->
-            <div class="support-banner">
-                <div class="support-content">
-                    <span data-translate="support_our_work">Support Our Work</span>
-                    <i class="fas fa-heart"></i>
-                </div>
-            </div>
+    <div class="project-files">
+      <a href="project.pdf" target="_blank">
+        <i class="fas fa-file-pdf"></i>
+        <span data-translate="project1_file1">Development of the Reframe and Altpsy questionnaire</span>
+      </a>
+      <a href="project2.pdf" target="_blank">
+        <i class="fas fa-file-pdf"></i>
+        <span data-translate="project1_file2">Questionnaire for panic attacks</span>
+      </a>
+      <a href="project3.pdf" target="_blank">
+        <i class="fas fa-file-pdf"></i>
+        <span data-translate="project1_file3">Panic attacks - additional file</span>
+      </a>
+      <a href="project4.pdf" target="_blank">
+        <i class="fas fa-file-pdf"></i>
+        <span data-translate="project1_file4">Crisis management for severe anxiety</span>
+      </a>
+      <a href="project5.pdf" target="_blank">
+        <i class="fas fa-file-pdf"></i>
+        <span data-translate="project1_file5">Ethics Committee Approval</span>
+      </a>
+      <a href="project6.pdf" target="_blank">
+        <i class="fas fa-file-pdf"></i>
+        <span data-translate="project1_file6">Panic Scale Validation</span>
+      </a>
+      <a href="project7.pdf" target="_blank">
+        <i class="fas fa-file-pdf"></i>
+        <span data-translate="project1_file7">Reframe Questionnaire (AltPsy)</span>
+      </a>
+      <a href="t3ref.docx" target="_blank">
+        <i class="fas fa-file-word"></i>
+        <span data-translate="project1_file8">Study Introduction</span>
+      </a>
+    </div>
+  </div>
+</div>
 
-            <!-- Project List -->
-            <div class="project-list">
-                <!-- Experiences of HIV+ Families -->
-                <div class="project-item">
-                    <div class="project-header" onclick="toggleProject(this)">
-                        <h3 data-translate="project_hiv_families">Experiences of HIV+ Families</h3>
-                        <button class="expand-btn" aria-label="Expand project details">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <div class="project-content">
-                        <p data-translate="project_hiv_description">Research study examining the psychosocial experiences and support needs of families living with HIV in the Middle East region, focusing on stigma reduction and community-based interventions.</p>
-                        <div class="project-details">
-                            <span class="project-location" data-translate="location_lebanon">Lebanon</span>
-                            <span class="project-duration">2023-2025</span>
-                            <span class="project-status ongoing" data-translate="status_ongoing">Ongoing</span>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Evaluating Comprehensive Mental Health Services -->
-                <div class="project-item">
-                    <div class="project-header" onclick="toggleProject(this)">
-                        <h3 data-translate="project_1_title">Evaluating a Comprehensive Mental Health and Psychosocial Support Services for Vulnerable Refugees in Jordan</h3>
-                        <button class="expand-btn" aria-label="Expand project details">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <div class="project-content">
-                        <p data-translate="project_1_description">A longitudinal study examining the effectiveness of culturally-adapted mental health interventions for refugee populations, with a focus on trauma-informed care and community integration.</p>
-                        <div class="project-details">
-                            <span class="project-location" data-translate="project_location_jordan">Jordan</span>
-                            <span class="project-duration">2024-2026</span>
-                            <span class="project-status ongoing" data-translate="status_ongoing">Ongoing</span>
-                        </div>
-                    </div>
-                </div>
+  <script>
+    function toggleFiles(element) {
+      const fileSection = element.nextElementSibling;
+      const icon = element.querySelector(".expand-btn i");
+      const isVisible = fileSection.style.display === "block";
 
-                <!-- Project Ankur -->
-                <div class="project-item">
-                    <div class="project-header" onclick="toggleProject(this)">
-                        <h3 data-translate="project_ankur_title">Project Ankur: Health Needs of Home Based Sex-Workers in India</h3>
-                        <button class="expand-btn" aria-label="Expand project details">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <div class="project-content">
-                        <p data-translate="project_3_description">Comprehensive study examining mental health needs and access barriers among home-based workers, informing policy recommendations.</p>
-                        <div class="project-details">
-                            <span class="project-location" data-translate="location_india">India</span>
-                            <span class="project-duration">2024</span>
-                            <span class="project-status completed" data-translate="status_completed">Completed</span>
-                        </div>
-                    </div>
-                </div>
+      // Close all others
+      document.querySelectorAll('.project-files').forEach(f => f.style.display = 'none');
+      document.querySelectorAll('.expand-btn i').forEach(i => {
+        i.classList.remove("fa-minus");
+        i.classList.add("fa-plus");
+      });
 
-                <!-- IPT Dissemination in Haiti -->
-                <div class="project-item">
-                    <div class="project-header" onclick="toggleProject(this)">
-                        <h3 data-translate="project_ipt_haiti">IPT Dissemination in Haiti</h3>
-                        <button class="expand-btn" aria-label="Expand project details">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <div class="project-content">
-                        <p data-translate="project_ipt_haiti_description">Training program to disseminate Interpersonal Therapy (IPT) techniques among mental health professionals in Haiti, building local capacity for evidence-based treatment.</p>
-                        <div class="project-details">
-                            <span class="project-location" data-translate="location_haiti">Haiti</span>
-                            <span class="project-duration">2023-2024</span>
-                            <span class="project-status completed" data-translate="status_completed">Completed</span>
-                        </div>
-                    </div>
-                </div>
+      // Toggle current
+      if (!isVisible) {
+        fileSection.style.display = "block";
+        icon.classList.remove("fa-plus");
+        icon.classList.add("fa-minus");
+      }
+    }
+  </script>
 
-                <!-- IPT in Colombia -->
-                <div class="project-item">
-                    <div class="project-header" onclick="toggleProject(this)">
-                        <h3 data-translate="project_ipt_colombia">IPT in Colombia</h3>
-                        <button class="expand-btn" aria-label="Expand project details">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <div class="project-content">
-                        <p data-translate="project_4_description">Multi-country training initiative to build IPT capacity among mental health professionals in Haiti and Colombia.</p>
-                        <div class="project-details">
-                            <span class="project-location" data-translate="location_colombia">Colombia</span>
-                            <span class="project-duration">2023-2024</span>
-                            <span class="project-status completed" data-translate="status_completed">Completed</span>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Building Excellence Center -->
-                <div class="project-item">
-                    <div class="project-header" onclick="toggleProject(this)">
-                        <h3 data-translate="project_2_title">Building the Columbia University-Teachers College Center of Excellence for Arab Women's Mental Health in Abu Dhabi</h3>
-                        <button class="expand-btn" aria-label="Expand project details">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <div class="project-content">
-                        <p data-translate="project_2_description">Comprehensive training program for mental health professionals working with Arab women, focusing on culturally-sensitive approaches and gender-specific considerations.</p>
-                        <div class="project-details">
-                            <span class="project-location" data-translate="project_location_uae">UAE</span>
-                            <span class="project-duration">2023-2024</span>
-                            <span class="project-status completed" data-translate="status_completed">Completed</span>
-                        </div>
-                    </div>
-                </div>
+ 
+  
 
-                <!-- PREMIUM Program -->
-                <div class="project-item">
-                    <div class="project-header" onclick="toggleProject(this)">
-                        <h3 data-translate="project_5_title">PREMIUM: A Program for Effective Mental Health Interventions in Under-Resourced Health Systems</h3>
-                        <button class="expand-btn" aria-label="Expand project details">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <div class="project-content">
-                        <p data-translate="project_5_description">Community-based program developing sustainable mental health interventions for resource-constrained healthcare settings.</p>
-                        <div class="project-details">
-                            <span class="project-location" data-translate="location_regional">Regional</span>
-                            <span class="project-duration">2024-2025</span>
-                            <span class="project-status ongoing" data-translate="status_ongoing">Ongoing</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<style>
+
+
+  
+
+  /* ===== Projects Container ===== */
+.projects-container {
+  max-width: 1000px;
+  margin: 3rem auto;
+  padding: 0 1rem;
+}
+
+/* ===== Project Item ===== */
+.project-item {
+  background-color: #eef4fc;
+  border: 1px solid #dbe7f2;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  transition: box-shadow 0.3s ease;
+}
+
+.project-item:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== Project Header ===== */
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background-color: #ffffff;
+
+  width: 100%;
+  margin: 0;
+  padding: 1.8rem 1.5rem;   /* أكبر ارتفاع */
+  box-sizing: border-box;
+
+  border-bottom: 1px solid #e5e7eb;
+
+  font-size: 1.15rem;       /* حجم النص */
+  font-weight: 600;         /* خط أوضح */
+  color: #1e3f5a;
+  transition: background 0.3s ease;
+}
+
+.project-header:hover {
+  background-color: #f9fafb;
+}
+
+/* ===== Header Content ===== */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-right {
+  font-size: 1.3rem;
+  color: #4D9794;
+}
+
+.expand-btn i {
+  font-size: 1.4rem;      /* أيقونة أكبر */
+  color: #1f68b1;
+  transition: transform 0.3s ease;
+}
+
+.expand-btn i.rotate {
+  transform: rotate(180deg);
+}
+
+/* ===== Project Files (Content) ===== */
+.project-files {
+  display: none;
+  background-color: #f8fafc;
+  padding: 1.2rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  animation: fadeIn 0.4s ease;
+}
+
+.project-files a {
+  display: block;
+  margin-bottom: 0.7rem;
+  text-decoration: none;
+  color: #1a3f66;
+  font-size: 1rem;
+  transition: color 0.25s ease;
+}
+
+.project-files a:hover {
+  color: #4D9794;
+}
+
+.project-files a i {
+  margin-right: 8px;
+}
+
+/* ===== Animation ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Mobile Friendly ===== */
+@media (max-width: 768px) {
+  .projects-container {
+    padding: 0 0.5rem;
+  }
+
+  .project-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.2rem 1rem;  /* أصغر للموبايل */
+    font-size: 1rem;
+  }
+
+  .header-left {
+    margin-bottom: 0.8rem;
+  }
+
+  .header-right {
+    align-self: flex-end;
+    margin-top: 0.4rem;
+  }
+
+  .expand-btn i {
+    font-size: 1.2rem;
+  }
+}
+
+
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* HERO HEADER */
+    .hero-header {
+          margin-top: 120px;
+      background: #4D9794;
+      color: #fff;
+      padding: 100px 0px;
+      text-align: center;
+    }
+
+    .hero-header h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .hero-header p {
+      font-size: 1.1rem;
+      max-width: 900px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+  </style>
+ 
+
+
+
+
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      
+      <!-- وصف -->
+      <div class="footer-section">
+        <h3 data-translate="footer_brand">Reframe MHS</h3>
+        <p data-translate="footer_description">
+          Unlocking the innate potential and resilience within each person and group across the Middle East.
+        </p>
+      </div>
+
+      <!-- روابط سريعة -->
+      <div class="footer-section">
+        <h4 data-translate="footer_quick_links">Quick Links</h4>
+        <ul>
+          <li><a href="about.html" data-translate="nav_about">About Us</a></li>
+          <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
+          <li><a href="training.html" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
+        </ul>
+      </div>
+
+      <!-- خدمات -->
+      <div class="footer-section">
+        <h4 data-translate="footer_services">Services</h4>
+        <ul>
+          <li><a href="#" data-translate="footer_training">Training Programs</a></li>
+          <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
+          <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
+          <li><a href="#" data-translate="footer_resources">Resources</a></li>
+        </ul>
+      </div>
+
+      <!-- تواصل -->
+      <div class="footer-section">
+        <h4 data-translate="footer_connect">Connect</h4>
+        <div class="social-links">
+          <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+          <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
         </div>
-    </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Reframe MHS</h3>
-                    <p data-translate="footer_description">Unlocking the innate potential and resilience within each person and group across the Middle East.</p>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_quick_links">Quick Links</h4>
-                    <ul>
-                        <li><a href="about.html" data-translate="nav_about">About Us</a></li>
-                        <li><a href="insights.html" data-translate="nav_insights">Insights</a></li>
-                        <li><a href="events.html" data-translate="nav_events">Events</a></li>
-                        <li><a href="projects.html" data-translate="nav_projects">Projects</a></li>
-                        <li><a href="hub.html" data-translate="nav_hub">Hub</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_services">Services</h4>
-                    <ul>
-                        <li><a href="#" data-translate="footer_training">Training Programs</a></li>
-                        <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
-                        <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
-                        <li><a href="#" data-translate="footer_resources">Resources</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_connect">Connect</h4>
-                    <div class="social-links">
-                        <a href="#" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                        <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p data-translate="footer_copyright">&copy; 2025 Reframe MHS. All rights reserved.</p>
-            </div>
+        <!-- Newsletter -->
+        <div class="subscribe-section">
+          <div class="subscribe-box">
+            <h2 data-translate="footer_subscribe_title">Stay Connected</h2>
+            <p data-translate="footer_subscribe_text">
+              Subscribe to our newsletter for updates, workshops, and events.
+            </p>
+            <form class="subscribe-form" action="#" method="post">
+              <input type="email" name="email" placeholder="Enter your email" 
+                     data-translate-placeholder="footer_subscribe_placeholder" required>
+              <button type="submit" class="btn btn-primary" data-translate="footer_subscribe_btn">Subscribe</button>
+            </form>
+          </div>
         </div>
-    </footer>
+      </div>
 
-    <script src="scripts/translations.js"></script>
-    <script src="scripts/main.js"></script>
-    <script>
-        // Project expand/collapse functionality
-        function toggleProject(headerElement) {
-            const projectItem = headerElement.parentElement;
-            const content = projectItem.querySelector('.project-content');
-            const expandBtn = headerElement.querySelector('.expand-btn i');
-            
-            // Toggle the expanded class
-            projectItem.classList.toggle('expanded');
-            
-            // Toggle icon
-            if (projectItem.classList.contains('expanded')) {
-                expandBtn.classList.remove('fa-plus');
-                expandBtn.classList.add('fa-minus');
-                content.style.maxHeight = content.scrollHeight + 'px';
-            } else {
-                expandBtn.classList.remove('fa-minus');
-                expandBtn.classList.add('fa-plus');
-                content.style.maxHeight = '0';
-            }
-        }
-    </script>
-</body>
-</html>
+    </div>
+
+    <!-- حقوق -->
+    <div class="footer-bottom">
+      <p data-translate="footer_copyright">
+        &copy;2025 Reframe Mental Health Services. All rights reserved.
+      </p>
+    </div>
+  </div>
+</footer>
+  
+
+
+  <!-- Scripts (keep your site scripts) -->
+
+  <script src="scripts/main.js"></script>

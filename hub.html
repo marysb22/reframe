@@ -1,295 +1,580 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-translate="page_title_hub">Hub - Reframe MHS</title>
-    <meta name="description" data-translate="page_description_hub" content="Professional resources, tools, and community hub for mental health practitioners in the Middle East.">
-    <link rel="stylesheet" href="styles/main.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-translate="page_title_hub">Hub - Reframe MHS</title>
+  <meta
+    name="description"
+    data-translate="page_description_hub"
+    content="Professional resources, tools, and community hub for mental health practitioners in the Middle East."
+  />
+  <link rel="stylesheet" href="styles/main.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+  />
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-logo">
-                <a href="index.html"><h2>Reframe MHS</h2></a>
-            </div>
 
-            <ul class="nav-menu">
-                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-                <li><a href="insights.html" class="nav-link" data-translate="nav_insights">Insights</a></li>
-                <li><a href="events.html" class="nav-link" data-translate="nav_events">Events</a></li>
-                <li><a href="projects.html" class="nav-link" data-translate="nav_projects">Projects</a></li>
-                <li><a href="hub.html" class="nav-link active" data-translate="nav_hub">Hub</a></li>
-                <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
-            </ul>
+  <!-- ================== NAVIGATION ================== -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <!-- Logo -->
+      <div class="nav-logo">
+        <a href="index.html">
+          <img src="logo.gif" alt="Company Logo" width="220" />
+        </a>
+      </div>
 
-            <div class="language-switcher">
-                <button class="lang-btn active" data-lang="en">EN</button>
-                <span class="lang-separator">|</span>
-                <button class="lang-btn" data-lang="ar">AR</button>
-            </div>
+      <!-- Main Menu -->
+      <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
 
-            <div class="hamburger" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
+        <!-- Dropdown -->
+        <li class="nav-dropdown">
+          <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
+            Services <i class="fa fa-chevron-down"></i>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+            <li><a href="hub.html" class="nav-link active" data-translate="nav_hub">Hub</a></li>
+            <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+            <li><a href="t.html" class="nav-link" data-translate="nav_consultations">TechnicalConsultations</a></li>
+          </ul>
+        </li>
+
+        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+      </ul>
+
+      <!-- Language Switcher -->
+      <div class="language-switcher">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <span class="lang-separator">|</span>
+        <button class="lang-btn" data-lang="ar">AR</button>
+      </div>
+
+      <!-- Login Button -->
+      <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
+
+      <!-- Hamburger button (mobile) -->
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ================== OVERLAY MENU (Mobile) ================== -->
+  <div class="overlay" id="mobile-menu" aria-hidden="true">
+    <nav class="overlay-nav" aria-label="Mobile">
+      <ul>
+        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+        <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+        <li><a href="hub.html" class="nav-link active" data-translate="nav_hub">Hub</a></li>
+        <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+        <li><a href="t.html" class="nav-link" data-translate="nav_consultations">TechnicalConsultations</a></li>
+        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+        <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
+      </ul>
+      <button class="close-btn" aria-label="Close menu" data-translate="close">Close</button>
     </nav>
+  </div>
 
-    <!-- Overlay Menu -->
-    <div class="overlay">
-        <nav class="overlay-nav">
-            <ul>
-                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-                <li><a href="insights.html" class="nav-link" data-translate="nav_insights">Insights</a></li>
-                <li><a href="events.html" class="nav-link" data-translate="nav_events">Events</a></li>
-                <li><a href="projects.html" class="nav-link" data-translate="nav_projects">Projects</a></li>
-                <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-                <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
-            </ul>
-            <button class="close-btn" data-translate="close">Close</button>
-        </nav>
+
+  
+
+    </div>
+   <style>
+    
+/* ===== Global Reset ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #f9fafb;
+  color: #1e293b;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ===== Container ===== */
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 0 18px;
+}
+
+/* ===== Typography ===== */
+h1, h2, h3 {
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.3px;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  background: linear-gradient(90deg, #1E3F5A, #4D9794);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+  animation: fadeSlide 1.2s ease;
+}
+
+h2 {
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  color: #1E3F5A;
+  margin-bottom: 10px;
+  position: relative;
+  display: inline-block;
+}
+
+h2::after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, #4D9794, #1E3F5A);
+  border-radius: 2px;
+  margin-top: 4px;
+  transition: width 0.3s ease;
+}
+
+h2:hover::after {
+  width: 90px;
+}
+
+h3 {
+  font-size: 1.2rem;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+p {
+  font-size: 1.5rem;
+  color: #4D9794;
+  margin: 10px 0 14px 0;
+  line-height: 3;
+  letter-spacing: 0.15px;
+  opacity: 0.95;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+p:hover {
+  opacity: 1;
+  transform: translateX(3px);
+}
+
+/* ===== Hero Section ===== */
+.hub-hero {
+  text-align: center;
+  padding: 60px 20px;
+  background: linear-gradient(135deg, rgba(77,151,148,0.9), rgba(30,63,90,0.95));
+  color: #fff;
+  border-radius: 0 0 40px 40px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.hub-hero p {
+  font-size: 1.5rem;
+  max-width: 750px;
+  margin: auto;
+}
+
+.btn-primary {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 12px 28px;
+  background: #fff;
+  color: #1E3F5A;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: #1E3F5A;
+  color: #fff;
+  transform: scale(1.05);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+}
+
+/* ===== Content Blocks ===== */
+.hub-block {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 25px;
+  padding: 40px 0;
+  max-width: 1100px;
+  margin: 30px auto;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.hub-block:hover {
+  transform: translateY(-6px);
+}
+
+.hub-block.reverse {
+  flex-direction: row-reverse;
+}
+
+.hub-block .text {
+  flex: 1;
+}
+
+.hub-block .image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.hub-block img {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  transition: transform 0.3s ease;
+}
+
+.hub-block img:hover {
+  transform: scale(1.05) rotate(1deg);
+}
+
+/* ===== Features List ===== */
+.hub-block .text ul {
+  list-style: none;
+  padding: 0;
+}
+
+.hub-block .text li {
+  margin-bottom: 30px;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hub-block .text li::before {
+  content: "✔";
+  color: #4D9794;
+  font-weight: bold;
+}
+
+/* ===== Call To Action ===== */
+.hub-cta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+
+  max-width: 1100px;
+  margin: 40px auto;
+
+
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hub-cta:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+}
+
+.hub-cta img {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.1);
+  transition: transform 0.3s ease;
+}
+
+.hub-cta img:hover {
+  transform: scale(1.04);
+}
+
+/* ===== Animations ===== */
+@keyframes fadeSlide {
+  from {opacity: 0; transform: translateY(30px);}
+  to {opacity: 1; transform: translateY(0);}
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+  .hub-block, .hub-cta {
+    flex-direction: column;
+    text-align: center;
+  }
+  .hub-block img, .hub-cta img {
+    margin-top: 15px;
+  }
+}
+
+/* ===== Hero Section Amazing Style ===== */
+.hub-hero {
+  position: relative;
+  text-align: center;
+  padding: 100px 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #1E3F5A, #4D9794);
+  overflow: hidden;
+  border-radius: 0 0 50px 50px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+}
+
+/* Animated Glow Overlay */
+.hub-hero::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.12), transparent 70%);
+  animation: rotateOverlay 25s linear infinite;
+  z-index: 0;
+}
+
+/* Title */
+.hub-hero h1 {
+  position: relative;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  background: white;
+  -webkit-background-clip: text;
+
+  margin-bottom: 20px;
+  z-index: 1;
+}
+
+/* Subtitle */
+.hub-hero p {
+  position: relative;
+  font-size: 1.2rem;
+  max-width: 700px;
+  margin: auto;
+  line-height: 2;
+  color: #f1f5f9;
+  opacity: 0.95;
+  z-index: 1;
+}
+
+/* Button */
+.btn-primary {
+  display: inline-block;
+  margin-top: 25px;
+  padding: 14px 34px;
+  background: #fff;
+  color: #1E3F5A;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(90deg, #1E3F5A, #4D9794);
+  color: #fff;
+  transform: scale(1.08) translateY(-3px);
+  box-shadow: 0 0 20px rgba(77,151,148,0.6);
+}
+
+/* ===== Animations ===== */
+@keyframes rotateOverlay {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes glowText {
+  0% { text-shadow: 0 0 8px rgba(255,255,255,0.4); }
+  100% { text-shadow: 0 0 25px rgba(177, 236, 235,0.9); }
+}
+
+
+/* ===== Mobile Friendly Fix ===== */
+@media (max-width: 768px) {
+  .hub-hero {
+    padding: 60px 15px;
+    text-align: center;
+  }
+
+  .hub-hero h1 {
+    font-size: 2rem;
+    line-height: 1.3;
+    color: #fff; /* يضمن وضوح النص */
+  }
+
+  .hub-hero p {
+    font-size: 1rem;
+    color: #f8fafc;
+    line-height: 1.6;
+    margin-top: 10px;
+  }
+
+  .hub-block,
+  .hub-cta {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hub-block img,
+  .hub-cta img {
+    max-width: 90%;
+    margin-top: 20px;
+  }
+
+  .btn-primary {
+    font-size: 0.95rem;
+    padding: 12px 28px;
+  }
+}
+
+
+ 
+    </style>
+
+  <!-- ===== Hero Section ===== -->
+<section class="hub-hero fade-up">
+  <div class="container">
+    <h1 data-translate="hub_hero_title">Reframe Hub</h1>
+    <p data-translate="hub_hero_subtitle">
+      Looking for the perfect venue to host your next meeting, conference, or workshop? 
+      Reframe Hub is your ideal space, designed to meet your professional needs with comfort and convenience.
+    </p>
+    <a href="#features" class="btn-primary" data-translate="hub_hero_cta">Discover More</a>
+  </div>
+</section>
+
+<!-- ===== Why Choose ===== -->
+<section class="hub-block fade-up">
+  <div class="text">
+    <h2 data-translate="hub_why_title">Why Choose Reframe Hub?</h2>
+    <p>
+Looking for the perfect venue to host your next meeting, conference, or workshop? Reframe Hub is your ideal space, designed to meet your professional needs with comfort and convenience. Whether you're an individual, a small business, or a corporate client, our services go beyond offering space. We provide expert income tax, accounting, and bookkeeping services tailored to your unique requirements. Consider us an extension of your team, dedicated to supporting your success.
+
+    </p>
+  </div>
+  <div class="image">
+    <img src="1 (1).webp" alt="Meeting Room">
+  </div>
+</section>
+
+<!-- ===== Key Features ===== -->
+<section id="features" class="hub-block reverse fade-up">
+  <div class="text">
+    <h2 data-translate="hub_features_title">Key Features</h2>
+    <ul>
+      <li data-translate="hub_feature_1">Seating for Over 20 Guests</li>
+      <li data-translate="hub_feature_2">High-Quality Screen</li>
+      <li data-translate="hub_feature_3">Welcoming Reception Area</li>
+      <li data-translate="hub_feature_4">Conference Camera</li>
+      <li data-translate="hub_feature_5">Beverage Bar</li>
+      <li data-translate="hub_feature_6">24/7 High-Speed Internet</li>
+      <li data-translate="hub_feature_7">Prime Central Location</li>
+      <li data-translate="hub_feature_8">Complete Privacy</li>
+    </ul>
+  </div>
+  <div class="image">
+    <img src="3 (2).webp" alt="Conference Room">
+  </div>
+</section>
+
+<!-- ===== Call To Action ===== -->
+<section class="hub-cta fade-up">
+  <div class="text">
+    <h2 data-translate="hub_cta_title">Ready to Book Your Space?</h2>
+    <p data-translate="hub_cta_text">Contact us today and make your next event a success.</p>
+    <a href="contact.html" class="btn-primary" data-translate="hub_cta_btn">Book Now</a>
+  </div>
+  <div class="image">
+    <img src="22.webp" alt="Workspace">
+  </div>
+</section>
+
+ 
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      
+      <div class="footer-section">
+        <h3>Reframe MHS</h3>
+        <p data-translate="footer_description">Unlocking the innate potential and resilience within each person and group across the Middle East.</p>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_quick_links">Quick Links</h4>
+        <ul>
+          <li><a href="about.html" data-translate="nav_about">About Us</a></li>
+          <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
+          <li><a href="training.html" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_services">Services</h4>
+        <ul>
+          <li><a href="#" data-translate="footer_training">Training Programs</a></li>
+          <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
+          <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
+          <li><a href="#" data-translate="footer_resources">Resources</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_connect">Connect</h4>
+        <div class="social-links">
+          <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+          <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        </div>
+
+        <!-- Newsletter -->
+        <div class="subscribe-section">
+          <div class="subscribe-box">
+            <h2 data-translate="footer_subscribe_title">Stay Connected</h2>
+            <p data-translate="footer_subscribe_text">Subscribe to our newsletter for updates, workshops, and events.</p>
+            <form class="subscribe-form" action="#" method="post">
+              <input type="email" name="email" placeholder="Enter your email" required>
+              <button type="submit" class="btn btn-primary">Subscribe</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
     </div>
 
-    <!-- Hub Hero Section -->
-    <section class="hub-hero">
-        <div class="container">
-            <div class="hero-content">
-                <h1 data-translate="hub_hero_title">Professional Hub</h1>
-                <p data-translate="hub_hero_subtitle">Access resources, connect with peers, and advance your professional development in mental health services.</p>
-            </div>
-        </div>
-    </section>
+    <div class="footer-bottom">
+      <p data-translate="footer_copyright">&copy;2025 Reframe Mental Health Services. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
 
-    <!-- Hub Services -->
-    <section class="hub-services">
-        <div class="container">
-            <div class="section-header">
-                <h2 data-translate="hub_services_title">What You'll Find Here</h2>
-                <p data-translate="hub_services_subtitle">Comprehensive resources designed for mental health professionals</p>
-            </div>
-            <div class="services-grid">
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-book-open"></i>
-                    </div>
-                    <h3 data-translate="hub_resources_title">Professional Resources</h3>
-                    <p data-translate="hub_resources_description">Access our comprehensive library of assessment tools, treatment protocols, and evidence-based resources.</p>
-                    <a href="#" class="service-link" data-translate="hub_explore">Explore Resources</a>
-                </div>
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <h3 data-translate="hub_community_title">Professional Community</h3>
-                    <p data-translate="hub_community_description">Connect with fellow practitioners, share experiences, and collaborate on best practices across the region.</p>
-                    <a href="#" class="service-link" data-translate="hub_join">Join Community</a>
-                </div>
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
-                    <h3 data-translate="hub_development_title">Continuing Education</h3>
-                    <p data-translate="hub_development_description">Access online courses, webinars, and certification programs to advance your professional skills.</p>
-                    <a href="#" class="service-link" data-translate="hub_learn">Start Learning</a>
-                </div>
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-clipboard-check"></i>
-                    </div>
-                    <h3 data-translate="hub_tools_title">Assessment Tools</h3>
-                    <p data-translate="hub_tools_description">Download validated assessment instruments and screening tools adapted for Middle Eastern populations.</p>
-                    <a href="#" class="service-link" data-translate="hub_download">Download Tools</a>
-                </div>
-            </div>
-        </div>
-    </section>
+  
 
-    <!-- Resource Categories -->
-    <section class="resource-categories">
-        <div class="container">
-            <div class="section-header">
-                <h2 data-translate="resource_categories_title">Resource Categories</h2>
-                <p data-translate="resource_categories_subtitle">Browse our organized collection of professional materials</p>
-            </div>
-            <div class="categories-grid">
-                <div class="category-item">
-                    <div class="category-icon">
-                        <i class="fas fa-brain"></i>
-                    </div>
-                    <h3 data-translate="category_trauma_title">Trauma & PTSD</h3>
-                    <p data-translate="category_trauma_count">25 Resources</p>
-                </div>
-                <div class="category-item">
-                    <div class="category-icon">
-                        <i class="fas fa-heart"></i>
-                    </div>
-                    <h3 data-translate="category_anxiety_title">Anxiety & Depression</h3>
-                    <p data-translate="category_anxiety_count">18 Resources</p>
-                </div>
-                <div class="category-item">
-                    <div class="category-icon">
-                        <i class="fas fa-child"></i>
-                    </div>
-                    <h3 data-translate="category_child_title">Child & Adolescent</h3>
-                    <p data-translate="category_child_count">22 Resources</p>
-                </div>
-                <div class="category-item">
-                    <div class="category-icon">
-                        <i class="fas fa-home"></i>
-                    </div>
-                    <h3 data-translate="category_family_title">Family Therapy</h3>
-                    <p data-translate="category_family_count">15 Resources</p>
-                </div>
-                <div class="category-item">
-                    <div class="category-icon">
-                        <i class="fas fa-globe"></i>
-                    </div>
-                    <h3 data-translate="category_cultural_title">Cultural Adaptation</h3>
-                    <p data-translate="category_cultural_count">12 Resources</p>
-                </div>
-                <div class="category-item">
-                    <div class="category-icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <h3 data-translate="category_assessment_title">Assessment & Evaluation</h3>
-                    <p data-translate="category_assessment_count">20 Resources</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Recent Resources -->
-    <section class="recent-resources">
-        <div class="container">
-            <div class="section-header">
-                <h2 data-translate="recent_resources_title">Recently Added</h2>
-                <p data-translate="recent_resources_subtitle">Latest additions to our professional resource library</p>
-            </div>
-            <div class="resources-grid">
-                <div class="resource-card">
-                    <div class="resource-icon">
-                        <i class="fas fa-file-pdf"></i>
-                    </div>
-                    <div class="resource-content">
-                        <h3 data-translate="resource_1_title">Cultural Adaptation Guidelines for CBT</h3>
-                        <p data-translate="resource_1_description">Comprehensive guide for adapting cognitive behavioral therapy for Middle Eastern clients.</p>
-                        <div class="resource-meta">
-                            <span class="resource-type" data-translate="resource_type_guide">Guide</span>
-                            <span class="resource-date">July 2025</span>
-                        </div>
-                        <a href="#" class="download-btn" data-translate="download">Download</a>
-                    </div>
-                </div>
-                <div class="resource-card">
-                    <div class="resource-icon">
-                        <i class="fas fa-video"></i>
-                    </div>
-                    <div class="resource-content">
-                        <h3 data-translate="resource_2_title">Trauma-Informed Care Training Series</h3>
-                        <p data-translate="resource_2_description">Six-part video series on implementing trauma-informed approaches in clinical practice.</p>
-                        <div class="resource-meta">
-                            <span class="resource-type" data-translate="resource_type_video">Video Series</span>
-                            <span class="resource-date">June 2025</span>
-                        </div>
-                        <a href="#" class="view-btn" data-translate="hub_watch">Watch Now</a>
-                    </div>
-                </div>
-                <div class="resource-card">
-                    <div class="resource-icon">
-                        <i class="fas fa-clipboard-list"></i>
-                    </div>
-                    <div class="resource-content">
-                        <h3 data-translate="resource_3_title">Arabic Mental Health Screening Tools</h3>
-                        <p data-translate="resource_3_description">Validated screening instruments translated and culturally adapted for Arabic-speaking populations.</p>
-                        <div class="resource-meta">
-                            <span class="resource-type" data-translate="resource_type_tool">Assessment Tool</span>
-                            <span class="resource-date">May 2025</span>
-                        </div>
-                        <a href="#" class="download-btn" data-translate="download">Download</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Professional Development -->
-    <section class="professional-development">
-        <div class="container">
-            <div class="section-header">
-                <h2 data-translate="professional_development_title">Professional Development</h2>
-                <p data-translate="professional_development_subtitle">Advance your career with our continuing education programs</p>
-            </div>
-            <div class="development-content">
-                <div class="development-text">
-                    <h3 data-translate="development_opportunities_title">Opportunities Available</h3>
-                    <ul>
-                        <li data-translate="development_item_1">Online certification courses</li>
-                        <li data-translate="development_item_2">Monthly professional webinars</li>
-                        <li data-translate="development_item_3">Supervision and consultation services</li>
-                        <li data-translate="development_item_4">Research collaboration opportunities</li>
-                        <li data-translate="development_item_5">Conference and workshop discounts</li>
-                    </ul>
-                    <a href="events.html" class="btn btn-primary" data-translate="development_explore">Explore Programs</a>
-                </div>
-                <div class="development-image">
-                    <img src="https://images.squarespace-cdn.com/content/v1/66e7c91ccfb7f1307ec9ac91/e3656fd8-e7f9-41fa-80e1-e9fda6a21eb7/Reframe+Meeting+Space" alt="Professional Development">
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Reframe MHS</h3>
-                    <p data-translate="footer_description">Unlocking the innate potential and resilience within each person and group across the Middle East.</p>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_quick_links">Quick Links</h4>
-                    <ul>
-                        <li><a href="about.html" data-translate="nav_about">About Us</a></li>
-                        <li><a href="insights.html" data-translate="nav_insights">Insights</a></li>
-                        <li><a href="events.html" data-translate="nav_events">Events</a></li>
-                        <li><a href="projects.html" data-translate="nav_projects">Projects</a></li>
-                        <li><a href="hub.html" data-translate="nav_hub">Hub</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_services">Services</h4>
-                    <ul>
-                        <li><a href="#" data-translate="footer_training">Training Programs</a></li>
-                        <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
-                        <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
-                        <li><a href="#" data-translate="footer_resources">Resources</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_connect">Connect</h4>
-                    <div class="social-links">
-                        <a href="#" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                        <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p data-translate="footer_copyright">&copy; 2025 Reframe MHS. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="scripts/translations.js"></script>
-    <script src="scripts/main.js"></script>
+<script src="scripts/translations.js"></script>
+<script src="scripts/main.js"></script>
 </body>
 </html>

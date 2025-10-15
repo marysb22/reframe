@@ -1,0 +1,157 @@
+الاختيار من متعدد (MCQ) ممكن يجي بالامتحان.
+سأبدأ بحل وشرح الموجود، ثم أعطيك 40 سؤال إضافي مشابه بنفس الأسلوب.
+
+حل الأسئلة الموجودة مع الشرح
+1️⃣ What is the correct command to create a new React Native project?
+✅ Answer: expo init myReactNativeApp
+💡 شرح: في المشاريع الحديثة، أسهل طريقة لبدء مشروع React Native هي استخدام Expo CLI، والأمر هو expo init متبوع باسم المشروع.
+
+2️⃣ What command is used to start the React Local Development Server?
+✅ Answer: npm start
+💡 شرح: هذا الأمر يقوم بتشغيل Metro Bundler لبدء المشروع في وضع التطوير.
+
+3️⃣ What is the default local host port used by a React development server?
+✅ Answer: 3000
+💡 شرح: سيرفر التطوير في React يعمل افتراضيًا على port 3000، إلا إذا كان محجوزًا.
+
+4️⃣ What keyword creates a constant in JavaScript?
+✅ Answer: const
+💡 شرح: الكلمة const تُستخدم لتعريف متغير ثابت القيمة.
+
+5️⃣ Select the apps that use React Native:
+✅ Answer: All of the above
+💡 شرح: Instagram، Facebook، وSkype جميعها تستخدم React Native.
+
+6️⃣ What tool does React use to compile JSX?
+✅ Answer: Babel
+💡 شرح: Babel يقوم بتحويل JSX إلى JavaScript عادي يمكن للمتصفح فهمه.
+
+7️⃣ What is the correct way to import a component from React Native?
+✅ Answer: import ComponentName from 'react-native'
+💡 شرح: يجب أن تستورد المكوّن من مكتبة react-native بالاسم الصحيح.
+
+8️⃣ How do you style your React Native component?
+✅ Answer: StyleSheet.create
+💡 شرح: React Native يستخدم StyleSheet.create() لإنشاء كائن أنماط (styles).
+
+9️⃣ Which property is used to change the direction of rows/columns in React Native?
+✅ Answer: flexDirection
+💡 شرح: flexDirection يمكن أن تكون row أو column لتحديد اتجاه العناصر.
+
+40 سؤال مشابه ممكن يجي بالامتحان (MCQ)
+
+سأكتبهم لك بنفس الأسلوب مع الإجابة الصحيحة ✅:
+
+1. What command is used to install React Native CLI globally?
+a. npm install react-native
+b. npm install -g react-native-cli ✅
+c. yarn add react-native-cli
+d. react-native install
+
+2. What is JSX?
+a. A CSS framework
+b. A JavaScript syntax extension ✅
+c. A React library
+d. A backend tool
+
+3. Which company developed React Native?
+a. Google
+b. Microsoft
+c. Facebook ✅
+d. Apple
+
+4. Which hook is used to handle state in functional components?
+a. useState ✅
+b. useEffect
+c. useReducer
+d. useContext
+
+5. Which command installs Expo CLI?
+a. npm install expo-cli ✅
+b. expo create
+c. npx install expo-cli
+d. npm add expo
+
+6. What is the default component to wrap text in React Native?
+a. View
+b. Text ✅
+c. Paragraph
+d. Label
+
+7. Which command updates packages in React Native?
+a. npm update ✅
+b. npm upgrade
+c. yarn refresh
+d. react-native update
+
+8. What is the default flexDirection in React Native?
+a. row
+b. column ✅
+c. row-reverse
+d. column-reverse
+
+9. Which lifecycle method runs after the component is rendered?
+a. componentDidMount ✅
+b. componentWillUnmount
+c. render
+d. useEffect
+
+10. What is the main purpose of useEffect hook?
+a. Styling components
+b. Managing lifecycle effects ✅
+c. Updating state
+d. Adding events only
+
+11. How do you display an image in React Native?
+a. <Image src="..." />
+b. <Image source={{ uri: "..." }} /> ✅
+c. <img> tag
+d. <Image url="..." />
+
+12. What does npm stand for?
+a. Node Project Manager
+b. Node Package Manager ✅
+c. New Project Manager
+d. None
+
+13. Which package manager is alternative to npm?
+a. Yarn ✅
+b. React
+c. Babel
+d. Metro
+
+14. What is Metro in React Native?
+a. State manager
+b. Development server ✅
+c. CSS framework
+d. Router
+
+15. What command builds an APK in React Native?
+a. react-native build-apk
+b. gradlew assembleRelease ✅
+c. npm run build
+d. expo build web
+
+16. Which tag is used for layout in React Native?
+a. View ✅
+b. Div
+c. Container
+d. Section
+
+17. What does TouchableOpacity do?
+a. Makes text clickable
+b. Makes any view pressable ✅
+c. Styles a button
+d. Creates opacity animation
+
+18. Which platform supports React Native?
+a. iOS only
+b. Android only
+c. Both iOS and Android ✅
+d. Web only
+
+19. Which extension is used for React Native files?
+a. .js ✅
+b. .jsx
+c. .native
+d. .rn

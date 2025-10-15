@@ -1,196 +1,292 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-translate="page_title_contact">Contact - Reframe MHS</title>
-    <meta name="description" data-translate="page_description_contact" content="Get in touch with Reframe MHS for mental health services, training programs, and collaboration opportunities.">
-    <link rel="stylesheet" href="styles/main.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-translate="page_title_contact">Contact - Reframe MHS</title>
+  <meta name="description" data-translate="page_description_contact" content="Get in touch with Reframe MHS for mental health services, training programs, and collaboration opportunities.">
+
+  <!-- Fonts & Icons -->
+  <link rel="stylesheet" href="styles/main.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
+
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-logo">
-                <a href="index.html"><h2>Reframe MHS</h2></a>
-            </div>
 
-            <ul class="nav-menu">
-                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-                <li><a href="insights.html" class="nav-link" data-translate="nav_insights">Insights</a></li>
-                <li><a href="events.html" class="nav-link" data-translate="nav_events">Events</a></li>
-                <li><a href="projects.html" class="nav-link" data-translate="nav_projects">Projects</a></li>
-                <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-                <li><a href="contact.html" class="nav-link active" data-translate="nav_contact">Contact</a></li>
-            </ul>
-
-            <div class="language-switcher">
-                <button class="lang-btn active" data-lang="en">EN</button>
-                <span class="lang-separator">|</span>
-                <button class="lang-btn" data-lang="ar">AR</button>
-            </div>
-
-            <div class="hamburger" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Overlay Menu -->
-    <div class="overlay">
-        <nav class="overlay-nav">
-            <ul>
-                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-                <li><a href="insights.html" class="nav-link" data-translate="nav_insights">Insights</a></li>
-                <li><a href="events.html" class="nav-link" data-translate="nav_events">Events</a></li>
-                <li><a href="projects.html" class="nav-link" data-translate="nav_projects">Projects</a></li>
-                <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-                <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
-            </ul>
-            <button class="close-btn" data-translate="close">Close</button>
-        </nav>
+<!-- ================== NAVIGATION ================== -->
+<nav class="navbar">
+  <div class="nav-container">
+    <!-- Logo -->
+    <div class="nav-logo">
+      <a href="index.html">
+        <img src="logo.gif" alt="Company Logo" width="220" />
+      </a>
     </div>
 
-    <!-- Contact Hero Section -->
-    <section class="contact-hero">
-        <div class="container">
-            <div class="hero-content">
-                <h1 data-translate="contact_hero_title">Get in Touch</h1>
-                <p data-translate="contact_hero_subtitle">Ready to start your journey or learn more about our services? We're here to help.</p>
-            </div>
-        </div>
-    </section>
+    <!-- Main Menu -->
+    <ul class="nav-menu">
+      <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+      <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
 
-    <!-- Contact Form Section -->
-    <section class="contact-form-section">
-        <div class="container">
-            <div class="contact-content">
-                <div class="contact-form">
-                    <h2 data-translate="contact_form_title">Send us a Message</h2>
-                    <form id="contactForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="firstName" data-translate="form_first_name">First Name</label>
-                                <input type="text" id="firstName" name="firstName" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="lastName" data-translate="form_last_name">Last Name</label>
-                                <input type="text" id="lastName" name="lastName" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="email" data-translate="form_email">Email Address</label>
-                            <input type="email" id="email" name="email" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="phone" data-translate="form_phone">Phone Number</label>
-                            <input type="tel" id="phone" name="phone">
-                        </div>
-                        <div class="form-group">
-                            <label for="subject" data-translate="form_subject">Subject</label>
-                            <select id="subject" name="subject" required>
-                                <option value="" data-translate="form_select_subject">Select a subject</option>
-                                <option value="training" data-translate="form_subject_training">Training Programs</option>
-                                <option value="consultation" data-translate="form_subject_consultation">Consultation Services</option>
-                                <option value="research" data-translate="form_subject_research">Research Collaboration</option>
-                                <option value="general" data-translate="form_subject_general">General Inquiry</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="message" data-translate="form_message">Message</label>
-                            <textarea id="message" name="message" rows="5" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary" data-translate="form_submit">Send Message</button>
-                    </form>
-                </div>
-                <div class="contact-info">
-                    <h2 data-translate="contact_info_title">Contact Information</h2>
-                    <div class="info-item">
-                        <i class="fas fa-envelope"></i>
-                        <div>
-                            <h3 data-translate="contact_email_title">Email</h3>
-                            <p>info@reframemhs.org</p>
-                        </div>
-                    </div>
-                    <div class="info-item">
-                        <i class="fas fa-phone"></i>
-                        <div>
-                            <h3 data-translate="contact_phone_title">Phone</h3>
-                            <p>+971 4 123 4567</p>
-                        </div>
-                    </div>
-                    <div class="info-item">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <div>
-                            <h3 data-translate="contact_address_title">Address</h3>
-                            <p data-translate="contact_address">Dubai, United Arab Emirates</p>
-                        </div>
-                    </div>
-                    <div class="social-contact">
-                        <h3 data-translate="contact_social_title">Follow Us</h3>
-                        <div class="social-links">
-                            <a href="#" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-                            <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                            <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-                            <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+      <!-- Dropdown -->
+      <li class="nav-dropdown">
+        <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
+          Services <i class="fa fa-chevron-down"></i>
+        </a>
+        <ul class="dropdown-menu">
+          <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+          <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+          <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" class="nav-link" data-translate="nav_consultations">TechnicalConsultations</a></li>
+        </ul>
+      </li>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Reframe MHS</h3>
-                    <p data-translate="footer_description">Unlocking the innate potential and resilience within each person and group across the Middle East.</p>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_quick_links">Quick Links</h4>
-                    <ul>
-                        <li><a href="about.html" data-translate="nav_about">About Us</a></li>
-                        <li><a href="insights.html" data-translate="nav_insights">Insights</a></li>
-                        <li><a href="events.html" data-translate="nav_events">Events</a></li>
-                        <li><a href="projects.html" data-translate="nav_projects">Projects</a></li>
-                        <li><a href="hub.html" data-translate="nav_hub">Hub</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_services">Services</h4>
-                    <ul>
-                        <li><a href="#" data-translate="footer_training">Training Programs</a></li>
-                        <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
-                        <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
-                        <li><a href="#" data-translate="footer_resources">Resources</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4 data-translate="footer_connect">Connect</h4>
-                    <div class="social-links">
-                        <a href="#" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                        <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p data-translate="footer_copyright">&copy; 2025 Reframe MHS. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
+      <li><a href="contact.html" class="nav-link active" data-translate="nav_contact">Contact</a></li>
+    </ul>
 
-    <script src="scripts/translations.js"></script>
-    <script src="scripts/main.js"></script>
+    <!-- Language Switcher -->
+    <div class="language-switcher">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <span class="lang-separator">|</span>
+      <button class="lang-btn" data-lang="ar">AR</button>
+    </div>
+
+    <!-- Login Button -->
+    <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
+
+    <!-- Hamburger -->
+    <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ================== OVERLAY MENU ================== -->
+<div class="overlay" id="mobile-menu" aria-hidden="true">
+  <nav class="overlay-nav">
+    <ul>
+      <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+      <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+      <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+      <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+      <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+      <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+      <li><a href="contact.html" class="nav-link active" data-translate="nav_contact">Contact</a></li>
+      <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
+    </ul>
+    <button class="close-btn" data-translate="close">Close</button>
+  </nav>
+</div>
+
+
+
+  <!-- Contact Hero Section -->
+  <section class="contact-hero">
+    <div class="container">
+      <div class="hero-content">
+        <h1 data-translate="contact_hero_title">Get in Touch</h1>
+        <p data-translate="contact_hero_subtitle">Ready to start your journey or learn more about our services? We're here to help.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Form + Info (Grid) -->
+  <section class="contact-form-section" id="contact">
+    <div class="container">
+      <div class="contact-content">
+        <!-- LEFT: Netlify Form -->
+        <div class="contact-form">
+          <h2 data-translate="contact_form_title">Send us a Message</h2>
+
+          <!-- PERFECT Netlify Form -->
+          <form
+            name="contact"
+            method="POST"
+            action="/thanks.html"
+            accept-charset="UTF-8"
+            data-netlify="true"
+            netlify-honeypot="bot-field"
+            autocomplete="on"
+          >
+            <!-- Netlify requirements -->
+            <input type="hidden" name="form-name" value="contact" />
+            <p style="display:none"><label>Don’t fill this out: <input name="bot-field" /></label></p>
+
+            <div class="form-row">
+              <div class="form-group">
+                <input type="text" id="firstName" name="firstName" placeholder=" " required autocomplete="given-name" />
+                <label for="firstName" data-translate="form_first_name">First Name</label>
+              </div>
+              <div class="form-group">
+                <input type="text" id="lastName" name="lastName" placeholder=" " required autocomplete="family-name" />
+                <label for="lastName" data-translate="form_last_name">Last Name</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <input type="email" id="email" name="email" placeholder=" " required autocomplete="email" />
+              <label for="email" data-translate="form_email">Email Address</label>
+            </div>
+
+            <div class="form-group">
+              <input type="tel" id="phone" name="phone" placeholder=" " inputmode="tel" autocomplete="tel" />
+              <label for="phone" data-translate="form_phone">Phone Number</label>
+            </div>
+
+            <div class="form-group">
+              <select id="subject" name="subject" required>
+                <option value="" selected disabled data-translate="form_select_subject">Select a subject</option>
+                <option value="training" data-translate="form_subject_training">Training Programs</option>
+                <option value="consultation" data-translate="form_subject_consultation">Consultation Services</option>
+                <option value="research" data-translate="form_subject_research">Research Collaboration</option>
+                <option value="general" data-translate="form_subject_general">General Inquiry</option>
+              </select>
+              <label for="subject" data-translate="form_subject">Subject</label>
+            </div>
+
+            <div class="form-group">
+              <textarea id="message" name="message" rows="5" placeholder=" " required></textarea>
+              <label for="message" data-translate="form_message">Message</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary" data-translate="form_submit">Send Message</button>
+          </form>
+        </div>
+
+        <!-- RIGHT: Contact Info -->
+        <aside class="contact-info" aria-labelledby="contact-info-title">
+          <h2 id="contact-info-title" data-translate="contact_info_title">Contact Information</h2>
+
+          <div class="info-item">
+            <i class="fas fa-envelope" aria-hidden="true"></i>
+            <div>
+              <h3 data-translate="contact_email_title">Email</h3>
+              <p><a href="mailto:info@reframemhs.com">info@reframemhs.com</a></p>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <i class="fas fa-phone" aria-hidden="true"></i>
+            <div>
+              <h3 data-translate="contact_phone_title">Phone</h3>
+              <p><a href="tel:+96170060681">+961 70 0606 81</a></p>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
+            <div>
+              <h3 data-translate="contact_address_title">Address</h3>
+              <p>Traboulsi street, Calot center, 8th floor, Badaro, Beirut, Lebanon</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Hidden Netlify detection form (guarantees build-time detection) -->
+  <form name="contact" netlify netlify-honeypot="bot-field" hidden>
+    <input type="hidden" name="form-name" value="contact" />
+    <input name="firstName" />
+    <input name="lastName" />
+    <input type="email" name="email" />
+    <input type="tel" name="phone" />
+    <select name="subject">
+      <option value="training">Training</option>
+      <option value="consultation">Consultation</option>
+      <option value="research">Research</option>
+      <option value="general">General</option>
+    </select>
+    <textarea name="message"></textarea>
+  </form>
+
+
+
+  
+
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      
+      <!-- وصف -->
+      <div class="footer-section">
+        <h3 data-translate="footer_brand">Reframe MHS</h3>
+        <p data-translate="footer_description">
+          Unlocking the innate potential and resilience within each person and group across the Middle East.
+        </p>
+      </div>
+
+      <!-- روابط سريعة -->
+      <div class="footer-section">
+        <h4 data-translate="footer_quick_links">Quick Links</h4>
+        <ul>
+          <li><a href="about.html" data-translate="nav_about">About Us</a></li>
+          <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
+          <li><a href="training.html" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
+        </ul>
+      </div>
+
+      <!-- خدمات -->
+      <div class="footer-section">
+        <h4 data-translate="footer_services">Services</h4>
+        <ul>
+          <li><a href="#" data-translate="footer_training">Training Programs</a></li>
+          <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
+          <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
+          <li><a href="#" data-translate="footer_resources">Resources</a></li>
+        </ul>
+      </div>
+
+      <!-- تواصل -->
+      <div class="footer-section">
+        <h4 data-translate="footer_connect">Connect</h4>
+        <div class="social-links">
+          <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+          <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        </div>
+
+        <!-- Newsletter -->
+        <div class="subscribe-section">
+          <div class="subscribe-box">
+            <h2 data-translate="footer_subscribe_title">Stay Connected</h2>
+            <p data-translate="footer_subscribe_text">
+              Subscribe to our newsletter for updates, workshops, and events.
+            </p>
+            <form class="subscribe-form" action="#" method="post">
+              <input type="email" name="email" placeholder="Enter your email" 
+                     data-translate-placeholder="footer_subscribe_placeholder" required>
+              <button type="submit" class="btn btn-primary" data-translate="footer_subscribe_btn">Subscribe</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- حقوق -->
+    <div class="footer-bottom">
+      <p data-translate="footer_copyright">
+        &copy;2025 Reframe Mental Health Services. All rights reserved.
+      </p>
+    </div>
+  </div>
+</footer>
+
+
+
+
 </body>
 </html>
+  <!-- Scripts (keep your site scripts) -->
+
+  <script src="scripts/main.js"></script>

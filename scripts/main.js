@@ -233,6 +233,7 @@ function initializeContactForm() {
             e.preventDefault();
             
             // Get form data
+
             const formData = new FormData(form);
             const data = Object.fromEntries(formData);
             
@@ -698,6 +699,28 @@ function initializeCalendarNavigation() {
         }
         updateCalendar();
     });
+    function generateCalendarDays(month, year) {
+    const daysContainer = document.getElementById('calendar-days');
+    daysContainer.innerHTML = ''; // Clear old days
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate(); // Total days in month
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sunday, 1 = Monday...
+
+    // Optional: Add empty spans before 1st day for alignment (assuming week starts on Sunday)
+    for (let i = 0; i < firstDayIndex; i++) {
+        const emptySpan = document.createElement('span');
+        emptySpan.classList.add('empty');
+        daysContainer.appendChild(emptySpan);
+    }
+
+    // Generate actual days
+    for (let day = 1; day <= daysInMonth; day++) {
+        const daySpan = document.createElement('span');
+        daySpan.textContent = day;
+        daysContainer.appendChild(daySpan);
+    }
+}
+
 }
 
 // Initialize Project Expansion (for Projects page)
@@ -726,25 +749,287 @@ function initializeProjectExpansion() {
     });
 }
 
-// Initialize Partners Carousel (optional animation)
-function initializePartnersCarousel() {
-    const carouselTrack = document.querySelector('.carousel-track');
-    if (!carouselTrack) return;
-    
-    // Optional: Add auto-scroll animation for partners
-    let scrollPosition = 0;
-    const scrollSpeed = 1;
-    
-    function autoScroll() {
-        if (carouselTrack.scrollWidth > carouselTrack.clientWidth) {
-            scrollPosition += scrollSpeed;
-            if (scrollPosition >= carouselTrack.scrollWidth - carouselTrack.clientWidth) {
-                scrollPosition = 0;
-            }
-            carouselTrack.scrollLeft = scrollPosition;
-        }
-    }
-    
+
     // Uncomment the line below to enable auto-scrolling
     // setInterval(autoScroll, 50);
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const buttons = document.querySelectorAll('.tab-btn');
+    const contents = document.querySelectorAll('.tab-content');
+
+    buttons.forEach(button => {
+      button.addEventListener('click', () => {
+        // Remove 'active' from all buttons
+        buttons.forEach(btn => btn.classList.remove('active'));
+
+        // Remove 'active' from all contents
+        contents.forEach(content => content.classList.remove('active'));
+
+        // Add 'active' to clicked button
+        button.classList.add('active');
+
+        // Show the matching content
+        const targetId = button.getAttribute('data-tab');
+        const targetContent = document.getElementById(targetId);
+        if (targetContent) {
+          targetContent.classList.add('active');
+        }
+      });
+    });
+  });
+  // Contact form functionality
+function initializeContactForm() {
+    const form = document.getElementById('contactForm');
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form data
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            
+            // Validate required fields
+            const requiredFields = ['firstName', 'lastName', 'email', 'subject', 'message'];
+            const missingFields = requiredFields.filter(field => !data[field]);
+            
+            if (missingFields.length > 0) {
+                showMessage('Please fill in all required fields.', 'error');
+                return;
+            }
+
+            // Validate email
+            if (!validateEmail(data.email)) {
+                showMessage('Please enter a valid email address.', 'error');
+                return;
+            }
+
+            // Show loading state
+            const submitButton = form.querySelector('button[type="submit"]');
+            showLoading(submitButton, true);
+            
+            // Simulate form submission
+            setTimeout(() => {
+                showLoading(submitButton, false);
+                form.reset();
+                showMessage('Thank you for your message! We\'ll get back to you soon.', 'success');
+            }, 2000);
+        });
+    }
 }
+
+const form = document.getElementById("contact-form");
+const statusDiv = document.getElementById("status");
+
+// غيري هذا الرابط برابط الفورم الخاص في Formspree
+const formspreeURL = "";
+
+form.addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  const formData = new FormData(form);
+
+  fetch(formspreeURL, {
+    method: "POST",
+    body: formData,
+    headers: {
+      'Accept': 'application/json'
+    },
+  })
+    .then(response => {
+      if (response.ok) {
+        statusDiv.innerText = "Message sent successfully! 😊";
+        form.reset();
+      } else {
+        response.json().then(data => {
+          if (data.errors) {
+            statusDiv.innerText = data.errors.map(error => error.message).join(", ");
+          } else {
+            statusDiv.innerText = "Oops! There was a problem sending your message.";
+          }
+        });
+      }
+    })
+    .catch(() => {
+      statusDiv.innerText = "Oops! There was a problem sending your message.";
+    });
+});
+
+
+  setTimeout(() => {
+    newsletterWidget.classList.remove('open');
+    newsletterWidget.classList.add('closed');
+    openBtn.classList.remove('hidden');
+    successMsg.style.display = 'none';
+    form.style.display = 'flex';
+    form.reset();
+  }, 3000); 
+document.querySelectorAll('.calendar-nav button').forEach(button => {
+  button.addEventListener('click', function () {
+    alert('Button clicked!');
+    // أو تغيير الشهر مثلاً
+  });
+});
+
+// ننتظر تحميل كل عناصر الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+
+  // إضافة تأثير hover قوي لكل project-item (اختياري)
+  document.querySelectorAll('.project-item').forEach(item => {
+    item.addEventListener("mouseenter", () => {
+      item.style.transform = "scale(1.05) rotate(-1deg)";
+      item.style.boxShadow = "0 12px 30px rgba(22,160,133,0.4)";
+    });
+    item.addEventListener("mouseleave", () => {
+      item.style.transform = "scale(1) rotate(0)";
+      item.style.boxShadow = "0 3px 10px rgba(0,0,0,0.05)";
+    });
+  });
+
+  // دالة لتبديل عرض الملفات وتغيير أيقونة الزر
+  function toggleFiles(button){
+    const project = button.closest('.project-item');
+    const icon = button.querySelector('i');
+    project.classList.toggle('expanded');
+    if(project.classList.contains('expanded')){
+      icon.classList.replace('fa-plus','fa-minus');
+    } else {
+      icon.classList.replace('fa-minus','fa-plus');
+    }
+  }
+
+  // إضافة حدث لكل header لفتح الملفات عند الضغط
+  document.querySelectorAll('.project-header').forEach(header => {
+    header.addEventListener('click', function(e) {
+      // منع الضغط على أي عناصر داخل header من إيقاف عمل الزر
+      const btn = header.querySelector('.expand-btn');
+      toggleFiles(btn);
+    });
+  });
+
+});(() => {
+  const form = document.getElementById('lab-subscribe');
+  const wrap = form.querySelector('.input-wrap');
+  const email = form.querySelector('#lab-email');
+  const msg = document.getElementById('lab-message');
+
+  const isValid = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+  email.addEventListener('input', () => {
+    wrap.classList.remove('error','success','loading');
+    msg.textContent=''; msg.className='form-message';
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const v = email.value.trim();
+
+    if (!isValid(v)){
+      wrap.classList.add('error');
+      msg.textContent='Please enter a valid email.'; msg.className='form-message error';
+      email.focus(); return;
+    }
+
+    // loading state
+    wrap.classList.add('loading');
+    email.readOnly = true;
+
+    try{
+      const res = await fetch(form.action || '/api/subscribe', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email: v })
+      });
+      if(!res.ok) throw new Error();
+
+      wrap.classList.remove('loading'); wrap.classList.add('success');
+      msg.textContent='Thanks! Check your inbox to confirm.'; msg.className='form-message success';
+      form.reset();
+    }catch{
+      wrap.classList.remove('loading');
+      msg.textContent='Something went wrong. Try again.'; msg.className='form-message error';
+    }finally{
+      email.readOnly = false;
+    }
+  });
+
+document.addEventListener("DOMContentLoaded", () => {
+  // اختار كل الصور بالصفحة
+  const images = document.querySelectorAll("img");
+
+  // ✅ أولاً: حمل كل الصور بالخلفية فوراً
+  images.forEach(img => {
+    const src = img.getAttribute("data-src") || img.src;
+    if (src) {
+      const preImg = new Image();
+      preImg.src = src;
+    }
+  });
+
+  // ✅ ثانياً: بدّل الصور المأجلة (data-src → src) بسرعة عند ظهورها
+  const options = { rootMargin: "250px", threshold: 0.1 };
+  const observer = new IntersectionObserver((entries, obs) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        const src = img.getAttribute("data-src");
+        if (src && img.src !== src) {
+          img.src = src;
+          img.onload = () => img.classList.add("loaded");
+          obs.unobserve(img);
+        }
+      }
+    });
+  }, options);
+  images.forEach(img => observer.observe(img));
+
+  // ✅ ثالثاً: خزّن الصور بالكاش حتى تفتح فوراً في المرات القادمة
+  window.addEventListener("load", () => {
+    if ("caches" in window) {
+      caches.open("instant-image-cache").then(cache => {
+        images.forEach(img => {
+          const src = img.getAttribute("data-src") || img.src;
+          if (src) {
+            fetch(src)
+              .then(res => {
+                if (res.ok) cache.put(src, res);
+              })
+              .catch(() => null);
+          }
+        });
+      });
+    }
+  });
+});
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const dropdowns = document.querySelectorAll('.nav-dropdown');
+
+    dropdowns.forEach(drop => {
+      const toggle = drop.querySelector('.dropdown-toggle');
+
+      // ⏩ افتح القائمة بالنقر فقط
+      toggle.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        drop.classList.toggle('active');
+
+        // ⛔ أغلق أي dropdown آخر مفتوح
+        dropdowns.forEach(other => {
+          if (other !== drop) other.classList.remove('active');
+        });
+      });
+    });
+
+    // ⛔ إغلاق عند النقر خارج القائمة
+    document.addEventListener('click', e => {
+      dropdowns.forEach(drop => {
+        if (!drop.contains(e.target)) drop.classList.remove('active');
+      });
+    });
+  });
+
+
+})();
+
+
