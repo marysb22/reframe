@@ -734,6 +734,95 @@ body {
     left: 10px;
   }
 }
+/* ✅ Mobile Navbar Order and Logo Fix */
+@media (max-width: 992px) {
+  .nav-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: 1rem;
+    height: 70px;
+  }
+
+  /* ✅ اجعل الترتيب Logo → Lang → Hamburger */
+  .nav-logo {
+    order: 1;
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .nav-logo img {
+    width: 150px;
+    height: auto;
+    display: block;
+  }
+
+  .language-switcher {
+    order: 2;
+    flex: 0;
+    margin-inline: auto;
+    transform: translateX(8px);
+  }
+
+  .hamburger {
+    order: 3;
+    position: relative;
+    right: 0;
+    top: 0;
+    transform: none;
+    background: white;
+    border: 1px solid #e3e3e3;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+
+  /* ✅ لا تظهر أي لوجو ثاني */
+  .nav-logo img:last-child {
+    display: none !important;
+  }
+
+  /* ✅ اضبط الـHero للموبايل */
+  .hero {
+    height: 300px;
+    overflow: hidden;
+    margin-top: 75px;
+  }
+
+  .bento-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 2px;
+  }
+
+  .bento-item {
+    height: 120px;
+    object-fit: cover;
+    border-radius: 6px;
+    filter: brightness(0.9);
+  }
+
+  .hero-text h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .hero-text p {
+    font-size: 0.9rem;
+  }
+}
+
+/* ✅ تحسين إضافي لشاشات صغيرة جدًا */
+@media (max-width: 480px) {
+  .nav-logo img {
+    width: 135px;
+  }
+  .hero {
+    height: 270px;
+  }
+  .bento-item {
+    height: 100px;
+  }
+}
 
 
 /* Section Headers */
