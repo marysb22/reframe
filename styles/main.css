@@ -359,6 +359,58 @@ body {
   pointer-events: none;
 }
 
+@media (max-width: 992px) {
+  .nav-container {
+    padding: 0 16px;  /* تعديل على الحافة اليمنى/اليسرى */
+    height: 78px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;         /* أقل من السابق لجعلها أقرب */
+    height: 46px;
+  }
+
+  .language-switcher {
+    height: 46px;
+    min-width: 80px;
+    padding: 0 12px;  /* تقليل padding لتقليل الفجوة */
+    border: 1.4px solid #ddd;
+    border-radius: 12px;
+    position: relative;
+    top: 2px;         /* رفع بسيط إنزم مع الهامبرغر */
+    right: 4px;       /* تحريك للأيسر شوي */
+  }
+
+  .hamburger {
+    width: 46px;
+    height: 46px;
+    position: relative;
+    top: 1px;         /* رفع بسيط لمواصلة الخط */
+    right: 0;
+  }
+
+  @media (max-width: 480px) {
+    .language-switcher,
+    .hamburger {
+      height: 42px;
+      width: 42px;
+      border-radius: 10px;
+    }
+    .language-switcher {
+      padding: 0 10px;
+      top: 0px;
+      right: 2px;
+    }
+    .hamburger {
+      top: 0px;
+    }
+  }
+}
 
 /* ===== Overlay Sidebar Modern 2025 ===== */
 .overlay {
