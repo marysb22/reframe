@@ -1020,8 +1020,8 @@ body {
   }
 
   .hamburger span {
-    width: 24px;
-    height: 2px;
+    width: 28px;
+    height: 1.5px;
     background: #333;
     border-radius: 2px;
     transition: 0.3s;
