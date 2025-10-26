@@ -600,52 +600,44 @@ h1{text-align:center; margin-bottom:100px;}
 </style>
 </head>
 <body>
-  <!-- Navigation -->
-  <nav class="navbar">
-    <div class="nav-container">
-      <!-- Logo -->
-      <div class="nav-logo">
-        <a href="index.html">
-          <img src="logo.gif" alt="Company Logo" width="220" />
-        </a>
-      </div>
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="nav-logo">
+      <a href="index.html"><img src="logo.gif" alt="Reframe Logo" width="220"></a>
+    </div>
 
-      <!-- Desktop Menu -->
-      <ul class="nav-menu">
-        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-        
-        <li class="nav-dropdown">
-          <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
-            Services <i class="fa fa-chevron-down"></i>
-          </a>
-          <ul class="dropdown-menu">
-            <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
-            <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-            <li><a href="events.html" class="nav-link active" data-translate="nav_training">Training</a></li>
-            <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
-          </ul>
-        </li>
+    <ul class="nav-menu">
+      <li><a href="index.html" class="nav-link">Home</a></li>
+      <li><a href="about.html" class="nav-link">About</a></li>
+      <li class="nav-dropdown">
+        <a href="#" class="nav-link dropdown-toggle">Services <i class="fa fa-chevron-down"></i></a>
+        <ul class="dropdown-menu">
+          <li><a href="Projects.html" class="nav-link">Mental Health Lab</a></li>
+          <li><a href="hub.html" class="nav-link">Hub</a></li>
+          <li><a href="events.html" class="nav-link">Training</a></li>
+          <li><a href="t.html" class="nav-link">Technical Consultations</a></li>
+        </ul>
+      </li>
+      <li><a href="contact.html" class="nav-link">Contact</a></li>
+    </ul>
 
-        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
-      </ul>
-
-      <!-- Language Switcher -->
+    <!-- ✅ New wrapper to align Lang + Login + Hamburger -->
+    <div class="nav-right">
       <div class="language-switcher">
-        <button class="lang-btn active" data-lang="en">EN</button>
+        <button class="lang-btn active">EN</button>
         <span class="lang-separator">|</span>
-        <button class="lang-btn" data-lang="ar">AR</button>
+        <button class="lang-btn">AR</button>
       </div>
 
-      <!-- Login Button -->
       <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
 
-      <!-- Hamburger -->
       <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
     </div>
-  </nav>
+  </div>
+</nav>
+
 
   <!-- Overlay Menu for Mobile -->
   <div class="overlay" id="mobile-menu" aria-hidden="true">

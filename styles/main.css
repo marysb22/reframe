@@ -863,69 +863,52 @@ body {
   }
 }
 
-/* ✅ MOBILE PERFECT NAVBAR ALIGNMENT (PRO 2025) */
 @media (max-width: 992px) {
   .navbar {
-    height: 78px !important;
+    height: 78px;
     display: flex;
     align-items: center;
-    justify-content: center;
     background: rgba(255,255,255,0.97);
-    backdrop-filter: blur(10px);
     border-bottom: 1px solid #eee;
+    backdrop-filter: blur(10px);
   }
 
   .nav-container {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    width: 100%;
-    padding: 0 18px !important;
-    height: 78px !important;
-  }
-
-  /* === LOGO === */
-  .nav-logo {
-    order: 1;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 18px;
+    height: 78px;
   }
 
   .nav-logo img {
-    width: 165px !important;
+    width: 165px;
     height: auto;
-    object-fit: contain;
   }
 
-  /* === RIGHT SIDE CONTAINER === */
+  /* ✅ Right side container (Lang + Login + Hamburger) */
   .nav-right {
-    order: 2;
     display: flex;
-    align-items: center;
+    align-items: center;   /* نفس الخط تماماً */
     justify-content: center;
-    gap: 10px;
+    gap: 12px;
+    height: 46px;
   }
 
-  /* === LANGUAGE SWITCHER === */
+  /* === Language Switcher === */
   .language-switcher {
-    height: 46px;
-    width: auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    background: #fff;
+    height: 46px;
+    padding: 0 14px;
     border: 1.5px solid #ddd;
     border-radius: 12px;
-    padding: 0 14px;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     font-size: 0.9rem;
     font-weight: 600;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    transition: all 0.25s ease;
-  }
-
-  .language-switcher:hover {
-    transform: scale(1.03);
   }
 
   .lang-btn {
@@ -934,28 +917,35 @@ body {
     color: #333;
     cursor: pointer;
     font-weight: 600;
-    font-size: 0.9rem;
   }
 
   .lang-btn.active { color: #4D9794; }
-  .lang-separator { color: #999; }
+  .lang-separator { color: #aaa; }
 
-  /* === HAMBURGER === */
+  /* === Login Button (Optional on Mobile) === */
+  .login-btn {
+    display: inline-block;
+    font-weight: 600;
+    color: #4D9794;
+    border: 1.5px solid #4D9794;
+    padding: 8px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.25s ease;
+  }
+  .login-btn:hover { background: #4D9794; color: #fff; }
+
+  /* === Hamburger === */
   .hamburger {
     width: 46px;
     height: 46px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #ffffff;
+    background: #fff;
     border: 1.5px solid #ddd;
     border-radius: 12px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    transition: all 0.25s ease;
-  }
-
-  .hamburger:hover {
-    transform: scale(1.03);
   }
 
   .hamburger span {
@@ -965,39 +955,15 @@ body {
     border-radius: 2px;
   }
 
-  /* === ALIGN BOTH PERFECTLY === */
-  .language-switcher,
-  .hamburger {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    vertical-align: middle;
-  }
-
-  /* === MINI DEVICES FIX === */
+  /* 📱 Perfect balance for small screens */
   @media (max-width: 480px) {
-    .nav-logo img {
-      width: 145px !important;
-    }
-
-    .language-switcher,
-    .hamburger {
+    .nav-logo img { width: 140px; }
+    .language-switcher, .hamburger, .login-btn {
       height: 42px;
-      width: 42px;
       border-radius: 10px;
     }
-
-    .language-switcher {
-      font-size: 0.85rem;
-      padding: 0 10px;
-    }
-  }
-}
-
-/* ✅ HIDE LOGIN BUTTON ON MOBILE */
-@media (max-width: 992px) {
-  .login-btn {
-    display: none !important;
+    .language-switcher { padding: 0 10px; }
+    .login-btn { font-size: 0.85rem; padding: 6px 12px; }
   }
 }
 
