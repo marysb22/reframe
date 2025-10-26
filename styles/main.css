@@ -918,6 +918,15 @@ body {
     line-height: 1.5;
   }
 }
+/* 🚫 Hide Login Button on Mobile */
+@media (max-width: 992px) {
+  .login-btn {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
 
 
 /* 🌐 PRO 2025 PERFECT HEADER ALIGNMENT */
@@ -1012,7 +1021,7 @@ body {
 
   .hamburger span {
     width: 24px;
-    height: 2.6px;
+    height: 2px;
     background: #333;
     border-radius: 2px;
     transition: 0.3s;
