@@ -2908,9 +2908,16 @@ h1{text-align:center; margin-bottom:100px;}
   }
 }
 /* =========================================================
-📱 FINAL PIXEL PERFECT NAV FIX (Language + Hamburger)
+📱 FINAL FIX - Mobile Navbar Alignment
 ========================================================= */
 @media (max-width: 992px) {
+
+  /* Hide login button on mobile */
+  .login-btn {
+    display: none !important;
+  }
+
+  /* Navbar Container */
   .nav-container {
     display: flex !important;
     align-items: center !important;
@@ -2920,36 +2927,34 @@ h1{text-align:center; margin-bottom:100px;}
     position: relative;
   }
 
-  /* === Logo === */
+  /* Logo */
   .nav-logo img {
-    width: 158px !important;
+    width: 155px !important;
     height: auto !important;
     display: block;
     object-fit: contain;
-    transform: translateY(1px);
   }
 
-  /* === Language switcher === */
+  /* Language Switcher */
   .language-switcher {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     height: 44px !important;
     line-height: 44px !important;
-    border-radius: 12px;
     background: #fff;
-    border: 1.5px solid #dcdcdc;
+    border: 1.4px solid #ddd;
+    border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     padding: 0 12px !important;
     font-size: 0.9rem;
     font-weight: 600;
-    margin-right: 6px;
-    margin-top: 0;
+    margin-right: 8px;
     position: relative;
-    top: 1px; /* Adjust this up/down if needed */
+    top: 2px; /* adjust vertical alignment */
   }
 
-  /* === Hamburger === */
+  /* Hamburger */
   .hamburger {
     display: flex !important;
     align-items: center !important;
@@ -2958,11 +2963,11 @@ h1{text-align:center; margin-bottom:100px;}
     height: 44px !important;
     border-radius: 12px;
     background: #ffffff;
-    border: 1.5px solid #ddd;
+    border: 1.4px solid #ddd;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    margin-left: 6px;
+    margin-left: 4px;
     position: relative;
-    top: 1px; /* same as language */
+    top: 2px; /* perfectly aligned with lang */
   }
 
   .hamburger span {
@@ -2972,18 +2977,17 @@ h1{text-align:center; margin-bottom:100px;}
     border-radius: 2px;
   }
 
-  /* === keep everything aligned === */
+  /* Perfect line-up */
   .language-switcher,
   .hamburger {
     align-self: center !important;
   }
 
-  /* === Ultra small devices (iPhone SE, etc) === */
+  /* Ultra small screens (iPhone SE) */
   @media (max-width: 480px) {
     .nav-logo img {
       width: 138px !important;
     }
-
     .language-switcher {
       height: 40px !important;
       line-height: 40px !important;
@@ -2991,7 +2995,6 @@ h1{text-align:center; margin-bottom:100px;}
       padding: 0 10px !important;
       top: 1px !important;
     }
-
     .hamburger {
       width: 40px !important;
       height: 40px !important;
