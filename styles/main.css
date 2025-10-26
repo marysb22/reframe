@@ -864,23 +864,21 @@ body {
 }
 
 
-
- /* ✅ FULL HERO PHOTO ON MOBILE */
+/* ✅ FULL HERO PHOTO ON MOBILE */
 @media (max-width: 768px) {
   .hero {
-    background-image: url("p11.jpeg"); /* ← ضعي هنا اسم الصورة التي تريدينها */
-    background-size: cover;            /* تغطي كامل العرض والارتفاع */
-    background-position: center center;/* متمركزة تمامًا */
+    background-image: url("p11.jpeg"); /* ← غيّريها لاسم الصورة */
+    background-size: cover;
+    background-position: center center;
     background-repeat: no-repeat;
     background-attachment: scroll;
     width: 100%;
-    height: 100vh;                     /* تأخذ كامل ارتفاع شاشة الهاتف */
+    height: 100vh; /* يغطي شاشة الهاتف بالكامل */
     margin-top: 75px;
     position: relative;
     overflow: hidden;
   }
 
-  /* ✅ تغميق خفيف لتوضيح النص */
   .hero::after {
     content: '';
     position: absolute;
@@ -889,7 +887,6 @@ body {
     z-index: 1;
   }
 
-  /* النص فوق الصورة */
   .hero-overlay {
     position: absolute;
     inset: 0;
@@ -918,6 +915,7 @@ body {
     line-height: 1.5;
   }
 }
+
 /* 🚫 Hide Login Button on Mobile */
 @media (max-width: 992px) {
   .login-btn {
@@ -927,7 +925,6 @@ body {
     pointer-events: none !important;
   }
 }
-
 
 /* 🌐 PRO 2025 PERFECT HEADER ALIGNMENT */
 @media (max-width: 992px) {
@@ -969,18 +966,25 @@ body {
   /* === LANGUAGE SWITCHER === */
   .language-switcher {
     order: 2;
+    height: 46px;
+    min-width: 46px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
     background: #fff;
-    border: 1.4px solid #dadada;
-    border-radius: 30px;
-    padding: 5px 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    font-size: 0.95rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 0 12px;
+    font-size: 0.9rem;
     font-weight: 600;
-    transform: translateY(2px);
+    color: #333;
+    transition: all 0.3s ease;
+  }
+
+  .language-switcher:hover {
+    transform: scale(1.03);
   }
 
   .lang-btn {
@@ -992,6 +996,7 @@ body {
     font-size: 0.9rem;
     transition: color 0.2s ease;
   }
+
   .lang-btn.active { color: #4D9794; }
 
   .lang-separator {
@@ -1013,6 +1018,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
+    margin-left: 10px; /* تباعد جميل بين اللغة والقائمة */
   }
 
   .hamburger:hover {
@@ -1034,71 +1040,25 @@ body {
     align-self: center;
   }
 
-  /* === ULTRA SMALL FIX (iphones mini) === */
+  /* === ULTRA SMALL FIX (iPhone mini) === */
   @media (max-width: 480px) {
     .nav-logo img {
       width: 145px !important;
     }
-    .language-switcher {
-      padding: 4px 12px;
-      font-size: 0.85rem;
-      gap: 4px;
-    }
-    .hamburger {
-      width: 42px;
-      height: 42px;
-    }
-  }
-}
-
-
-/* ✅ Adjust spacing between language switcher and hamburger */
-@media (max-width: 992px) {
-  .language-switcher {
-    margin-right: 14px; /* المسافة بين اللغة والهامبرغر */
-  }
-
-  [dir="rtl"] .language-switcher {
-    margin-left: 14px; /* بالعكس بالعربي */
-  }
-
-  .hamburger {
-    margin-left: 6px; /* مسافة بسيطة توازن التصميم */
-  }
-}
-/* ✅ Make Language Switcher same height & width as Hamburger */
-@media (max-width: 992px) {
-  .language-switcher {
-    height: 46px;
-    min-width: 46px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1.5px solid #ddd;
-    border-radius: 12px;
-    background: #ffffff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    padding: 0 12px; /* توازن أفقي */
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #333;
-    transition: all 0.3s ease;
-  }
-
-  .language-switcher:hover {
-    transform: scale(1.03);
-  }
-
-  /* 🎯 Mini fix for iPhone SE */
-  @media (max-width: 480px) {
     .language-switcher {
       height: 42px;
       min-width: 42px;
       font-size: 0.85rem;
       border-radius: 10px;
     }
+    .hamburger {
+      width: 42px;
+      height: 42px;
+      margin-left: 8px;
+    }
   }
 }
+
 
 .section-header p {
     font-size: 1.1rem;
