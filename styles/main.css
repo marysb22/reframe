@@ -734,18 +734,33 @@ body {
     left: 10px;
   }
 }
-/* ✅ Perfected Mobile Header Layout (Logo → EN/AR → Menu) */
+/* === PRO Mobile Header & Hero Fix === */
 @media (max-width: 992px) {
+  /* --- Header Container --- */
+  .navbar {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #eee;
+    height: 70px !important;
+  }
+
   .nav-container {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     padding: 0 1rem !important;
-    height: 70px !important;
     position: relative;
+    height: 70px !important;
   }
 
-  /* 1️⃣ Logo first */
+  /* --- Remove login on mobile --- */
+  .nav-actions a[href*="login"],
+  .nav-actions .login,
+  .nav-actions button {
+    display: none !important;
+  }
+
+  /* --- Logo first --- */
   .nav-logo {
     order: 1 !important;
     flex: 1;
@@ -754,45 +769,44 @@ body {
   }
 
   .nav-logo img {
-    display: block;
-    width: 150px;
+    width: 160px !important;
     height: auto;
+    display: block;
   }
 
-  /* 2️⃣ Language switcher next (center) */
+  /* --- Language switcher second --- */
   .language-switcher {
     order: 2 !important;
-    position: relative;
     margin: 0 auto;
-    z-index: 1001;
+    background: #fff;
+    border: 1.5px solid #e3e3e3;
+    border-radius: 30px;
+    padding: 4px 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
 
-  /* 3️⃣ Hamburger last (right) */
+  /* --- Hamburger third --- */
   .hamburger {
     order: 3 !important;
     position: relative;
     right: 0;
-    top: 0;
-    transform: none;
     margin-left: auto;
-    z-index: 1002;
     background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    width: 40px;
+    height: 40px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
   }
 
-  /* 🚫 Hide "Login" button entirely on mobile */
-  .nav-actions a[href*="login"],
-  .nav-actions .login,
-  .nav-actions button {
-    display: none !important;
-  }
-
-  /* ✅ Fix hero section for mobile */
+  /* --- Hero section refinement --- */
   .hero {
-    height: 360px;
-    margin-top: 75px !important;
+    position: relative;
+    height: 360px !important;
+    margin-top: 80px !important;
     overflow: hidden;
     border-radius: 0;
   }
@@ -804,17 +818,40 @@ body {
   }
 
   .bento-item {
-    height: 120px;
     object-fit: cover;
-    border-radius: 6px;
-    filter: brightness(0.9);
+    width: 100%;
+    height: 120px;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+  }
+
+  .bento-item:hover {
+    transform: scale(1.02);
+  }
+
+  /* Subtle gradient for overlay harmony */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.5), rgba(0,0,0,0.1));
+    z-index: 1;
+  }
+
+  /* Hero text styling */
+  .hero-overlay {
+    z-index: 2;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    text-align: center;
+    padding: 30px 20px;
   }
 
   .hero-text {
-    max-width: 90%;
     color: #fff;
-    text-align: center;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    max-width: 90%;
   }
 
   .hero-text h1 {
@@ -824,11 +861,11 @@ body {
 
   .hero-text p {
     font-size: 0.9rem;
-    line-height: 1.4;
+    line-height: 1.5;
   }
 }
 
-/* ✅ Extra fine-tuning for small phones */
+/* --- Ultra small screens (iPhone SE, older Android) --- */
 @media (max-width: 480px) {
   .nav-logo img {
     width: 135px !important;
