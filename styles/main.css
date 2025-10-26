@@ -2908,98 +2908,96 @@ h1{text-align:center; margin-bottom:100px;}
   }
 }
 /* =========================================================
-📱 PERFECT SAME-LINE ALIGNMENT FIX (LOGO + LANG + HAMBURGER)
+📱 FINAL MOBILE NAVBAR ALIGNMENT FIX (Pixel-Perfect)
 ========================================================= */
 @media (max-width: 992px) {
+  .navbar {
+    height: 78px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
   .nav-container {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     height: 78px !important;
-    padding: 0 14px !important;
+    padding: 0 16px !important;
   }
 
-  /* LOGO */
-  .nav-logo {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-  }
+  /* ✅ LOGO */
   .nav-logo img {
-    width: 165px !important;
+    width: 160px !important;
     height: auto !important;
     display: block;
-    transform: translateY(1px); /* دقة محاذاة مثالية */
+    object-fit: contain;
+    transform: translateY(1px);
   }
 
-  /* LANGUAGE */
+  /* ✅ LANGUAGE SWITCHER */
   .language-switcher {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    height: 46px !important;
-    line-height: 46px !important;
+    height: 44px !important;
+    border: 1.5px solid #dadada;
     border-radius: 12px;
     background: #fff;
-    border: 1.5px solid #dcdcdc;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    padding: 0 14px !important;
     font-size: 0.9rem;
     font-weight: 600;
-    padding: 0 14px !important;
-    position: relative;
-    top: 1px; /* 🔹 ارتفاع دقيق لتساوي الهامبرغر */
     margin-right: 10px;
+    position: relative;
+    top: 2px; /* 🔹 رفع بسيط لتتماشى مع الهامبرغر */
   }
 
-  /* HAMBURGER */
+  /* ✅ HAMBURGER */
   .hamburger {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 46px !important;
-    height: 46px !important;
+    width: 44px !important;
+    height: 44px !important;
     border-radius: 12px;
     background: #ffffff;
     border: 1.5px solid #ddd;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    transition: all 0.3s ease;
     position: relative;
-    top: 1px; /* 🔹 نفس ارتفاع اللغة بالضبط */
+    top: 2px; /* 🔹 نفس ارتفاع اللغة بالضبط */
     margin-left: 6px;
+    transition: all 0.3s ease;
   }
 
   .hamburger span {
-    width: 24px;
+    width: 22px;
     height: 2.6px;
     background: #333;
     border-radius: 2px;
   }
 
-  /* HOVER slight animation */
-  .hamburger:hover {
-    transform: scale(1.03);
-  }
-
-  /* ALIGN ALL ELEMENTS ON SAME LINE */
+  /* ✅ كل العناصر بنفس الخط تمامًا */
   .nav-logo img,
   .language-switcher,
   .hamburger {
     align-self: center !important;
   }
 
-  /* ULTRA SMALL DEVICES */
+  /* ✅ شاشات صغيرة جدًا */
   @media (max-width: 480px) {
-    .nav-logo img { width: 140px !important; }
+    .nav-logo img {
+      width: 138px !important;
+    }
     .language-switcher {
-      height: 42px !important;
-      line-height: 42px !important;
-      font-size: 0.85rem !important;
+      height: 40px !important;
       padding: 0 10px !important;
+      font-size: 0.85rem;
+      top: 1px;
     }
     .hamburger {
-      width: 42px !important;
-      height: 42px !important;
-      top: 1px !important;
+      width: 40px !important;
+      height: 40px !important;
+      top: 1px;
     }
   }
 }
