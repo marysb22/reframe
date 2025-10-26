@@ -94,102 +94,150 @@
       </div>
     </div>
   </section>
+<!-- Contact Form + Info (Grid) -->
+<section class="contact-form-section" id="contact">
+  <div class="container">
+    <div class="contact-content">
+      <!-- LEFT: Netlify Form -->
+      <div class="contact-form">
+        <h2 data-translate="contact_form_title">Send us a Message</h2>
 
-  <!-- Contact Form + Info (Grid) -->
-  <section class="contact-form-section" id="contact">
-    <div class="container">
-      <div class="contact-content">
-        <!-- LEFT: Netlify Form -->
-        <div class="contact-form">
-          <h2 data-translate="contact_form_title">Send us a Message</h2>
+        <!-- ✅ PERFECT Netlify Form -->
+        <form
+          name="contact"
+          method="POST"
+          data-netlify="true"
+          netlify-honeypot="bot-field"
+          action="/thanks.html"
+        >
+          <!-- Required hidden inputs -->
+          <input type="hidden" name="form-name" value="contact" />
+          <p class="hidden" style="display:none">
+            <label>Don’t fill this out: <input name="bot-field" /></label>
+          </p>
 
-          <!-- PERFECT Netlify Form -->
-          <form
-            name="contact"
-            method="POST"
-            action="/thanks.html"
-            accept-charset="UTF-8"
-            data-netlify="true"
-            netlify-honeypot="bot-field"
-            autocomplete="on"
-          >
-            <!-- Netlify requirements -->
-            <input type="hidden" name="form-name" value="contact" />
-            <p style="display:none"><label>Don’t fill this out: <input name="bot-field" /></label></p>
-
-            <div class="form-row">
-              <div class="form-group">
-                <input type="text" id="firstName" name="firstName" placeholder=" " required autocomplete="given-name" />
-                <label for="firstName" data-translate="form_first_name">First Name</label>
-              </div>
-              <div class="form-group">
-                <input type="text" id="lastName" name="lastName" placeholder=" " required autocomplete="family-name" />
-                <label for="lastName" data-translate="form_last_name">Last Name</label>
-              </div>
+          <div class="form-row">
+            <div class="form-group">
+              <input
+                type="text"
+                id="firstName"
+                name="firstName"
+                placeholder=" "
+                required
+                autocomplete="given-name"
+              />
+              <label for="firstName" data-translate="form_first_name">First Name</label>
             </div>
 
             <div class="form-group">
-              <input type="email" id="email" name="email" placeholder=" " required autocomplete="email" />
-              <label for="email" data-translate="form_email">Email Address</label>
+              <input
+                type="text"
+                id="lastName"
+                name="lastName"
+                placeholder=" "
+                required
+                autocomplete="family-name"
+              />
+              <label for="lastName" data-translate="form_last_name">Last Name</label>
             </div>
+          </div>
 
-            <div class="form-group">
-              <input type="tel" id="phone" name="phone" placeholder=" " inputmode="tel" autocomplete="tel" />
-              <label for="phone" data-translate="form_phone">Phone Number</label>
-            </div>
+          <div class="form-group">
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder=" "
+              required
+              autocomplete="email"
+            />
+            <label for="email" data-translate="form_email">Email Address</label>
+          </div>
 
-            <div class="form-group">
-              <select id="subject" name="subject" required>
-                <option value="" selected disabled data-translate="form_select_subject">Select a subject</option>
-                <option value="training" data-translate="form_subject_training">Training Programs</option>
-                <option value="consultation" data-translate="form_subject_consultation">Consultation Services</option>
-                <option value="research" data-translate="form_subject_research">Research Collaboration</option>
-                <option value="general" data-translate="form_subject_general">General Inquiry</option>
-              </select>
-              <label for="subject" data-translate="form_subject">Subject</label>
-            </div>
+          <div class="form-group">
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              placeholder=" "
+              inputmode="tel"
+              autocomplete="tel"
+            />
+            <label for="phone" data-translate="form_phone">Phone Number</label>
+          </div>
 
-            <div class="form-group">
-              <textarea id="message" name="message" rows="5" placeholder=" " required></textarea>
-              <label for="message" data-translate="form_message">Message</label>
-            </div>
+          <div class="form-group">
+            <select id="subject" name="subject" required>
+              <option value="" selected disabled data-translate="form_select_subject">
+                Select a subject
+              </option>
+              <option value="training" data-translate="form_subject_training">
+                Training Programs
+              </option>
+              <option value="consultation" data-translate="form_subject_consultation">
+                Consultation Services
+              </option>
+              <option value="research" data-translate="form_subject_research">
+                Research Collaboration
+              </option>
+              <option value="general" data-translate="form_subject_general">
+                General Inquiry
+              </option>
+            </select>
+            <label for="subject" data-translate="form_subject">Subject</label>
+          </div>
 
-            <button type="submit" class="btn btn-primary" data-translate="form_submit">Send Message</button>
-          </form>
+          <div class="form-group">
+            <textarea
+              id="message"
+              name="message"
+              rows="5"
+              placeholder=" "
+              required
+            ></textarea>
+            <label for="message" data-translate="form_message">Message</label>
+          </div>
+
+          <!-- ✅ Netlify Captcha (optional security) -->
+          <div data-netlify-recaptcha="true"></div>
+
+          <button type="submit" class="btn btn-primary" data-translate="form_submit">
+            Send Message
+          </button>
+        </form>
+      </div>
+
+      <!-- RIGHT: Contact Info -->
+      <aside class="contact-info" aria-labelledby="contact-info-title">
+        <h2 id="contact-info-title" data-translate="contact_info_title">Contact Information</h2>
+
+        <div class="info-item">
+          <i class="fas fa-envelope" aria-hidden="true"></i>
+          <div>
+            <h3 data-translate="contact_email_title">Email</h3>
+            <p><a href="mailto:mas564@usal.edu.lb">mas564@usal.edu.lb</a></p>
+          </div>
         </div>
 
-        <!-- RIGHT: Contact Info -->
-        <aside class="contact-info" aria-labelledby="contact-info-title">
-          <h2 id="contact-info-title" data-translate="contact_info_title">Contact Information</h2>
-
-          <div class="info-item">
-            <i class="fas fa-envelope" aria-hidden="true"></i>
-            <div>
-              <h3 data-translate="contact_email_title">Email</h3>
-              <p><a href="mailto:info@reframemhs.com">info@reframemhs.com</a></p>
-            </div>
+        <div class="info-item">
+          <i class="fas fa-phone" aria-hidden="true"></i>
+          <div>
+            <h3 data-translate="contact_phone_title">Phone</h3>
+            <p><a href="tel:+96170060681">+961 70 0606 81</a></p>
           </div>
+        </div>
 
-          <div class="info-item">
-            <i class="fas fa-phone" aria-hidden="true"></i>
-            <div>
-              <h3 data-translate="contact_phone_title">Phone</h3>
-              <p><a href="tel:+96170060681">+961 70 0606 81</a></p>
-            </div>
+        <div class="info-item">
+          <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
+          <div>
+            <h3 data-translate="contact_address_title">Address</h3>
+            <p>Traboulsi street, Calot center, 8th floor, Badaro, Beirut, Lebanon</p>
           </div>
-
-          <div class="info-item">
-            <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
-            <div>
-              <h3 data-translate="contact_address_title">Address</h3>
-              <p>Traboulsi street, Calot center, 8th floor, Badaro, Beirut, Lebanon</p>
-            </div>
-          </div>
-        </aside>
-      </div>
+        </div>
+      </aside>
     </div>
-  </section>
-
+  </div>
+</section>
 
   <!-- Hidden Netlify detection form (guarantees build-time detection) -->
   <form name="contact" netlify netlify-honeypot="bot-field" hidden>
@@ -206,10 +254,19 @@
     </select>
     <textarea name="message"></textarea>
   </form>
+<div class="map-container">
+  <iframe
+    src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d13296.216437137036!2d35.5114!3d33.8886!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x20ef6f11dda3573d%3A0xf519c6e8ce21d04e!2sReframe%20Mental%20Health%20Services!5e0!3m2!1sen!2slb!4v1735287560000!5m2!1sen!2slb"
+    width="100%"
+    height="100%"
+    style="border:0;"
+    allowfullscreen=""
+    loading="lazy"
+    referrerpolicy="no-referrer-when-downgrade">
+  </iframe>
+</div>
 
 
-
-  
 
 
 <footer class="footer">
@@ -347,3 +404,97 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 </script>
+<style>/* 🌍 Modern 2025 Location Section */
+/* Modern Location Section */
+.location-section {
+  padding: 90px 0;
+  background: #ffffff;
+  text-align: center;
+}
+
+.location-title {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--primary-blue);
+  margin-bottom: 50px;
+  position: relative;
+}
+.location-title::after {
+  content: "";
+  width: 100px;
+  height: 4px;
+  background: var(--primary-blue);
+  display: block;
+  margin: 15px auto 0;
+  border-radius: 2px;
+}
+
+.map-container {
+  width: 100%;
+  max-width: 1000px;
+  height: 500px;
+  margin: 0 auto 60px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+}
+
+.map-container iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.location-info {
+  max-width: 650px;
+  margin: 0 auto;
+  color: #333333;
+}
+
+.location-info h3 {
+  font-size: 1.6rem;
+  color: var(--primary-blue);
+  margin-bottom: 12px;
+}
+
+.location-info p {
+  font-size: 1.1rem;
+  color: #666666;
+  margin-bottom: 30px;
+}
+
+.location-details {
+  list-style: none;
+  padding: 0;
+  font-size: 1rem;
+  color: #444444;
+  line-height: 1.8;
+}
+.location-details li {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .location-section {
+    padding: 60px 0;
+  }
+  .map-container {
+    height: 320px;
+  }
+  .location-title {
+    font-size: 1.8rem;
+  }
+  .location-info h3 {
+    font-size: 1.3rem;
+  }
+  .location-details {
+    font-size: 0.95rem;
+  }
+}
+
+</style>
