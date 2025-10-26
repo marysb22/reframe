@@ -1002,34 +1002,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-  document.addEventListener('DOMContentLoaded', () => {
-    const dropdowns = document.querySelectorAll('.nav-dropdown');
 
-    dropdowns.forEach(drop => {
-      const toggle = drop.querySelector('.dropdown-toggle');
-
-      // ⏩ افتح القائمة بالنقر فقط
-      toggle.addEventListener('click', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        drop.classList.toggle('active');
-
-        // ⛔ أغلق أي dropdown آخر مفتوح
-        dropdowns.forEach(other => {
-          if (other !== drop) other.classList.remove('active');
-        });
-      });
-    });
-
-    // ⛔ إغلاق عند النقر خارج القائمة
-    document.addEventListener('click', e => {
-      dropdowns.forEach(drop => {
-        if (!drop.contains(e.target)) drop.classList.remove('active');
-      });
-    });
-  });
-
-
-})();
+})
+();
 
 

@@ -132,9 +132,7 @@ body {
   z-index: 999;
   animation: dropdownFade 0.25s ease;
 }
-.nav-dropdown:hover .dropdown-menu {
-  display: flex;
-}
+
 
 /* الروابط */
 .dropdown-menu .nav-link {
@@ -879,7 +877,66 @@ body {
     height: 100px !important;
   }
 }
+@media (max-width: 992px) {
+  .login-btn {
+    display: none !important;
+  }
+}
+/* 🌍 MOBILE: show one hero photo instead of grid */
+@media (max-width: 768px) {
+  /* نخفي الشبكة الأصلية */
+  .bento-grid {
+    display: none !important;
+  }
 
+  /* نضيف خلفية صورة واحدة للهيرو */
+  .hero {
+    background-image: url("P11.jpeg"); /* ← غيّريها لاسم الصورة اللي بدك تظهرها */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 420px;
+    position: relative;
+    margin-top: 75px;
+  }
+
+  /* نترك التدرّج والنص مثل ما هو */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.15));
+    z-index: 1;
+  }
+
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    text-align: center;
+    padding: 30px 20px;
+    z-index: 2;
+  }
+
+  .hero-text {
+    color: #fff;
+    max-width: 90%;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+
+  .hero-text h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .hero-text p {
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+}g
 
 /* Section Headers */
 .section-header {

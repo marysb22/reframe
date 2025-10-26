@@ -666,7 +666,7 @@ h1{text-align:center; margin-bottom:100px;}
 <section class="accreditation-section">
   <div class="accreditation-content">
     <div class="accreditation-image">
-      <img src="CET.jpeg" alt="Reframe Accreditation Certificate" />
+      <img src="CAT.jpeg" alt="Reframe Accreditation Certificate" />
     </div>
     <div class="accreditation-text">
       <h1>We’re proud to share our accreditation!</h1>
@@ -1400,3 +1400,60 @@ window.onclick = e=>{if(e.target==modal) modal.style.display='none';};
 
 
 <script src="scripts/main.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const dropdowns = document.querySelectorAll(".nav-dropdown");
+
+  dropdowns.forEach(dropdown => {
+    const toggle = dropdown.querySelector(".dropdown-toggle");
+    const menu = dropdown.querySelector(".dropdown-menu");
+
+    // أغلق القائمة بالبداية
+    menu.style.display = "none";
+    menu.style.opacity = "0";
+    menu.style.transform = "translateY(-6px)";
+    menu.style.transition = "all 0.25s ease";
+
+    // عند الضغط على الزر
+    toggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const isOpen = menu.classList.contains("open");
+
+      // أغلق أي قوائم مفتوحة أخرى
+      document.querySelectorAll(".dropdown-menu.open").forEach(m => {
+        m.classList.remove("open");
+        m.style.opacity = "0";
+        m.style.transform = "translateY(-6px)";
+        setTimeout(() => (m.style.display = "none"), 200);
+      });
+
+      // افتح أو أغلق القائمة الحالية
+      if (!isOpen) {
+        menu.style.display = "flex";
+        setTimeout(() => {
+          menu.classList.add("open");
+          menu.style.opacity = "1";
+          menu.style.transform = "translateY(0)";
+        }, 20);
+      } else {
+        menu.classList.remove("open");
+        menu.style.opacity = "0";
+        menu.style.transform = "translateY(-6px)";
+        setTimeout(() => (menu.style.display = "none"), 200);
+      }
+    });
+
+    // أغلق عند الضغط خارج القائمة
+    document.addEventListener("click", (e) => {
+      if (!dropdown.contains(e.target)) {
+        menu.classList.remove("open");
+        menu.style.opacity = "0";
+        menu.style.transform = "translateY(-6px)";
+        setTimeout(() => (menu.style.display = "none"), 200);
+      }
+    });
+  });
+});
+</script>
