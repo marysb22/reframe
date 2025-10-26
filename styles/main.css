@@ -1066,6 +1066,39 @@ body {
     margin-left: 6px; /* مسافة بسيطة توازن التصميم */
   }
 }
+/* ✅ Make Language Switcher same height & width as Hamburger */
+@media (max-width: 992px) {
+  .language-switcher {
+    height: 46px;
+    min-width: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 0 12px; /* توازن أفقي */
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    transition: all 0.3s ease;
+  }
+
+  .language-switcher:hover {
+    transform: scale(1.03);
+  }
+
+  /* 🎯 Mini fix for iPhone SE */
+  @media (max-width: 480px) {
+    .language-switcher {
+      height: 42px;
+      min-width: 42px;
+      font-size: 0.85rem;
+      border-radius: 10px;
+    }
+  }
+}
 
 .section-header p {
     font-size: 1.1rem;
