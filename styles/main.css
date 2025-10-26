@@ -863,7 +863,119 @@ body {
   }
 }
 
-  /* 🚫 Hide Login Button on Mobile */
+@media (max-width: 992px) {
+  /* === Navbar Layout === */
+  .navbar {
+    height: 78px;
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.97);
+    border-bottom: 1px solid #eee;
+    backdrop-filter: blur(10px);
+  }
+
+  .nav-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 18px;
+    height: 78px;
+  }
+
+  .nav-logo img {
+    width: 165px;
+    height: auto;
+  }
+
+  /* === Right Side (Lang + Hamburger) === */
+  .nav-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    height: 46px;
+    position: relative;
+    top: 0; /* perfectly aligned */
+  }
+
+  /* === Language Switcher === */
+  .language-switcher {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 46px;
+    padding: 0 14px;
+    border: 1.4px solid #ddd;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    position: relative;
+    top: 2px;      /* slight balance */
+    margin-right: 2px;
+  }
+
+  .lang-btn {
+    background: none;
+    border: none;
+    color: #333;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .lang-btn.active { color: #4D9794; }
+  .lang-separator { color: #999; }
+
+  /* === Hamburger Button === */
+  .hamburger {
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    position: relative;
+    top: 1px;       /* 🔥 perfect pixel alignment */
+    right: 0;       /* 🔥 aligned with screen edge */
+  }
+
+  .hamburger span {
+    width: 24px;
+    height: 2.6px;
+    background: #333;
+    border-radius: 2px;
+  }
+
+  /* === Hide Login on Mobile === */
+  .login-btn {
+    display: none !important;
+  }
+
+  /* === Smaller Screens Adjustment === */
+  @media (max-width: 480px) {
+    .language-switcher,
+    .hamburger {
+      height: 42px;
+      width: 42px;
+      border-radius: 10px;
+    }
+
+    .language-switcher {
+      top: 1px;
+      padding: 0 10px;
+    }
+
+    .hamburger {
+      top: 0;
+    }
+  }
+}
+/* 🚫 Hide Login Button on Mobile */
 @media (max-width: 992px) {
   .login-btn {
     display: none !important;
@@ -871,8 +983,6 @@ body {
     opacity: 0 !important;
     pointer-events: none !important;
   }
-}
-
 }
 
 
