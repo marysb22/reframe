@@ -2908,65 +2908,66 @@ h1{text-align:center; margin-bottom:100px;}
   }
 }
 /* =========================================================
-📱 FINAL ALIGNMENT FIX FOR MOBILE NAVBAR (Perfect Line)
+📱 PERFECT SAME-LINE ALIGNMENT FIX (LOGO + LANG + HAMBURGER)
 ========================================================= */
 @media (max-width: 992px) {
-  /* يجعل كل العناصر في نفس السطر تمامًا */
   .nav-container {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     height: 78px !important;
+    padding: 0 14px !important;
   }
 
-  /* اللوغو */
+  /* LOGO */
   .nav-logo {
-    display: flex;
-    align-items: center;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
   }
-
   .nav-logo img {
     width: 165px !important;
-    height: auto;
+    height: auto !important;
     display: block;
-    transform: translateY(1px);
+    transform: translateY(1px); /* دقة محاذاة مثالية */
   }
 
-  /* اللغة */
+  /* LANGUAGE */
   .language-switcher {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    height: 46px;
+    height: 46px !important;
+    line-height: 46px !important;
     border-radius: 12px;
     background: #fff;
-    border: 1.4px solid #dadada;
+    border: 1.5px solid #dcdcdc;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     font-size: 0.9rem;
-    padding: 0 14px;
+    font-weight: 600;
+    padding: 0 14px !important;
     position: relative;
-    top: 0;
-    margin-right: 12px;
+    top: 1px; /* 🔹 ارتفاع دقيق لتساوي الهامبرغر */
+    margin-right: 10px;
   }
 
-  /* زر الهامبرغر */
+  /* HAMBURGER */
   .hamburger {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 46px;
-    height: 46px;
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 12px;
     background: #ffffff;
     border: 1.5px solid #ddd;
-    border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    position: relative;
-    top: 0;           /* 🔹 يمنع نزول الزر */
-    margin-left: 8px; /* 🔹 مسافة بسيطة من اللغة */
     transition: all 0.3s ease;
+    position: relative;
+    top: 1px; /* 🔹 نفس ارتفاع اللغة بالضبط */
+    margin-left: 6px;
   }
 
-  /* الخطوط داخل الهامبرغر */
   .hamburger span {
     width: 24px;
     height: 2.6px;
@@ -2974,17 +2975,31 @@ h1{text-align:center; margin-bottom:100px;}
     border-radius: 2px;
   }
 
-  /* يجعل الثلاثة بمحاذاة مثالية */
+  /* HOVER slight animation */
+  .hamburger:hover {
+    transform: scale(1.03);
+  }
+
+  /* ALIGN ALL ELEMENTS ON SAME LINE */
   .nav-logo img,
   .language-switcher,
   .hamburger {
     align-self: center !important;
   }
 
-  /* للأجهزة الصغيرة جدًا */
+  /* ULTRA SMALL DEVICES */
   @media (max-width: 480px) {
     .nav-logo img { width: 140px !important; }
-    .language-switcher { height: 42px; font-size: 0.85rem; padding: 0 10px; }
-    .hamburger { width: 42px; height: 42px; }
+    .language-switcher {
+      height: 42px !important;
+      line-height: 42px !important;
+      font-size: 0.85rem !important;
+      padding: 0 10px !important;
+    }
+    .hamburger {
+      width: 42px !important;
+      height: 42px !important;
+      top: 1px !important;
+    }
   }
 }
