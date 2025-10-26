@@ -863,44 +863,24 @@ body {
   }
 }
 
-/* --- Ultra small screens (iPhone SE, older Android) --- */
-@media (max-width: 480px) {
-  .nav-logo img {
-    width: 135px !important;
-  }
 
-  .hero {
-    height: 300px !important;
-  }
 
-  .bento-item {
-    height: 100px !important;
-  }
-}
-@media (max-width: 992px) {
-  .login-btn {
-    display: none !important;
-  }
-}
-/* 🌍 MOBILE: show one hero photo instead of grid */
+ /* ✅ FULL HERO PHOTO ON MOBILE */
 @media (max-width: 768px) {
-  /* نخفي الشبكة الأصلية */
-  .bento-grid {
-    display: none !important;
-  }
-
-  /* نضيف خلفية صورة واحدة للهيرو */
   .hero {
- 
-    background-size: cover;
-    background-position: center;
+    background-image: url("p11.jpeg"); /* ← ضعي هنا اسم الصورة التي تريدينها */
+    background-size: cover;            /* تغطي كامل العرض والارتفاع */
+    background-position: center center;/* متمركزة تمامًا */
     background-repeat: no-repeat;
-    height: 420px;
-    position: relative;
+    background-attachment: scroll;
+    width: 100%;
+    height: 100vh;                     /* تأخذ كامل ارتفاع شاشة الهاتف */
     margin-top: 75px;
+    position: relative;
+    overflow: hidden;
   }
 
-  /* نترك التدرّج والنص مثل ما هو */
+  /* ✅ تغميق خفيف لتوضيح النص */
   .hero::after {
     content: '';
     position: absolute;
@@ -909,6 +889,7 @@ body {
     z-index: 1;
   }
 
+  /* النص فوق الصورة */
   .hero-overlay {
     position: absolute;
     inset: 0;
@@ -923,40 +904,46 @@ body {
   .hero-text {
     color: #fff;
     max-width: 90%;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
   }
 
   .hero-text h1 {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 700;
     margin-bottom: 8px;
   }
 
   .hero-text p {
-    font-size: 0.95rem;
-    line-height: 1.4;
+    font-size: 1rem;
+    line-height: 1.5;
   }
 }
 
-/* ✅ Perfect alignment for logo, language switcher, and hamburger on mobile */
+
+/* 🌐 PRO 2025 PERFECT HEADER ALIGNMENT */
 @media (max-width: 992px) {
   .navbar {
-    height: 70px !important;
+    height: 78px !important;
     display: flex;
     align-items: center;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #eee;
   }
 
   .nav-container {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 0 1rem !important;
-    height: 70px !important;
-    gap: 10px;
+    width: 100%;
+    padding: 0 16px !important;
+    height: 78px !important;
+    gap: 12px;
   }
 
-  /* Logo */
+  /* === LOGO === */
   .nav-logo {
+    order: 1;
     flex: 1;
     display: flex;
     align-items: center;
@@ -964,86 +951,98 @@ body {
   }
 
   .nav-logo img {
-    width: 150px !important;
+    width: 170px !important;
     height: auto;
-    display: block;
+    object-fit: contain;
+    transform: translateY(2px);
   }
 
-  /* Language Switcher */
+  /* === LANGUAGE SWITCHER === */
   .language-switcher {
     order: 2;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #ffffff;
-    border: 1.5px solid #e5e5e5;
+    gap: 6px;
+    background: #fff;
+    border: 1.4px solid #dadada;
     border-radius: 30px;
-    padding: 3px 12px;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.06);
-    transform: translateY(1px); /* tweak for pixel-perfect vertical center */
+    padding: 5px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    font-size: 0.95rem;
+    font-weight: 600;
+    transform: translateY(2px);
   }
 
   .lang-btn {
-    font-size: 0.9rem;
+    background: none;
+    border: none;
     font-weight: 600;
     color: #333;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
   }
+  .lang-btn.active { color: #4D9794; }
 
   .lang-separator {
-    margin: 0 5px;
     color: #999;
+    user-select: none;
+    pointer-events: none;
   }
 
-  /* Hamburger */
+  /* === HAMBURGER === */
   .hamburger {
     order: 3;
     display: flex !important;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    margin-left: auto;
-    transform: translateY(1px); /* perfectly centered */
+    width: 46px;
+    height: 46px;
+    background: #ffffff;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+  }
+
+  .hamburger:hover {
+    transform: scale(1.03);
   }
 
   .hamburger span {
-    width: 30px;
-    height: 1.4px;
+    width: 24px;
+    height: 2.6px;
     background: #333;
     border-radius: 2px;
     transition: 0.3s;
   }
 
-  /* Extra precision for iPhones & small screens */
+  /* === ALL elements perfectly centered === */
+  .nav-logo img,
+  .language-switcher,
+  .hamburger {
+    align-self: center;
+  }
+
+  /* === ULTRA SMALL FIX (iphones mini) === */
   @media (max-width: 480px) {
-    .language-switcher {
-      padding: 2px 10px;
-      gap: 4px;
-      transform: translateY(2px);
+    .nav-logo img {
+      width: 145px !important;
     }
-    .lang-btn {
+    .language-switcher {
+      padding: 4px 12px;
       font-size: 0.85rem;
+      gap: 4px;
+    }
+    .hamburger {
+      width: 42px;
+      height: 42px;
     }
   }
 }
 
 
-/* Section Headers */
-.section-header {
-    text-align: center;
-    margin-bottom: 50px;
-}
-
-.section-header h2 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #4D9794;
-    margin-bottom: 15px;
-}
 
 .section-header p {
     font-size: 1.1rem;
