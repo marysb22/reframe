@@ -94,7 +94,7 @@
         <div class="container">
             <div class="hero-content">
                 <h1 data-translate="about_hero_title">About Reframe MHS</h1>
-                <p data-translate="about_hero_subtitle">  vision:We envision a future where mental health is the foundation of every human system, and where challenges and failures are embraced as opportunities for growth and transformation.</p>
+                <p data-translate="about_hero_subtitle">We envision a future where mental health is the foundation of every human system, and where challenges and failures are embraced as opportunities for growth and transformation.</p>
             </div>
         </div>
     </section>
@@ -558,6 +558,13 @@
 }
 
 
+/* === Make team grid use full width of screen === */
+.team-grid {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
 
 </style>
 
@@ -632,6 +639,7 @@ Her work has spanned various regions, including Asia, Central America, the Unite
   </article>
 
 </div>
+
 
 <!-- Modal (profile detail) -->
 <div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
@@ -935,3 +943,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </script>
 
+<script>
+// === Auto-fit team cards to full width of screen ===
+document.addEventListener("DOMContentLoaded", () => {
+  const grid = document.querySelector(".team-grid");
+  if (grid) {
+    // اجعل العرض يملأ الصفحة تمامًا بدون فراغات جانبية
+    grid.style.width = "100vw";
+    grid.style.marginLeft = "calc(-1 * (100vw - 100%) / 2)";
+    grid.style.padding = "0";
+    grid.style.boxSizing = "border-box";
+  }
+
+  // تأكد أن جميع البطاقات تتوزع بالتساوي في الصف
+  const cards = document.querySelectorAll(".team-grid .card");
+  if (cards.length > 0) {
+    cards.forEach(card => {
+      card.style.flex = "1 1 auto";
+      card.style.width = "100%";
+    });
+  }
+
+  // إعادة ضبط عند تغيير حجم الشاشة
+  window.addEventListener("resize", () => {
+    if (grid) {
+      grid.style.width = "100vw";
+      grid.style.marginLeft = "calc(-1 * (100vw - 100%) / 2)";
+    }
+  });
+});
+</script>

@@ -691,6 +691,51 @@ body {
     font-size: 0.85rem;
   }
 }
+/* === Fix navbar spacing with hero === */
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* يزيل أي فراغ بين النافبار والهيدر */
+.hero {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* يتأكد أن النافبار يكون ملاصق للهيدر بدون أي مسافة */
+.navbar {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+/* تصحيح الترتيب بالموبايل */
+@media (max-width: 992px) {
+  .nav-container {
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .nav-logo img {
+    width: 160px;
+    height: auto;
+  }
+
+  .hamburger {
+    right: 15px;
+  }
+
+  .language-switcher {
+    position: relative;
+    left: 10px;
+  }
+}
+
+
 /* Section Headers */
 .section-header {
     text-align: center;
@@ -1478,6 +1523,29 @@ body {
   margin: 0 auto;
   line-height: 1.6;
   color: rgba(255,255,255,0.85);
+}
+/* ===== Fix for Subject Select Field ===== */
+.form-group select {
+  padding-left: 10px !important;   /* تأكد أن أول الحروف ظاهرة */
+  text-indent: 0 !important;       /* ألغِ أي إزاحة للنص */
+  appearance: none;
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 12px;
+  border: 1.5px solid #4D9794;
+  border-radius: 6px;
+  height: 50px;
+  color: #000;                     /* نص أسود واضح */
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+/* إذا كنت تستخدم نظام labels المتحركة (floating labels): */
+.form-group select:focus + label,
+.form-group select:not([value=""]):valid + label {
+  top: -8px;
+  font-size: 12px;
+  color: #4D9794;
 }
 
 /* ---------- Form Section ---------- */
@@ -2646,21 +2714,5 @@ h1{text-align:center; margin-bottom:100px;}
   }
   .modal-content img {
     max-height: 180px; /* أصغر أكثر للموبايل */
-  }
-}
-/* ✅ Show Login on desktop, hide on mobile */
-@media (max-width: 992px) {
-  .nav-actions .btn-login,
-  .nav-actions a[href*="login"],
-  .nav-actions button.login {
-    display: none !important;
-  }
-}
-
-@media (min-width: 993px) {
-  .nav-actions .btn-login,
-  .nav-actions a[href*="login"],
-  .nav-actions button.login {
-    display: inline-flex !important;
   }
 }
