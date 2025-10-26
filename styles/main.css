@@ -863,116 +863,59 @@ body {
   }
 }
 
-@media (max-width: 992px) {
-  /* === Navbar Layout === */
-  .navbar {
-    height: 78px;
-    display: flex;
-    align-items: center;
-    background: rgba(255,255,255,0.97);
-    border-bottom: 1px solid #eee;
-    backdrop-filter: blur(10px);
-  }
 
-  .nav-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+
+ /* ✅ FULL HERO PHOTO ON MOBILE */
+@media (max-width: 768px) {
+  .hero {
+    background-image: url("p11.jpeg"); /* ← ضعي هنا اسم الصورة التي تريدينها */
+    background-size: cover;            /* تغطي كامل العرض والارتفاع */
+    background-position: center center;/* متمركزة تمامًا */
+    background-repeat: no-repeat;
+    background-attachment: scroll;
     width: 100%;
-    padding: 0 18px;
-    height: 78px;
-  }
-
-  .nav-logo img {
-    width: 165px;
-    height: auto;
-  }
-
-  /* === Right Side (Lang + Hamburger) === */
-  .nav-right {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    height: 46px;
+    height: 100vh;                     /* تأخذ كامل ارتفاع شاشة الهاتف */
+    margin-top: 75px;
     position: relative;
-    top: 0; /* perfectly aligned */
+    overflow: hidden;
   }
 
-  /* === Language Switcher === */
-  .language-switcher {
+  /* ✅ تغميق خفيف لتوضيح النص */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.15));
+    z-index: 1;
+  }
+
+  /* النص فوق الصورة */
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    height: 46px;
-    padding: 0 14px;
-    border: 1.4px solid #ddd;
-    border-radius: 12px;
-    background: #fff;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #333;
-    position: relative;
-    top: 2px;      /* slight balance */
-    margin-right: 2px;
+    text-align: center;
+    padding: 30px 20px;
+    z-index: 2;
   }
 
-  .lang-btn {
-    background: none;
-    border: none;
-    color: #333;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .lang-btn.active { color: #4D9794; }
-  .lang-separator { color: #999; }
-
-  /* === Hamburger Button === */
-  .hamburger {
-    width: 46px;
-    height: 46px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;
-    border: 1.5px solid #ddd;
-    border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    position: relative;
-    top: 1px;       /* 🔥 perfect pixel alignment */
-    right: 0;       /* 🔥 aligned with screen edge */
+  .hero-text {
+    color: #fff;
+    max-width: 90%;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
   }
 
-  .hamburger span {
-    width: 24px;
-    height: 2.6px;
-    background: #333;
-    border-radius: 2px;
+  .hero-text h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 8px;
   }
 
-  /* === Hide Login on Mobile === */
-  .login-btn {
-    display: none !important;
-  }
-
-  /* === Smaller Screens Adjustment === */
-  @media (max-width: 480px) {
-    .language-switcher,
-    .hamburger {
-      height: 42px;
-      width: 42px;
-      border-radius: 10px;
-    }
-
-    .language-switcher {
-      top: 1px;
-      padding: 0 10px;
-    }
-
-    .hamburger {
-      top: 0;
-    }
+  .hero-text p {
+    font-size: 1rem;
+    line-height: 1.5;
   }
 }
 /* 🚫 Hide Login Button on Mobile */
@@ -984,6 +927,79 @@ body {
     pointer-events: none !important;
   }
 }
+
+
+/* 🌐 PRO 2025 PERFECT HEADER ALIGNMENT */
+@media (max-width: 992px) {
+  .navbar {
+    height: 78px !important;
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #eee;
+  }
+
+  .nav-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100%;
+    padding: 0 16px !important;
+    height: 78px !important;
+    gap: 12px;
+  }
+
+  /* === LOGO === */
+  .nav-logo {
+    order: 1;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .nav-logo img {
+    width: 170px !important;
+    height: auto;
+    object-fit: contain;
+    transform: translateY(2px);
+  }
+
+  /* === LANGUAGE SWITCHER === */
+  .language-switcher {
+    order: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: #fff;
+    border: 1.4px solid #dadada;
+    border-radius: 30px;
+    padding: 5px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    font-size: 0.95rem;
+    font-weight: 600;
+    transform: translateY(2px);
+  }
+
+  .lang-btn {
+    background: none;
+    border: none;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+  }
+  .lang-btn.active { color: #4D9794; }
+
+  .lang-separator {
+    color: #999;
+    user-select: none;
+    pointer-events: none;
+  }
+
 
 
 .section-header p {
