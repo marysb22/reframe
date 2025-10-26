@@ -864,16 +864,18 @@ body {
 }
 
 
+
+
 /* ✅ FULL HERO PHOTO ON MOBILE */
 @media (max-width: 768px) {
   .hero {
-    background-image: url("p11.jpeg"); /* ← غيّريها لاسم الصورة */
+    background-image: url("p11.jpeg"); /* ← غيّريها لاسم الصورة التي تريدينها */
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
     background-attachment: scroll;
     width: 100%;
-    height: 100vh; /* يغطي شاشة الهاتف بالكامل */
+    height: 100vh; /* تغطي شاشة الهاتف بالكامل */
     margin-top: 75px;
     position: relative;
     overflow: hidden;
@@ -942,9 +944,9 @@ body {
     align-items: center !important;
     justify-content: space-between !important;
     width: 100%;
-    padding: 0 16px !important;
+    padding: 0 18px !important;
     height: 78px !important;
-    gap: 12px;
+    gap: 10px;
   }
 
   /* === LOGO === */
@@ -966,21 +968,22 @@ body {
   /* === LANGUAGE SWITCHER === */
   .language-switcher {
     order: 2;
-    height: 46px;
-    min-width: 46px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    height: 46px;
+    min-width: 46px;
     background: #fff;
     border: 1.5px solid #ddd;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    padding: 0 12px;
+    padding: 0 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     font-size: 0.9rem;
     font-weight: 600;
     color: #333;
-    transition: all 0.3s ease;
+    margin-right: 8px; /* spacing before hamburger */
+    transform: translateY(1px);
+    transition: all 0.25s ease;
   }
 
   .language-switcher:hover {
@@ -997,7 +1000,9 @@ body {
     transition: color 0.2s ease;
   }
 
-  .lang-btn.active { color: #4D9794; }
+  .lang-btn.active {
+    color: #4D9794;
+  }
 
   .lang-separator {
     color: #999;
@@ -1018,7 +1023,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
-    margin-left: 10px; /* تباعد جميل بين اللغة والقائمة */
+    transform: translateY(1px);
   }
 
   .hamburger:hover {
@@ -1033,28 +1038,29 @@ body {
     transition: 0.3s;
   }
 
-  /* === ALL elements perfectly centered === */
+  /* === CENTER ELEMENTS PERFECTLY === */
   .nav-logo img,
   .language-switcher,
   .hamburger {
     align-self: center;
   }
 
-  /* === ULTRA SMALL FIX (iPhone mini) === */
+  /* === MINI DEVICES FIX (iPhone mini / SE) === */
   @media (max-width: 480px) {
     .nav-logo img {
       width: 145px !important;
     }
-    .language-switcher {
-      height: 42px;
-      min-width: 42px;
-      font-size: 0.85rem;
-      border-radius: 10px;
-    }
+
+    .language-switcher,
     .hamburger {
-      width: 42px;
       height: 42px;
-      margin-left: 8px;
+      width: 42px;
+      border-radius: 10px;
+      transform: translateY(0);
+    }
+
+    .language-switcher {
+      font-size: 0.85rem;
     }
   }
 }
