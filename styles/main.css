@@ -891,7 +891,7 @@ body {
 
   /* نضيف خلفية صورة واحدة للهيرو */
   .hero {
-    background-image: url("P11.jpeg"); /* ← غيّريها لاسم الصورة اللي بدك تظهرها */
+ 
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -936,7 +936,76 @@ body {
     font-size: 0.95rem;
     line-height: 1.4;
   }
-}g
+}
+
+/* 🌐 Fix perfect alignment for language & hamburger on mobile */
+@media (max-width: 992px) {
+  .nav-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    height: 70px !important;
+    padding: 0 1rem !important;
+  }
+
+  /* Logo perfectly on left */
+  .nav-logo {
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  /* Center the language switcher perfectly */
+  .language-switcher {
+    order: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 30px;
+    padding: 4px 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transform: translateY(2px);
+  }
+
+  /* Hamburger perfectly to right */
+  .hamburger {
+    order: 3;
+    margin-left: auto;
+    background: #ffffff;
+    border: 1.5px solid #ddd;
+    border-radius: 10px;
+    width: 40px;
+    height: 40px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+
+  /* Equal vertical alignment */
+  .nav-logo img,
+  .language-switcher,
+  .hamburger {
+    align-self: center;
+  }
+
+  /* Smaller font for language on narrow phones */
+  @media (max-width: 480px) {
+    .language-switcher {
+      transform: none;
+      padding: 3px 8px;
+      gap: 4px;
+    }
+    .lang-btn {
+      font-size: 0.85rem;
+    }
+  }
+}
+
 
 /* Section Headers */
 .section-header {
