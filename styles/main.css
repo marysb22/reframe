@@ -863,79 +863,15 @@ body {
   }
 }
 
-
-
-
-/* ✅ FULL HERO PHOTO ON MOBILE */
-@media (max-width: 768px) {
-  .hero {
-    background-image: url("p11.jpeg"); /* ← غيّريها لاسم الصورة التي تريدينها */
-    background-size: cover;
-    background-position: center center;
-    background-repeat: no-repeat;
-    background-attachment: scroll;
-    width: 100%;
-    height: 100vh; /* تغطي شاشة الهاتف بالكامل */
-    margin-top: 75px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .hero::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.15));
-    z-index: 1;
-  }
-
-  .hero-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    text-align: center;
-    padding: 30px 20px;
-    z-index: 2;
-  }
-
-  .hero-text {
-    color: #fff;
-    max-width: 90%;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
-  }
-
-  .hero-text h1 {
-    font-size: 1.6rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-
-  .hero-text p {
-    font-size: 1rem;
-    line-height: 1.5;
-  }
-}
-
-/* 🚫 Hide Login Button on Mobile */
-@media (max-width: 992px) {
-  .login-btn {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-  }
-}
-
-/* 🌐 PRO 2025 PERFECT HEADER ALIGNMENT */
+/* ✅ MOBILE PERFECT NAVBAR ALIGNMENT (PRO 2025) */
 @media (max-width: 992px) {
   .navbar {
     height: 78px !important;
     display: flex;
     align-items: center;
-    background: rgba(255,255,255,0.96);
-    backdrop-filter: blur(12px);
+    justify-content: center;
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(10px);
     border-bottom: 1px solid #eee;
   }
 
@@ -946,43 +882,45 @@ body {
     width: 100%;
     padding: 0 18px !important;
     height: 78px !important;
-    gap: 10px;
   }
 
   /* === LOGO === */
   .nav-logo {
     order: 1;
-    flex: 1;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
   }
 
   .nav-logo img {
-    width: 170px !important;
+    width: 165px !important;
     height: auto;
     object-fit: contain;
-    transform: translateY(2px);
   }
 
-  /* === LANGUAGE SWITCHER === */
-  .language-switcher {
+  /* === RIGHT SIDE CONTAINER === */
+  .nav-right {
     order: 2;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 10px;
+  }
+
+  /* === LANGUAGE SWITCHER === */
+  .language-switcher {
     height: 46px;
-    min-width: 46px;
+    width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     background: #fff;
     border: 1.5px solid #ddd;
     border-radius: 12px;
     padding: 0 14px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     font-size: 0.9rem;
     font-weight: 600;
-    color: #333;
-    margin-right: 8px; /* spacing before hamburger */
-    transform: translateY(1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     transition: all 0.25s ease;
   }
 
@@ -993,37 +931,27 @@ body {
   .lang-btn {
     background: none;
     border: none;
-    font-weight: 600;
     color: #333;
     cursor: pointer;
+    font-weight: 600;
     font-size: 0.9rem;
-    transition: color 0.2s ease;
   }
 
-  .lang-btn.active {
-    color: #4D9794;
-  }
-
-  .lang-separator {
-    color: #999;
-    user-select: none;
-    pointer-events: none;
-  }
+  .lang-btn.active { color: #4D9794; }
+  .lang-separator { color: #999; }
 
   /* === HAMBURGER === */
   .hamburger {
-    order: 3;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
     width: 46px;
     height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: #ffffff;
     border: 1.5px solid #ddd;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    transition: all 0.3s ease;
-    transform: translateY(1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    transition: all 0.25s ease;
   }
 
   .hamburger:hover {
@@ -1035,17 +963,18 @@ body {
     height: 2.6px;
     background: #333;
     border-radius: 2px;
-    transition: 0.3s;
   }
 
-  /* === CENTER ELEMENTS PERFECTLY === */
-  .nav-logo img,
+  /* === ALIGN BOTH PERFECTLY === */
   .language-switcher,
   .hamburger {
-    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
   }
 
-  /* === MINI DEVICES FIX (iPhone mini / SE) === */
+  /* === MINI DEVICES FIX === */
   @media (max-width: 480px) {
     .nav-logo img {
       width: 145px !important;
@@ -1056,12 +985,19 @@ body {
       height: 42px;
       width: 42px;
       border-radius: 10px;
-      transform: translateY(0);
     }
 
     .language-switcher {
       font-size: 0.85rem;
+      padding: 0 10px;
     }
+  }
+}
+
+/* ✅ HIDE LOGIN BUTTON ON MOBILE */
+@media (max-width: 992px) {
+  .login-btn {
+    display: none !important;
   }
 }
 
