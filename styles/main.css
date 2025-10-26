@@ -734,64 +734,73 @@ body {
     left: 10px;
   }
 }
-/* ✅ Mobile Navbar Order and Logo Fix */
+/* ✅ Perfected Mobile Header Layout (Logo → EN/AR → Menu) */
 @media (max-width: 992px) {
   .nav-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-inline: 1rem;
-    height: 70px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 1rem !important;
+    height: 70px !important;
+    position: relative;
   }
 
-  /* ✅ اجعل الترتيب Logo → Lang → Hamburger */
+  /* 1️⃣ Logo first */
   .nav-logo {
-    order: 1;
+    order: 1 !important;
     flex: 1;
     display: flex;
     justify-content: flex-start;
   }
 
   .nav-logo img {
+    display: block;
     width: 150px;
     height: auto;
-    display: block;
   }
 
+  /* 2️⃣ Language switcher next (center) */
   .language-switcher {
-    order: 2;
-    flex: 0;
-    margin-inline: auto;
-    transform: translateX(8px);
+    order: 2 !important;
+    position: relative;
+    margin: 0 auto;
+    z-index: 1001;
   }
 
+  /* 3️⃣ Hamburger last (right) */
   .hamburger {
-    order: 3;
+    order: 3 !important;
     position: relative;
     right: 0;
     top: 0;
     transform: none;
-    background: white;
-    border: 1px solid #e3e3e3;
+    margin-left: auto;
+    z-index: 1002;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
   }
 
-  /* ✅ لا تظهر أي لوجو ثاني */
-  .nav-logo img:last-child {
+  /* 🚫 Hide "Login" button entirely on mobile */
+  .nav-actions a[href*="login"],
+  .nav-actions .login,
+  .nav-actions button {
     display: none !important;
   }
 
-  /* ✅ اضبط الـHero للموبايل */
+  /* ✅ Fix hero section for mobile */
   .hero {
-    height: 300px;
+    height: 360px;
+    margin-top: 75px !important;
     overflow: hidden;
-    margin-top: 75px;
+    border-radius: 0;
   }
 
   .bento-grid {
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: repeat(2, 1fr);
-    gap: 2px;
+    gap: 4px;
   }
 
   .bento-item {
@@ -801,26 +810,36 @@ body {
     filter: brightness(0.9);
   }
 
+  .hero-text {
+    max-width: 90%;
+    color: #fff;
+    text-align: center;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+
   .hero-text h1 {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     font-weight: 700;
   }
 
   .hero-text p {
     font-size: 0.9rem;
+    line-height: 1.4;
   }
 }
 
-/* ✅ تحسين إضافي لشاشات صغيرة جدًا */
+/* ✅ Extra fine-tuning for small phones */
 @media (max-width: 480px) {
   .nav-logo img {
-    width: 135px;
+    width: 135px !important;
   }
+
   .hero {
-    height: 270px;
+    height: 300px !important;
   }
+
   .bento-item {
-    height: 100px;
+    height: 100px !important;
   }
 }
 
