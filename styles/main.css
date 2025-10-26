@@ -221,7 +221,145 @@ body {
   transition: all 0.3s ease;
 }
 
-/*
+/* --- Hamburger button perfectly aligned --- */
+.hamburger {
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: 10px;  /* ✅ صار ملتصق بالحافة */
+  transform: translateY(-50%);
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  background: #ffffff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  z-index: 1001; /* فوق الكل */
+}
+
+.hamburger span {
+  width: 22px;
+  height: 2.5px;
+  background: #333;
+  border-radius: 2px;
+  transition: 0.3s;
+}
+
+/* ✅ يظهر بس على الموبايل */
+@media (max-width: 992px) {
+  .hamburger {
+    display: flex;
+  }
+
+  .language-switcher {
+    gap: 4px;
+    font-size: 0.9rem;
+  }
+
+  .nav-actions {
+    right: 60px; /* يخلي المسافة بين اللغة والهامبرغر ممتازة */
+  }
+}
+
+/* ✅ يمنع أي قص أو خروج */
+.navbar {
+  overflow: visible;
+  position: relative;
+  z-index: 1000;
+}
+
+
+
+/* ====== Actions (Lang + Login) ====== */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: absolute;
+  top: 50%;
+  right: 40px;
+  transform: translateY(-50%);
+}
+
+[dir="rtl"] .nav-actions {
+  right: auto;
+  left: 40px;
+}
+
+/* Animation when active */
+.hamburger.active span:nth-child(1) {
+  transform: rotate(-45deg) translate(-5px, 6px);
+}
+
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.active span:nth-child(3) {
+  transform: rotate(45deg) translate(-5px, -6px);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 992px) {
+  .hamburger {
+    display: flex;
+  }
+}
+/* 🌍 Modern Compact Language Switcher */
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1.2px solid #d9d9d9;
+  border-radius: 30px;
+  padding: 4px 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.language-switcher:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Buttons inside */
+.lang-btn {
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  padding: 0;
+  margin: 0;
+}
+
+.lang-btn.active {
+  color: #4D9794; /* highlight color */
+}
+
+.lang-btn:hover {
+  color: #4D9794;
+}
+
+/* Separator “–” */
+.lang-separator {
+  color: #b5b5b5;
+  font-weight: 400;
+  user-select: none;
+  pointer-events: none;
+}
+
+
 /* ===== Overlay Sidebar Modern 2025 ===== */
 .overlay {
   position: fixed;
@@ -459,6 +597,346 @@ body {
   color: #fff; /* أبيض */
 }
 
+
+/* ================= 📱 PERFECT MOBILE VERSION ================= */
+@media (max-width: 992px) {
+  .hero {
+    height: 420px;
+    margin-top: 85px;
+  }
+
+  .bento-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    height: 350px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 🔹 اجعل الصور مرتبة كخلفية ناعمة */
+  .bento-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, 1fr);
+    gap: 0;
+  }
+
+  .bento-item {
+    height: 90px;
+    object-fit: cover;
+    filter: brightness(0.8);
+    opacity: 0.9;
+  }
+
+  /* 🔹 تدرّج جميل فوق الصور */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.15));
+    z-index: 1;
+  }
+
+  /* 🔹 النص فوق الصور */
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    text-align: center;
+    padding: 30px 20px;
+    z-index: 2;
+    background: transparent;
+  }
+
+  .hero-text {
+    color: #fff;
+    max-width: 90%;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+
+  .hero-text h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .hero-text p {
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    height: 300px;
+  }
+
+  .bento-item {
+    height: 70px;
+  }
+
+  .hero-text h1 {
+    font-size: 1.3rem;
+  }
+
+  .hero-text p {
+    font-size: 0.85rem;
+  }
+}
+/* === Fix navbar spacing with hero === */
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* يزيل أي فراغ بين النافبار والهيدر */
+.hero {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* يتأكد أن النافبار يكون ملاصق للهيدر بدون أي مسافة */
+.navbar {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+/* تصحيح الترتيب بالموبايل */
+@media (max-width: 992px) {
+  .nav-container {
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .nav-logo img {
+    width: 160px;
+    height: auto;
+  }
+
+  .hamburger {
+    right: 15px;
+  }
+
+  .language-switcher {
+    position: relative;
+    left: 10px;
+  }
+}
+/* === PRO Mobile Header & Hero Fix === */
+@media (max-width: 992px) {
+  /* --- Header Container --- */
+  .navbar {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #eee;
+    height: 70px !important;
+  }
+
+  .nav-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 1rem !important;
+    position: relative;
+    height: 70px !important;
+  }
+
+  /* --- Remove login on mobile --- */
+  .nav-actions a[href*="login"],
+  .nav-actions .login,
+  .nav-actions button {
+    display: none !important;
+  }
+
+  /* --- Logo first --- */
+  .nav-logo {
+    order: 1 !important;
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .nav-logo img {
+    width: 160px !important;
+    height: auto;
+    display: block;
+  }
+
+  /* --- Language switcher second --- */
+  .language-switcher {
+    order: 2 !important;
+    margin: 0 auto;
+    background: #fff;
+    border: 1.5px solid #e3e3e3;
+    border-radius: 30px;
+    padding: 4px 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+
+  /* --- Hamburger third --- */
+  .hamburger {
+    order: 3 !important;
+    position: relative;
+    right: 0;
+    margin-left: auto;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    width: 40px;
+    height: 40px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* --- Hero section refinement --- */
+  .hero {
+    position: relative;
+    height: 360px !important;
+    margin-top: 80px !important;
+    overflow: hidden;
+    border-radius: 0;
+  }
+
+  .bento-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 4px;
+  }
+
+  .bento-item {
+    object-fit: cover;
+    width: 100%;
+    height: 120px;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+  }
+
+  .bento-item:hover {
+    transform: scale(1.02);
+  }
+
+  /* Subtle gradient for overlay harmony */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.5), rgba(0,0,0,0.1));
+    z-index: 1;
+  }
+
+  /* Hero text styling */
+  .hero-overlay {
+    z-index: 2;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    text-align: center;
+    padding: 30px 20px;
+  }
+
+  .hero-text {
+    color: #fff;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    max-width: 90%;
+  }
+
+  .hero-text h1 {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  .hero-text p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+}
+
+/* --- Ultra small screens (iPhone SE, older Android) --- */
+@media (max-width: 480px) {
+  .nav-logo img {
+    width: 135px !important;
+  }
+
+  .hero {
+    height: 300px !important;
+  }
+
+  .bento-item {
+    height: 100px !important;
+  }
+}
+@media (max-width: 992px) {
+  .login-btn {
+    display: none !important;
+  }
+}
+/* 🌍 MOBILE: show one hero photo instead of grid */
+@media (max-width: 768px) {
+  /* نخفي الشبكة الأصلية */
+  .bento-grid {
+    display: none !important;
+  }
+
+  /* نضيف خلفية صورة واحدة للهيرو */
+  .hero {
+ 
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 420px;
+    position: relative;
+    margin-top: 75px;
+  }
+
+  /* نترك التدرّج والنص مثل ما هو */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.15));
+    z-index: 1;
+  }
+
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    text-align: center;
+    padding: 30px 20px;
+    z-index: 2;
+  }
+
+  .hero-text {
+    color: #fff;
+    max-width: 90%;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+
+  .hero-text h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .hero-text p {
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+}
 
 
 
@@ -2427,5 +2905,86 @@ h1{text-align:center; margin-bottom:100px;}
   }
   .modal-content img {
     max-height: 180px; /* أصغر أكثر للموبايل */
+  }
+}
+/* =========================================================
+📱 FINAL ALIGNMENT FIX FOR MOBILE NAVBAR (Perfect Line)
+========================================================= */
+@media (max-width: 992px) {
+  /* يجعل كل العناصر في نفس السطر تمامًا */
+  .nav-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 78px !important;
+  }
+
+  /* اللوغو */
+  .nav-logo {
+    display: flex;
+    align-items: center;
+  }
+
+  .nav-logo img {
+    width: 165px !important;
+    height: auto;
+    display: block;
+    transform: translateY(1px);
+  }
+
+  /* اللغة */
+  .language-switcher {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 46px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1.4px solid #dadada;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    font-size: 0.9rem;
+    padding: 0 14px;
+    position: relative;
+    top: 0;
+    margin-right: 12px;
+  }
+
+  /* زر الهامبرغر */
+  .hamburger {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 46px;
+    height: 46px;
+    background: #ffffff;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    position: relative;
+    top: 0;           /* 🔹 يمنع نزول الزر */
+    margin-left: 8px; /* 🔹 مسافة بسيطة من اللغة */
+    transition: all 0.3s ease;
+  }
+
+  /* الخطوط داخل الهامبرغر */
+  .hamburger span {
+    width: 24px;
+    height: 2.6px;
+    background: #333;
+    border-radius: 2px;
+  }
+
+  /* يجعل الثلاثة بمحاذاة مثالية */
+  .nav-logo img,
+  .language-switcher,
+  .hamburger {
+    align-self: center !important;
+  }
+
+  /* للأجهزة الصغيرة جدًا */
+  @media (max-width: 480px) {
+    .nav-logo img { width: 140px !important; }
+    .language-switcher { height: 42px; font-size: 0.85rem; padding: 0 10px; }
+    .hamburger { width: 42px; height: 42px; }
   }
 }
