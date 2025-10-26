@@ -359,58 +359,6 @@ body {
   pointer-events: none;
 }
 
-@media (max-width: 992px) {
-  .nav-container {
-    padding: 0 16px;  /* تعديل على الحافة اليمنى/اليسرى */
-    height: 78px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .nav-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;         /* أقل من السابق لجعلها أقرب */
-    height: 46px;
-  }
-
-  .language-switcher {
-    height: 46px;
-    min-width: 80px;
-    padding: 0 12px;  /* تقليل padding لتقليل الفجوة */
-    border: 1.4px solid #ddd;
-    border-radius: 12px;
-    position: relative;
-    top: 2px;         /* رفع بسيط إنزم مع الهامبرغر */
-    right: 4px;       /* تحريك للأيسر شوي */
-  }
-
-  .hamburger {
-    width: 46px;
-    height: 46px;
-    position: relative;
-    top: 1px;         /* رفع بسيط لمواصلة الخط */
-    right: 0;
-  }
-
-  @media (max-width: 480px) {
-    .language-switcher,
-    .hamburger {
-      height: 42px;
-      width: 42px;
-      border-radius: 10px;
-    }
-    .language-switcher {
-      padding: 0 10px;
-      top: 0px;
-      right: 2px;
-    }
-    .hamburger {
-      top: 0px;
-    }
-  }
-}
 
 /* ===== Overlay Sidebar Modern 2025 ===== */
 .overlay {
@@ -649,42 +597,174 @@ body {
   color: #fff; /* أبيض */
 }
 
+/* =========================================================
+📱 MOBILE HEADER + HERO - REFRAME MHS (Perfect Version)
+========================================================= */
 
-/* ================= 📱 PERFECT MOBILE VERSION ================= */
+/* --- Header Container --- */
 @media (max-width: 992px) {
-  .hero {
-    height: 420px;
-    margin-top: 85px;
+  .navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 78px !important;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
   }
 
-  .bento-grid {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(4, 1fr);
+  .nav-container {
+    width: 100%;
+    height: 78px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 16px !important;
+    gap: 12px;
+  }
+
+  /* --- Hide login on mobile --- */
+  .login-btn {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* --- Logo first --- */
+  .nav-logo {
+    order: 1 !important;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .nav-logo img {
+    width: 165px !important;
+    height: auto;
+    object-fit: contain;
+    transform: translateY(1px);
+  }
+
+  /* --- Language switcher second --- */
+  .language-switcher {
+    order: 2 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: #fff;
+    border: 1.4px solid #dadada;
+    border-radius: 12px;
+    height: 46px;
+    min-width: 72px;
+    padding: 0 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    position: relative;
+    top: 1px;
+    margin-right: 10px;
+  }
+
+  .lang-btn {
+    background: none;
+    border: none;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+  }
+
+  .lang-btn.active { color: #4D9794; }
+  .lang-separator { color: #999; }
+
+  /* --- Hamburger third --- */
+  .hamburger {
+    order: 3 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    background: #ffffff;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    right: 0;
+  }
+
+  .hamburger span {
+    width: 24px;
+    height: 2.6px;
+    background: #333;
+    border-radius: 2px;
+    transition: 0.3s;
+  }
+
+  .hamburger:hover { transform: scale(1.03); }
+
+  /* --- Perfect Alignment --- */
+  .nav-logo img,
+  .language-switcher,
+  .hamburger {
+    align-self: center;
+  }
+
+  /* --- Spacing adjustments --- */
+  .language-switcher {
+    margin-right: 12px;
+  }
+  [dir="rtl"] .language-switcher {
+    margin-left: 12px;
+  }
+
+  /* --- ULTRA SMALL DEVICES (iPhone Mini / SE) --- */
+  @media (max-width: 480px) {
+    .nav-logo img {
+      width: 140px !important;
+    }
+    .language-switcher {
+      height: 42px;
+      min-width: 60px;
+      padding: 0 10px;
+      font-size: 0.85rem;
+    }
+    .hamburger {
+      width: 42px;
+      height: 42px;
+    }
   }
 }
 
+/* =========================================================
+🌅 HERO SECTION (MOBILE)
+========================================================= */
 @media (max-width: 768px) {
   .hero {
-    height: 350px;
+    background-image: url("p11.jpeg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: scroll;
+    width: 100%;
+    height: 100vh;
+    margin-top: 75px;
     position: relative;
     overflow: hidden;
   }
 
-  /* 🔹 اجعل الصور مرتبة كخلفية ناعمة */
-  .bento-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: repeat(4, 1fr);
-    gap: 0;
-  }
-
-  .bento-item {
-    height: 90px;
-    object-fit: cover;
-    filter: brightness(0.8);
-    opacity: 0.9;
-  }
-
-  /* 🔹 تدرّج جميل فوق الصور */
+  /* Gradient overlay for clarity */
   .hero::after {
     content: '';
     position: absolute;
@@ -693,7 +773,7 @@ body {
     z-index: 1;
   }
 
-  /* 🔹 النص فوق الصور */
+  /* Overlay text container */
   .hero-overlay {
     position: absolute;
     inset: 0;
@@ -703,216 +783,27 @@ body {
     text-align: center;
     padding: 30px 20px;
     z-index: 2;
-    background: transparent;
   }
 
   .hero-text {
     color: #fff;
     max-width: 90%;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
   }
 
   .hero-text h1 {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 700;
     margin-bottom: 8px;
   }
 
   .hero-text p {
-    font-size: 0.95rem;
-    line-height: 1.4;
-  }
-}
-
-@media (max-width: 480px) {
-  .hero {
-    height: 300px;
-  }
-
-  .bento-item {
-    height: 70px;
-  }
-
-  .hero-text h1 {
-    font-size: 1.3rem;
-  }
-
-  .hero-text p {
-    font-size: 0.85rem;
-  }
-}
-/* === Fix navbar spacing with hero === */
-body {
-  margin: 0;
-  padding: 0;
-}
-
-/* يزيل أي فراغ بين النافبار والهيدر */
-.hero {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-}
-
-/* يتأكد أن النافبار يكون ملاصق للهيدر بدون أي مسافة */
-.navbar {
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-}
-
-/* تصحيح الترتيب بالموبايل */
-@media (max-width: 992px) {
-  .nav-container {
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .nav-logo img {
-    width: 160px;
-    height: auto;
-  }
-
-  .hamburger {
-    right: 15px;
-  }
-
-  .language-switcher {
-    position: relative;
-    left: 10px;
-  }
-}
-/* === PRO Mobile Header & Hero Fix === */
-@media (max-width: 992px) {
-  /* --- Header Container --- */
-  .navbar {
-    background: rgba(255, 255, 255, 0.95) !important;
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid #eee;
-    height: 70px !important;
-  }
-
-  .nav-container {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    padding: 0 1rem !important;
-    position: relative;
-    height: 70px !important;
-  }
-
-  /* --- Remove login on mobile --- */
-  .nav-actions a[href*="login"],
-  .nav-actions .login,
-  .nav-actions button {
-    display: none !important;
-  }
-
-  /* --- Logo first --- */
-  .nav-logo {
-    order: 1 !important;
-    flex: 1;
-    display: flex;
-    justify-content: flex-start;
-  }
-
-  .nav-logo img {
-    width: 160px !important;
-    height: auto;
-    display: block;
-  }
-
-  /* --- Language switcher second --- */
-  .language-switcher {
-    order: 2 !important;
-    margin: 0 auto;
-    background: #fff;
-    border: 1.5px solid #e3e3e3;
-    border-radius: 30px;
-    padding: 4px 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  }
-
-  /* --- Hamburger third --- */
-  .hamburger {
-    order: 3 !important;
-    position: relative;
-    right: 0;
-    margin-left: auto;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    width: 40px;
-    height: 40px;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* --- Hero section refinement --- */
-  .hero {
-    position: relative;
-    height: 360px !important;
-    margin-top: 80px !important;
-    overflow: hidden;
-    border-radius: 0;
-  }
-
-  .bento-grid {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-    gap: 4px;
-  }
-
-  .bento-item {
-    object-fit: cover;
-    width: 100%;
-    height: 120px;
-    border-radius: 8px;
-    transition: transform 0.3s ease;
-  }
-
-  .bento-item:hover {
-    transform: scale(1.02);
-  }
-
-  /* Subtle gradient for overlay harmony */
-  .hero::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.5), rgba(0,0,0,0.1));
-    z-index: 1;
-  }
-
-  /* Hero text styling */
-  .hero-overlay {
-    z-index: 2;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    text-align: center;
-    padding: 30px 20px;
-  }
-
-  .hero-text {
-    color: #fff;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
-    max-width: 90%;
-  }
-
-  .hero-text h1 {
-    font-size: 1.3rem;
-    font-weight: 700;
-  }
-
-  .hero-text p {
-    font-size: 0.9rem;
+    font-size: 1rem;
     line-height: 1.5;
   }
+
+  /* Hide bento grid for performance */
+  .bento-grid { display: none !important; }
 }
 
 
@@ -979,78 +870,6 @@ body {
     pointer-events: none !important;
   }
 }
-
-
-/* 🌐 PRO 2025 PERFECT HEADER ALIGNMENT */
-@media (max-width: 992px) {
-  .navbar {
-    height: 78px !important;
-    display: flex;
-    align-items: center;
-    background: rgba(255,255,255,0.96);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid #eee;
-  }
-
-  .nav-container {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    width: 100%;
-    padding: 0 16px !important;
-    height: 78px !important;
-    gap: 12px;
-  }
-
-  /* === LOGO === */
-  .nav-logo {
-    order: 1;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-  }
-
-  .nav-logo img {
-    width: 170px !important;
-    height: auto;
-    object-fit: contain;
-    transform: translateY(2px);
-  }
-
-  /* === LANGUAGE SWITCHER === */
-  .language-switcher {
-    order: 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    background: #fff;
-    border: 1.4px solid #dadada;
-    border-radius: 30px;
-    padding: 5px 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    font-size: 0.95rem;
-    font-weight: 600;
-    transform: translateY(2px);
-  }
-
-  .lang-btn {
-    background: none;
-    border: none;
-    font-weight: 600;
-    color: #333;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: color 0.2s ease;
-  }
-  .lang-btn.active { color: #4D9794; }
-
-  .lang-separator {
-    color: #999;
-    user-select: none;
-    pointer-events: none;
-  }
 
 
 
