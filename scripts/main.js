@@ -417,7 +417,7 @@ function initializeSmoothScrolling() {
     });
 }
 
-// Accessibility improvements
+
 function initializeAccessibility() {
     // Add skip to main content link
     const skipLink = document.createElement('a');
@@ -473,7 +473,7 @@ function initializeAccessibility() {
     }
 }
 
-// Utility function to debounce scroll events
+
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {

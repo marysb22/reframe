@@ -16,9 +16,231 @@
  
  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+<!-- ===== Register Form Modal ===== -->
+<!-- ===== Register Form Modal (Perfect Center) ===== -->
+<div id="registerModal"
+     style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.5); backdrop-filter:blur(2px);">
 
+  <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+              background:#fff; width:90%; max-width:520px; border-radius:12px;
+              box-shadow:0 8px 25px rgba(0,0,0,0.25); overflow:hidden;">
+
+    <div style="padding:30px 35px; position:relative;">
+      <span id="closeRegister"
+            style="position:absolute; top:15px; right:20px; font-size:26px; color:#64748b;
+                   cursor:pointer; font-weight:600;">&times;</span>
+
+      <h2 style="margin-bottom:20px; color:#0F172A; text-align:center;">
+        Register for IPT Certified Training
+      </h2>
+
+      <form name="ipt-registration" method="POST" data-netlify="true">
+        <input type="hidden" name="form-name" value="ipt-registration">
+
+        <div style="margin-bottom:14px;">
+          <label style="font-weight:600; display:block; margin-bottom:5px;">Full Name</label>
+          <input type="text" name="name" required
+                 style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-weight:600; display:block; margin-bottom:5px;">Email</label>
+          <input type="email" name="email" required
+                 style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <label style="font-weight:600; display:block; margin-bottom:5px;">Profession / Title</label>
+          <input type="text" name="profession" required
+                 style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
+        </div>
+
+        <button type="submit"
+                style="width:100%; background:#4D9794; color:#fff; border:none;
+                       padding:12px; border-radius:8px; font-weight:600; cursor:pointer;">
+          Submit Registration
+        </button>
+      </form>
+
+      <p style="color:#64748b; font-size:0.9rem; text-align:center; margin-top:18px;">
+        All submissions will be securely stored and viewable in Reframe’s Netlify dashboard.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const modalRegister = document.getElementById("modalRegister");
+  const registerModal = document.getElementById("registerModal");
+  const closeRegister = document.getElementById("closeRegister");
+
+  // open form modal
+  if (modalRegister) {
+    modalRegister.addEventListener("click", (e) => {
+      e.preventDefault();
+      registerModal.style.display = "block";
+    });
+  }
+
+  // close when clicking ×
+  if (closeRegister) {
+    closeRegister.addEventListener("click", () => {
+      registerModal.style.display = "none";
+    });
+  }
+
+  // close when clicking outside
+  window.addEventListener("click", (e) => {
+    if (e.target === registerModal) {
+      registerModal.style.display = "none";
+    }
+  });
+});
+</script>
 
   <style>
+/* ==== New & Upcoming Events ==== */
+.new-events {
+  background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
+  padding: 100px 20px 80px;
+  text-align: center;
+}
+
+.new-events-header h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+
+.new-events-header p {
+  color: #475569;
+  font-size: 1.1rem;
+  margin-bottom: 50px;
+}
+
+/* Scroll Container */
+.new-events-scroll {
+  display: flex;
+  gap: 25px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: #4D9794 #e2e8f0;
+}
+
+.new-events-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+.new-events-scroll::-webkit-scrollbar-thumb {
+  background: #4D9794;
+  border-radius: 10px;
+}
+.new-events-scroll::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+/* Card Styling */
+.new-event-card {
+  flex: 0 0 360px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  scroll-snap-align: start;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.new-event-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+.new-event-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.new-event-info {
+  padding: 22px;
+  text-align: left;
+}
+
+.new-event-info h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 8px;
+}
+
+.new-event-info .event-date {
+  color: #4D9794;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.new-event-info .event-desc {
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.event-contact {
+  font-size: 0.9rem;
+  color: #475569;
+  margin-bottom: 18px;
+}
+
+.event-contact a {
+  color: #4D9794;
+  text-decoration: none;
+}
+.event-contact a:hover {
+  text-decoration: underline;
+}
+
+/* Register Button */
+.btn-register {
+  display: inline-block;
+  background: linear-gradient(90deg, #4D9794, #2c6b6b);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.btn-register:hover {
+  background: linear-gradient(90deg, #2c6b6b, #1b4b4b);
+  transform: scale(1.05);
+}
+
+/* Responsiv  e */
+@media (max-width: 768px) {
+  .new-event-card {
+    flex: 0 0 85%;
+  }
+
+  .new-events-header h1 {
+    font-size: 2rem;
+  }
+
+  .new-events-header p {
+    font-size: 1rem;
+  }
+
+  .new-event-info h3 {
+    font-size: 1.1rem;
+  }
+}
 
 
   /* --- Calendar Section --- */
@@ -838,6 +1060,24 @@ h1{text-align:center; margin-bottom:100px;}
   </div>
 </section>
 
+
+
+  <!-- ===== New & Upcoming Events Section (IPT) ===== -->
+<section class="events-section">
+  <div class="events-container">
+    <h1>New & Upcoming Events</h1>
+
+    <div class="list-events">
+      <div class="list-item" data-event="event11">
+        <img src="evnet11.jpeg" alt="Interpersonal Psychotherapy Training (IPT)">
+        <div class="list-item-body">
+          <h3>Interpersonal Psychotherapy Training (IPT)</h3>
+          <p>December 2025  |  Dates: 5 • 6 • 12 • 13  |  4 full days  |  400 USD</p>
+          <a class="view-btn">View Details</a>
+        </div>
+      </div>
+    </div>
+
 <section class="events-section">
   <div class="events-container">
     <h1>The events listed below have concluded</h1>
@@ -956,14 +1196,48 @@ h1{text-align:center; margin-bottom:100px;}
       <h3>About the Facilitator</h3>
       <p id="modalFacilitatorBio"></p>
       <p id="modalFee"></p>
-      <a href="#" class="view-btn" id="modalRegister">Register Now</a>
-      <a class="back-btn" id="modalBack">Back to All Events</a>
+   <a href="#" class="view-btn" id="modalRegister">Register Now</a>
+<a class="back-btn" id="modalBack">Back to All Events</a>
+
     </div>
   </div>
 </div>
 
 <script>
 const events = {
+
+  event11: {
+  img: "evnet11.jpeg",
+   title: "Interpersonal Psychotherapy Training (IPT)",
+  date: "December 2025 | Dates: 5 • 6 • 12 • 13  |  4 full days  |  400 USD",
+  format: "In-person at Reframe",
+  facilitator: "Led by Ali El Attar – IPT Main Trainer",
+  about: `This training equips mental health professionals with practical, evidence-based tools 
+  to address depression and interpersonal challenges through the IPT framework.
+  Participants will connect with the International Society of IPT.
+  A certified and structured program designed to advance clinical expertise and strengthen therapeutic practice.
+  For more information contact us at +961 70 839 473 or visit www.reframemhs.com.`,
+  learn: [
+    "Apply IPT techniques with clients experiencing depression and relational difficulties.",
+    "Gain hands-on tools for case formulation and intervention planning.",
+    "Integrate culturally sensitive IPT methods into daily clinical work."
+  ],
+  who: [
+    "Psychologists, psychotherapists, and counselors.",
+    "Mental health professionals seeking advanced evidence-based training.",
+    "Graduate students in clinical and counseling psychology."
+  ],
+  outcomes: [
+    "Enhanced ability to apply IPT in diverse contexts.",
+    "Certification endorsed by the International Society of IPT.",
+    "Expanded network with international IPT professionals."
+  ],
+  facilitatorBio: `Ali El Attar is a certified IPT Trainer and Supervisor with extensive experience
+  providing clinical training and supervision across the Middle East.`,
+  fee: "Workshop Fee: 400 USD (4 full days)",
+  register: "#"
+},
+
  event1: {
   img: "Evnet1.webp",
   title: "The Invisible Weight: Foundations of Eating Disorder Care for Dietitians",
@@ -1448,4 +1722,4 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
-</script>
+
