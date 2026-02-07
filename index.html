@@ -1359,20 +1359,31 @@ tabBtns.forEach(btn => {
 
 
 }
-/* === Blue → Slate glow (your chosen colors) === */
+/* === Slate gray glow only (#475569) === */
 .milestone-icon.step-glow{
-  background: linear-gradient(135deg, #1e90ff 0%, #475569 100%) !important;
+  background: #475569 !important;
 
-  /* خلي اللمعة تتبع اللونين مش بس الأزرق */
   box-shadow:
     0 10px 22px rgba(0,0,0,0.14),
-    0 0 14px rgba(30,144,255,0.55),
-    0 0 30px rgba(30,144,255,0.40),
-    0 0 55px rgba(71,85,105,0.28) !important;
+    0 0 12px rgba(71,85,105,0.55),
+    0 0 26px rgba(71,85,105,0.45),
+    0 0 48px rgba(71,85,105,0.30) !important;
 
   transform: scale(1.08);
   animation: stepGlow 1.8s ease-in-out infinite;
 }
+
+/* Hover على الدائرة المضيّة */
+.milestone-card:hover .milestone-icon.step-glow{
+  transform: scale(1.12);
+}
+
+/* نبض خفيف للرمادي */
+@keyframes stepGlow{
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.12); }
+}
+
 
 /* إذا المستخدم عمل hover على الدائرة المضيّة، خلّيها شوي أكبر */
 .milestone-card:hover .milestone-icon.step-glow {
@@ -1531,6 +1542,11 @@ html, body {
 /* لا تعممي حذف الـ padding على كل sections */
 section{
   width: 100%;
+}
+/* remove huge vertical gaps between sections */
+section {
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
 }
 
 
