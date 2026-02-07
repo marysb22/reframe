@@ -22,6 +22,33 @@ collections:
               - { label: "Status", name: "status", widget: "select", options: ["upcoming","concluded"] }
               - { label: "Date", name: "date", widget: "datetime" }
               - { label: "Image", name: "image", widget: "image" }
-              - { label: "Description", name: "description", widget: "text" }
-              - { label: "Register Link", name: "register", widget: "string" }
+
+              - { label: "Format", name: "format", widget: "string", required: false }
+              - { label: "Facilitator", name: "facilitator", widget: "string", required: false }
+              - { label: "About", name: "about", widget: "text", required: false }
+
+              - label: "What You'll Learn"
+                name: "learn"
+                widget: "list"
+                required: false
+                field: { label: "Item", name: "item", widget: "string" }
+
+              - label: "Who Should Attend?"
+                name: "who"
+                widget: "list"
+                required: false
+                field: { label: "Item", name: "item", widget: "string" }
+
+              - label: "Workshop Outcomes"
+                name: "outcomes"
+                widget: "list"
+                required: false
+                field: { label: "Item", name: "item", widget: "string" }
+
+              - { label: "Facilitator Bio", name: "facilitatorBio", widget: "text", required: false }
+              - { label: "Fee", name: "fee", widget: "string", required: false }
+              - { label: "Translation", name: "translation", widget: "string", required: false }
+
+              - { label: "Register Link", name: "register", widget: "string", default: "#", required: false }
+
 
