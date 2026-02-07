@@ -1,12 +1,3 @@
 {
-  "events": [
-    {
-      "title": "hello",
-      "status": "upcoming",
-      "date": "2026-02-07T22:43:00.000+02:00",
-      "image": "/assets/uploads/1-1-.webp",
-      "description": "hee",
-      "register": "ww"
-    }
-  ]
+  "events": []
 }
