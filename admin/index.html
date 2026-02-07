@@ -5,16 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Reframe CMS</title>
 
-    <!-- Netlify Identity (for login) -->
+    <!-- Netlify Identity -->
     <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-
-    <!-- Decap CMS -->
-    <script src="https://unpkg.com/decap-cms@latest/dist/decap-cms.js"></script>
   </head>
 
   <body>
-    <!-- ✅ REQUIRED mount point for Decap CMS -->
-    <div id="nc-root"></div>
+    <!-- Decap CMS needs body to exist -->
+    <script src="https://unpkg.com/decap-cms@3.10.0/dist/decap-cms.js"></script>
 
     <script>
       if (window.netlifyIdentity) {
