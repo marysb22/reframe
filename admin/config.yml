@@ -1,1 +1,27 @@
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "assets/uploads"
+public_folder: "/assets/uploads"
+
+collections:
+  - name: "events"
+    label: "Events"
+    files:
+      - name: "events"
+        label: "All Events"
+        file: "content/events.json"
+        format: "json"
+        fields:
+          - label: "Events"
+            name: "events"
+            widget: "list"
+            fields:
+              - { label: "Title", name: "title", widget: "string" }
+              - { label: "Status", name: "status", widget: "select", options: ["upcoming","concluded"] }
+              - { label: "Date", name: "date", widget: "datetime" }
+              - { label: "Image", name: "image", widget: "image" }
+              - { label: "Description", name: "description", widget: "text" }
+              - { label: "Register Link", name: "register", widget: "string" }
 
