@@ -1,20 +1,12 @@
 {
   "events": [
     {
-      "title": "mary",
+      "title": "hello",
       "status": "upcoming",
-      "date": "2026-02-12T22:04:00.000+02:00",
+      "date": "2026-02-07T22:43:00.000+02:00",
       "image": "/assets/uploads/1-1-.webp",
-      "description": "hi",
-      "register": "mary"
-    },
-    {
-      "title": "text cmc",
-      "status": "upcoming",
-      "date": "2026-02-23T14:22:00.000+02:00",
-      "image": "/assets/uploads/1-1-.webp",
-      "description": "hi",
-      "register": "https://reframemhs.com/register.html"
+      "description": "hee",
+      "register": "ww"
     }
   ]
 }
