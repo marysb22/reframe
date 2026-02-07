@@ -1,11 +1,11 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Reframe CMS</title>
 
-    <!-- Netlify Identity -->
+    <!-- Netlify Identity (for login) -->
     <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 
     <!-- Decap CMS -->
@@ -13,9 +13,12 @@
   </head>
 
   <body>
+    <!-- ✅ REQUIRED mount point for Decap CMS -->
+    <div id="nc-root"></div>
+
     <script>
       if (window.netlifyIdentity) {
-        window.netlifyIdentity.on("init", user => {
+        window.netlifyIdentity.on("init", (user) => {
           if (!user) {
             window.netlifyIdentity.on("login", () => {
               document.location.href = "/admin/";
@@ -26,4 +29,3 @@
     </script>
   </body>
 </html>
-
