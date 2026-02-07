@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
@@ -1061,22 +1061,57 @@ h1{text-align:center; margin-bottom:100px;}
 </section>
 
 
-
-  <!-- ===== New & Upcoming Events Section (IPT) ===== -->
+<!-- ===== New & Upcoming Events Section (IPT) ===== -->
 <section class="events-section">
   <div class="events-container">
     <h1>New & Upcoming Events</h1>
 
+    <!-- ✅ CMS EVENTS WILL APPEAR HERE -->
+    <div id="cms-events" class="list-events"></div>
+
+    <!-- Existing manual event (KEEP IT) -->
     <div class="list-events">
       <div class="list-item" data-event="event11">
         <img src="evnet11.jpeg" alt="Interpersonal Psychotherapy Training (IPT)">
         <div class="list-item-body">
           <h3>Interpersonal Psychotherapy Training (IPT)</h3>
-          <p>December 2025  |  Dates: 5 • 6 • 12 • 13  |  4 full days  |  400 USD</p>
+          <p>December 2025 | Dates: 5 • 6 • 12 • 13 | 4 full days | 400 USD</p>
           <a class="view-btn">View Details</a>
         </div>
       </div>
     </div>
+
+  </div>
+</section>
+
+<!-- ===== CMS EVENTS SCRIPT ===== -->
+<script>
+fetch("/data/events.json")
+  .then(res => res.json())
+  .then(data => {
+    const events = Array.isArray(data) ? data : data.events;
+    const container = document.getElementById("cms-events");
+
+    if (!container || !events) return;
+
+    events
+      .filter(e => e.status === "upcoming")
+      .forEach(event => {
+        container.innerHTML += `
+          <div class="list-item">
+            <img src="${event.image}" alt="${event.title}">
+            <div class="list-item-body">
+              <h3>${event.title}</h3>
+              <p>${event.date}</p>
+              <a class="view-btn" href="${event.register || '#'}">Register</a>
+            </div>
+          </div>
+        `;
+      });
+  })
+  .catch(err => console.error("CMS events error:", err));
+</script>
+
 
 <section class="events-section">
   <div class="events-container">
