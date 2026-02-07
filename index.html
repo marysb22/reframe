@@ -1371,6 +1371,28 @@ section {
     line-height: 1.5;
   }
 }
+/* === Blue glow step (one circle at a time) === */
+.milestone-icon.step-glow {
+  background: linear-gradient(135deg, #1e90ff, #4facfe) !important;
+  box-shadow:
+    0 10px 22px rgba(0,0,0,0.14),
+    0 0 14px rgba(30,144,255,0.55),
+    0 0 30px rgba(30,144,255,0.45),
+    0 0 55px rgba(30,144,255,0.30) !important;
+  transform: scale(1.08);
+  animation: stepGlow 1.8s ease-in-out infinite;
+}
+
+/* إذا المستخدم عمل hover على الدائرة المضيّة، خلّيها شوي أكبر */
+.milestone-card:hover .milestone-icon.step-glow {
+  transform: scale(1.12);
+}
+
+/* نبض خاص بالإضاءة الزرقا */
+@keyframes stepGlow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15); }
+}
 
 }
 
@@ -1623,6 +1645,23 @@ section {
 </footer>
 
 
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const icons = document.querySelectorAll(".milestone-icon");
+  if (!icons.length) return;
+
+  let i = 0;
+
+  const run = () => {
+    icons.forEach(el => el.classList.remove("step-glow"));
+    icons[i].classList.add("step-glow");
+    i = (i + 1) % icons.length;
+  };
+
+  run();
+  setInterval(run, 2000); // كل 2 ثواني
+});
+</script>
 
 
 
