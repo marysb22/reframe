@@ -1,1 +1,16 @@
-
+{
+  "events": [
+    {
+      "register": "#",
+      "fee": "hi",
+      "facilitator": "hi",
+      "about": "hi",
+      "date": "2026-02-08T01:03:00.000+02:00",
+      "translation": "hi",
+      "status": "upcoming",
+      "title": "mary",
+      "image": "/assets/uploads/1-1-.webp",
+      "facilitatorBio": "hi"
+    }
+  ]
+}
