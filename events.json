@@ -5,9 +5,16 @@
       "status": "upcoming",
       "date": "2026-02-07T22:43:00.000+02:00",
       "image": "/assets/uploads/1-1-.webp",
-      "description": "hee",
+      "format": "Online",
+      "facilitator": "Dr. X",
+      "about": "تفاصيل عن التدريب...",
+      "learn": ["Point 1", "Point 2"],
+      "who": ["Psychologists", "Counselors"],
+      "outcomes": ["Outcome 1", "Outcome 2"],
+      "facilitatorBio": "Bio here...",
+      "fee": "Starting $20",
+      "translation": "Arabic",
       "register": "#"
     }
   ]
 }
-
