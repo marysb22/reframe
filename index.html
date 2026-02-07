@@ -598,17 +598,6 @@ tabBtns.forEach(btn => {
 
 
 
-.container{
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-
-section{
-  width: 100%;
-}
-
 
 
 .helper{ margin:.5rem 0 0; font-size:.92rem; color:#5b6773; opacity:.9; }
@@ -1370,14 +1359,17 @@ section{
 
 
 }
-    /* === Blue glow step (one circle at a time) === */
-.milestone-icon.step-glow {
-  background: linear-gradient(135deg, #1e90ff, #4facfe) !important;
+/* === Blue → Slate glow (your chosen colors) === */
+.milestone-icon.step-glow{
+  background: linear-gradient(135deg, #1e90ff 0%, #475569 100%) !important;
+
+  /* خلي اللمعة تتبع اللونين مش بس الأزرق */
   box-shadow:
     0 10px 22px rgba(0,0,0,0.14),
     0 0 14px rgba(30,144,255,0.55),
-    0 0 30px rgba(30,144,255,0.45),
-    0 0 55px rgba(30,144,255,0.30) !important;
+    0 0 30px rgba(30,144,255,0.40),
+    0 0 55px rgba(71,85,105,0.28) !important;
+
   transform: scale(1.08);
   animation: stepGlow 1.8s ease-in-out infinite;
 }
@@ -1523,6 +1515,23 @@ section{
 .footer p {
   color: #cccccc;
 }
+/* ===== Global Fixes ===== */
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* رجّعي الكونتينر الطبيعي بدل ما يكون 100% بدون padding */
+.container{
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* لا تعممي حذف الـ padding على كل sections */
+section{
+  width: 100%;
+}
 
 
 </style>
@@ -1660,7 +1669,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   run();
-  setInterval(run, 2000); // كل 2 ثواني
+  setInterval(run, 1000); // كل 2 ثواني
 });
 
 
