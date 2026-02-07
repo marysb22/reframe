@@ -1083,7 +1083,8 @@ h1{text-align:center; margin-bottom:100px;}
 
   </div>
 </section>
-<script>
+
+
 document.addEventListener("DOMContentLoaded", () => {
   const upcomingContainer = document.getElementById("cms-events");
   const concludedContainer = document.getElementById("cms-events-concluded"); // (رح نعمله بالـ HTML تحت)
@@ -1170,8 +1171,8 @@ document.addEventListener("DOMContentLoaded", () => {
     container.appendChild(item);
   }
 
-  fetch("/events.json")
-    .then(res => res.json())
+ fetch("/content/events.json")
+  .then(res => res.json())
     .then(data => {
       cmsEvents = data.events || [];
 
