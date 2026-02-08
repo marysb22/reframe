@@ -593,9 +593,19 @@ tabBtns.forEach(btn => {
   --section-gap: 40px;
   --border-radius: 12px;
   --box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+   --space-header: 48px;
+  --space-content: 24px;
+  --space-tight: 16px;
 }
 
 
+
+/* قاعدة عامة */
+section {
+  width: 100%;
+  padding-left: 20px;
+  padding-right: 20px;
+}
 
 
 
@@ -1526,35 +1536,7 @@ tabBtns.forEach(btn => {
 .footer p {
   color: #cccccc;
 }
-/* ===== Global Fixes ===== */
-html, body {
-  width: 100%;
-  overflow-x: hidden;
-}
 
-/* رجّعي الكونتينر الطبيعي بدل ما يكون 100% بدون padding */
-.container{
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-/* لا تعممي حذف الـ padding على كل sections */
-section{
-  width: 100%;
-}
-section {
-  padding-top: 80px;
-  padding-bottom: 80px;
-}
-
-.milestones-section {
-  padding-bottom: 40px;
-}
-
-.partners-carousel-section {
-  padding-top: 40px;
-}
 
 
 </style>
