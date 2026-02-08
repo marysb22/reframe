@@ -600,9 +600,7 @@ tabBtns.forEach(btn => {
 }
 
 
-* {
-  outline: 1px solid red;
-}
+
 
 /* قاعدة عامة */
 section {
@@ -1194,22 +1192,31 @@ html, body {
 }
 
 .milestones-grid {
+  display: flex;
+  justify-content: center;   /* ❌ لا space-between */
+  align-items: flex-start;
+  gap: 40px;                 /* gap واحد فقط */
   position: relative;
   overflow-x: hidden;
 }
 
 
-/* ===== Milestone Card ===== */
+/* ===== Milestone Card — Fixed & Safe ===== */
 .milestone-card {
   position: relative;
   z-index: 1;
-  flex: 1;
+
+  flex: 0 0 260px;      /* عرض ثابت */
+  max-width: 260px;
+
   text-align: center;
   transition: transform 0.4s ease, box-shadow 0.4s ease;
+
   transform: translateY(40px);
   opacity: 0;
   animation: fade-up 0.9s ease forwards;
 }
+
 
 .milestone-card:nth-child(1) { animation-delay: 0.2s; }
 .milestone-card:nth-child(2) { animation-delay: 0.4s; }
