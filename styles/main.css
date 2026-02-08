@@ -1988,18 +1988,17 @@ body {
   padding: 0 20px;
 }
 
-/* Layout */
+
+
 .footer-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 60px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 1.2fr;
+  gap: 48px;
+  align-items: start;
 }
 
 .footer-section {
-  flex: 1;
-  min-width: 220px;
+  min-width: 0;
 }
 
 /* Titles */
