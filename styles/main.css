@@ -1984,26 +1984,27 @@ body {
 }
 
 .footer .container {
-  max-width: 100%;
+  max-width: 1200px;     /* ❗ مهم */
   margin: 0 auto;
   padding: 0 20px;
 }
 
-/* ترتيب المحتوى */
+
 .footer-content {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: flex-start;
+  gap: 60px;
   flex-wrap: wrap;
-  gap: 20px; /* ← تقليل المسافة بين الأعمدة */
-    padding: 0 1git0px;  
 }
 
-/* كل قسم */
 .footer-section {
-  min-width: 150px;
-  max-width: 260px;
+  flex: 1;
+  min-width: 220px;
 }
+
+
+
 
 /* العناوين */
 .footer-section h3,
@@ -2076,94 +2077,6 @@ body {
   font-weight: 500;
 }
 
-/* ==== FOOTER STYLES (FIXED ON DESKTOP / FLEXIBLE ON MOBILE) ==== */
-.footer {
-  background:#4D9794;
-  color:#fff;
-  padding:50px 0;
-  font-family:'Segoe UI',sans-serif;
-  font-size:14px;
-  line-height:1.5;
-  overflow:hidden;
-  margin:0;
-}
-
-/* ====== Container ====== */
-.footer .container {
-  max-width:100%;
-  margin:0;
-  padding:0;
-}
-
-/* ====== Desktop & Laptop Layout (fixed) ====== */
-@media (min-width:768px) {
-  .footer-content {
-    display:flex;
-    justify-content:center;
-    align-items:flex-start;
-    gap:100px;                /* نفس المسافة بين الأعمدة */
-    flex-wrap:nowrap;         /* ❌ يمنع النزول تحت بعض */
-    padding:0 60px;
-  }
-
-  .footer-section {
-    flex:1;
- 
-  }
-}
-
-/* ===== Titles & Text ===== */
-.footer-section h3,
-.footer-section h4 {
-  font-size:18px;
-  margin-bottom:25px;
-  color:#f0f0f0;
-}
-
-.footer-section p {
-  font-size:14px;
-  margin-bottom:20px;
-  color:#d1d1d1;
-  line-height:1.7;
-}
-
-/* ===== Links ===== */
-.footer-section ul {
-  list-style:none;
-  padding:0;
-  margin:0;
-}
-.footer-section ul li {margin-bottom:12px;}
-.footer-section ul li a {
-  color:#d1d1d1;
-  text-decoration:none;
-  transition:color .3s;
-}
-.footer-section ul li a:hover {color:#fff;}
-
-/* ===== Social Links ===== */
-.social-links {
-  display:flex;
-  gap:18px;
-  margin-top:20px;
-}
-.social-links a {
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  background:#ffffff1a;
-  width:34px;
-  height:34px;
-  border-radius:50%;
-  color:#fff;
-  font-size:16px;
-  transition:background .3s,transform .3s;
-}
-.social-links a:hover {
-  background:#fff;
-  color:#4D9794;
-  transform:scale(1.1);
-}
 
 /* ===== Subscribe Section ===== */
 .subscribe-section {
