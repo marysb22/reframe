@@ -593,7 +593,231 @@ h1{text-align:center; margin-bottom:100px;}
   }
 }
 
-   
+  
+        /* ===== Our Packages - Smart Pro CSS ===== */
+.our-packages {
+    padding: 80px 20px;
+    background: #f4f7fa;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+}
+.our-packages h2 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: #222;
+    margin-bottom: 50px;
+    position: relative;
+}
+.our-packages h2::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #4D9794, #3e7d74);
+    margin: 15px auto 0;
+    border-radius: 2px;
+}
+
+/* ===== Grid Layout ===== */
+.packages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 30px;
+    justify-items: center;
+}
+
+/* ===== Package Card ===== */
+.package-card {
+    background: linear-gradient(145deg, #ffffff, #e6f2f1);
+    border-radius: 16px;
+    padding: 25px 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+    transition: transform 0.35s ease, box-shadow 0.35s ease, background 0.35s ease;
+}
+.package-card:hover {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.18);
+    background: linear-gradient(145deg, #f0f9f8, #e0f2f1);
+}
+
+/* ===== Badge Ribbon ===== */
+.package-card::before {
+    content: attr(data-package);
+    position: absolute;
+    top: 12px;
+    left: -10px;
+    background: linear-gradient(45deg,#4D9794,#3e7d74);
+    color: #fff;
+    padding: 6px 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 0 10px 10px 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* ===== Title & Description ===== */
+.package-card h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 10px;
+}
+.package-card p {
+    font-size: 0.95rem;
+    color: #555;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+/* ===== Includes List ===== */
+.package-card ul {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 15px;
+}
+.package-card ul li {
+    position: relative;
+    padding-left: 25px;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    color: #555;
+    transition: color 0.3s;
+}
+.package-card ul li::before {
+    content: '✔';
+    position: absolute;
+    left: 0;
+    color: #4D9794;
+    font-weight: bold;
+    transition: transform 0.3s, color 0.3s;
+}
+.package-card:hover ul li::before {
+    transform: scale(1.2) rotate(15deg);
+    color: #3e7d74;
+}
+
+/* ===== Price ===== */
+.package-card .price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 12px;
+}
+
+/* ===== Terms ===== */
+.package-card .terms{
+    font-size:0.8rem;
+    color:#777;
+    margin-bottom:12px;
+}
+
+/* ===== Book Button ===== */
+.package-card .btn-book {
+    display: inline-block;
+    padding: 10px 25px;
+    background: linear-gradient(45deg,#4D9794,#3e7d74);
+    color: #fff;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+.package-card .btn-book:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    background: linear-gradient(45deg,#3e7d74,#2c615f);
+}
+
+/* ===== Responsive ===== */
+@media(max-width:768px){
+    .packages-grid{
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    .package-card{
+        padding: 20px 15px;
+    }
+    .package-card h3{
+        font-size:1.2rem;
+    }
+    .package-card p, .package-card .price{
+        font-size:0.85rem;
+    }
+}
+@media(max-width:480px){
+    .packages-grid{
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .package-card{
+        padding: 18px 12px;
+    }
+    .package-card h3{
+        font-size:1.1rem;
+    }
+    .package-card p, .package-card .price{
+        font-size:0.8rem;
+    }
+}.accreditation-section {
+  background: rgb(173, 173, 173);
+  padding: 5rem 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.accreditation-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+  max-width: 1200px;
+  flex-wrap: wrap;
+}
+
+.accreditation-image img {
+  width: 420px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.accreditation-text {
+  max-width: 600px;
+  text-align: left;
+}
+
+.accreditation-text h1 {
+  color: #4D9794;;
+  font-size: 2rem;
+  margin-bottom: 1.2rem;
+  font-weight: 700;
+}
+
+.accreditation-text p {
+  font-size: 1rem;
+  color: #333;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.accreditation-text strong {
+  color:#4D9794;;
+}
+
+.accreditation-text em {
+  font-style: italic;
+  color:#4D9794;;
+}
+
+.accreditation-text .hashtags {
+  margin-top: 1.5rem;
+  color:#4D9794;;
+  font-weight: 500;
+}
+ 
       
   
 
