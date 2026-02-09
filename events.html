@@ -817,7 +817,115 @@ h1{text-align:center; margin-bottom:100px;}
   color:#4D9794;;
   font-weight: 500;
 }
- 
+ /* ===== Training Services Section ===== */
+.training-services {
+  padding: 80px 20px;
+  background: #f9fafb;
+}
+
+.training-grid {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  gap: 20px;
+}
+
+/* Card */
+.training-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+/* Toggle Button */
+.training-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 22px 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  text-align: left;
+}
+
+.training-toggle h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #0F172A;
+}
+
+.training-toggle span {
+  font-size: 0.85rem;
+  color: #4D9794;
+  font-weight: 600;
+  margin-right: auto;
+  margin-left: 16px;
+}
+
+.training-toggle i {
+  transition: transform 0.3s ease;
+  color: #475569;
+}
+
+/* Content */
+.training-content {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 26px;
+  transition: max-height 0.4s ease, padding 0.3s ease;
+}
+
+.training-content p {
+  font-size: 0.95rem;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.training-content h4 {
+  margin-top: 14px;
+  font-size: 0.95rem;
+  color: #166534;
+}
+
+.training-content ul {
+  padding-left: 18px;
+  margin: 8px 0;
+}
+
+.training-content li {
+  font-size: 0.9rem;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.best-for {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+/* Active */
+.training-card.active .training-content {
+  max-height: 800px;
+  padding: 0 26px 22px;
+}
+
+.training-card.active .training-toggle i {
+  transform: rotate(180deg);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .training-toggle {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+
       
   
 
@@ -996,6 +1104,134 @@ h1{text-align:center; margin-bottom:100px;}
   </script>
   
 
+<section class="training-services">
+  <div class="section-header">
+    <h2>Training & Professional Development</h2>
+    <p>
+      Structured learning opportunities designed to support growth, skill-building,
+      and ethical clinical practice across different career stages.
+    </p>
+  </div>
+
+  <div class="training-grid">
+
+    <!-- Short-Term Trainings -->
+    <div class="training-card">
+      <button class="training-toggle">
+        <h3>Short-Term Trainings</h3>
+        <span>2–4 hours • Online</span>
+        <i class="fa fa-chevron-down"></i>
+      </button>
+
+      <div class="training-content">
+        <p>
+          Brief learning experiences focused on knowledge updates and practical insights.
+          These sessions introduce new ideas, tools, and developments in mental health practice.
+        </p>
+
+        <h4>Focus Areas</h4>
+        <ul>
+          <li>Updates on therapeutic techniques</li>
+          <li>Introduction to theories and models</li>
+          <li>Research findings and clinical insights</li>
+          <li>Practice-based experiences and outcomes</li>
+        </ul>
+
+        <p class="best-for">
+          <strong>Best suited for:</strong> Professionals seeking focused learning and timely updates.
+        </p>
+      </div>
+    </div>
+
+    <!-- Mid-Term Trainings -->
+    <div class="training-card">
+      <button class="training-toggle">
+        <h3>Mid-Term Trainings</h3>
+        <span>Half day – 2 weeks • Online or In-person</span>
+        <i class="fa fa-chevron-down"></i>
+      </button>
+
+      <div class="training-content">
+        <p>
+          In-depth, structured programs designed to build and strengthen professional skills
+          through immersive and practice-oriented learning.
+        </p>
+
+        <h4>Focus Areas</h4>
+        <ul>
+          <li>Applied clinical skills</li>
+          <li>Hands-on learning experiences</li>
+          <li>Guided exercises and case discussions</li>
+        </ul>
+
+        <p class="best-for">
+          <strong>Best suited for:</strong> Practitioners seeking hands-on learning and skill enhancement.
+        </p>
+      </div>
+    </div>
+
+    <!-- Long-Term Trainings -->
+    <div class="training-card">
+      <button class="training-toggle">
+        <h3>Long-Term Training Programs</h3>
+        <span>Comprehensive & Ongoing</span>
+        <i class="fa fa-chevron-down"></i>
+      </button>
+
+      <div class="training-content">
+        <p>
+          Comprehensive professional development pathways that support deep,
+          sustained learning through an integrated structure.
+        </p>
+
+        <h4>Core Components</h4>
+        <ul>
+          <li>Theoretical training</li>
+          <li>Ongoing supervision</li>
+        </ul>
+
+        <h4>Focus Areas</h4>
+        <ul>
+          <li>Advanced conceptual understanding</li>
+          <li>Clinical application and case formulation</li>
+          <li>Progressive competency development</li>
+        </ul>
+
+        <p class="best-for">
+          <strong>Best suited for:</strong> Professionals seeking structured, long-term clinical training.
+        </p>
+      </div>
+    </div>
+
+    <!-- Supervision -->
+    <div class="training-card">
+      <button class="training-toggle">
+        <h3>Supervision Services</h3>
+        <span>Individual & Group • Online or In-person</span>
+        <i class="fa fa-chevron-down"></i>
+      </button>
+
+      <div class="training-content">
+        <p>
+          Supervision services designed to support ethical, reflective,
+          and effective clinical practice for psychotherapists.
+        </p>
+
+        <h4>Focus Areas</h4>
+        <ul>
+          <li>Case discussion and formulation</li>
+          <li>Clinical reflection</li>
+          <li>Professional development and ethical practice</li>
+        </ul>
+
+        <p class="best-for">
+          <strong>Best suited for:</strong> Practicing psychotherapists seeking supervision and clinical support.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
 
 
    
@@ -1780,4 +2016,25 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+  
 });
+
+
+document.querySelectorAll(".training-toggle").forEach(toggle => {
+  toggle.addEventListener("click", () => {
+    const card = toggle.closest(".training-card");
+    const expanded = toggle.getAttribute("aria-expanded") === "true";
+
+    document.querySelectorAll(".training-card").forEach(c => {
+      c.classList.remove("active");
+      c.querySelector(".training-toggle").setAttribute("aria-expanded", "false");
+    });
+
+    if (!expanded) {
+      card.classList.add("active");
+      toggle.setAttribute("aria-expanded", "true");
+    }
+  });
+});
+</script>
+
