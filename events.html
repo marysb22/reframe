@@ -592,233 +592,116 @@ h1{text-align:center; margin-bottom:100px;}
     padding: 18px 16px;
   }
 }
-
-   
-        /* ===== Our Packages - Smart Pro CSS ===== */
-.our-packages {
-    padding: 80px 20px;
-    background: #f4f7fa;
-    text-align: center;
-    font-family: 'Poppins', sans-serif;
-}
-.our-packages h2 {
-    font-size: 2.8rem;
-    font-weight: 800;
-    color: #222;
-    margin-bottom: 50px;
-    position: relative;
-}
-.our-packages h2::after {
-    content: '';
-    display: block;
-    width: 80px;
-    height: 4px;
-    background: linear-gradient(90deg, #4D9794, #3e7d74);
-    margin: 15px auto 0;
-    border-radius: 2px;
+/* ===== Training Services Section ===== */
+.training-services {
+  padding: 80px 20px;
+  background: #f9fafb;
 }
 
-/* ===== Grid Layout ===== */
-.packages-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 30px;
-    justify-items: center;
+.training-grid {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  gap: 20px;
 }
 
-/* ===== Package Card ===== */
-.package-card {
-    background: linear-gradient(145deg, #ffffff, #e6f2f1);
-    border-radius: 16px;
-    padding: 25px 20px;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
-    transition: transform 0.35s ease, box-shadow 0.35s ease, background 0.35s ease;
-}
-.package-card:hover {
-    transform: translateY(-6px) scale(1.03);
-    box-shadow: 0 25px 60px rgba(0,0,0,0.18);
-    background: linear-gradient(145deg, #f0f9f8, #e0f2f1);
+/* Card */
+.training-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  overflow: hidden;
 }
 
-/* ===== Badge Ribbon ===== */
-.package-card::before {
-    content: attr(data-package);
-    position: absolute;
-    top: 12px;
-    left: -10px;
-    background: linear-gradient(45deg,#4D9794,#3e7d74);
-    color: #fff;
-    padding: 6px 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    border-radius: 0 10px 10px 0;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-/* ===== Title & Description ===== */
-.package-card h3 {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #222;
-    margin-bottom: 10px;
-}
-.package-card p {
-    font-size: 0.95rem;
-    color: #555;
-    margin-bottom: 10px;
-    line-height: 1.5;
-}
-
-/* ===== Includes List ===== */
-.package-card ul {
-    list-style: none;
-    padding-left: 0;
-    margin-bottom: 15px;
-}
-.package-card ul li {
-    position: relative;
-    padding-left: 25px;
-    margin-bottom: 6px;
-    font-size: 0.9rem;
-    color: #555;
-    transition: color 0.3s;
-}
-.package-card ul li::before {
-    content: '✔';
-    position: absolute;
-    left: 0;
-    color: #4D9794;
-    font-weight: bold;
-    transition: transform 0.3s, color 0.3s;
-}
-.package-card:hover ul li::before {
-    transform: scale(1.2) rotate(15deg);
-    color: #3e7d74;
-}
-
-/* ===== Price ===== */
-.package-card .price {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #222;
-    margin-bottom: 12px;
-}
-
-/* ===== Terms ===== */
-.package-card .terms{
-    font-size:0.8rem;
-    color:#777;
-    margin-bottom:12px;
-}
-
-/* ===== Book Button ===== */
-.package-card .btn-book {
-    display: inline-block;
-    padding: 10px 25px;
-    background: linear-gradient(45deg,#4D9794,#3e7d74);
-    color: #fff;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-}
-.package-card .btn-book:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-    background: linear-gradient(45deg,#3e7d74,#2c615f);
-}
-
-/* ===== Responsive ===== */
-@media(max-width:768px){
-    .packages-grid{
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    }
-    .package-card{
-        padding: 20px 15px;
-    }
-    .package-card h3{
-        font-size:1.2rem;
-    }
-    .package-card p, .package-card .price{
-        font-size:0.85rem;
-    }
-}
-@media(max-width:480px){
-    .packages-grid{
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-    .package-card{
-        padding: 18px 12px;
-    }
-    .package-card h3{
-        font-size:1.1rem;
-    }
-    .package-card p, .package-card .price{
-        font-size:0.8rem;
-    }
-}.accreditation-section {
-  background: rgb(173, 173, 173);
-  padding: 5rem 2rem;
+/* Toggle Button */
+.training-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 22px 26px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-}
-
-.accreditation-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3rem;
-  max-width: 1200px;
-  flex-wrap: wrap;
-}
-
-.accreditation-image img {
-  width: 420px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.accreditation-text {
-  max-width: 600px;
+  cursor: pointer;
   text-align: left;
 }
 
-.accreditation-text h1 {
-  color: #4D9794;;
-  font-size: 2rem;
-  margin-bottom: 1.2rem;
-  font-weight: 700;
+.training-toggle h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #0F172A;
 }
 
-.accreditation-text p {
-  font-size: 1rem;
-  color: #333;
-  line-height: 1.7;
-  margin-bottom: 1rem;
+.training-toggle span {
+  font-size: 0.85rem;
+  color: #4D9794;
+  font-weight: 600;
+  margin-right: auto;
+  margin-left: 16px;
 }
 
-.accreditation-text strong {
-  color:#4D9794;;
+.training-toggle i {
+  transition: transform 0.3s ease;
+  color: #475569;
 }
 
-.accreditation-text em {
-  font-style: italic;
-  color:#4D9794;;
+/* Content */
+.training-content {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 26px;
+  transition: max-height 0.4s ease, padding 0.3s ease;
 }
 
-.accreditation-text .hashtags {
-  margin-top: 1.5rem;
-  color:#4D9794;;
-  font-weight: 500;
+.training-content p {
+  font-size: 0.95rem;
+  color: #334155;
+  line-height: 1.6;
 }
 
+.training-content h4 {
+  margin-top: 14px;
+  font-size: 0.95rem;
+  color: #166534;
+}
 
+.training-content ul {
+  padding-left: 18px;
+  margin: 8px 0;
+}
+
+.training-content li {
+  font-size: 0.9rem;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.best-for {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+/* Active */
+.training-card.active .training-content {
+  max-height: 800px;
+  padding: 0 26px 22px;
+}
+
+.training-card.active .training-toggle i {
+  transform: rotate(180deg);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .training-toggle {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+
+   
 </style>
 </head>
 <body>
@@ -993,72 +876,136 @@ h1{text-align:center; margin-bottom:100px;}
   </script>
   
 
+<section class="training-services">
+  <div class="section-header">
+    <h2>Training & Professional Development</h2>
+    <p>
+      Structured learning opportunities designed to support growth, skill-building,
+      and ethical clinical practice across different career stages.
+    </p>
+  </div>
 
-   
-<!-- ===== Our Packages ===== -->
-<section class="our-packages">
-  <h2 data-translate="our_packages_title">Our Packages</h2>
-  <div class="packages-grid">
-    <!-- Starter Package -->
-    <div class="package-card">
-      <h3 data-translate="package_starter_title">Starter Package: Basic Training</h3>
-      <p data-translate="package_starter_desc">A one-day foundational workshop for mental health professionals.</p>
-      <p><strong data-translate="modality_label">Modality:</strong> 
-         <span data-translate="modality_value">In-Person or Online</span></p>
-      <ul>
-        <li data-translate="package_starter_li1">Practical training</li>
-        <li data-translate="package_starter_li2">Coffee break and lunch (In-Person)</li>
-        <li data-translate="package_starter_li3">LOPSI Accreditation (based on content)</li>
-      </ul>
-      <p class="price" data-translate="package_starter_price">In-Person: $80 | Online: $60</p>
-      <p class="terms" data-translate="package_starter_terms">Eligible for student, group, and early bird discounts. 100% refund if canceled 20+ days in advance.</p>
-      <a href="#" class="btn-book" data-translate="btn_book">Book Your Session Now</a>
+  <div class="training-grid">
+
+    <!-- Short-Term Trainings -->
+    <div class="training-card">
+      <button class="training-toggle">
+        <h3>Short-Term Trainings</h3>
+        <span>2–4 hours • Online</span>
+        <i class="fa fa-chevron-down"></i>
+      </button>
+
+      <div class="training-content">
+        <p>
+          Brief learning experiences focused on knowledge updates and practical insights.
+          These sessions introduce new ideas, tools, and developments in mental health practice.
+        </p>
+
+        <h4>Focus Areas</h4>
+        <ul>
+          <li>Updates on therapeutic techniques</li>
+          <li>Introduction to theories and models</li>
+          <li>Research findings and clinical insights</li>
+          <li>Practice-based experiences and outcomes</li>
+        </ul>
+
+        <p class="best-for">
+          <strong>Best suited for:</strong> Professionals seeking focused learning and timely updates.
+        </p>
+      </div>
     </div>
 
-    <!-- Professional Growth Package -->
-    <div class="package-card">
-      <h3 data-translate="package_pro_title">Professional Growth Package: Advanced Techniques</h3>
-      <p data-translate="package_pro_desc">Two-day intensive training focused on enhancing clinical skills and methods.</p>
-      <p><strong data-translate="modality_label">Modality:</strong> 
-         <span data-translate="modality_value">In-Person or Online</span></p>
-      <ul>
-        <li data-translate="package_pro_li1">Deep-dive into advanced techniques</li>
-        <li data-translate="package_pro_li2">Coffee break and lunch (In-Person)</li>
-        <li data-translate="package_pro_li3">LOPSI Accreditation (based on content)</li>
-      </ul>
-      <p class="price" data-translate="package_pro_price">In-Person: $150 | Online: $80</p>
-      <p class="terms" data-translate="package_pro_terms">Discounts: early bird, student, and group. Cancellation policy applies.</p>
-      <a href="#" class="btn-book" data-translate="btn_book">Book Your Session Now</a>
+    <!-- Mid-Term Trainings -->
+    <div class="training-card">
+      <button class="training-toggle">
+        <h3>Mid-Term Trainings</h3>
+        <span>Half day – 2 weeks • Online or In-person</span>
+        <i class="fa fa-chevron-down"></i>
+      </button>
+
+      <div class="training-content">
+        <p>
+          In-depth, structured programs designed to build and strengthen professional skills
+          through immersive and practice-oriented learning.
+        </p>
+
+        <h4>Focus Areas</h4>
+        <ul>
+          <li>Applied clinical skills</li>
+          <li>Hands-on learning experiences</li>
+          <li>Guided exercises and case discussions</li>
+        </ul>
+
+        <p class="best-for">
+          <strong>Best suited for:</strong> Practitioners seeking hands-on learning and skill enhancement.
+        </p>
+      </div>
     </div>
 
-    <!-- Specialized Focus Package -->
-    <div class="package-card">
-      <h3 data-translate="package_special_title">Specialized Focus Package</h3>
-      <p data-translate="package_special_desc">Three-day workshop covering complex cases such as trauma, impossible grief, and more.</p>
-      <p><strong data-translate="modality_label">Modality:</strong> 
-         <span data-translate="modality_value">In-Person or Online</span></p>
-      <ul>
-        <li data-translate="package_special_li1">Topic-specific training</li>
-        <li data-translate="package_special_li2">Coffee break and lunch (In-Person)</li>
-        <li data-translate="package_special_li3">LOPSI Accreditation (based on content)</li>
-      </ul>
-      <p class="price" data-translate="package_special_price">In-Person: $200 | Online: $120</p>
-      <p class="terms" data-translate="package_special_terms">Discounts apply (student, group, early bird). Subject to refund policy.</p>
-      <a href="#" class="btn-book" data-translate="btn_book">Book Your Session Now</a>
+    <!-- Long-Term Trainings -->
+    <div class="training-card">
+      <button class="training-toggle">
+        <h3>Long-Term Training Programs</h3>
+        <span>Comprehensive & Ongoing</span>
+        <i class="fa fa-chevron-down"></i>
+      </button>
+
+      <div class="training-content">
+        <p>
+          Comprehensive professional development pathways that support deep,
+          sustained learning through an integrated structure.
+        </p>
+
+        <h4>Core Components</h4>
+        <ul>
+          <li>Theoretical training</li>
+          <li>Ongoing supervision</li>
+        </ul>
+
+        <h4>Focus Areas</h4>
+        <ul>
+          <li>Advanced conceptual understanding</li>
+          <li>Clinical application and case formulation</li>
+          <li>Progressive competency development</li>
+        </ul>
+
+        <p class="best-for">
+          <strong>Best suited for:</strong> Professionals seeking structured, long-term clinical training.
+        </p>
+      </div>
     </div>
 
-    <!-- Support Circle Package -->
-    <div class="package-card">
-      <h3 data-translate="package_support_title">Support Circle Package: Monthly Peer Sessions</h3>
-      <p data-translate="package_support_desc">Monthly supervision, intervision, or peer support group for ongoing professional development.</p>
-      <p><strong data-translate="modality_label">Modality:</strong> 
-         <span data-translate="modality_value">Online or In-Person</span></p>
-      <p class="price" data-translate="package_support_price">$100 per session</p>
-      <p class="terms" data-translate="package_support_terms">No bundled discounts. Cancellable under standard refund policy.</p>
-      <a href="#" class="btn-book" data-translate="btn_book">Book Your Session Now</a>
+    <!-- Supervision -->
+    <div class="training-card">
+      <button class="training-toggle">
+        <h3>Supervision Services</h3>
+        <span>Individual & Group • Online or In-person</span>
+        <i class="fa fa-chevron-down"></i>
+      </button>
+
+      <div class="training-content">
+        <p>
+          Supervision services designed to support ethical, reflective,
+          and effective clinical practice for psychotherapists.
+        </p>
+
+        <h4>Focus Areas</h4>
+        <ul>
+          <li>Case discussion and formulation</li>
+          <li>Clinical reflection</li>
+          <li>Professional development and ethical practice</li>
+        </ul>
+
+        <p class="best-for">
+          <strong>Best suited for:</strong> Practicing psychotherapists seeking supervision and clinical support.
+        </p>
+      </div>
     </div>
+
   </div>
 </section>
+
+
 
 
 <!-- ===== New & Upcoming Events Section (IPT) ===== -->
@@ -1842,4 +1789,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+
+  <script>
+document.querySelectorAll(".training-toggle").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const card = btn.closest(".training-card");
+
+    // close others
+    document.querySelectorAll(".training-card").forEach(c => {
+      if (c !== card) c.classList.remove("active");
+    });
+
+    card.classList.toggle("active");
+  });
+});
+</script>
+
 
