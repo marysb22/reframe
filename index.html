@@ -1574,6 +1574,15 @@ section {
   padding-right: 20px;
 }
 
+    .calendar-dates span {
+  transition: all 0.25s ease;
+}
+
+.calendar-dates span:hover {
+  background: #4D9794;
+  color: white;
+}
+
 
 </style>
 
@@ -1769,4 +1778,84 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+
+
+
+document.addEventListener("DOMContentLoaded", function () {
+
+  const monthLabel = document.querySelector(".calendar-header h3");
+  const datesContainer = document.querySelector(".calendar-dates");
+  const prevBtn = document.querySelector(".prev-month");
+  const nextBtn = document.querySelector(".next-month");
+
+  const eventDates = [3, 30]; // 🔥 Put event days here
+
+  let currentDate = new Date();
+
+  function renderCalendar() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const lastDate = new Date(year, month + 1, 0).getDate();
+
+    const monthNames = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
+
+    monthLabel.textContent = `${monthNames[month]} ${year}`;
+
+    datesContainer.innerHTML = "";
+
+    // Empty slots before first day
+    for (let i = 0; i < firstDay; i++) {
+      const empty = document.createElement("span");
+      datesContainer.appendChild(empty);
+    }
+
+    // Create days
+    for (let day = 1; day <= lastDate; day++) {
+      const dayEl = document.createElement("span");
+      dayEl.textContent = day;
+
+      // Highlight today
+      const today = new Date();
+      if (
+        day === today.getDate() &&
+        month === today.getMonth() &&
+        year === today.getFullYear()
+      ) {
+        dayEl.style.background = "#4D9794";
+        dayEl.style.color = "white";
+        dayEl.style.fontWeight = "600";
+      }
+
+      // Mark event days
+      if (eventDates.includes(day)) {
+        dayEl.classList.add("event-date");
+        const dot = document.createElement("div");
+        dot.classList.add("event-dot");
+        dayEl.appendChild(dot);
+      }
+
+      datesContainer.appendChild(dayEl);
+    }
+  }
+
+  prevBtn.addEventListener("click", () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar();
+  });
+
+  nextBtn.addEventListener("click", () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar();
+  });
+
+  renderCalendar();
+});
+</script>
+
 </script>
