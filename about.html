@@ -98,21 +98,25 @@
             </div>
         </div>
     </section>
+  <section class="mission-section">
+  <div class="container">
+    <div class="mission-content">
+      
+      <div class="mission-text">
+        <h2 data-translate="mission_title">Our Mission</h2>
+        <p data-translate="mission_description">
+          We provide evidence-based and culturally adapted mental health approaches that empower individuals, groups, and organizations to navigate challenges and reach their highest potential.
+        </p>
+      </div>
 
-    <!-- Mission Section -->
-    <section class="mission-section">
-        <div class="container">
-            <div class="mission-content">
-                <div class="mission-text">
-                    <h2 data-translate="mission_title">.mission-section </h2>
-                    <p data-translate="mission_description"> We provide evidence-based and culturally adapted mental health approaches that empower individuals, groups, and organizations to navigate challenges and reach their highest potential.</p>
-                </div>
-                <div class="mission-image">
-                    <img src="mission.jpeg">
-                </div>
-            </div>
-        </div>
-    </section>
+      <div class="mission-image">
+        <img src="mission.jpeg" alt="Our Mission">
+      </div>
+
+    </div>
+  </div>
+</section>
+
 
 <style>
 :root{
@@ -565,86 +569,71 @@
   margin: 0;
   padding: 0;
 }
-
-  /* ===== Mission Section ===== */
+/* ===== Mission Section ===== */
 .mission-section {
-  padding: 100px 0;
-  background: linear-gradient(180deg, #f8fbfb 0%, #ffffff 100%);
+  padding: 80px 0;
+  background: #f9fbfb;
 }
 
 /* Container */
 .mission-section .container {
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 0 40px;
+  padding: 0 30px;
 }
 
 /* Layout */
 .mission-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 80px;
+  gap: 60px;
 }
 
-/* Text Area */
+/* Text */
 .mission-text {
   flex: 1;
 }
 
 .mission-text h2 {
-  font-size: 3rem;
-  font-weight: 700;
+  font-size: 2.2rem;
+  font-weight: 600;
   color: #4D9794;
-  margin-bottom: 25px;
-  letter-spacing: -0.5px;
+  margin-bottom: 18px;
 }
 
 .mission-text p {
-  font-size: 1.1rem;
-  line-height: 1.8;
+  font-size: 1rem;
+  line-height: 1.7;
   color: #475569;
-  max-width: 550px;
+  max-width: 520px;
 }
 
-/* Image Area */
+/* Image */
 .mission-image {
   flex: 1;
-  display: flex;
-  justify-content: center;
 }
 
 .mission-image img {
   width: 100%;
-  max-width: 500px;
-  border-radius: 20px;
+  max-width: 480px;
+  border-radius: 16px;
   object-fit: cover;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
 }
 
-/* Hover Effect */
-.mission-image img:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.15);
-}
-
-/* ===== Responsive ===== */
+/* Responsive */
 @media (max-width: 992px) {
   .mission-content {
     flex-direction: column;
     text-align: center;
-    gap: 50px;
+    gap: 40px;
   }
 
   .mission-text p {
     max-width: 100%;
   }
-
-  .mission-text h2 {
-    font-size: 2.4rem;
-  }
 }
+
 
 </style>
 
