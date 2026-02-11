@@ -1572,7 +1572,49 @@ section {
   background: #4D9794;
   color: white;
 }
+/* ===== Professional Calendar Header ===== */
+.calendar-header-pro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #4D9794;
+  padding: 18px 22px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  color: white;
+}
 
+.calendar-title-wrapper {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-month {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.calendar-year {
+  font-size: 0.95rem;
+  opacity: 0.8;
+}
+
+.calendar-header-pro button {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.calendar-header-pro button:hover {
+  background: white;
+  color: #4D9794;
+}
 
 </style>
 
@@ -1768,49 +1810,55 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
-
-
-
-
+  <script>
 document.addEventListener("DOMContentLoaded", function () {
 
-  const monthLabel = document.querySelector(".calendar-header h3");
+  const monthEl = document.querySelector(".calendar-month");
+  const yearEl = document.querySelector(".calendar-year");
   const datesContainer = document.querySelector(".calendar-dates");
+  const daysContainer = document.querySelector(".calendar-days");
   const prevBtn = document.querySelector(".prev-month");
   const nextBtn = document.querySelector(".next-month");
 
-  const eventDates = [3, 30]; // 🔥 Put event days here
-
   let currentDate = new Date();
 
+  const monthNames = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+
+  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
   function renderCalendar() {
+
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
 
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
 
-    const monthNames = [
-      "January","February","March","April","May","June",
-      "July","August","September","October","November","December"
-    ];
+    monthEl.textContent = monthNames[month];
+    yearEl.textContent = year;
 
-    monthLabel.textContent = `${monthNames[month]} ${year}`;
+    daysContainer.innerHTML = "";
+    dayNames.forEach(day => {
+      const span = document.createElement("span");
+      span.textContent = day;
+      daysContainer.appendChild(span);
+    });
 
     datesContainer.innerHTML = "";
 
-    // Empty slots before first day
     for (let i = 0; i < firstDay; i++) {
       const empty = document.createElement("span");
       datesContainer.appendChild(empty);
     }
 
-    // Create days
     for (let day = 1; day <= lastDate; day++) {
+
       const dayEl = document.createElement("span");
       dayEl.textContent = day;
 
-      // Highlight today
       const today = new Date();
       if (
         day === today.getDate() &&
@@ -1820,14 +1868,6 @@ document.addEventListener("DOMContentLoaded", function () {
         dayEl.style.background = "#4D9794";
         dayEl.style.color = "white";
         dayEl.style.fontWeight = "600";
-      }
-
-      // Mark event days
-      if (eventDates.includes(day)) {
-        dayEl.classList.add("event-date");
-        const dot = document.createElement("div");
-        dot.classList.add("event-dot");
-        dayEl.appendChild(dot);
       }
 
       datesContainer.appendChild(dayEl);
@@ -1847,3 +1887,9 @@ document.addEventListener("DOMContentLoaded", function () {
   renderCalendar();
 });
 </script>
+
+
+
+
+
+
