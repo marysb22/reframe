@@ -327,9 +327,8 @@
 
           <div class="calendar-grid">
             <div class="calendar-days">
-              <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span>
-              <span>Thu</span><span>Fri</span><span>Sat</span>
-            </div>
+           <div class="calendar-days"></div>
+
           <div class="calendar-dates">
   <span>1</span>
   <span>2</span>
@@ -1583,6 +1582,12 @@ section {
   color: white;
 }
 
+.today {
+  background: #4D9794;
+  color: white;
+  font-weight: 600;
+  border-radius: 6px;
+}
 
 </style>
 
@@ -1856,6 +1861,4 @@ document.addEventListener("DOMContentLoaded", function () {
 
   renderCalendar();
 });
-</script>
-
 </script>
