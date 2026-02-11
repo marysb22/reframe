@@ -401,13 +401,14 @@
   border-radius: 12px;
 }
 
+
+/* Image container */
 .card-figure img {
   width: 100%;
-  height: 280px;
-  object-fit: cover;
-  display: block;
+  height: 220px;          /* smaller height */
+  object-fit: contain;    /* show full photo */
+  background: #f3f4f6;    /* soft background for empty space */
   border-radius: 12px;
-  transition: transform 0.5s ease;
 }
 
 .card-figure:hover img {
