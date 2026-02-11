@@ -569,17 +569,18 @@
   margin: 0;
   padding: 0;
 }
-/* ===== Mission Section ===== */
+
+  /* ===== Mission Section ===== */
 .mission-section {
-  padding: 90px 0;
-  background: #f9fbfb;
+  padding: 100px 0;
+  background: linear-gradient(180deg, #f4f8f8 0%, #ffffff 100%);
 }
 
 /* Container */
 .mission-section .container {
-  max-width: 1100px;
+  max-width: 1150px;
   margin: 0 auto;
-  padding: 0 30px;
+  padding: 0 40px;
 }
 
 /* Layout */
@@ -587,28 +588,55 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 70px;
+  gap: 80px;
 }
 
 /* ===== Text Area ===== */
 .mission-text {
   flex: 1;
+  animation: fadeSlideUp 0.8s ease forwards;
+  opacity: 0;
 }
 
+/* Title */
 .mission-text h2 {
-  font-size: 2.3rem;
-  font-weight: 600;
+  font-size: 2.6rem;
+  font-weight: 700;
   color: #4D9794;
-  margin-bottom: 24px;
-  letter-spacing: -0.5px;
+  margin-bottom: 25px;
+  position: relative;
 }
 
+/* Accent line under title */
+.mission-text h2::after {
+  content: "";
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, #4D9794, #0d3b66);
+  display: block;
+  margin-top: 12px;
+  border-radius: 4px;
+}
+
+/* Paragraph */
 .mission-text p {
-  font-size: 1.05rem;
-  line-height: 6;           /* 🔥 Better line spacing */
+  font-size: 1.1rem;
+  line-height: 1.9;
   letter-spacing: 0.3px;
   color: #475569;
-  max-width: 540px;
+  max-width: 560px;
+  transition: all 0.3s ease;
+}
+
+/* Attention effect on sentence */
+.mission-text p strong {
+  color: #0d3b66;
+  font-weight: 600;
+}
+
+/* Subtle hover effect */
+.mission-text p:hover {
+  color: #1e293b;
 }
 
 /* ===== Image Area ===== */
@@ -620,16 +648,28 @@
 
 .mission-image img {
   width: 100%;
-  max-width: 500px;
-  border-radius: 18px;
+  max-width: 520px;
+  border-radius: 20px;
   object-fit: cover;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.08);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
 }
 
 .mission-image img:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12);
+  transform: translateY(-8px);
+  box-shadow: 0 30px 65px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== Animation ===== */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ===== Responsive ===== */
@@ -637,7 +677,7 @@
   .mission-content {
     flex-direction: column;
     text-align: center;
-    gap: 45px;
+    gap: 50px;
   }
 
   .mission-text p {
@@ -645,7 +685,7 @@
   }
 
   .mission-text h2 {
-    font-size: 2rem;
+    font-size: 2.1rem;
   }
 }
 
