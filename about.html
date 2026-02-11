@@ -693,6 +693,14 @@
   }
 }
 
+  .meta .role {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #4D9794;
+  margin-top: 4px;
+}
+
+
 
 </style>
 
@@ -1098,8 +1106,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-</script>
-<script>
+
 document.addEventListener("DOMContentLoaded", () => {
   const dropdowns = document.querySelectorAll(".nav-dropdown");
 
@@ -1155,4 +1162,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+
+
+  document.querySelectorAll(".card").forEach(card => {
+  const roleText = card.dataset.role;
+  const roleElement = card.querySelector(".role");
+  if (roleText && roleElement) {
+    roleElement.textContent = roleText;
+  }
+});
+
 </script>
