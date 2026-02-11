@@ -128,11 +128,25 @@ body {
   padding: 0.6rem;
   display: none;
   flex-direction: column;
-  gap: 0.4rem;   /* 🎯 استخدم gap بدل margin-bottom */
+  gap: 0.4rem;
   z-index: 999;
   animation: dropdownFade 0.25s ease;
 }
 
+/* REMOVE BULLETS */
+.dropdown-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dropdown-menu li {
+  list-style: none;
+}
+
+.dropdown-menu li::marker {
+  content: "";
+}
 
 /* الروابط */
 .dropdown-menu .nav-link {
@@ -153,10 +167,10 @@ body {
   transform: translateX(6px);
 }
 
-/* خط فاصل بين العناصر */
+/* خط فاصل */
 .dropdown-menu .nav-link + .nav-link {
   border-top: 1px solid rgba(0, 0, 0, 0.05);
-  padding-top: 0.7rem; /* حافظ بس على padding */
+  padding-top: 0.7rem;
 }
 
 /* Animation */
@@ -164,6 +178,7 @@ body {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 
 /* ====== Modern Navigation ====== */
 .navbar {
