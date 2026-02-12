@@ -693,14 +693,6 @@
   }
 }
 
-  .meta .role {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #4D9794;
-  margin-top: 4px;
-}
-
-
 
 </style>
 
@@ -866,6 +858,10 @@
 </section>
 
 
+
+
+<script src="scripts/main.js"></script>
+  
 
 <footer class="footer">
   <div class="container">
@@ -1069,9 +1065,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hero) hero.style.backgroundPosition = `center ${window.scrollY * -0.02}px`;
   });
 });
+</script>
 
+</script>
 
-
+<script>
 // === Auto-fit team cards to full width of screen ===
 document.addEventListener("DOMContentLoaded", () => {
   const grid = document.querySelector(".team-grid");
@@ -1100,7 +1098,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-
+</script>
+<script>
 document.addEventListener("DOMContentLoaded", () => {
   const dropdowns = document.querySelectorAll(".nav-dropdown");
 
@@ -1156,20 +1155,4 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
-
-
-
-  document.querySelectorAll(".card").forEach(card => {
-  const roleText = card.dataset.role;
-  const roleElement = card.querySelector(".role");
-  if (roleText && roleElement) {
-    roleElement.textContent = roleText;
-  }
-});
-
-
-    <script src="scripts/translations.js"></script>
-
-
-<script src="scripts/main.js"></script>
-  
+</script>
