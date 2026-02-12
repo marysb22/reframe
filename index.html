@@ -317,12 +317,18 @@
         </div>
 
         <div class="calendar-widget">
-          <div class="calendar-header">
-            <h3 data-translate="calendar_month">July 2025</h3>
-            <div class="calendar-nav">
-              <button class="prev-month"><i class="fas fa-chevron-left"></i></button>
-              <button class="next-month"><i class="fas fa-chevron-right"></i></button>
-            </div>
+        <div class="calendar-header">
+  <button class="prev-month">
+    <i class="fas fa-chevron-left"></i>
+  </button>
+
+  <h3 class="calendar-month-label"></h3>
+
+  <button class="next-month">
+    <i class="fas fa-chevron-right"></i>
+  </button>
+</div>
+
           </div>
 
           <div class="calendar-grid">
@@ -1583,6 +1589,22 @@ section {
   color: white;
 }
 
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.calendar-month-label {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1E3F5A;
+  letter-spacing: 0.5px;
+  min-width: 180px;
+  text-align: center;
+}
 
 </style>
 
@@ -1783,8 +1805,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 document.addEventListener("DOMContentLoaded", function () {
+const monthLabel = document.querySelector(".calendar-month-label");
 
-  const monthLabel = document.querySelector(".calendar-header h3");
   const datesContainer = document.querySelector(".calendar-dates");
   const prevBtn = document.querySelector(".prev-month");
   const nextBtn = document.querySelector(".next-month");
