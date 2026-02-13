@@ -10,7 +10,7 @@ const translations = {
     event1_facilitator: "Dr. Tala Abdallah",
     event1_about: `As a dietitian, you may be one of the first, and sometimes the only, professionals clients struggling with disordered eating turn to. 
 Yet many in the field receive limited training on how to recognize, support, or refer those navigating eating disorders. 
-This workshop is designed to bridge that gap.`,
+This workshop is designed to bridge that gap " ,
     event1_learn_1: "Recognize signs of disordered eating and understand when and how to refer to mental health professionals",
     event1_learn_2: "Clarify your role as a dietitian in the eating disorder treatment process",
     event1_learn_3: "Gain an overview of screening, assessment, and intervention techniques used in eating disorder care",
@@ -949,28 +949,42 @@ milestone4_desc: "حضور إقليمي وتعاونات متعددة",
   
   }
 };
-
-// Export
+// ================================
+// EXPORT (For Node if needed)
+// ================================
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = translations;
 }
 
-// Global
+// ================================
+// GLOBAL ACCESS
+// ================================
 window.translations = translations;
-// Load saved language or default to English
-document.addEventListener('DOMContentLoaded', () => {
-  const savedLang = localStorage.getItem('preferredLanguage');
-  const defaultLang = savedLang || 'en'; // ✅ English is default
 
-  switchLanguage(defaultLang);
+// ================================
+// SWITCH LANGUAGE FUNCTION
+// ================================
+function switchLanguage(lang) {
+  if (!translations[lang]) return;
 
-  // update button states
-  document.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.lang === defaultLang);
+  const elements = document.querySelectorAll('[data-translate]');
+
+  elements.forEach(el => {
+    const key = el.dataset.translate;
+
+    if (translations[lang][key]) {
+      el.textContent = translations[lang][key];
+    }
   });
-});
 
-// Switcher
+  // Update HTML direction
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+}
+
+// ================================
+// LANGUAGE SWITCHER INITIALIZER
+// ================================
 function initializeLanguageSwitcher() {
   const langButtons = document.querySelectorAll('.lang-btn');
 
@@ -978,15 +992,34 @@ function initializeLanguageSwitcher() {
     button.addEventListener('click', function () {
       const selectedLang = this.dataset.lang;
 
-      // ✅ save new choice
+      if (!selectedLang) return;
+
+      // Save preference
       localStorage.setItem('preferredLanguage', selectedLang);
 
-      // switch
+      // Switch language
       switchLanguage(selectedLang);
 
-      // update active state
+      // Update active button
       langButtons.forEach(btn => btn.classList.remove('active'));
       this.classList.add('active');
     });
   });
 }
+
+// ================================
+// ON PAGE LOAD
+// ================================
+document.addEventListener('DOMContentLoaded', () => {
+  const savedLang = localStorage.getItem('preferredLanguage');
+  const defaultLang = savedLang || 'en';
+
+  switchLanguage(defaultLang);
+  initializeLanguageSwitcher();
+
+  // Set active button on load
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === defaultLang);
+  });
+});
+
