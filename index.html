@@ -1,82 +1,178 @@
-<!-- ================= NAVBAR ================= -->
-<nav class="navbar">
-  <div class="nav-container">
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-translate="page_title_home">
+    Reframe MHS - Mental Health Services
+  </title>
 
-    <!-- Logo -->
-    <div class="nav-logo">
-      <a href="index.html">
-        <img src="logo.gif" alt="Company Logo" width="220" />
-      </a>
-    </div>
+  <meta
+    name="description"
+    content="Professional mental health services and training programs across the Middle East. Unlocking potential and resilience."
+  />
 
-    <!-- Menu -->
-    <ul class="nav-menu">
-      <li>
-        <a href="index.html" class="nav-link" data-translate="nav_home">Home</a>
-      </li>
+  <!-- ====== STYLES ====== -->
+  <link rel="stylesheet" href="styles/main.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
 
-      <li>
-        <a href="about.html" class="nav-link" data-translate="nav_about">About</a>
-      </li>
+<body>
 
-      <li class="nav-dropdown">
-        <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
-          Services <i class="fa fa-chevron-down"></i>
+  <!-- ================= NAVBAR ================= -->
+  <nav class="navbar">
+    <div class="nav-container">
+
+      <!-- Logo -->
+      <div class="nav-logo">
+        <a href="index.html">
+          <img src="logo.gif" alt="Company Logo" width="220" />
         </a>
+      </div>
 
-        <ul class="dropdown-menu">
-          <li>
-            <a href="Projects.html" class="nav-link" data-translate="nav_mhlab">
-              Mental Health Lab
-            </a>
-          </li>
+      <!-- Menu -->
+      <ul class="nav-menu">
 
-          <li>
-            <a href="hub.html" class="nav-link" data-translate="nav_hub">
-              Hub
-            </a>
-          </li>
+        <li>
+          <a href="index.html" class="nav-link" data-translate="nav_home">
+            Home
+          </a>
+        </li>
 
-          <li>
-            <a href="events.html" class="nav-link" data-translate="nav_training">
-              Training
-            </a>
-          </li>
+        <li>
+          <a href="about.html" class="nav-link" data-translate="nav_about">
+            About
+          </a>
+        </li>
 
-          <li>
-            <a href="t.html" class="nav-link" data-translate="nav_consultations">
-              Technical Consultations
-            </a>
-          </li>
-        </ul>
-      </li>
+        <li class="nav-dropdown">
+          <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
+            Services <i class="fa fa-chevron-down"></i>
+          </a>
 
-      <li>
-        <a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a>
-      </li>
-    </ul>
+          <ul class="dropdown-menu">
 
-    <!-- Language Switcher -->
-    <div class="language-switcher">
-      <button class="lang-btn active" data-lang="en">EN</button>
-      <span class="lang-separator">|</span>
-      <button class="lang-btn" data-lang="ar">AR</button>
+            <li>
+              <a href="Projects.html" class="nav-link" data-translate="nav_mhlab">
+                Mental Health Lab
+              </a>
+            </li>
+
+            <li>
+              <a href="hub.html" class="nav-link" data-translate="nav_hub">
+                Hub
+              </a>
+            </li>
+
+            <li>
+              <a href="events.html" class="nav-link" data-translate="nav_training">
+                Training
+              </a>
+            </li>
+
+            <li>
+              <a href="t.html" class="nav-link" data-translate="nav_consultations">
+                Technical Consultations
+              </a>
+            </li>
+
+          </ul>
+        </li>
+
+        <li>
+          <a href="contact.html" class="nav-link" data-translate="nav_contact">
+            Contact
+          </a>
+        </li>
+
+      </ul>
+
+      <!-- Language Switcher -->
+      <div class="language-switcher">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <span class="lang-separator">|</span>
+        <button class="lang-btn" data-lang="ar">AR</button>
+      </div>
+
+      <!-- Login Button -->
+      <a href="login.html" class="nav-link login-btn" data-translate="nav_login">
+        Login
+      </a>
+
+      <!-- Hamburger Button -->
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
     </div>
+  </nav>
 
-    <!-- Login Button -->
-    <a href="login.html" class="nav-link login-btn" data-translate="nav_login">
-      Login
-    </a>
 
-    <!-- Hamburger Button -->
-    <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
-      <span></span>
-      <span></span>
-      <span></span>
-    </button>
+  <!-- Overlay Menu for Mobile -->
+  <div class="overlay" id="mobile-menu" aria-hidden="true">
+    <nav class="overlay-nav" aria-label="Mobile">
+      <ul>
 
+        <li>
+          <a href="index.html" class="nav-link" data-translate="nav_home">
+            Home
+          </a>
+        </li>
+
+        <li>
+          <a href="about.html" class="nav-link" data-translate="nav_about">
+            About
+          </a>
+        </li>
+
+        <li>
+          <a href="Projects.html" class="nav-link" data-translate="nav_mhlab">
+            Mental Health Lab
+          </a>
+        </li>
+
+        <li>
+          <a href="hub.html" class="nav-link" data-translate="nav_hub">
+            Hub
+          </a>
+        </li>
+
+        <li>
+          <a href="events.html" class="nav-link" data-translate="nav_training">
+            Training
+          </a>
+        </li>
+
+        <li>
+          <a href="t.html" class="nav-link" data-translate="nav_consultations">
+            Technical Consultations
+          </a>
+        </li>
+
+        <li>
+          <a href="contact.html" class="nav-link" data-translate="nav_contact">
+            Contact
+          </a>
+        </li>
+
+        <li>
+          <a href="login.html" class="nav-link" data-translate="nav_login">
+            Login
+          </a>
+        </li>
+
+      </ul>
+
+      <button class="close-btn" aria-label="Close menu" data-translate="close">
+        Close
+      </button>
+
+    </nav>
   </div>
-</nav>
 
 
 
