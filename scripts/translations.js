@@ -73,7 +73,7 @@ contact_address_title: "Address",
  
     // Hero section
     hero_title: "Unlocking the innate potential and resilience within each person and group",
-    hero_subtitle: "Professional mental health services and training programs designed for the unique cultural context of the Middle East.",
+     hero_paragraph: "Professional mental health services and training programs designed for the unique cultural context of the Middle East.",
     hero_cta_learn: "Learn More",
 
 
@@ -800,7 +800,7 @@ timeline_title: "الجدول الزمني لقصتنا",
     
     // ===== HERO =====
     hero_title: " إطلاق الإمكانات الإنسانية الكامنة وتعزيز القدرة على الصمود في مواجهة التحديات",
-    hero_subtitle: "خدمات وبرامج تدريبية متخصصة في الصحة النفسية، مُصمَّمة بعناية لتتلاءم مع الخصوصيات الثقافية والاجتماعية في منطقة الشرق الأوسط.",
+   hero_paragraph: "خدمات وبرامج تدريبية متخصصة في الصحة النفسية، مُصمَّمة بعناية لتتلاءم مع الخصوصيات الثقافية والاجتماعية في منطقة الشرق الأوسط.",
 
     // ===== LAB =====
     lab_title: "مختبر الصحة النفسية",
