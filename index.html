@@ -192,10 +192,9 @@
       </p>
     </div>
   </div>
-  <!-- ✅ الصورة الواحدة للموبايل -->
-  <div class="mobile-hero">
-    <img src="P11.jpeg" alt="Reframe Hero Mobile">
-  </div>
+
+<div class="mobile-hero"></div>
+
 </section>
 
 <style>
@@ -323,6 +322,30 @@
     height: 180px;
   }
 }
+  /* Mobile Hero Full Background */
+.mobile-hero {
+  display: none;
+}
+
+/* يظهر فقط على الموبايل */
+@media (max-width: 768px) {
+
+  .mobile-hero {
+    display: block;
+
+    width: 100%;
+    height: 100vh; /* Full screen height */
+
+    background-image: url('../P11.jpeg'); /* عدلي المسار إذا لازم */
+    background-size: cover;       /* أهم سطر */
+    background-position: center;  /* يوسّط الصورة */
+    background-repeat: no-repeat;
+
+    position: relative;
+  }
+
+}
+
 </style>
 
 
