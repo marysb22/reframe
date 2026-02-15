@@ -475,7 +475,7 @@ function initializeAccessibility() {
 
 
 function debounce(func, wait) {
-    let timeout;-
+    let timeout;
     return function executedFunction(...args) {
         const later = () => {
             clearTimeout(timeout);
