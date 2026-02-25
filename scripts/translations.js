@@ -598,14 +598,13 @@ hero_subtitle: "Professional mental health services and training programs design
     supervision_best_title: "Best suited for:",
     supervision_best_desc: "Practicing psychotherapists seeking supervision and clinical support.",
 
-  }
+  },
 
  
 
   ar: {
 
     training_main_title: "خدمات التدريب والتطوير المهني",
-
     training_short_title: "التدريبات قصيرة المدى",
     training_short_subtitle: "جلسات تعليمية مركّزة لتحديث المعرفة وتقديم أدوات عملية",
     training_short_desc: "التدريبات قصيرة المدى هي جلسات مختصرة تهدف إلى مشاركة معرفة جديدة أو مستجدات في مجال الصحة النفسية والممارسة المهنية.",
