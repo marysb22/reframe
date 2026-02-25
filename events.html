@@ -1352,114 +1352,105 @@ document.addEventListener("DOMContentLoaded", () => {
   </div>
 </section>
 <script>
+document.addEventListener("DOMContentLoaded", async () => {
 
-document.addEventListener("DOMContentLoaded", () => {
-  const upcomingContainer = document.getElementById("cms-events");
-  const concludedContainer = document.getElementById("cms-events-concluded"); // (رح نعمله بالـ HTML تحت)
+  const monthNames = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
 
-  // Modal elements
-  const modal = document.getElementById('eventModal');
-  const modalImg = document.getElementById('modalImg');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalDate = document.getElementById('modalDate');
-  const modalFormat = document.getElementById('modalFormat');
-  const modalFacilitator = document.getElementById('modalFacilitator');
-  const modalAbout = document.getElementById('modalAbout');
-  const modalLearn = document.getElementById('modalLearn');
-  const modalWho = document.getElementById('modalWho');
-  const modalOutcomes = document.getElementById('modalOutcomes');
-  const modalFacilitatorBio = document.getElementById('modalFacilitatorBio');
-  const modalFee = document.getElementById('modalFee');
-  const modalRegister = document.getElementById('modalRegister');
+  const calendarTitle = document.getElementById("calendar-title");
+  const calendarBody = document.getElementById("calendarBody");
+  const prevBtn = document.getElementById("prevMonth");
+  const nextBtn = document.getElementById("nextMonth");
 
-  // Register form modal
-  const registerModal = document.getElementById("registerModal");
+  let currentDate = new Date();
+  let events = {};
 
-  let cmsEvents = [];
+  // ===== Fetch CMS Events =====
+  async function loadEvents() {
+    try {
+      const response = await fetch("/content/events.json");
+      const data = await response.json();
 
-  function safeArray(v) {
-    return Array.isArray(v) ? v : [];
-  }
+      data.events.forEach(event => {
+        const date = new Date(event.date);
+        const key =
+          date.getFullYear() + "-" +
+          String(date.getMonth() + 1).padStart(2, '0') + "-" +
+          String(date.getDate()).padStart(2, '0');
 
-  function openDetails(event) {
-    modalImg.src = event.image || "";
-    modalTitle.textContent = event.title || "";
-
-    // date
-    const d = event.date ? new Date(event.date) : null;
-    modalDate.textContent = d && !isNaN(d) ? d.toLocaleString() : "";
-
-    modalFormat.textContent = event.format ? ("Format: " + event.format) : "";
-    modalFacilitator.textContent = event.facilitator ? ("Facilitator: " + event.facilitator) : "";
-    modalAbout.textContent = event.about || event.description || "";
-
-    // lists
-    modalLearn.innerHTML = "";
-    safeArray(event.learn).forEach(x => modalLearn.innerHTML += `<li>${x}</li>`);
-
-    modalWho.innerHTML = "";
-    safeArray(event.who).forEach(x => modalWho.innerHTML += `<li>${x}</li>`);
-
-    modalOutcomes.innerHTML = "";
-    safeArray(event.outcomes).forEach(x => modalOutcomes.innerHTML += `<li>${x}</li>`);
-
-    modalFacilitatorBio.textContent = event.facilitatorBio || "";
-    modalFee.textContent = event.fee ? ("Workshop Fee: " + event.fee) : "";
-    modalRegister.onclick = (e) => {
-      e.preventDefault();
-      const link = (event.register || "#").trim();
-      if (link === "#" || link === "") {
-        registerModal.style.display = "block";
-      } else {
-        window.open(link, "_blank");
-      }
-    };
-
-    modal.style.display = "block";
-  }
-
-  function renderCard(event, container) {
-    const item = document.createElement("div");
-    item.className = "list-item";
-    item.innerHTML = `
-      <img src="${event.image || ''}" alt="${event.title || ''}">
-      <div class="list-item-body">
-        <h3>${event.title || ''}</h3>
-        <p>${event.date ? new Date(event.date).toDateString() : ''}</p>
-        <a class="view-btn">View Details</a>
-      </div>
-    `;
-
-    // click anywhere opens modal
-    item.addEventListener("click", () => openDetails(event));
-    container.appendChild(item);
-  }
-
- fetch("/content/events.json")
-  .then(res => res.json())
-    .then(data => {
-      cmsEvents = data.events || [];
-
-      if (upcomingContainer) upcomingContainer.innerHTML = "";
-      if (concludedContainer) concludedContainer.innerHTML = "";
-
-      cmsEvents.forEach(ev => {
-        if (ev.status === "upcoming") {
-          if (upcomingContainer) renderCard(ev, upcomingContainer);
-        } else if (ev.status === "concluded") {
-          if (concludedContainer) renderCard(ev, concludedContainer);
-        }
+        events[key] = event.image;
       });
-    })
-    .catch(err => console.error("CMS events error:", err));
 
-  // modal close
-  document.querySelector('.modal-close').onclick = () => modal.style.display = "none";
-  document.getElementById('modalBack').onclick = () => modal.style.display = "none";
-  window.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+    } catch (error) {
+      console.error("Error loading events:", error);
+    }
+  }
+
+  function renderCalendar(date) {
+    calendarBody.innerHTML = "";
+
+    const year = date.getFullYear();
+    const month = date.getMonth();
+
+    calendarTitle.textContent = `${monthNames[month]} ${year}`;
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+      const emptyCell = document.createElement("div");
+      emptyCell.classList.add("calendar-day");
+      calendarBody.appendChild(emptyCell);
+    }
+
+    for (let day = 1; day <= totalDays; day++) {
+
+      const dayCell = document.createElement("div");
+      dayCell.classList.add("calendar-day");
+
+      const dateKey =
+        year + "-" +
+        String(month + 1).padStart(2, '0') + "-" +
+        String(day).padStart(2, '0');
+
+      // If event exists from CMS
+      if (events[dateKey]) {
+        const img = document.createElement("img");
+        img.src = events[dateKey];
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.objectFit = "cover";
+        img.style.position = "absolute";
+        img.style.inset = "0";
+        dayCell.appendChild(img);
+      }
+
+      const span = document.createElement("span");
+      span.classList.add("day-number");
+      span.textContent = day;
+
+      dayCell.appendChild(span);
+      calendarBody.appendChild(dayCell);
+    }
+  }
+
+  prevBtn.onclick = () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar(currentDate);
+  };
+
+  nextBtn.onclick = () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar(currentDate);
+  };
+
+  await loadEvents();
+  renderCalendar(currentDate);
+
 });
 </script>
-
 
 
 <section class="events-section">
