@@ -1,1 +1,20 @@
-
+{
+  "events": [
+    {
+      "register": "#",
+      "fee": ",",
+      "facilitator": "d",
+      "about": "f",
+      "date": "2026-02-28T12:04:00.000+02:00",
+      "translation": ",",
+      "status": "concluded",
+      "format": "m",
+      "title": "mary",
+      "image": "/assets/uploads/event3.webp",
+      "facilitatorBio": ",",
+      "who": [
+        "h"
+      ]
+    }
+  ]
+}
