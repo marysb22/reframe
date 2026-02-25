@@ -960,14 +960,7 @@ h1{text-align:center; margin-bottom:100px;}
   .training-card.active .training-content {
     padding: 0 22px 24px;
   }
-  .calendar-live-time {
-  text-align: center;
-  font-size: 18px;
-  font-weight: 600;
-  color: #4D9794;
-  margin-bottom: 15px;
-  letter-spacing: 1px;
-}
+
 }
 
       
@@ -1063,8 +1056,6 @@ h1{text-align:center; margin-bottom:100px;}
   </div>
 </section>
 
-
-  <div class="calendar-live-time" id="liveClock"></div>
 <div class="calendar-container">
 
   <div class="calendar-controls" style="display:flex; justify-content:space-between; align-items:center; padding:15px;">
@@ -1086,6 +1077,7 @@ h1{text-align:center; margin-bottom:100px;}
   <div class="calendar-body" id="calendarBody"></div>
 
 </div>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -1160,13 +1152,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
   renderCalendar(currentDate);
 
+  // ===== LIVE CLOCK =====
+  function updateClock() {
+    const now = new Date();
+
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const date = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    document.getElementById("liveClock").textContent =
+      `${day} | ${date} | ${hours}:${minutes}:${seconds}`;
+  }
 
   setInterval(updateClock, 1000);
   updateClock();
 
 });
 </script>
-
 <section class="training-services">
   <div class="section-header">
     <h2>Training & Professional Development</h2>
