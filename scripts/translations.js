@@ -1,5 +1,3 @@
-// Comprehensive translations for Reframe MHS website
-// Professional Arabic translations for mental health services
 
 const translations = {
   en: {
@@ -537,7 +535,7 @@ consultations_about_subtitle: "Technical Consultations",
 consultations_hero_subtitle: "Bringing resources, relational health, and systemic harmony to support your teams.",
 consultations_changing_word: "Vision",
 // ===== HERO SECTION =====
-hero_title: "Unleashing human potential and resilience",
+
 hero_subtitle: "Professional mental health services and training programs designed for the unique cultural context of the Middle East.",
 
     // ===== TRAINING & PROFESSIONAL DEVELOPMENT =====
@@ -600,7 +598,7 @@ hero_subtitle: "Professional mental health services and training programs design
     supervision_best_title: "Best suited for:",
     supervision_best_desc: "Practicing psychotherapists seeking supervision and clinical support.",
 
-  },
+  }
 
  
 
@@ -1137,3 +1135,9 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.classList.toggle('active', btn.dataset.lang === defaultLang);
   });
 });
+
+
+
+if (translations[lang] && translations[lang][key] !== undefined) {
+    el.textContent = translations[lang][key];
+}
