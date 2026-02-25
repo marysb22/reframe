@@ -356,8 +356,7 @@ hub_cta_btn: "Book Now",
     nav_login: "Login",
     close: "Close",
 
-    // ===== HERO =====
-    hero_title: "Unleashing human potential and resilience",
+
     hero_subtitle: "Professional mental health services and training programs designed for the unique cultural context of the Middle East.",
 
     // ===== LAB =====
