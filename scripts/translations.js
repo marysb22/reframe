@@ -1063,81 +1063,27 @@ milestone4_desc: "حضور إقليمي وتعاونات متعددة",
   
   }
 };
-
-// ===============================
-// Make translations globally available
-// ===============================
-window.translations = translations;
-
-// ===============================
-// Switch Language Function
-// ===============================
 function switchLanguage(lang) {
   if (!translations[lang]) return;
 
-  // Translate text content
   document.querySelectorAll('[data-translate]').forEach(el => {
     const key = el.dataset.translate;
-    if (translations[lang][key]) {
-      el.textContent = translations[lang][key];
+    const value = translations[lang][key];
+
+    if (value !== undefined) {
+      el.textContent = value;
     }
   });
 
-  // Translate placeholders
   document.querySelectorAll('[data-translate-placeholder]').forEach(el => {
     const key = el.dataset.translatePlaceholder;
-    if (translations[lang][key]) {
-      el.placeholder = translations[lang][key];
+    const value = translations[lang][key];
+
+    if (value !== undefined) {
+      el.placeholder = value;
     }
   });
 
-  // Set page direction
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-}
-
-// ===============================
-// Initialize Language Switcher
-// ===============================
-function initializeLanguageSwitcher() {
-  const langButtons = document.querySelectorAll('.lang-btn');
-
-  langButtons.forEach(button => {
-    button.addEventListener('click', function () {
-      const selectedLang = this.dataset.lang;
-      if (!selectedLang) return;
-
-      // Save selection
-      localStorage.setItem('preferredLanguage', selectedLang);
-
-      // Switch language
-      switchLanguage(selectedLang);
-
-      // Update active button
-      langButtons.forEach(btn => btn.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
-}
-
-// ===============================
-// On Page Load
-// ===============================
-document.addEventListener('DOMContentLoaded', () => {
-  const savedLang = localStorage.getItem('preferredLanguage');
-  const defaultLang = savedLang || 'en';
-
-  switchLanguage(defaultLang);
-  initializeLanguageSwitcher();
-
-  // Set correct active button
-  document.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.lang === defaultLang);
-  });
-});
-
-
-
-if (translations[lang] && translations[lang][key] !== undefined) {
-    el.textContent = translations[lang][key];
 }
