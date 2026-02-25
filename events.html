@@ -1160,20 +1160,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   renderCalendar(currentDate);
 
-  // ===== LIVE CLOCK =====
-  function updateClock() {
-    const now = new Date();
-
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-
-    const day = now.toLocaleDateString('en-US', { weekday: 'long' });
-    const date = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-    document.getElementById("liveClock").textContent =
-      `${day} | ${date} | ${hours}:${minutes}:${seconds}`;
-  }
 
   setInterval(updateClock, 1000);
   updateClock();
