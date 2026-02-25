@@ -960,6 +960,14 @@ h1{text-align:center; margin-bottom:100px;}
   .training-card.active .training-content {
     padding: 0 22px 24px;
   }
+  .calendar-live-time {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #4D9794;
+  margin-bottom: 15px;
+  letter-spacing: 1px;
+}
 }
 
       
@@ -1162,6 +1170,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   renderCalendar(currentDate);
 });
+  <script>
+function updateClock() {
+  const now = new Date();
+
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+
+  const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+  const date = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  document.getElementById("liveClock").textContent =
+    `${day} | ${date} | ${hours}:${minutes}:${seconds}`;
+}
+
+// update every second
+setInterval(updateClock, 1000);
+
+// run immediately
+updateClock();
+</script>
 </script>
   
 
@@ -1373,10 +1402,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     modalFacilitatorBio.textContent = event.facilitatorBio || "";
     modalFee.textContent = event.fee ? ("Workshop Fee: " + event.fee) : "";
-
-    // Register behavior:
-    // - إذا register = "#" افتحي فورم التسجيل
-    // - إذا رابط حقيقي: افتحيه
     modalRegister.onclick = (e) => {
       e.preventDefault();
       const link = (event.register || "#").trim();
