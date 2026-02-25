@@ -369,42 +369,55 @@ document.addEventListener("DOMContentLoaded", () => {
     text-align: center;
   }
 }
+/* ===============================
+   Section Header - Professional
+================================ */
 
-/* Section headers */
-.section-header h2 {
-  font-size: 3rem;                
-  font-weight: 900;
-    margin-top: 120px;
-  color: #0F172A;
-  margin-bottom: 40px;           /* مسافة معقولة تحت العنوان */
-  letter-spacing: 1.5px;
-  position: relative;
-  display: inline-block;         /* يخلي الخط تحته بنفس عرض النص */
-  text-align: center;            /* يوسطن النص */
+.section-header {
+  text-align: center;
+  margin: 120px auto 60px;
+  max-width: 800px;
+  padding: 0 20px;
 }
 
-/* Decorative line */
+/* Main Title */
+.section-header h2 {
+  font-size: clamp(2.2rem, 4vw, 3rem);
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 20px;
+  letter-spacing: 1.5px;
+  position: relative;
+  display: inline-block;
+}
+
+/* Decorative Gradient Line */
 .section-header h2::after {
   content: '';
   display: block;
-  width: 100px;                   /* طول الخط */
-  height: 10px;                   /* سماكة الخط */
-  margin: 12px auto 0;           /* يجي قريب من النص ويتوسّط */
-  border-radius: 3px;
+  width: 110px;
+  height: 6px;
+  margin: 16px auto 0;
+  border-radius: 50px;
   background: linear-gradient(90deg, #4D9794, #0F172A);
+  transition: width 0.3s ease;
 }
 
+/* Subtitle */
 .section-header p {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #475569;
-  line-height: 1.4;
-  max-width: 400px;
+  line-height: 1.6;
+  max-width: 600px;
   margin: 0 auto;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
   font-weight: 400;
-  text-align: center;
 }
 
+/* Optional subtle hover effect */
+.section-header:hover h2::after {
+  width: 140px;
+}
 
  .events-container {
   width: 90%;
@@ -1055,6 +1068,18 @@ h1{text-align:center; margin-bottom:100px;}
     </div>
   </div>
 </section>
+
+
+
+
+    <!-- Section Header -->
+  <div class="section-header">
+    <h2 id="calendar-title"></h2>
+    <p data-translate="calendar_subtitle">
+      View our upcoming training sessions and workshops
+    </p>
+  </div>
+
 
 <div class="calendar-container">
 
