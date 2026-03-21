@@ -10,22 +10,20 @@
 
   <body>
     <script src="https://unpkg.com/decap-cms@3.10.0/dist/decap-cms.js"></script>
+<script>
+  if (window.netlifyIdentity) {
+    window.netlifyIdentity.init();
 
-    <script>
-      if (window.netlifyIdentity) {
-        window.netlifyIdentity.init();
+    window.netlifyIdentity.on("init", (user) => {
+      window.netlifyIdentity.handleAuthCallback();
 
-        // مهم جدًا: يعالج recovery_token و confirmation_token وغيرهم
-        window.netlifyIdentity.on("init", function(user) {
-          window.netlifyIdentity.handleAuthCallback();
-
-          if (!user) {
-            window.netlifyIdentity.on("login", function() {
-              document.location.href = "/admin/";
-            });
-          }
+      if (!user) {
+        window.netlifyIdentity.on("login", () => {
+          document.location.href = "/admin/";
         });
       }
-    </script>
+    });
+  }
+</script>
   </body>
 </html>
