@@ -369,55 +369,42 @@ document.addEventListener("DOMContentLoaded", () => {
     text-align: center;
   }
 }
-/* ===============================
-   Section Header - Professional
-================================ */
 
-.section-header {
-  text-align: center;
-  margin: 120px auto 60px;
-  max-width: 800px;
-  padding: 0 20px;
-}
-
-/* Main Title */
+/* Section headers */
 .section-header h2 {
-  font-size: clamp(2.2rem, 4vw, 3rem);
-  font-weight: 800;
+  font-size: 3rem;                
+  font-weight: 900;
+    margin-top: 120px;
   color: #0F172A;
-  margin-bottom: 20px;
+  margin-bottom: 40px;           /* مسافة معقولة تحت العنوان */
   letter-spacing: 1.5px;
   position: relative;
-  display: inline-block;
+  display: inline-block;         /* يخلي الخط تحته بنفس عرض النص */
+  text-align: center;            /* يوسطن النص */
 }
 
-/* Decorative Gradient Line */
+/* Decorative line */
 .section-header h2::after {
   content: '';
   display: block;
-  width: 110px;
-  height: 6px;
-  margin: 16px auto 0;
-  border-radius: 50px;
+  width: 100px;                   /* طول الخط */
+  height: 10px;                   /* سماكة الخط */
+  margin: 12px auto 0;           /* يجي قريب من النص ويتوسّط */
+  border-radius: 3px;
   background: linear-gradient(90deg, #4D9794, #0F172A);
-  transition: width 0.3s ease;
 }
 
-/* Subtitle */
 .section-header p {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: #475569;
-  line-height: 1.6;
-  max-width: 600px;
+  line-height: 1.4;
+  max-width: 400px;
   margin: 0 auto;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
   font-weight: 400;
+  text-align: center;
 }
 
-/* Optional subtle hover effect */
-.section-header:hover h2::after {
-  width: 140px;
-}
 
  .events-container {
   width: 90%;
@@ -973,7 +960,6 @@ h1{text-align:center; margin-bottom:100px;}
   .training-card.active .training-content {
     padding: 0 22px 24px;
   }
-
 }
 
       
@@ -1069,10 +1055,7 @@ h1{text-align:center; margin-bottom:100px;}
   </div>
 </section>
 
-
-
-
-    <!-- Section Header -->
+  <!-- Section Header -->
   <div class="section-header">
     <h2 id="calendar-title"></h2>
     <p data-translate="calendar_subtitle">
@@ -1080,123 +1063,83 @@ h1{text-align:center; margin-bottom:100px;}
     </p>
   </div>
 
+  <!-- Calendar -->
+  <div class="calendar-container">
+    <div class="calendar-header">
+      <div>Sun</div>
+      <div>Mon</div>
+      <div>Tue</div>
+      <div>Wed</div>
+      <div>Thu</div>
+      <div>Fri</div>
+      <div>Sat</div>
+    </div>
 
-<div class="calendar-container">
+    <div class="calendar-body">
+      <!-- Week 1 -->
+      <div class="calendar-day"></div>
+      <div class="calendar-day"><span class="day-number">1</span></div>
+      <div class="calendar-day"><span class="day-number">2</span></div>
+      <div class="calendar-day event-day">
+        <img src="Evnet1.webp" alt="Event 1">
+        <span class="day-number">3</span>
+      </div>
+      <div class="calendar-day"><span class="day-number">4</span></div>
+      <div class="calendar-day"><span class="day-number">5</span></div>
+      <div class="calendar-day"><span class="day-number">6</span></div>
 
-  <div class="calendar-controls" style="display:flex; justify-content:space-between; align-items:center; padding:15px;">
-    <button id="prevMonth" class="view-btn">◀</button>
-    <h2 id="calendar-title"></h2>
-    <button id="nextMonth" class="view-btn">▶</button>
+      <!-- Week 2 -->
+      <div class="calendar-day"><span class="day-number">7</span></div>
+      <div class="calendar-day"><span class="day-number">8</span></div>
+      <div class="calendar-day"><span class="day-number">9</span></div>
+      <div class="calendar-day"><span class="day-number">10</span></div>
+      <div class="calendar-day"><span class="day-number">11</span></div>
+      <div class="calendar-day"><span class="day-number">12</span></div>
+      <div class="calendar-day"><span class="day-number">13</span></div>
+
+      <!-- Week 3 -->
+      <div class="calendar-day"><span class="day-number">14</span></div>
+      <div class="calendar-day"><span class="day-number">15</span></div>
+      <div class="calendar-day"><span class="day-number">16</span></div>
+      <div class="calendar-day"><span class="day-number">17</span></div>
+      <div class="calendar-day"><span class="day-number">18</span></div>
+      <div class="calendar-day"><span class="day-number">19</span></div>
+      <div class="calendar-day"><span class="day-number">20</span></div>
+
+      <!-- Week 4 -->
+      <div class="calendar-day"><span class="day-number">21</span></div>
+      <div class="calendar-day"><span class="day-number">22</span></div>
+      <div class="calendar-day"><span class="day-number">23</span></div>
+      <div class="calendar-day"><span class="day-number">24</span></div>
+      <div class="calendar-day"><span class="day-number">25</span></div>
+      <div class="calendar-day"><span class="day-number">26</span></div>
+      <div class="calendar-day"><span class="day-number">27</span></div>
+
+      <!-- Week 5 -->
+      <div class="calendar-day"><span class="day-number">28</span></div>
+      <div class="calendar-day"><span class="day-number">29</span></div>
+      <div class="calendar-day event-day">
+        <img src="Event7.webp" alt="Event 2">
+        <span class="day-number">30</span>
+      </div>
+    </div>
   </div>
 
-  <div class="calendar-header">
-    <div>Sun</div>
-    <div>Mon</div>
-    <div>Tue</div>
-    <div>Wed</div>
-    <div>Thu</div>
-    <div>Fri</div>
-    <div>Sat</div>
-  </div>
+  <!-- Script at the end -->
+  <script>
+    const monthNames = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
 
-  <div class="calendar-body" id="calendarBody"></div>
+    const today = new Date();
+    const month = monthNames[today.getMonth()];
+    const year = today.getFullYear();
 
-</div>
+    document.getElementById("calendar-title").textContent = `${month} ${year}`;
+  </script>
+  
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-
-  const monthNames = [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December"
-  ];
-
-  const events = {
-    "2025-07-03": "Evnet1.webp",
-    "2025-07-30": "Event7.webp"
-  };
-
-  const calendarTitle = document.getElementById("calendar-title");
-  const calendarBody = document.getElementById("calendarBody");
-  const prevBtn = document.getElementById("prevMonth");
-  const nextBtn = document.getElementById("nextMonth");
-
-  let currentDate = new Date();
-
-  function renderCalendar(date) {
-    calendarBody.innerHTML = "";
-
-    const year = date.getFullYear();
-    const month = date.getMonth();
-
-    calendarTitle.textContent = `${monthNames[month]} ${year}`;
-
-    const firstDay = new Date(year, month, 1).getDay();
-    const totalDays = new Date(year, month + 1, 0).getDate();
-
-    for (let i = 0; i < firstDay; i++) {
-      const emptyCell = document.createElement("div");
-      emptyCell.classList.add("calendar-day");
-      calendarBody.appendChild(emptyCell);
-    }
-
-    for (let day = 1; day <= totalDays; day++) {
-
-      const dayCell = document.createElement("div");
-      dayCell.classList.add("calendar-day");
-
-      const dateKey =
-        year + "-" +
-        String(month + 1).padStart(2, '0') + "-" +
-        String(day).padStart(2, '0');
-
-      if (events[dateKey]) {
-        const img = document.createElement("img");
-        img.src = events[dateKey];
-        dayCell.appendChild(img);
-      }
-
-      const span = document.createElement("span");
-      span.classList.add("day-number");
-      span.textContent = day;
-
-      dayCell.appendChild(span);
-      calendarBody.appendChild(dayCell);
-    }
-  }
-
-  prevBtn.onclick = () => {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderCalendar(currentDate);
-  };
-
-  nextBtn.onclick = () => {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderCalendar(currentDate);
-  };
-
-  renderCalendar(currentDate);
-
-  // ===== LIVE CLOCK =====
-  function updateClock() {
-    const now = new Date();
-
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-
-    const day = now.toLocaleDateString('en-US', { weekday: 'long' });
-    const date = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-    document.getElementById("liveClock").textContent =
-      `${day} | ${date} | ${hours}:${minutes}:${seconds}`;
-  }
-
-  setInterval(updateClock, 1000);
-  updateClock();
-
-});
-</script>
 <section class="training-services">
   <div class="section-header">
     <h2>Training & Professional Development</h2>
@@ -1352,138 +1295,119 @@ document.addEventListener("DOMContentLoaded", () => {
   </div>
 </section>
 <script>
-document.addEventListener("DOMContentLoaded", async () => {
 
-  const monthNames = [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December"
-  ];
+document.addEventListener("DOMContentLoaded", () => {
+  const upcomingContainer = document.getElementById("cms-events");
+  const concludedContainer = document.getElementById("cms-events-concluded"); // (رح نعمله بالـ HTML تحت)
 
-  const calendarTitle = document.getElementById("calendar-title");
-  const calendarBody = document.getElementById("calendarBody");
-  const prevBtn = document.getElementById("prevMonth");
-  const nextBtn = document.getElementById("nextMonth");
+  // Modal elements
+  const modal = document.getElementById('eventModal');
+  const modalImg = document.getElementById('modalImg');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalDate = document.getElementById('modalDate');
+  const modalFormat = document.getElementById('modalFormat');
+  const modalFacilitator = document.getElementById('modalFacilitator');
+  const modalAbout = document.getElementById('modalAbout');
+  const modalLearn = document.getElementById('modalLearn');
+  const modalWho = document.getElementById('modalWho');
+  const modalOutcomes = document.getElementById('modalOutcomes');
+  const modalFacilitatorBio = document.getElementById('modalFacilitatorBio');
+  const modalFee = document.getElementById('modalFee');
+  const modalRegister = document.getElementById('modalRegister');
 
-  let currentDate = new Date();
-  let events = {};
+  // Register form modal
+  const registerModal = document.getElementById("registerModal");
 
-  
-document.addEventListener("DOMContentLoaded", async () => {
+  let cmsEvents = [];
 
-  const monthNames = [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December"
-  ];
-
-  const calendarTitle = document.getElementById("calendar-title");
-  const calendarBody = document.getElementById("calendarBody");
-  const prevBtn = document.getElementById("prevMonth");
-  const nextBtn = document.getElementById("nextMonth");
-  const cmsContainer = document.getElementById("cms-events");
-
-  let currentDate = new Date();
-  let events = {};
-
-  // ===== LOAD EVENTS FROM CMS =====
-  async function loadEvents() {
-    try {
-      const response = await fetch("content/events.json"); // ✅ FIXED
-      const data = await response.json();
-
-      data.events.forEach(event => {
-
-        // ===== CALENDAR =====
-        const date = new Date(event.date);
-        const key =
-          date.getFullYear() + "-" +
-          String(date.getMonth() + 1).padStart(2, '0') + "-" +
-          String(date.getDate()).padStart(2, '0');
-
-        events[key] = event.image;
-
-        // ===== DISPLAY EVENTS =====
-        if (cmsContainer) {
-          cmsContainer.innerHTML += `
-            <div class="list-item">
-              <img src="${event.image}" alt="${event.title}">
-              <div class="list-item-body">
-                <h3>${event.title}</h3>
-                <p>${new Date(event.date).toDateString()}</p>
-                <a class="view-btn">View Details</a>
-              </div>
-            </div>
-          `;
-        }
-
-      });
-
-    } catch (error) {
-      console.error("Error loading events:", error);
-    }
+  function safeArray(v) {
+    return Array.isArray(v) ? v : [];
   }
 
-  // ===== CALENDAR RENDER =====
-  function renderCalendar(date) {
-    calendarBody.innerHTML = "";
+  function openDetails(event) {
+    modalImg.src = event.image || "";
+    modalTitle.textContent = event.title || "";
 
-    const year = date.getFullYear();
-    const month = date.getMonth();
+    // date
+    const d = event.date ? new Date(event.date) : null;
+    modalDate.textContent = d && !isNaN(d) ? d.toLocaleString() : "";
 
-    calendarTitle.textContent = `${monthNames[month]} ${year}`;
+    modalFormat.textContent = event.format ? ("Format: " + event.format) : "";
+    modalFacilitator.textContent = event.facilitator ? ("Facilitator: " + event.facilitator) : "";
+    modalAbout.textContent = event.about || event.description || "";
 
-    const firstDay = new Date(year, month, 1).getDay();
-    const totalDays = new Date(year, month + 1, 0).getDate();
+    // lists
+    modalLearn.innerHTML = "";
+    safeArray(event.learn).forEach(x => modalLearn.innerHTML += `<li>${x}</li>`);
 
-    for (let i = 0; i < firstDay; i++) {
-      const emptyCell = document.createElement("div");
-      emptyCell.classList.add("calendar-day");
-      calendarBody.appendChild(emptyCell);
-    }
+    modalWho.innerHTML = "";
+    safeArray(event.who).forEach(x => modalWho.innerHTML += `<li>${x}</li>`);
 
-    for (let day = 1; day <= totalDays; day++) {
+    modalOutcomes.innerHTML = "";
+    safeArray(event.outcomes).forEach(x => modalOutcomes.innerHTML += `<li>${x}</li>`);
 
-      const dayCell = document.createElement("div");
-      dayCell.classList.add("calendar-day");
+    modalFacilitatorBio.textContent = event.facilitatorBio || "";
+    modalFee.textContent = event.fee ? ("Workshop Fee: " + event.fee) : "";
 
-      const dateKey =
-        year + "-" +
-        String(month + 1).padStart(2, '0') + "-" +
-        String(day).padStart(2, '0');
-
-      if (events[dateKey]) {
-        const img = document.createElement("img");
-        img.src = events[dateKey];
-        img.style.position = "absolute";
-        img.style.inset = "0";
-        img.style.width = "100%";
-        img.style.height = "100%";
-        img.style.objectFit = "cover";
-        dayCell.appendChild(img);
+    // Register behavior:
+    // - إذا register = "#" افتحي فورم التسجيل
+    // - إذا رابط حقيقي: افتحيه
+    modalRegister.onclick = (e) => {
+      e.preventDefault();
+      const link = (event.register || "#").trim();
+      if (link === "#" || link === "") {
+        registerModal.style.display = "block";
+      } else {
+        window.open(link, "_blank");
       }
+    };
 
-      const span = document.createElement("span");
-      span.classList.add("day-number");
-      span.textContent = day;
-
-      dayCell.appendChild(span);
-      calendarBody.appendChild(dayCell);
-    }
+    modal.style.display = "block";
   }
 
-  prevBtn.onclick = () => {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderCalendar(currentDate);
-  };
+  function renderCard(event, container) {
+    const item = document.createElement("div");
+    item.className = "list-item";
+    item.innerHTML = `
+      <img src="${event.image || ''}" alt="${event.title || ''}">
+      <div class="list-item-body">
+        <h3>${event.title || ''}</h3>
+        <p>${event.date ? new Date(event.date).toDateString() : ''}</p>
+        <a class="view-btn">View Details</a>
+      </div>
+    `;
 
-  nextBtn.onclick = () => {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderCalendar(currentDate);
-  };
+    // click anywhere opens modal
+    item.addEventListener("click", () => openDetails(event));
+    container.appendChild(item);
+  }
 
-  await loadEvents();
-  renderCalendar(currentDate);
+ fetch("/content/events.json")
+  .then(res => res.json())
+    .then(data => {
+      cmsEvents = data.events || [];
 
+      if (upcomingContainer) upcomingContainer.innerHTML = "";
+      if (concludedContainer) concludedContainer.innerHTML = "";
+
+      cmsEvents.forEach(ev => {
+        if (ev.status === "upcoming") {
+          if (upcomingContainer) renderCard(ev, upcomingContainer);
+        } else if (ev.status === "concluded") {
+          if (concludedContainer) renderCard(ev, concludedContainer);
+        }
+      });
+    })
+    .catch(err => console.error("CMS events error:", err));
+
+  // modal close
+  document.querySelector('.modal-close').onclick = () => modal.style.display = "none";
+  document.getElementById('modalBack').onclick = () => modal.style.display = "none";
+  window.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
 });
+</script>
+
+
 
 <section class="events-section">
   <div class="events-container">
