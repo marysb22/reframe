@@ -1367,13 +1367,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentDate = new Date();
   let events = {};
 
-  // ===== Fetch CMS Events =====
+  
+document.addEventListener("DOMContentLoaded", async () => {
+
+  const monthNames = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+
+  const calendarTitle = document.getElementById("calendar-title");
+  const calendarBody = document.getElementById("calendarBody");
+  const prevBtn = document.getElementById("prevMonth");
+  const nextBtn = document.getElementById("nextMonth");
+  const cmsContainer = document.getElementById("cms-events");
+
+  let currentDate = new Date();
+  let events = {};
+
+  // ===== LOAD EVENTS FROM CMS =====
   async function loadEvents() {
     try {
-      const response = await fetch("/content/events.json");
+      const response = await fetch("content/events.json"); // ✅ FIXED
       const data = await response.json();
 
       data.events.forEach(event => {
+
+        // ===== CALENDAR =====
         const date = new Date(event.date);
         const key =
           date.getFullYear() + "-" +
@@ -1381,6 +1400,21 @@ document.addEventListener("DOMContentLoaded", async () => {
           String(date.getDate()).padStart(2, '0');
 
         events[key] = event.image;
+
+        // ===== DISPLAY EVENTS =====
+        if (cmsContainer) {
+          cmsContainer.innerHTML += `
+            <div class="list-item">
+              <img src="${event.image}" alt="${event.title}">
+              <div class="list-item-body">
+                <h3>${event.title}</h3>
+                <p>${new Date(event.date).toDateString()}</p>
+                <a class="view-btn">View Details</a>
+              </div>
+            </div>
+          `;
+        }
+
       });
 
     } catch (error) {
@@ -1388,6 +1422,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  // ===== CALENDAR RENDER =====
   function renderCalendar(date) {
     calendarBody.innerHTML = "";
 
@@ -1415,15 +1450,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         String(month + 1).padStart(2, '0') + "-" +
         String(day).padStart(2, '0');
 
-      // If event exists from CMS
       if (events[dateKey]) {
         const img = document.createElement("img");
         img.src = events[dateKey];
+        img.style.position = "absolute";
+        img.style.inset = "0";
         img.style.width = "100%";
         img.style.height = "100%";
         img.style.objectFit = "cover";
-        img.style.position = "absolute";
-        img.style.inset = "0";
         dayCell.appendChild(img);
       }
 
@@ -1450,8 +1484,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderCalendar(currentDate);
 
 });
-</script>
-
 
 <section class="events-section">
   <div class="events-container">
