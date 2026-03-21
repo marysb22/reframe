@@ -5,25 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Reframe CMS</title>
 
+    <!-- Netlify Identity -->
     <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   </head>
 
   <body>
+    <!-- Decap CMS -->
     <script src="https://unpkg.com/decap-cms@3.10.0/dist/decap-cms.js"></script>
-<script>
-  if (window.netlifyIdentity) {
-    window.netlifyIdentity.init();
 
-    window.netlifyIdentity.on("init", (user) => {
-      window.netlifyIdentity.handleAuthCallback();
+    <script>
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.init();
 
-      if (!user) {
+        // 🔥 هذا أهم سطر (يعالج recovery_token)
+        window.netlifyIdentity.handleAuthCallback();
+
+        // لما يسجل دخول → يدخل admin
         window.netlifyIdentity.on("login", () => {
           document.location.href = "/admin/";
         });
+
+        // مهم: لو دخل من reset password
+        window.netlifyIdentity.on("init", user => {
+          if (!user && window.location.hash.includes("recovery_token")) {
+            // افتح نافذة reset تلقائي
+            window.netlifyIdentity.open();
+          }
+        });
       }
-    });
-  }
-</script>
+    </script>
   </body>
 </html>
