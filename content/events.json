@@ -1,26 +1,3 @@
 {
-  "events": [
-    {
-      "outcomes": [
-        "Ms. Rana El Hajj is a psychosocial support trainer and facilitator who works closely with individuals and groups to improve emotional health and resilience."
-      ],
-      "register": "#",
-      "learn": [
-        "How resilience works Ways to handle emotional pressure Healthy coping strategies Building self-awareness Creating a personal resilience plan"
-      ],
-      "fee": "15 USD",
-      "facilitator": " Ms. Rana El Hajj",
-      "about": "\nAn engaging workshop focused on strengthening emotional resilience, managing setbacks, and developing healthier responses to life’s daily pressures.",
-      "date": "2026-04-17T22:26:00.000+03:00",
-      "translation": "Arabic",
-      "status": "upcoming",
-      "format": "In-Person Workshop",
-      "title": "Building Emotional Resilience",
-      "image": "/assets/uploads/post-5.webp",
-      "facilitatorBio": "Ms. Rana El Hajj is a psychosocial support trainer and facilitator who works closely with individuals and groups to improve emotional health and resilience.",
-      "who": [
-        " University students Young adults Parents Anyone interested in mental well-being"
-      ]
-    }
-  ]
+  "events": []
 }
