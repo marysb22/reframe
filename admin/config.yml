@@ -32,6 +32,7 @@ collections:
                 required: false
                 field:
                   label: "Item"
+                  name: "item"
                   widget: "string"
 
               - label: "Who Should Attend?"
@@ -40,6 +41,7 @@ collections:
                 required: false
                 field:
                   label: "Item"
+                  name: "item"
                   widget: "string"
 
               - label: "Workshop Outcomes"
@@ -48,6 +50,7 @@ collections:
                 required: false
                 field:
                   label: "Item"
+                  name: "item"
                   widget: "string"
 
               - { label: "Facilitator Bio", name: "facilitatorBio", widget: "text", required: false }
