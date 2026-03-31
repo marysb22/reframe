@@ -1,32 +1,64 @@
+backend:
+  name: git-gateway
+  branch: main
 
-- label: "What You'll Learn"
-  name: "learn"
-  widget: "list"
-  required: false
-  allow_add: true
-  collapsed: false
-  field:
-    label: "Add one point"
-    name: "item"
-    widget: "string"
-    hint: "Write ONE point only (not a paragraph)"
+media_folder: "assets/uploads"
+public_folder: "/assets/uploads"
 
-- label: "Who Should Attend?"
-  name: "who"
-  widget: "list"
-  required: false
-  field:
-    label: "Add one person/group"
-    name: "item"
-    widget: "string"
-    hint: "Write ONE item only"
+collections:
+  - name: "events"
+    label: "Events"
+    files:
+      - name: "events"
+        label: "All Events"
+        file: "content/events.json"
+        format: "json"
+        fields:
+          - label: "Events"
+            name: "events"
+            widget: "list"
+            fields:
+              - { label: "Title", name: "title", widget: "string" }
+              - { label: "Status", name: "status", widget: "select", options: ["upcoming", "concluded"] }
+              - { label: "Date", name: "date", widget: "datetime" }
+              - { label: "Image", name: "image", widget: "image", required: false }
+              - { label: "Format", name: "format", widget: "string", required: false }
+              - { label: "Facilitator", name: "facilitator", widget: "string", required: false }
+              - { label: "About", name: "about", widget: "text", required: false }
 
-- label: "Workshop Outcomes"
-  name: "outcomes"
-  widget: "list"
-  required: false
-  field:
-    label: "Add one outcome"
-    name: "item"
-    widget: "string"
-    hint: "Write ONE result only"
+              - label: "What You'll Learn"
+                name: "learn"
+                widget: "list"
+                required: false
+                allow_add: true
+                collapsed: false
+                field:
+                  label: "Add one point"
+                  name: "item"
+                  widget: "string"
+                  hint: "Write ONE point only (not a paragraph)"
+
+              - label: "Who Should Attend?"
+                name: "who"
+                widget: "list"
+                required: false
+                field:
+                  label: "Add one person/group"
+                  name: "item"
+                  widget: "string"
+                  hint: "Write ONE item only"
+
+              - label: "Workshop Outcomes"
+                name: "outcomes"
+                widget: "list"
+                required: false
+                field:
+                  label: "Add one outcome"
+                  name: "item"
+                  widget: "string"
+                  hint: "Write ONE result only"
+
+              - { label: "Facilitator Bio", name: "facilitatorBio", widget: "text", required: false }
+              - { label: "Fee", name: "fee", widget: "string", required: false }
+              - { label: "Translation", name: "translation", widget: "string", required: false }
+              - { label: "Register Link", name: "register", widget: "string", required: false, default: "#" }
