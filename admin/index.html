@@ -5,33 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Reframe CMS</title>
 
-    <!-- Netlify Identity -->
     <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   </head>
 
   <body>
-    <!-- Decap CMS -->
     <script src="https://unpkg.com/decap-cms@3.10.0/dist/decap-cms.js"></script>
 
     <script>
       if (window.netlifyIdentity) {
         window.netlifyIdentity.init();
 
-        // 🔥 هذا أهم سطر (يعالج recovery_token)
-        window.netlifyIdentity.handleAuthCallback();
+        window.netlifyIdentity.on("init", (user) => {
+          const hash = window.location.hash || "";
 
-        // لما يسجل دخول → يدخل admin
-        window.netlifyIdentity.on("login", () => {
-          document.location.href = "/admin/";
-        });
+          // لو الرابط خاص بإعادة تعيين كلمة المرور
+          if (!user && hash.includes("recovery_token")) {
+            window.netlifyIdentity.open("recovery");
+          }
 
-        // مهم: لو دخل من reset password
-        window.netlifyIdentity.on("init", user => {
-          if (!user && window.location.hash.includes("recovery_token")) {
-            // افتح نافذة reset تلقائي
-            window.netlifyIdentity.open();
+          // لو الرابط خاص بدعوة مستخدم جديد
+          if (!user && hash.includes("invite_token")) {
+            window.netlifyIdentity.open("signup");
           }
         });
+
+        // بعد تسجيل الدخول
+        window.netlifyIdentity.on("login", () => {
+          window.location.href = "/admin/";
+        });
+
+        // بعد تسجيل الخروج
+        window.netlifyIdentity.on("logout", () => {
+          window.location.href = "/admin/";
+        });
+
+        // معالجة روابط identity مثل recovery/invite/confirm
+        if (typeof window.netlifyIdentity.handleAuthCallback === "function") {
+          window.netlifyIdentity.handleAuthCallback();
+        }
       }
     </script>
   </body>
