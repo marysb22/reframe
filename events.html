@@ -371,25 +371,31 @@ document.addEventListener("DOMContentLoaded", () => {
 }
 
 /* Section headers */
+.section-header {
+  text-align: center;
+}
+
 .section-header h2 {
-  font-size: 3rem;                
+  font-size: 3rem;
   font-weight: 900;
-    margin-top: 120px;
+  margin-top: 120px;
   color: #0F172A;
-  margin-bottom: 40px;           /* مسافة معقولة تحت العنوان */
+  margin-bottom: 40px;
   letter-spacing: 1.5px;
   position: relative;
-  display: inline-block;         /* يخلي الخط تحته بنفس عرض النص */
-  text-align: center;            /* يوسطن النص */
+
+  display: block;          /* 👈 أهم تعديل */
+  margin-left: auto;       /* 👈 لتوسيط */
+  margin-right: auto;      /* 👈 لتوسيط */
 }
 
 /* Decorative line */
 .section-header h2::after {
   content: '';
   display: block;
-  width: 100px;                   /* طول الخط */
-  height: 10px;                   /* سماكة الخط */
-  margin: 12px auto 0;           /* يجي قريب من النص ويتوسّط */
+  width: 100px;
+  height: 10px;
+  margin: 12px auto 0;   /* 👈 الصحيح بدل center */
   border-radius: 3px;
   background: linear-gradient(90deg, #4D9794, #0F172A);
 }
@@ -1054,91 +1060,300 @@ h1{text-align:center; margin-bottom:100px;}
     </div>
   </div>
 </section>
+<!-- ===== PROFESSIONAL CALENDAR: HTML + CSS + JS IN ONE COPY ===== -->
+<div class="section-header">
+  <h2 id="calendar-title"></h2>
+  <p data-translate="calendar_subtitle">
+    View our upcoming training sessions and workshops
+  </p>
+</div>
 
-  <!-- Section Header -->
-  <div class="section-header">
-    <h2 id="calendar-title"></h2>
-    <p data-translate="calendar_subtitle">
-      View our upcoming training sessions and workshops
-    </p>
+<div class="calendar-nav">
+  <button id="calendarPrev" class="calendar-arrow" aria-label="Previous Month">
+    <i class="fa fa-chevron-left"></i>
+  </button>
+
+  <button id="calendarNext" class="calendar-arrow" aria-label="Next Month">
+    <i class="fa fa-chevron-right"></i>
+  </button>
+</div>
+
+<div class="calendar-container">
+  <div class="calendar-header">
+    <div>Sun</div>
+    <div>Mon</div>
+    <div>Tue</div>
+    <div>Wed</div>
+    <div>Thu</div>
+    <div>Fri</div>
+    <div>Sat</div>
   </div>
 
-  <!-- Calendar -->
-  <div class="calendar-container">
-    <div class="calendar-header">
-      <div>Sun</div>
-      <div>Mon</div>
-      <div>Tue</div>
-      <div>Wed</div>
-      <div>Thu</div>
-      <div>Fri</div>
-      <div>Sat</div>
-    </div>
+  <div class="calendar-body" id="calendarBody"></div>
+</div>
 
-    <div class="calendar-body">
-      <!-- Week 1 -->
-      <div class="calendar-day"></div>
-      <div class="calendar-day"><span class="day-number">1</span></div>
-      <div class="calendar-day"><span class="day-number">2</span></div>
-      <div class="calendar-day event-day">
-        <img src="Evnet1.webp" alt="Event 1">
-        <span class="day-number">3</span>
-      </div>
-      <div class="calendar-day"><span class="day-number">4</span></div>
-      <div class="calendar-day"><span class="day-number">5</span></div>
-      <div class="calendar-day"><span class="day-number">6</span></div>
+<style>
+  .calendar-nav {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin: 20px 0 25px;
+  }
 
-      <!-- Week 2 -->
-      <div class="calendar-day"><span class="day-number">7</span></div>
-      <div class="calendar-day"><span class="day-number">8</span></div>
-      <div class="calendar-day"><span class="day-number">9</span></div>
-      <div class="calendar-day"><span class="day-number">10</span></div>
-      <div class="calendar-day"><span class="day-number">11</span></div>
-      <div class="calendar-day"><span class="day-number">12</span></div>
-      <div class="calendar-day"><span class="day-number">13</span></div>
+  .calendar-arrow {
+    width: 46px;
+    height: 46px;
+    border: none;
+    border-radius: 50%;
+    background: #4D9794;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  }
 
-      <!-- Week 3 -->
-      <div class="calendar-day"><span class="day-number">14</span></div>
-      <div class="calendar-day"><span class="day-number">15</span></div>
-      <div class="calendar-day"><span class="day-number">16</span></div>
-      <div class="calendar-day"><span class="day-number">17</span></div>
-      <div class="calendar-day"><span class="day-number">18</span></div>
-      <div class="calendar-day"><span class="day-number">19</span></div>
-      <div class="calendar-day"><span class="day-number">20</span></div>
+  .calendar-arrow:hover {
+    background: #2c6b6b;
+    transform: translateY(-2px) scale(1.05);
+  }
 
-      <!-- Week 4 -->
-      <div class="calendar-day"><span class="day-number">21</span></div>
-      <div class="calendar-day"><span class="day-number">22</span></div>
-      <div class="calendar-day"><span class="day-number">23</span></div>
-      <div class="calendar-day"><span class="day-number">24</span></div>
-      <div class="calendar-day"><span class="day-number">25</span></div>
-      <div class="calendar-day"><span class="day-number">26</span></div>
-      <div class="calendar-day"><span class="day-number">27</span></div>
+  .calendar-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
 
-      <!-- Week 5 -->
-      <div class="calendar-day"><span class="day-number">28</span></div>
-      <div class="calendar-day"><span class="day-number">29</span></div>
-      <div class="calendar-day event-day">
-        <img src="Event7.webp" alt="Event 2">
-        <span class="day-number">30</span>
-      </div>
-    </div>
-  </div>
+  .calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #4D9794;
+    color: white;
+    font-weight: 600;
+    text-align: center;
+    padding: 12px 0;
+    font-size: 0.95rem;
+  }
 
-  <!-- Script at the end -->
-  <script>
+  .calendar-body {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 130px;
+    background: #e5e7eb;
+    gap: 1px;
+  }
+
+  .calendar-day {
+    background: #fff;
+    border-radius: 6px;
+    position: relative;
+    padding: 6px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+
+  .calendar-day:hover {
+    background: #f1f5f9;
+    transform: scale(1.02);
+    cursor: pointer;
+  }
+
+  .calendar-day.empty {
+    background: #f8fafc;
+    cursor: default;
+    transform: none;
+  }
+
+  .calendar-day.empty:hover {
+    background: #f8fafc;
+    transform: none;
+  }
+
+  .calendar-day.today {
+    outline: 2px solid #4D9794;
+    outline-offset: -2px;
+  }
+
+  .calendar-day .day-number {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #334155;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 2px 6px;
+    border-radius: 6px;
+  }
+
+  .calendar-day.event-day img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+    opacity: 0.92;
+    z-index: 0;
+  }
+
+  @media (max-width: 768px) {
+    .calendar-body {
+      grid-auto-rows: 80px;
+    }
+
+    .calendar-day .day-number {
+      font-size: 0.72rem;
+      top: 4px;
+      right: 4px;
+      padding: 2px 5px;
+    }
+
+    .calendar-arrow {
+      width: 40px;
+      height: 40px;
+    }
+
+    .calendar-header {
+      font-size: 0.8rem;
+      padding: 10px 0;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    const calendarTitle = document.getElementById("calendar-title");
+    const calendarBody = document.getElementById("calendarBody");
+    const prevBtn = document.getElementById("calendarPrev");
+    const nextBtn = document.getElementById("calendarNext");
+
     const monthNames = [
-      "January","February","March","April","May","June",
-      "July","August","September","October","November","December"
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
     ];
 
     const today = new Date();
-    const month = monthNames[today.getMonth()];
-    const year = today.getFullYear();
+    let viewYear = today.getFullYear();
+    let viewMonth = today.getMonth();
 
-    document.getElementById("calendar-title").textContent = `${month} ${year}`;
-  </script>
-  
+    let cmsEvents = [];
+
+    try {
+      const res = await fetch("/content/events.json");
+      const data = await res.json();
+      cmsEvents = Array.isArray(data.events) ? data.events : [];
+    } catch (error) {
+      console.error("Could not load events.json", error);
+    }
+
+    function normalizeEventDate(dateString) {
+      if (!dateString) return null;
+      const d = new Date(dateString);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function getEventsForDay(year, month, day) {
+      return cmsEvents.filter((event) => {
+        const eventDate = normalizeEventDate(event.date);
+        if (!eventDate) return false;
+
+        return (
+          eventDate.getFullYear() === year &&
+          eventDate.getMonth() === month &&
+          eventDate.getDate() === day &&
+          event.status !== "concluded"
+        );
+      });
+    }
+
+    function renderCalendar(year, month) {
+      calendarBody.innerHTML = "";
+      calendarTitle.textContent = `${monthNames[month]} ${year}`;
+
+      const firstDayIndex = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      for (let i = 0; i < firstDayIndex; i++) {
+        const emptyCell = document.createElement("div");
+        emptyCell.className = "calendar-day empty";
+        calendarBody.appendChild(emptyCell);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayCell = document.createElement("div");
+        dayCell.className = "calendar-day";
+
+        const isToday =
+          day === today.getDate() &&
+          month === today.getMonth() &&
+          year === today.getFullYear();
+
+        if (isToday) {
+          dayCell.classList.add("today");
+        }
+
+        const dayNumber = document.createElement("span");
+        dayNumber.className = "day-number";
+        dayNumber.textContent = day;
+        dayCell.appendChild(dayNumber);
+
+        const dayEvents = getEventsForDay(year, month, day);
+
+        if (dayEvents.length > 0) {
+          const mainEvent = dayEvents[0];
+          dayCell.classList.add("event-day");
+
+          if (mainEvent.image) {
+            const img = document.createElement("img");
+            img.src = mainEvent.image;
+            img.alt = mainEvent.title || "Event image";
+            dayCell.appendChild(img);
+          }
+
+          dayCell.addEventListener("click", () => {
+            const title = mainEvent.title || "";
+            const escapedTitle =
+              window.CSS && CSS.escape
+                ? CSS.escape(title)
+                : title.replace(/"/g, '\\"');
+
+            const eventCard = document.querySelector(`[data-title="${escapedTitle}"]`);
+            if (eventCard) {
+              eventCard.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          });
+        }
+
+        calendarBody.appendChild(dayCell);
+      }
+    }
+
+    prevBtn.addEventListener("click", () => {
+      viewMonth--;
+      if (viewMonth < 0) {
+        viewMonth = 11;
+        viewYear--;
+      }
+      renderCalendar(viewYear, viewMonth);
+    });
+
+    nextBtn.addEventListener("click", () => {
+      viewMonth++;
+      if (viewMonth > 11) {
+        viewMonth = 0;
+        viewYear++;
+      }
+      renderCalendar(viewYear, viewMonth);
+    });
+
+    renderCalendar(viewYear, viewMonth);
+  });
+</script>
 
 <section class="training-services">
   <div class="section-header">

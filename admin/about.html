@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-translate="page_title_about">About Us - Reframe MHS</title>
+  <meta
+    name="description"
+    data-translate="page_description_about"
+    content="Learn about Reframe MHS mission, vision, and our team of mental health professionals in the Middle East."
+  />
+  <link rel="stylesheet" href="styles/main.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+  />
+<!-- ================== NAVIGATION ================== -->
+<nav class="navbar">
+  <div class="nav-container">
+    <!-- Logo -->
+    <div class="nav-logo">
+      <a href="index.html">
+        <img src="logo.gif" alt="Company Logo" width="220" />
+      </a>
+    </div>
+
+    <!-- Main Menu -->
+    <ul class="nav-menu">
+      <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+      <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+
+      <!-- Dropdown -->
+      <li class="nav-dropdown">
+        <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
+          Services <i class="fa fa-chevron-down"></i>
+        </a>
+        <ul class="dropdown-menu">
+          <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+          <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+          <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" class="nav-link" data-translate="nav_consultations">TechnicalConsultations</a></li>
+        </ul>
+      </li>
+
+      <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+    </ul>
+
+    <!-- Language Switcher -->
+    <div class="language-switcher">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <span class="lang-separator">|</span>
+      <button class="lang-btn" data-lang="ar">AR</button>
+    </div>
+
+    <!-- Login Button -->
+    <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
+
+    <!-- Hamburger button (mobile) -->
+    <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ================== OVERLAY MENU (Mobile) ================== -->
+<div class="overlay" id="mobile-menu" aria-hidden="true">
+  <nav class="overlay-nav" aria-label="Mobile">
+    <ul>
+      <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+      <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+      <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+      <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+      <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+      <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+      <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+      <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
+    </ul>
+    <button class="close-btn" aria-label="Close menu" data-translate="close">Close</button>
+  </nav>
+</div>
+
+    <!-- About Hero Section -->
+    <section class="about-hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1 data-translate="about_hero_title">About Reframe MHS</h1>
+                <p data-translate="about_hero_subtitle">We envision a future where mental health is the foundation of every human system, and where challenges and failures are embraced as opportunities for growth and transformation.</p>
+            </div>
+        </div>
+    </section>
+  <section class="mission-section">
+  <div class="container">
+    <div class="mission-content">
+      
+      <div class="mission-text">
+        <h2 data-translate="mission_title">Our Mission</h2>
+        <p data-translate="mission_description">
+          We provide evidence-based and culturally adapted mental health approaches that empower individuals, groups, and organizations to navigate challenges and reach their highest potential.
+        </p>
+      </div>
+
+      <div class="mission-image">
+        <img src="mission.jpeg" alt="Our Mission">
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<style>
+:root{
+  --bg-1:#071124;
+  --bg-2:#0f2b3a;
+  --card-bg:rgba(255,255,255,.05);
+  --glass:#4D9794;
+  --accent:#4D9794;
+  --accent-2:#4D9794;
+  --muted:#1E3F5A;
+  --max-width:1200px;
+  --radius:14px;
+  --glass-border:#4D9794;
+  --shadow:0 10px 30px rgba(2,8,23,.6);
+  --ease:cubic-bezier(.2,.9,.3,1);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+
+
+/* ========== Team Section Shell ========== */
+.team-section{
+  max-width:var(--max-width);
+  margin-inline:auto;
+  padding-block:3rem;
+  padding-inline:1rem;
+  text-align:center;
+  color:var(--muted);
+}
+.team-section h2{
+  font-weight:800;
+  font-size:clamp(2rem,3vw,2.5rem);
+  margin-block-end:2rem;
+  color:#1E3F5A;
+  letter-spacing:.02em;
+}
+
+/* ========== Horizontal Scroller ========== */
+.team-wrapper{ position:relative; overflow:hidden; }
+.team-grid{
+  display:flex;
+  gap:1.25rem;
+  overflow-x:auto;
+  scroll-behavior:smooth;
+  padding-block-end:1rem;
+  scroll-snap-type: inline mandatory; /* RTL/LTR aware */
+  -webkit-overflow-scrolling:touch;
+}
+.team-grid > .card{ scroll-snap-align:center; }
+.team-grid::-webkit-scrollbar{ height:6px; }
+.team-grid::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.18); border-radius:99px; }
+/* ===== Make All Cards Same Size ===== */
+.card {
+  flex: 0 0 240px;
+  width: 240px;
+  height: 340px;          /* fixed equal height */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* ===== Image Container Fixed Ratio ===== */
+.card-figure {
+  width: 100%;
+  height: 240px;          /* same image height for all */
+  overflow: hidden;
+}
+
+/* ===== Image Style ===== */
+.card-figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;      /* keeps proportion */
+  object-position: center top; /* focus on face */
+  display: block;
+}
+
+/* ========== Meta ========== */
+.meta{
+  padding:1rem 1rem 1.2rem;
+  color:var(--muted);
+  text-align:start; /* logical start (LTR: left, RTL: right) */
+}
+.meta h3{
+  margin:0;
+  font-size:1.06rem;
+  font-weight:800;
+  line-height:1.25;
+  word-break: break-word;
+}
+.meta p.role{
+  margin:.35rem 0 0;
+  color:var(--accent);
+  font-weight:800;
+  line-height:1.35;
+}
+
+/* Better long-text handling for Arabic/English */
+.meta p, .modal-body{
+  hyphens:auto;
+  overflow-wrap:anywhere;
+}
+
+
+
+/* ========== Modal ========== */
+.modal{
+  position:fixed; inset:0;
+  display:grid; place-items:center;
+  padding:2rem;
+  background: linear-gradient(180deg, rgba(191,201,209,.55), rgba(215,218,221,.75));
+  opacity:0; pointer-events:none;
+  transition: opacity .18s linear;
+  z-index:60;
+}
+.modal.open{ opacity:1; pointer-events:auto; }
+
+.modal-dialog{
+  inline-size: min(920px, 96%);
+  max-block-size: 90vh;             /* no overflow off-screen */
+  overflow-y:auto;
+  background: linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.82));
+  border-radius:16px;
+  padding:1.25rem;
+  box-shadow:0 20px 50px rgba(0,0,0,.18);
+  border:1px solid var(--glass-border);
+  display:flex; gap:1rem; flex-direction:row;
+  transform: translateY(-32px);
+  opacity:0;
+  transition: transform .35s ease, opacity .35s ease;
+}
+.modal.open .modal-dialog{ transform: translateY(0); opacity:1; }
+
+.modal-img{
+  flex:0 0 300px;
+  border-radius:12px;
+  overflow:hidden;
+  inline-size:300px;
+  block-size:auto;
+}
+.modal-img img{
+  inline-size:100%; block-size:100%; object-fit:cover;
+}
+.modal-body{
+  flex:1; color:var(--muted);
+  text-align:start;   /* start/end auto-flips in RTL */
+}
+.close-btn{
+  background:transparent; border:0; color:var(--muted);
+  font-size:1.05rem; cursor:pointer; padding:.35rem;
+  border-radius:8px; margin-block-start:1rem;
+}
+
+
+/* ========== Animations on Scroll ========== */
+.fade-up {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 980px) {
+  .modal-dialog {
+    flex-direction: column;
+    padding: 1.5rem;
+    background: linear-gradient(180deg, #f8fafa, #ffffff);
+    border-color: rgba(77, 151, 148, 0.25);
+  }
+
+  .modal-img {
+    inline-size: 100%;
+    block-size: 260px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .team-section {
+    background: #f3f8f9; /* soft clean background */
+    color: #2e4a5b;
+  }
+
+  .team-section h2 {
+    color: #4d9794;
+  }
+
+  .team-grid {
+    gap: 1rem;
+    padding-inline: 0.5rem;
+  }
+
+  .card {
+    flex: 0 0 200px;
+    inline-size: 200px;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(77, 151, 148, 0.15);
+    border: 1px solid rgba(77, 151, 148, 0.1);
+  }
+
+  .card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 14px 30px rgba(77, 151, 148, 0.25);
+  }
+
+  .meta h3 {
+    color: #1e3f5a;
+  }
+
+  .meta p.role {
+    color: #4d9794;
+  }
+}
+
+@media (max-width: 520px) {
+  .team-section {
+    padding-block: 2.5rem;
+    background: #f4f9f9;
+  }
+
+  .team-section h2 {
+    font-size: 1.75rem;
+    color: #4d9794;
+  }
+
+  .card {
+    min-block-size: 320px;
+    background: #ffffff;
+  }
+
+  .modal-dialog {
+    padding: 1rem;
+    background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(240,250,250,0.98));
+    border-color: rgba(77, 151, 148, 0.25);
+  }
+
+  .modal-img {
+    inline-size: 100%;
+    block-size: 240px;
+    margin-block-end: 1rem;
+  }
+}
+
+/* ========== Motion ========== */
+@media (prefers-reduced-motion: reduce) {
+  .card, .modal-dialog, .fade-up {
+    transition: none !important;
+  }
+}
+
+
+/* hide bio inside cards, show only in modal */
+.card .bio {
+  display: none !important;
+  visibility: hidden;
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-body .bio,
+#modalBio {
+  display: block !important;
+  visibility: visible;
+  opacity: 1;
+  height: auto;
+  overflow: visible;
+  margin: 0.5rem 0;
+}
+
+
+.card-figure {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+
+/* Image container */
+.card-figure img {
+  width: 100%;
+  height: 220px;          /* smaller height */
+  object-fit: contain;    /* show full photo */
+  background: #f3f4f6;    /* soft background for empty space */
+  border-radius: 12px;
+}
+
+.card-figure:hover img {
+  transform: scale(1.05);
+}
+
+
+
+/* ===
+/* ===== Optional: Fade effect on hover ===== */
+.card-figure::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.35), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-figure:hover::after {
+  opacity: 1;
+}
+
+/* ===== Core Values Section ===== */
+.core-values {
+  padding: 80px 20px;
+  background: #f9fafb;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+}
+
+.core-values h2 {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #1E3F5A;
+  margin-bottom: 50px;
+  letter-spacing: 1px;
+  position: relative;
+  display: inline-block;
+}
+
+.core-values h2::after {
+  content: "";
+  display: block;
+  width: 70px;
+  height: 4px;
+  background: linear-gradient(90deg, #4D9794, #1E3F5A);
+  margin: 12px auto 0;
+  border-radius: 2px;
+}
+
+/* ===== Grid Layout ===== */
+.values-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  padding: 0 10px;
+}
+
+/* ===== Value Card ===== */
+.value-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 22px;
+  text-align: left;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  border: 1px solid #e5e7eb;
+  transition: all 0.35s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.value-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(77,151,148,0.08), rgba(30,63,90,0.06));
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.value-card:hover::before {
+  opacity: 1;
+}
+
+.value-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 14px 28px rgba(0,0,0,0.12);
+  border-color: #4D9794;
+}
+
+/* ===== Headings ===== */
+.value-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1E3F5A;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.value-card h3::before {
+  content: "✦";
+  margin-right: 8px;
+  color: #4D9794;
+  font-size: 1rem;
+}
+
+/* ===== Paragraphs ===== */
+.value-card p {
+  font-size: 0.95rem;
+  color: #475569;
+  line-height: 1.6;
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .core-values {
+    padding: 60px 15px;
+  }
+
+  .core-values h2 {
+    font-size: 2rem;
+    margin-bottom: 40px;
+  }
+
+  .value-card {
+    padding: 20px;
+  }
+
+  .value-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .value-card p {
+    font-size: 0.9rem;
+  }
+}
+
+
+
+
+/* (Optional) hover style to make it look interactive */
+#linkedinBtn:hover {
+  background-color: #4d9794;
+  color: white;
+  transition: background-color 0.3s ease;
+}
+
+
+/* === Make team grid use full width of screen === */
+.team-grid {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+  /* ===== Mission Section ===== */
+.mission-section {
+  padding: 100px 0;
+  background: linear-gradient(180deg, #f4f8f8 0%, #ffffff 100%);
+}
+
+/* Container */
+.mission-section .container {
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* Layout */
+.mission-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 80px;
+}
+
+/* ===== Text Area ===== */
+.mission-text {
+  flex: 1;
+  animation: fadeSlideUp 0.8s ease forwards;
+  opacity: 0;
+}
+
+/* Title */
+.mission-text h2 {
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: #4D9794;
+  margin-bottom: 25px;
+  position: relative;
+}
+
+/* Accent line under title */
+.mission-text h2::after {
+  content: "";
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, #4D9794, #0d3b66);
+  display: block;
+  margin-top: 12px;
+  border-radius: 4px;
+}
+
+/* Paragraph */
+.mission-text p {
+  font-size: 1.1rem;
+  line-height: 1.9;
+  letter-spacing: 0.3px;
+  color: #475569;
+  max-width: 560px;
+  transition: all 0.3s ease;
+}
+
+/* Attention effect on sentence */
+.mission-text p strong {
+  color: #0d3b66;
+  font-weight: 600;
+}
+
+/* Subtle hover effect */
+.mission-text p:hover {
+  color: #1e293b;
+}
+
+/* ===== Image Area ===== */
+.mission-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.mission-image img {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 20px;
+  object-fit: cover;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.08);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.mission-image img:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 30px 65px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== Animation ===== */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 992px) {
+  .mission-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 50px;
+  }
+
+  .mission-text p {
+    max-width: 100%;
+  }
+
+  .mission-text h2 {
+    font-size: 2.1rem;
+  }
+}
+
+  .meta .role {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #4D9794;
+  margin-top: 4px;
+}
+
+
+
+</style>
+
+
+
+<div class="team-grid" id="teamGrid">
+
+  <!-- 🧠 Member 1: Ali El Attar -->
+  <article class="card fade-up" tabindex="0"
+    data-name="Ali El Attar"
+    data-role="Founder and Manager | Head of the Mental Health Lab"
+    data-bio="A distinguished clinical psychologist and psychotherapist, He is deeply committed to improving mental health services in the Arab world. Ali has successfully partnered with various businesses, organizations, and UN agencies to create and execute impactful mental health and psychosocial support (MHPSS) initiatives across the Middle East and Africa.
+
+﻿In his role leading our Mental Health Lab, Ali is recognized for his innovative approach to program development and his effective management of teams. His leadership ensures the provision of culturally sensitive and scientifically backed mental health interventions that have a profound positive impact on communities and individuals in need.."
+    data-img="ali.webp"
+    data-linkedin="https://www.linkedin.com/in/ali-el-attar-310746103">
+    
+    <div class="card-inner">
+      <figure class="card-figure">
+        <img src="ali.webp" alt="Ali El Attar" class="lazy">
+      </figure>
+      <div class="meta">
+        <h3 data-translate="team_ali_name">Ali El Attar</h3>
+        <p class="role" data-translate="team_ali_role"></p>
+        <p class="bio" data-translate="team_ali_bio"></p>
+      </div>
+    </div>
+  </article>
+
+  <!-- 👩‍💻 Member 2: Zeina Ballout -->
+  <article class="card fade-up" tabindex="0"
+    data-name="Zeina Ballout"
+    data-role="COfounder & program coordinator "
+    data-bio="Zeina plays a vital role in overseeing and coordinating the various programs and services provided by the company. With ten years of experience in program management, Zeina brings a wealth of knowledge and expertise to the table. She is responsible for developing, implementing, and evaluating programs at Reframe to ensure the delivery of high-quality services."
+    data-img="eina.webp"
+    data-linkedin="https://www.linkedin.com/in/zeina-ballout-86291b175/">
+    
+    <div class="card-inner">
+      <figure class="card-figure">
+        <img src="eina.webp" alt="Zeina Ballout" class="lazy">
+      </figure>
+      <div class="meta">
+        <h3 data-translate="team_zeina_name">Zeina Ballout</h3>
+        <p class="role" data-translate="team_zeina_role"></p>
+        <p class="bio" data-translate="team_zeina_bio"></p>
+      </div>
+    </div>
+  </article>
+
+
+
+  <!-- 🎓 Member 4: Bertha Missyadi -->
+  <article class="card fade-up" tabindex="0"
+    data-name="Bertha Missyadi"
+    data-role="Quality Control Manager"
+    data-bio="Bertha brings more than ten years of experience in enhancing educational standards in various settings. She has effectively overseen international teams, contributing significantly to educational projects in the Middle East. Throughout her professional career, Bertha has played a key role in designing programs and upholding quality standards. She excels at creating and implementing strong monitoring and evaluation frameworks that have greatly enhanced program outcomes and aligned with global benchmarks. Her background includes collaborating with reputable NGOs and governmental organizations to ensure adherence to policies and promote meaningful interactions with stakeholders"
+    data-img="1.webp"
+    data-linkedin="https://www.linkedin.com/in/bertha-missyadi-5b1b298b/">
+    
+    <div class="card-inner">
+      <figure class="card-figure">
+        <img src="1.webp" alt="Bertha Missyadi" class="lazy">
+      </figure>
+      <div class="meta">
+        <h3 data-translate="team_bertha_name">Bertha Missyadi</h3>
+        <p class="role" data-translate="team_bertha_role"></p>
+        <p class="bio" data-translate="team_bertha_bio"></p>
+      </div>
+    </div>
+  </article>
+
+</div>
+
+
+<!-- Modal (profile detail) -->
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal-dialog" role="document" aria-labelledby="modalTitle">
+    <div class="modal-img">
+      <img src="" alt="" id="modalImg">
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <h3 id="modalTitle" style="margin:0;color:#4D9794"></h3>
+          <div id="modalRole" class="muted" style="margin-top:.2rem"></div>
+        </div>
+        <div>
+          <button class="close-btn" id="modalClose" aria-label="Close profile">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <p id="modalBio" style="margin-top:1rem;color:var(--muted)"></p>
+
+      <!-- ✅ CTA row -->
+      <div class="cta-row">
+  <a id="linkedinBtn" class="btn" href="#" target="_blank" rel="noopener">
+    <i class="fab fa-linkedin"></i> LinkedIn
+  </a>
+</div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<section class="core-values">
+  <h2 data-translate="core_values_title">CORE VALUES</h2>
+  <div class="values-grid">
+    
+    <div class="value-card">
+      <h3 data-translate="core_values_empathy_title">Empathy and Compassion</h3>
+      <p data-translate="core_values_empathy_desc">
+        We are dedicated to fostering understanding and compassion in all our interactions, creating a supportive and nurturing environment for everyone we engage with. Our commitment ensures that all individuals feel valued and cared for, promoting healthy relationships and growth.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_resilience_title">Resilience and Growth</h3>
+      <p data-translate="core_values_resilience_desc">
+        We help individuals and organizations embrace challenges as opportunities for development and sustainable progress.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_innovation_title">Innovation Excellence</h3>
+      <p data-translate="core_values_innovation_desc">
+        We are committed to innovative practices that enhance mental health services and improve impact.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_integrity_title">Integrity and Authenticity</h3>
+      <p data-translate="core_values_integrity_desc">
+        We act with honesty, transparency, and respect in all our endeavors, ensuring trust and authenticity in every interaction.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_evidence_title">Evidence-Based Practice</h3>
+      <p data-translate="core_values_evidence_desc">
+        We provide services and programs grounded in evidence-based approaches to ensure effectiveness and sustainability.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_inclusivity_title">Inclusivity and Diversity</h3>
+      <p data-translate="core_values_inclusivity_desc">
+        We embrace diversity and cultivate an inclusive environment that respects and values both individual uniqueness and our shared human experiences. By fostering inclusivity, we promote understanding and connection among all individuals, enhancing the overall community experience.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_collaboration_title">Collaboration and Community</h3>
+      <p data-translate="core_values_collaboration_desc">
+        We believe in the power of collaboration and community, actively working with partners and clients to co-design and co-achieve shared goals. Our commitment to teamwork enhances connections and drives collective success.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+
+<script src="scripts/translations.js"></script>
+
+<script src="scripts/main.js"></script>
+  
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      
+      <!-- وصف -->
+      <div class="footer-section">
+        <h3 data-translate="footer_brand">Reframe MHS</h3>
+        <p data-translate="footer_description">
+          Unlocking the innate potential and resilience within each person and group across the Middle East.
+        </p>
+      </div>
+
+      <!-- روابط سريعة -->
+      <div class="footer-section">
+        <h4 data-translate="footer_quick_links">Quick Links</h4>
+        <ul>
+          <li><a href="about.html" data-translate="nav_about">About Us</a></li>
+          <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
+          <li><a href="training.html" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
+        </ul>
+      </div>
+
+      <!-- خدمات -->
+      <div class="footer-section">
+        <h4 data-translate="footer_services">Services</h4>
+        <ul>
+          <li><a href="#" data-translate="footer_training">Training Programs</a></li>
+          <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
+          <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
+          <li><a href="#" data-translate="footer_resources">Resources</a></li>
+        </ul>
+      </div>
+
+      <!-- تواصل -->
+      <div class="footer-section">
+        <h4 data-translate="footer_connect">Connect</h4>
+        <div class="social-links">
+          <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+          <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        </div>
+
+        <!-- Newsletter -->
+        <div class="subscribe-section">
+          <div class="subscribe-box">
+            <h2 data-translate="footer_subscribe_title">Stay Connected</h2>
+            <p data-translate="footer_subscribe_text">
+              Subscribe to our newsletter for updates, workshops, and events.
+            </p>
+            <form class="subscribe-form" action="#" method="post">
+              <input type="email" name="email" placeholder="Enter your email" 
+                     data-translate-placeholder="footer_subscribe_placeholder" required>
+              <button type="submit" class="btn btn-primary" data-translate="footer_subscribe_btn">Subscribe</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- حقوق -->
+    <div class="footer-bottom">
+      <p data-translate="footer_copyright">
+        &copy;2025 Reframe Mental Health Services. All rights reserved.
+      </p>
+    </div>
+  </div>
+</footer>
+<script>
+
+document.addEventListener("DOMContentLoaded", () => {
+  // -----------------------------
+  // Lazy load images
+  // -----------------------------
+  const lazyImgs = document.querySelectorAll("img.lazy");
+  const observer = new IntersectionObserver((entries, obs) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        const src = img.getAttribute("data-src");
+        if (src) {
+          img.style.filter = "blur(8px)";
+          img.src = src + "&auto=format&fit=crop&w=1200&q=70";
+          img.onload = () => img.style.filter = "none";
+        }
+        obs.unobserve(img);
+      }
+    });
+  }, { rootMargin: "120px" });
+  lazyImgs.forEach(img => observer.observe(img));
+
+  // -----------------------------
+  // Fade-up animation
+  // -----------------------------
+  const fadeEls = document.querySelectorAll(".fade-up");
+  const fadeObs = new IntersectionObserver(entries => {
+    entries.forEach((ent, i) => {
+      if (ent.isIntersecting) {
+        ent.target.classList.add("in-view");
+        ent.target.style.transitionDelay = `${i * 80}ms`;
+        fadeObs.unobserve(ent.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  fadeEls.forEach(el => fadeObs.observe(el));
+
+  // -----------------------------
+  // Card tilt
+  // -----------------------------
+  document.querySelectorAll(".card").forEach(card => {
+    let rect, cx, cy;
+    card.addEventListener("mousemove", e => {
+      rect = card.getBoundingClientRect();
+      cx = rect.left + rect.width / 2;
+      cy = rect.top + rect.height / 2;
+      const dx = (e.clientX - cx) / (rect.width / 2);
+      const dy = (e.clientY - cy) / (rect.height / 2);
+      card.style.transform = `perspective(900px) rotateX(${dy * 6}deg) rotateY(${-dx * 6}deg) scale(1.02)`;
+      card.style.boxShadow = "0 20px 50px rgba(2,8,23,.6)";
+    });
+    card.addEventListener("mouseleave", () => {
+      card.style.transform = "none";
+      card.style.boxShadow = "";
+    });
+  });
+
+  // -----------------------------
+  // Modal logic
+  // -----------------------------
+  const modal = document.getElementById("modal");
+  const modalImg = document.getElementById("modalImg");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalRole = document.getElementById("modalRole");
+  const modalBio = document.getElementById("modalBio");
+  const modalClose = document.getElementById("modalClose");
+  const linkedinBtn = document.getElementById("linkedinBtn");
+  let lastFocused = null;
+
+  function openModal(data) {
+    lastFocused = document.activeElement;
+    modalImg.src = data.img;
+    modalTitle.textContent = data.name;
+    modalRole.textContent = data.role;
+    modalBio.textContent = data.bio;
+
+    // ✅ LinkedIn always clickable
+    linkedinBtn.href = data.linkedin?.trim() || "https://www.linkedin.com/company/reframe-mhs/";
+    linkedinBtn.target = "_blank";
+    linkedinBtn.rel = "noopener noreferrer";
+    linkedinBtn.style.pointerEvents = "auto";
+    linkedinBtn.onclick = e => {
+      e.stopPropagation();
+      window.open(linkedinBtn.href, "_blank");
+    };
+
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    modal.style.display = "flex";
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal() {
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+    modal.style.display = "none";
+    document.body.style.overflow = "";
+    if (lastFocused) lastFocused.focus();
+  }
+
+  // -----------------------------
+  // Bind cards
+  // -----------------------------
+  document.querySelectorAll(".card").forEach(card => {
+    card.addEventListener("click", () => {
+      const data = {
+        name: card.dataset.name,
+        role: card.dataset.role,
+        bio: card.dataset.bio,
+        img: card.dataset.img || card.querySelector("img")?.src,
+        linkedin: card.dataset.linkedin
+      };
+      openModal(data);
+    });
+  });
+
+  modalClose.addEventListener("click", closeModal);
+  modal.addEventListener("click", e => {
+    if (e.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+  });
+
+  // -----------------------------
+  // Parallax background
+  // -----------------------------
+  const hero = document.querySelector(".wrap.hero");
+  window.addEventListener("scroll", () => {
+    if (hero) hero.style.backgroundPosition = `center ${window.scrollY * -0.02}px`;
+  });
+});
+</script>
+
+</script>
+
+<script>
+// === Auto-fit team cards to full width of screen ===
+document.addEventListener("DOMContentLoaded", () => {
+  const grid = document.querySelector(".team-grid");
+  if (grid) {
+    // اجعل العرض يملأ الصفحة تمامًا بدون فراغات جانبية
+    grid.style.width = "100vw";
+    grid.style.marginLeft = "calc(-1 * (100vw - 100%) / 2)";
+    grid.style.padding = "0";
+    grid.style.boxSizing = "border-box";
+  }
+
+  // تأكد أن جميع البطاقات تتوزع بالتساوي في الصف
+  const cards = document.querySelectorAll(".team-grid .card");
+  if (cards.length > 0) {
+    cards.forEach(card => {
+      card.style.flex = "1 1 auto";
+      card.style.width = "100%";
+    });
+  }
+
+  // إعادة ضبط عند تغيير حجم الشاشة
+  window.addEventListener("resize", () => {
+    if (grid) {
+      grid.style.width = "100vw";
+      grid.style.marginLeft = "calc(-1 * (100vw - 100%) / 2)";
+    }
+  });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const dropdowns = document.querySelectorAll(".nav-dropdown");
+
+  dropdowns.forEach(dropdown => {
+    const toggle = dropdown.querySelector(".dropdown-toggle");
+    const menu = dropdown.querySelector(".dropdown-menu");
+
+    // أغلق القائمة بالبداية
+    menu.style.display = "none";
+    menu.style.opacity = "0";
+    menu.style.transform = "translateY(-6px)";
+    menu.style.transition = "all 0.25s ease";
+
+    // عند الضغط على الزر
+    toggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const isOpen = menu.classList.contains("open");
+
+      // أغلق أي قوائم مفتوحة أخرى
+      document.querySelectorAll(".dropdown-menu.open").forEach(m => {
+        m.classList.remove("open");
+        m.style.opacity = "0";
+        m.style.transform = "translateY(-6px)";
+        setTimeout(() => (m.style.display = "none"), 200);
+      });
+
+      // افتح أو أغلق القائمة الحالية
+      if (!isOpen) {
+        menu.style.display = "flex";
+        setTimeout(() => {
+          menu.classList.add("open");
+          menu.style.opacity = "1";
+          menu.style.transform = "translateY(0)";
+        }, 20);
+      } else {
+        menu.classList.remove("open");
+        menu.style.opacity = "0";
+        menu.style.transform = "translateY(-6px)";
+        setTimeout(() => (menu.style.display = "none"), 200);
+      }
+    });
+
+    // أغلق عند الضغط خارج القائمة
+    document.addEventListener("click", (e) => {
+      if (!dropdown.contains(e.target)) {
+        menu.classList.remove("open");
+        menu.style.opacity = "0";
+        menu.style.transform = "translateY(-6px)";
+        setTimeout(() => (menu.style.display = "none"), 200);
+      }
+    });
+  });
+});
+
+
+
+  document.querySelectorAll(".card").forEach(card => {
+  const roleText = card.dataset.role;
+  const roleElement = card.querySelector(".role");
+  if (roleText && roleElement) {
+    roleElement.textContent = roleText;
+  }
+});
+
+</script>
