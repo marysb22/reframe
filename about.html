@@ -1172,5 +1172,8 @@ document.addEventListener("DOMContentLoaded", () => {
     roleElement.textContent = roleText;
   }
 });
-
+document.addEventListener("DOMContentLoaded", () => {
+  const savedLang = localStorage.getItem("lang") || "en";
+  switchLanguage(savedLang);
+});
 </script>

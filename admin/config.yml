@@ -18,47 +18,145 @@ collections:
             name: "events"
             widget: "list"
             fields:
-              - { label: "Title", name: "title", widget: "string" }
-              - { label: "Status", name: "status", widget: "select", options: ["upcoming", "concluded"] }
-              - { label: "Date", name: "date", widget: "datetime" }
-              - { label: "Image", name: "image", widget: "image", required: false }
-              - { label: "Format", name: "format", widget: "string", required: false }
-              - { label: "Facilitator", name: "facilitator", widget: "string", required: false }
-              - { label: "About", name: "about", widget: "text", required: false }
+              - label: "Title"
+                name: "title"
+                widget: "object"
+                fields:
+                  - { label: "Arabic", name: "ar", widget: "string", required: false }
+                  - { label: "English", name: "en", widget: "string" }
+
+              - label: "Date"
+                name: "date"
+                widget: "datetime"
+
+              - label: "Image"
+                name: "image"
+                widget: "image"
+                required: false
+
+              - label: "Format"
+                name: "format"
+                widget: "object"
+                required: false
+                fields:
+                  - { label: "Arabic", name: "ar", widget: "string", required: false }
+                  - { label: "English", name: "en", widget: "string", required: false }
+
+              - label: "Facilitator"
+                name: "facilitator"
+                widget: "object"
+                required: false
+                fields:
+                  - { label: "Arabic", name: "ar", widget: "string", required: false }
+                  - { label: "English", name: "en", widget: "string", required: false }
+
+              - label: "About"
+                name: "about"
+                widget: "object"
+                required: false
+                fields:
+                  - { label: "Arabic", name: "ar", widget: "text", required: false }
+                  - { label: "English", name: "en", widget: "text", required: false }
 
               - label: "What You'll Learn"
                 name: "learn"
-                widget: "list"
+                widget: "object"
                 required: false
-                allow_add: true
-                collapsed: false
-                field:
-                  label: "Add one point"
-                  name: "item"
-                  widget: "string"
-                  hint: "Write ONE point only (not a paragraph)"
+                fields:
+                  - label: "Arabic"
+                    name: "ar"
+                    widget: "list"
+                    required: false
+                    allow_add: true
+                    collapsed: false
+                    field:
+                      label: "Add one point"
+                      name: "item"
+                      widget: "string"
+
+                  - label: "English"
+                    name: "en"
+                    widget: "list"
+                    required: false
+                    allow_add: true
+                    collapsed: false
+                    field:
+                      label: "Add one point"
+                      name: "item"
+                      widget: "string"
 
               - label: "Who Should Attend?"
                 name: "who"
-                widget: "list"
+                widget: "object"
                 required: false
-                field:
-                  label: "Add one person/group"
-                  name: "item"
-                  widget: "string"
-                  hint: "Write ONE item only"
+                fields:
+                  - label: "Arabic"
+                    name: "ar"
+                    widget: "list"
+                    required: false
+                    field:
+                      label: "Add one person/group"
+                      name: "item"
+                      widget: "string"
+
+                  - label: "English"
+                    name: "en"
+                    widget: "list"
+                    required: false
+                    field:
+                      label: "Add one person/group"
+                      name: "item"
+                      widget: "string"
 
               - label: "Workshop Outcomes"
                 name: "outcomes"
-                widget: "list"
+                widget: "object"
                 required: false
-                field:
-                  label: "Add one outcome"
-                  name: "item"
-                  widget: "string"
-                  hint: "Write ONE result only"
+                fields:
+                  - label: "Arabic"
+                    name: "ar"
+                    widget: "list"
+                    required: false
+                    field:
+                      label: "Add one outcome"
+                      name: "item"
+                      widget: "string"
 
-              - { label: "Facilitator Bio", name: "facilitatorBio", widget: "text", required: false }
-              - { label: "Fee", name: "fee", widget: "string", required: false }
-              - { label: "Translation", name: "translation", widget: "string", required: false }
-              - { label: "Register Link", name: "register", widget: "string", required: false, default: "#" }
+                  - label: "English"
+                    name: "en"
+                    widget: "list"
+                    required: false
+                    field:
+                      label: "Add one outcome"
+                      name: "item"
+                      widget: "string"
+
+              - label: "Facilitator Bio"
+                name: "facilitatorBio"
+                widget: "object"
+                required: false
+                fields:
+                  - { label: "Arabic", name: "ar", widget: "text", required: false }
+                  - { label: "English", name: "en", widget: "text", required: false }
+
+              - label: "Fee"
+                name: "fee"
+                widget: "object"
+                required: false
+                fields:
+                  - { label: "Arabic", name: "ar", widget: "string", required: false }
+                  - { label: "English", name: "en", widget: "string", required: false }
+
+              - label: "Translation"
+                name: "translation"
+                widget: "object"
+                required: false
+                fields:
+                  - { label: "Arabic", name: "ar", widget: "string", required: false }
+                  - { label: "English", name: "en", widget: "string", required: false }
+
+              - label: "Register Link"
+                name: "register"
+                widget: "string"
+                required: false
+                default: "#"

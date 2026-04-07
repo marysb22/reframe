@@ -166,26 +166,17 @@
             <label for="phone" data-translate="form_phone">Phone Number</label>
           </div>
 
-          <div class="form-group">
-            <select id="subject" name="subject" required>
-              <option value="" selected disabled data-translate="form_select_subject">
-                Select a subject
-              </option>
-              <option value="training" data-translate="form_subject_training">
-                Training Programs
-              </option>
-              <option value="consultation" data-translate="form_subject_consultation">
-                Consultation Services
-              </option>
-              <option value="research" data-translate="form_subject_research">
-                Research Collaboration
-              </option>
-              <option value="general" data-translate="form_subject_general">
-                General Inquiry
-              </option>
-            </select>
-            <label for="subject" data-translate="form_subject">Subject</label>
-          </div>
+         <div class="form-group">
+  <select id="subject" name="subject" required>
+    <option value="" disabled selected hidden>Select a subject</option>
+    <option value="training">Training Programs</option>
+    <option value="consultation">Consultation Services</option>
+    <option value="research">Research Collaboration</option>
+    <option value="general">General Inquiry</option>
+  </select>
+  <label for="subject">Subject</label>
+</div>
+  
 
           <div class="form-group">
             <textarea
@@ -402,6 +393,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+
+  document.addEventListener("DOMContentLoaded", () => {
+  const savedLang = localStorage.getItem("lang") || "en";
+  switchLanguage(savedLang);
+});
 });
 </script>
 <style>/* 🌍 Modern 2025 Location Section */

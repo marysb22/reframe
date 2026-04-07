@@ -1059,28 +1059,4 @@ milestone4_desc: "حضور إقليمي وتعاونات متعددة",
 
   
   }
-};
-function switchLanguage(lang) {
-  if (!translations[lang]) return;
-
-  document.querySelectorAll('[data-translate]').forEach(el => {
-    const key = el.dataset.translate;
-    const value = translations[lang][key];
-
-    if (value !== undefined) {
-      el.textContent = value;
-    }
-  });
-
-  document.querySelectorAll('[data-translate-placeholder]').forEach(el => {
-    const key = el.dataset.translatePlaceholder;
-    const value = translations[lang][key];
-
-    if (value !== undefined) {
-      el.placeholder = value;
-    }
-  });
-
-  document.documentElement.lang = lang;
-  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
 }

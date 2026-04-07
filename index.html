@@ -1970,7 +1970,9 @@ const monthLabel = document.querySelector(".calendar-month-label");
   });
 
   renderCalendar();
+  document.addEventListener("DOMContentLoaded", () => {
+  const savedLang = localStorage.getItem("lang") || "en";
+  switchLanguage(savedLang);
 });
-</script>
-
+});
 </script>
