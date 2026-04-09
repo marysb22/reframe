@@ -85,10 +85,7 @@ function loadLanguagePreference() {
 document.addEventListener("DOMContentLoaded", function () {
   initializeLanguageSwitcher();
   loadLanguagePreference();
-  document.addEventListener("DOMContentLoaded", () => {
-  const savedLang = localStorage.getItem("lang") || "en"; // 👈 default EN
-  switchLanguage(savedLang);
-});
+  
 });
 // Navigation
 // =========================
@@ -857,11 +854,3 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
-function switchLanguage(lang) {
-  localStorage.setItem("lang", lang);
-
-  document.documentElement.lang = lang;
-  document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
-
-  loadEvents();
-}
