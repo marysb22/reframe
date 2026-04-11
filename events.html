@@ -70,35 +70,731 @@
   </div>
 </div>
 
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="nav-logo">
+      <a href="index.html"><img src="logo.gif" alt="Reframe Logo" width="220"></a>
+    </div>
+
+    <ul class="nav-menu">
+      <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+      <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+
+      <li class="nav-dropdown">
+        <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
+          Services <i class="fa fa-chevron-down"></i>
+        </a>
+        <ul class="dropdown-menu">
+          <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+          <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+          <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+        </ul>
+      </li>
+
+      <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+    </ul>
+
+    <div class="nav-right">
+      <div class="language-switcher">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <span class="lang-separator">|</span>
+        <button class="lang-btn" data-lang="ar">AR</button>
+      </div>
+
+      <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
+
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="overlay" id="mobile-menu" aria-hidden="true">
+  <nav class="overlay-nav" aria-label="Mobile">
+    <ul>
+      <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+      <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+      <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+      <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+      <li><a href="events.html" class="nav-link active" data-translate="nav_training">Training</a></li>
+      <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+      <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+      <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
+    </ul>
+    <button class="close-btn" aria-label="Close menu" data-translate="close">Close</button>
+  </nav>
+</div>
+<section class="accreditation-section">
+  <div class="accreditation-content">
+    <div class="accreditation-image">
+      <img src="CAT.jpeg" alt="Reframe Accreditation Certificate" />
+    </div>
+
+    <div class="accreditation-text">
+      <h1 data-translate="accreditation_title">We’re proud to share our accreditation!</h1>
+
+      <p data-translate="accreditation_desc_1">
+        Reframe has been officially accredited by the Lebanese Order of Psychologists (LOPsy) as a Training Center in Systemic Psychotherapy, from October 1, 2025 to October 31, 2027.
+      </p>
+
+      <p data-translate="accreditation_desc_2">
+        This accreditation reflects our ongoing commitment to excellence, integrity, and evidence-based practice in the field of mental health and it reinforces our mission to empower professionals across the Middle East through high-quality, culturally relevant training and supervision.
+      </p>
+
+      <p data-translate="accreditation_desc_3">
+        We extend our heartfelt thanks to our team, supervisors, and community for being part of this journey. Together, we’re shaping a future where mental health education and practice are accessible, ethical, and deeply human.
+      </p>
+
+      <p class="hashtags" data-translate="accreditation_hashtags">
+        #Accreditation #LOPsy #SystemicPsychotherapy #ProfessionalDevelopment #MentalHealthLebanon
+      </p>
+
+      <div class="accreditation-cta">
+        <h3 data-translate="accreditation_cta_title">Are you ready to reserve your spot?</h3>
+        <p data-translate="accreditation_cta_text">
+          Contact us today and make your next event a success in every sense.
+        </p>
+        <a href="contact.html" class="btn btn-primary" data-translate="accreditation_cta_button">Book Now</a>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ===== PROFESSIONAL CALENDAR: HTML + CSS + JS IN ONE COPY ===== -->
+<div class="section-header">
+  <h2 id="calendar-title"></h2>
+  <p data-translate="calendar_subtitle">
+    View our upcoming training sessions and workshops
+  </p>
+</div>
+
+<div class="calendar-nav">
+  <button id="calendarPrev" class="calendar-arrow" aria-label="Previous Month">
+    <i class="fa fa-chevron-left"></i>
+  </button>
+
+  <button id="calendarNext" class="calendar-arrow" aria-label="Next Month">
+    <i class="fa fa-chevron-right"></i>
+  </button>
+</div>
+
+<div class="calendar-container">
+  <div class="calendar-header" id="calendarHeader"></div>
+
+  <div class="calendar-body" id="calendarBody"></div>
+</div>
+
+<style>
+/* =========================
+   CALENDAR HEADER RTL FIX
+========================= */
+
+/* Default (English) */
+.calendar-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #4D9794;
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 0.95rem;
+}
+
+/* Arabic Mode */
+html[lang="ar"] .calendar-header,
+html[dir="rtl"] .calendar-header {
+  direction: rtl;
+  font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const calendarHeader = document.getElementById("calendarHeader");
+
+  const days = {
+    en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    ar: ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"]
+  };
+
+  function getLang() {
+    return document.documentElement.lang === "ar" ? "ar" : "en";
+  }
+
+  function renderHeader() {
+    const lang = getLang();
+    const isRTL = lang === "ar";
+
+    calendarHeader.innerHTML = "";
+
+    const orderedDays = isRTL ? [...days[lang]].reverse() : days[lang];
+
+    orderedDays.forEach(day => {
+      const div = document.createElement("div");
+      div.textContent = day;
+      calendarHeader.appendChild(div);
+    });
+  }
+
+  renderHeader();
+
+  // re-render when language changes
+  document.addEventListener("language:changed", renderHeader);
+
+  const observer = new MutationObserver(renderHeader);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["lang", "dir"]
+  });
+});
+</script>
+<style>
+/* =========================
+   CALENDAR RTL FIX
+========================= */
+
+.calendar-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 20px 0 24px;
+}
+
+.calendar-title {
+  margin: 0;
+  font-size: clamp(1.8rem, 3.6vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1.15;
+  color: #0f172a;
+  text-align: left;
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 0;
+}
+
+.calendar-arrow {
+  width: 46px;
+  height: 46px;
+  border: none;
+  border-radius: 50%;
+  background: #4D9794;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.calendar-arrow:hover {
+  background: #2c6b6b;
+  transform: translateY(-2px) scale(1.05);
+}
+
+.calendar-arrow-icon {
+  line-height: 1;
+  font-size: 1.5rem;
+  pointer-events: none;
+}
+
+.calendar-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.calendar-header {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  background: #4D9794;
+  color: #ffffff;
+}
+
+.calendar-header-cell {
+  padding: 14px 8px;
+  text-align: center;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.calendar-body {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: 158px;
+  background: #dbe2e8;
+  gap: 1px;
+}
+
+.calendar-day {
+  position: relative;
+  background: #ffffff;
+  overflow: hidden;
+  transition: background 0.2s ease, transform 0.2s ease;
+  padding: 8px;
+}
+
+.calendar-day:hover {
+  background: #f8fbfc;
+  transform: scale(1.01);
+  cursor: pointer;
+}
+
+.calendar-day.empty {
+  background: #f8fafc;
+  cursor: default;
+}
+
+.calendar-day.empty:hover {
+  background: #f8fafc;
+  transform: none;
+}
+
+.calendar-day.today {
+  box-shadow: inset 0 0 0 2px #4D9794;
+}
+
+.calendar-day .day-number {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  font-size: 0.84rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.calendar-day.event-day img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.calendar-day.event-day::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.10), rgba(15, 23, 42, 0.02));
+  z-index: 1;
+}
+
+/* ===== Arabic mode ===== */
+html[lang="ar"] .calendar-topbar,
+html[dir="rtl"] .calendar-topbar {
+  flex-direction: row-reverse;
+}
+
+html[lang="ar"] .calendar-title,
+html[dir="rtl"] .calendar-title {
+  text-align: right;
+  font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
+  line-height: 1.35;
+}
+
+html[lang="ar"] .calendar-nav,
+html[dir="rtl"] .calendar-nav {
+  flex-direction: row-reverse;
+}
+
+html[lang="ar"] .calendar-header,
+html[dir="rtl"] .calendar-header,
+html[lang="ar"] .calendar-body,
+html[dir="rtl"] .calendar-body {
+  direction: rtl;
+}
+
+html[lang="ar"] .calendar-header-cell,
+html[dir="rtl"] .calendar-header-cell {
+  font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
+}
+
+html[lang="ar"] .calendar-day,
+html[dir="rtl"] .calendar-day {
+  direction: rtl;
+}
+
+html[lang="ar"] .calendar-day .day-number,
+html[dir="rtl"] .calendar-day .day-number {
+  right: auto;
+  left: 8px;
+}
+
+@media (max-width: 992px) {
+  .calendar-body {
+    grid-auto-rows: 125px;
+  }
+}
+
+@media (max-width: 768px) {
+  .calendar-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  html[lang="ar"] .calendar-topbar,
+  html[dir="rtl"] .calendar-topbar {
+    flex-direction: column;
+  }
+
+  .calendar-title,
+  html[lang="ar"] .calendar-title,
+  html[dir="rtl"] .calendar-title {
+    text-align: center;
+  }
+
+  .calendar-nav {
+    justify-content: center;
+  }
+
+  .calendar-body {
+    grid-auto-rows: 90px;
+  }
+
+  .calendar-header-cell {
+    font-size: 0.8rem;
+    padding: 10px 4px;
+  }
+
+  .calendar-day .day-number {
+    top: 6px;
+    right: 6px;
+    min-width: 24px;
+    height: 24px;
+    font-size: 0.72rem;
+  }
+
+  html[lang="ar"] .calendar-day .day-number,
+  html[dir="rtl"] .calendar-day .day-number {
+    right: auto;
+    left: 6px;
+  }
+
+  .calendar-arrow {
+    width: 40px;
+    height: 40px;
+  }
+}
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const calendarTitle = document.getElementById("calendar-title");
+  const calendarHeader = document.getElementById("calendarHeader");
+  const calendarBody = document.getElementById("calendarBody");
+  const prevBtn = document.getElementById("calendarPrev");
+  const nextBtn = document.getElementById("calendarNext");
+
+  if (!calendarTitle || !calendarBody || !prevBtn || !nextBtn) return;
+
+  const localeConfig = {
+    en: {
+      months: [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ],
+      days: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      prevLabel: "Previous month",
+      nextLabel: "Next month"
+    },
+    ar: {
+      months: [
+        "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+        "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+      ],
+      days: ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
+      prevLabel: "الشهر السابق",
+      nextLabel: "الشهر التالي"
+    }
+  };
+
+  const today = new Date();
+  let viewYear = today.getFullYear();
+  let viewMonth = today.getMonth();
+  let cmsEvents = [];
+
+  function getCurrentLang() {
+    const lang = (document.documentElement.lang || "en").toLowerCase();
+    return lang.startsWith("ar") ? "ar" : "en";
+  }
+
+  function isArabic() {
+    return getCurrentLang() === "ar" || document.documentElement.dir === "rtl";
+  }
+
+  function getMonthName(monthIndex) {
+    return localeConfig[getCurrentLang()].months[monthIndex];
+  }
+
+  function setCalendarDirection() {
+    const arabic = isArabic();
+
+    if (calendarHeader) {
+      calendarHeader.style.direction = arabic ? "rtl" : "ltr";
+    }
+
+    calendarBody.style.direction = arabic ? "rtl" : "ltr";
+  }
+
+  function setNavArrows() {
+    const lang = getCurrentLang();
+    const arabic = isArabic();
+
+    if (arabic) {
+      prevBtn.innerHTML = `<span class="calendar-arrow-icon">›</span>`;
+      nextBtn.innerHTML = `<span class="calendar-arrow-icon">‹</span>`;
+    } else {
+      prevBtn.innerHTML = `<span class="calendar-arrow-icon">‹</span>`;
+      nextBtn.innerHTML = `<span class="calendar-arrow-icon">›</span>`;
+    }
+
+    prevBtn.setAttribute("aria-label", localeConfig[lang].prevLabel);
+    nextBtn.setAttribute("aria-label", localeConfig[lang].nextLabel);
+  }
+
+  function renderHeader() {
+    if (!calendarHeader) return;
+
+    const lang = getCurrentLang();
+    const arabic = isArabic();
+    const dayNames = localeConfig[lang].days;
+    const orderedDays = arabic ? [...dayNames].reverse() : dayNames;
+
+    calendarHeader.innerHTML = "";
+
+    orderedDays.forEach((dayName) => {
+      const cell = document.createElement("div");
+      cell.className = "calendar-header-cell";
+      cell.textContent = dayName;
+      calendarHeader.appendChild(cell);
+    });
+  }
+
+  function normalizeEventDate(dateString) {
+    if (!dateString) return null;
+    const d = new Date(dateString);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function getEventsForDay(year, month, day) {
+    return cmsEvents.filter((event) => {
+      const eventDate = normalizeEventDate(event.date);
+      if (!eventDate) return false;
+
+      return (
+        eventDate.getFullYear() === year &&
+        eventDate.getMonth() === month &&
+        eventDate.getDate() === day &&
+        event.status !== "concluded"
+      );
+    });
+  }
+
+  function buildEmptyCell() {
+    const emptyCell = document.createElement("div");
+    emptyCell.className = "calendar-day empty";
+    return emptyCell;
+  }
+
+  function buildDayCell(year, month, day) {
+    const dayCell = document.createElement("div");
+    dayCell.className = "calendar-day";
+
+    const isToday =
+      day === today.getDate() &&
+      month === today.getMonth() &&
+      year === today.getFullYear();
+
+    if (isToday) {
+      dayCell.classList.add("today");
+    }
+
+    const dayNumber = document.createElement("span");
+    dayNumber.className = "day-number";
+    dayNumber.textContent = day;
+    dayCell.appendChild(dayNumber);
+
+    const dayEvents = getEventsForDay(year, month, day);
+
+    if (dayEvents.length > 0) {
+      const mainEvent = dayEvents[0];
+      dayCell.classList.add("event-day");
+
+      if (mainEvent.image) {
+        const img = document.createElement("img");
+        img.src = mainEvent.image;
+        img.alt =
+          mainEvent.title ||
+          mainEvent.title_en ||
+          mainEvent.title_ar ||
+          "Event image";
+        dayCell.appendChild(img);
+      }
+
+      dayCell.addEventListener("click", () => {
+        const possibleTitles = [
+          mainEvent.title,
+          mainEvent.title_en,
+          mainEvent.title_ar
+        ].filter(Boolean);
+
+        let eventCard = null;
+
+        for (const title of possibleTitles) {
+          const escapedTitle =
+            window.CSS && CSS.escape
+              ? CSS.escape(title)
+              : title.replace(/"/g, '\\"');
+
+          eventCard = document.querySelector(`[data-title="${escapedTitle}"]`);
+          if (eventCard) break;
+        }
+
+        if (eventCard) {
+          eventCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+    }
+
+    return dayCell;
+  }
+
+  function renderCalendar(year, month) {
+    const arabic = isArabic();
+
+    calendarBody.innerHTML = "";
+    calendarTitle.textContent = `${getMonthName(month)} ${year}`;
+
+    setCalendarDirection();
+    setNavArrows();
+    renderHeader();
+
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    let leadingEmpty;
+    let trailingEmpty;
+
+    if (arabic) {
+      leadingEmpty = (7 - ((firstDayIndex + daysInMonth) % 7)) % 7;
+      trailingEmpty = firstDayIndex;
+    } else {
+      leadingEmpty = firstDayIndex;
+      trailingEmpty = (7 - ((leadingEmpty + daysInMonth) % 7)) % 7;
+    }
+
+    for (let i = 0; i < leadingEmpty; i++) {
+      calendarBody.appendChild(buildEmptyCell());
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      calendarBody.appendChild(buildDayCell(year, month, day));
+    }
+
+    for (let i = 0; i < trailingEmpty; i++) {
+      calendarBody.appendChild(buildEmptyCell());
+    }
+  }
+
+  try {
+    const res = await fetch("/content/events.json");
+    const data = await res.json();
+    cmsEvents = Array.isArray(data.events) ? data.events : [];
+  } catch (error) {
+    console.error("Could not load events.json", error);
+  }
+
+  prevBtn.addEventListener("click", () => {
+    viewMonth--;
+    if (viewMonth < 0) {
+      viewMonth = 11;
+      viewYear--;
+    }
+    renderCalendar(viewYear, viewMonth);
+  });
+
+  nextBtn.addEventListener("click", () => {
+    viewMonth++;
+    if (viewMonth > 11) {
+      viewMonth = 0;
+      viewYear++;
+    }
+    renderCalendar(viewYear, viewMonth);
+  });
+
+  document.addEventListener("language:changed", () => {
+    renderCalendar(viewYear, viewMonth);
+  });
+
+  const langObserver = new MutationObserver(() => {
+    renderCalendar(viewYear, viewMonth);
+  });
+
+  langObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["lang", "dir"]
+  });
+
+  renderCalendar(viewYear, viewMonth);
+});
+</script>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const modalRegister = document.getElementById("modalRegister");
   const registerModal = document.getElementById("registerModal");
   const closeRegister = document.getElementById("closeRegister");
 
-  // open form modal
-  if (modalRegister) {
+  if (modalRegister && registerModal) {
     modalRegister.addEventListener("click", (e) => {
       e.preventDefault();
       registerModal.style.display = "block";
     });
   }
 
-  // close when clicking ×
-  if (closeRegister) {
+  if (closeRegister && registerModal) {
     closeRegister.addEventListener("click", () => {
       registerModal.style.display = "none";
     });
   }
 
-  // close when clicking outside
-  window.addEventListener("click", (e) => {
-    if (e.target === registerModal) {
-      registerModal.style.display = "none";
-    }
-  });
+  if (registerModal) {
+    window.addEventListener("click", (e) => {
+      if (e.target === registerModal) {
+        registerModal.style.display = "none";
+      }
+    });
+  }
 });
 </script>
+
 
   <style>
 /* ==== New & Upcoming Events ==== */
@@ -973,392 +1669,10 @@ h1{text-align:center; margin-bottom:100px;}
 
 
 </style>
-</head>
-<body>
-<nav class="navbar">
-  <div class="nav-container">
-    <div class="nav-logo">
-      <a href="index.html"><img src="logo.gif" alt="Reframe Logo" width="220"></a>
-    </div>
-
-    <ul class="nav-menu">
-      <li><a href="index.html" class="nav-link">Home</a></li>
-      <li><a href="about.html" class="nav-link">About</a></li>
-      <li class="nav-dropdown">
-        <a href="#" class="nav-link dropdown-toggle">Services <i class="fa fa-chevron-down"></i></a>
-        <ul class="dropdown-menu">
-          <li><a href="Projects.html" class="nav-link">Mental Health Lab</a></li>
-          <li><a href="hub.html" class="nav-link">Hub</a></li>
-          <li><a href="events.html" class="nav-link">Training</a></li>
-          <li><a href="t.html" class="nav-link">Technical Consultations</a></li>
-        </ul>
-      </li>
-      <li><a href="contact.html" class="nav-link">Contact</a></li>
-    </ul>
-
-    <!-- ✅ New wrapper to align Lang + Login + Hamburger -->
-    <div class="nav-right">
-      <div class="language-switcher">
-        <button class="lang-btn active">EN</button>
-        <span class="lang-separator">|</span>
-        <button class="lang-btn">AR</button>
-      </div>
-
-      <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
-
-      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
-    </div>
-  </div>
-</nav>
-
-
-  <!-- Overlay Menu for Mobile -->
-  <div class="overlay" id="mobile-menu" aria-hidden="true">
-    <nav class="overlay-nav" aria-label="Mobile">
-      <ul>
-        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-        <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
-        <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-        <li><a href="events.html" class="nav-link active" data-translate="nav_training">Training </a></li>
-        <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
-        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
-        <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
-      </ul>
-      <button class="close-btn" aria-label="Close menu" data-translate="close">Close</button>
-    </nav>
-  </div>
-<section class="accreditation-section">
-  <div class="accreditation-content">
-    <div class="accreditation-image">
-      <img src="CAT.jpeg" alt="Reframe Accreditation Certificate" />
-    </div>
-    <div class="accreditation-text">
-      <h1>We’re proud to share our accreditation!</h1>
-      <p>
-        <strong>Reframe</strong> has been officially accredited by the
-        <strong>Lebanese Order of Psychologists (LOPsy)</strong> as a
-        <em>Training Center in Systemic Psychotherapy</em>,
-        from <b>October 1, 2025</b> to <b>October 31, 2027</b>.
-      </p>
-      <p>
-        This accreditation reflects our ongoing commitment to excellence, integrity,
-        and evidence-based practice in the field of mental health and it reinforces
-        our mission to empower professionals across the Middle East through
-        high-quality, culturally relevant training and supervision.
-      </p>
-      <p>
-        We extend our heartfelt thanks to our team, supervisors, and community for
-        being part of this journey. Together, we’re shaping a future where mental
-        health education and practice are accessible, ethical, and deeply human.
-      </p>
-      <p class="hashtags">
-        #Accreditation #LOPsy #SystemicPsychotherapy #ProfessionalDevelopment #MentalHealthLebanon
-      </p>
-    </div>
-  </div>
-</section>
-<!-- ===== PROFESSIONAL CALENDAR: HTML + CSS + JS IN ONE COPY ===== -->
-<div class="section-header">
-  <h2 id="calendar-title"></h2>
-  <p data-translate="calendar_subtitle">
-    View our upcoming training sessions and workshops
-  </p>
-</div>
-
-<div class="calendar-nav">
-  <button id="calendarPrev" class="calendar-arrow" aria-label="Previous Month">
-    <i class="fa fa-chevron-left"></i>
-  </button>
-
-  <button id="calendarNext" class="calendar-arrow" aria-label="Next Month">
-    <i class="fa fa-chevron-right"></i>
-  </button>
-</div>
-
-<div class="calendar-container">
-  <div class="calendar-header">
-    <div>Sun</div>
-    <div>Mon</div>
-    <div>Tue</div>
-    <div>Wed</div>
-    <div>Thu</div>
-    <div>Fri</div>
-    <div>Sat</div>
-  </div>
-
-  <div class="calendar-body" id="calendarBody"></div>
-</div>
-
-<style>
-  .calendar-nav {
-    display: flex;
-    justify-content: center;
-    gap: 14px;
-    margin: 20px 0 25px;
-  }
-
-  .calendar-arrow {
-    width: 46px;
-    height: 46px;
-    border: none;
-    border-radius: 50%;
-    background: #4D9794;
-    color: #fff;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
-  }
-
-  .calendar-arrow:hover {
-    background: #2c6b6b;
-    transform: translateY(-2px) scale(1.05);
-  }
-
-  .calendar-container {
-    max-width: 1000px;
-    margin: 0 auto;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-  }
-
-  .calendar-header {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    background: #4D9794;
-    color: white;
-    font-weight: 600;
-    text-align: center;
-    padding: 12px 0;
-    font-size: 0.95rem;
-  }
-
-  .calendar-body {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    grid-auto-rows: 130px;
-    background: #e5e7eb;
-    gap: 1px;
-  }
-
-  .calendar-day {
-    background: #fff;
-    border-radius: 6px;
-    position: relative;
-    padding: 6px;
-    overflow: hidden;
-    transition: all 0.2s ease;
-  }
-
-  .calendar-day:hover {
-    background: #f1f5f9;
-    transform: scale(1.02);
-    cursor: pointer;
-  }
-
-  .calendar-day.empty {
-    background: #f8fafc;
-    cursor: default;
-    transform: none;
-  }
-
-  .calendar-day.empty:hover {
-    background: #f8fafc;
-    transform: none;
-  }
-
-  .calendar-day.today {
-    outline: 2px solid #4D9794;
-    outline-offset: -2px;
-  }
-
-  .calendar-day .day-number {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #334155;
-    z-index: 2;
-    background: rgba(255, 255, 255, 0.92);
-    padding: 2px 6px;
-    border-radius: 6px;
-  }
-
-  .calendar-day.event-day img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 6px;
-    opacity: 0.92;
-    z-index: 0;
-  }
-
-  @media (max-width: 768px) {
-    .calendar-body {
-      grid-auto-rows: 80px;
-    }
-
-    .calendar-day .day-number {
-      font-size: 0.72rem;
-      top: 4px;
-      right: 4px;
-      padding: 2px 5px;
-    }
-
-    .calendar-arrow {
-      width: 40px;
-      height: 40px;
-    }
-
-    .calendar-header {
-      font-size: 0.8rem;
-      padding: 10px 0;
-    }
-  }
-</style>
-
-<script>
-  document.addEventListener("DOMContentLoaded", async () => {
-    const calendarTitle = document.getElementById("calendar-title");
-    const calendarBody = document.getElementById("calendarBody");
-    const prevBtn = document.getElementById("calendarPrev");
-    const nextBtn = document.getElementById("calendarNext");
-
-    const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
-
-    const today = new Date();
-    let viewYear = today.getFullYear();
-    let viewMonth = today.getMonth();
-
-    let cmsEvents = [];
-
-    try {
-      const res = await fetch("/content/events.json");
-      const data = await res.json();
-      cmsEvents = Array.isArray(data.events) ? data.events : [];
-    } catch (error) {
-      console.error("Could not load events.json", error);
-    }
-
-    function normalizeEventDate(dateString) {
-      if (!dateString) return null;
-      const d = new Date(dateString);
-      return isNaN(d.getTime()) ? null : d;
-    }
-
-    function getEventsForDay(year, month, day) {
-      return cmsEvents.filter((event) => {
-        const eventDate = normalizeEventDate(event.date);
-        if (!eventDate) return false;
-
-        return (
-          eventDate.getFullYear() === year &&
-          eventDate.getMonth() === month &&
-          eventDate.getDate() === day &&
-          event.status !== "concluded"
-        );
-      });
-    }
-
-    function renderCalendar(year, month) {
-      calendarBody.innerHTML = "";
-      calendarTitle.textContent = `${monthNames[month]} ${year}`;
-
-      const firstDayIndex = new Date(year, month, 1).getDay();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-      for (let i = 0; i < firstDayIndex; i++) {
-        const emptyCell = document.createElement("div");
-        emptyCell.className = "calendar-day empty";
-        calendarBody.appendChild(emptyCell);
-      }
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dayCell = document.createElement("div");
-        dayCell.className = "calendar-day";
-
-        const isToday =
-          day === today.getDate() &&
-          month === today.getMonth() &&
-          year === today.getFullYear();
-
-        if (isToday) {
-          dayCell.classList.add("today");
-        }
-
-        const dayNumber = document.createElement("span");
-        dayNumber.className = "day-number";
-        dayNumber.textContent = day;
-        dayCell.appendChild(dayNumber);
-
-        const dayEvents = getEventsForDay(year, month, day);
-
-        if (dayEvents.length > 0) {
-          const mainEvent = dayEvents[0];
-          dayCell.classList.add("event-day");
-
-          if (mainEvent.image) {
-            const img = document.createElement("img");
-            img.src = mainEvent.image;
-            img.alt = mainEvent.title || "Event image";
-            dayCell.appendChild(img);
-          }
-
-          dayCell.addEventListener("click", () => {
-            const title = mainEvent.title || "";
-            const escapedTitle =
-              window.CSS && CSS.escape
-                ? CSS.escape(title)
-                : title.replace(/"/g, '\\"');
-
-            const eventCard = document.querySelector(`[data-title="${escapedTitle}"]`);
-            if (eventCard) {
-              eventCard.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
-          });
-        }
-
-        calendarBody.appendChild(dayCell);
-      }
-    }
-
-    prevBtn.addEventListener("click", () => {
-      viewMonth--;
-      if (viewMonth < 0) {
-        viewMonth = 11;
-        viewYear--;
-      }
-      renderCalendar(viewYear, viewMonth);
-    });
-
-    nextBtn.addEventListener("click", () => {
-      viewMonth++;
-      if (viewMonth > 11) {
-        viewMonth = 0;
-        viewYear++;
-      }
-      renderCalendar(viewYear, viewMonth);
-    });
-
-    renderCalendar(viewYear, viewMonth);
-  });
-</script>
-
 <section class="training-services">
   <div class="section-header">
-    <h2>Training & Professional Development</h2>
-    <p>
+    <h2 data-translate="training_main_title">Training & Professional Development</h2>
+    <p data-translate="training_main_subtitle">
       Structured learning opportunities designed to support growth, skill-building,
       and ethical clinical practice across different career stages.
     </p>
@@ -1369,27 +1683,39 @@ h1{text-align:center; margin-bottom:100px;}
     <!-- Short-Term Trainings -->
     <div class="training-card">
       <button class="training-toggle">
-        <h3>Short-Term Trainings</h3>
-        <span>2–4 hours • Online</span>
+        <div>
+          <h3 data-translate="training_short_title">Short-Term Trainings</h3>
+          <span data-translate="training_short_subtitle">
+            Brief learning experiences focused on knowledge updates and practical insights
+          </span>
+        </div>
         <i class="fa fa-chevron-down"></i>
       </button>
 
       <div class="training-content">
-        <p>
-          Brief learning experiences focused on knowledge updates and practical insights.
-          These sessions introduce new ideas, tools, and developments in mental health practice.
+        <p data-translate="training_short_desc">
+          Short-term trainings are concise sessions designed to introduce new ideas, tools, or developments in mental health practice.
         </p>
 
-        <h4>Focus Areas</h4>
+        <h4 data-translate="training_short_format_title">Format:</h4>
         <ul>
-          <li>Updates on therapeutic techniques</li>
-          <li>Introduction to theories and models</li>
-          <li>Research findings and clinical insights</li>
-          <li>Practice-based experiences and outcomes</li>
+          <li data-translate="training_short_format_1">Online</li>
+          <li data-translate="training_short_format_2">Duration: 2–4 hours</li>
+        </ul>
+
+        <h4 data-translate="training_short_focus_title">Focus areas include:</h4>
+        <ul>
+          <li data-translate="training_short_focus_1">Updates on therapeutic techniques</li>
+          <li data-translate="training_short_focus_2">Introduction to theories and models</li>
+          <li data-translate="training_short_focus_3">Presentation of research findings and clinical insights</li>
+          <li data-translate="training_short_focus_4">Sharing practice-based experiences and intervention outcomes</li>
         </ul>
 
         <p class="best-for">
-          <strong>Best suited for:</strong> Professionals seeking focused learning and timely updates.
+          <strong data-translate="training_short_best_title">Best suited for:</strong>
+          <span data-translate="training_short_best_desc">
+            Professionals seeking focused learning and timely updates.
+          </span>
         </p>
       </div>
     </div>
@@ -1397,26 +1723,36 @@ h1{text-align:center; margin-bottom:100px;}
     <!-- Mid-Term Trainings -->
     <div class="training-card">
       <button class="training-toggle">
-        <h3>Mid-Term Trainings</h3>
-        <span>Half day – 2 weeks • Online or In-person</span>
+        <div>
+          <h3 data-translate="training_mid_title">Mid-Term Trainings</h3>
+          <span data-translate="training_mid_subtitle">In-depth skill-building programs</span>
+        </div>
         <i class="fa fa-chevron-down"></i>
       </button>
 
       <div class="training-content">
-        <p>
-          In-depth, structured programs designed to build and strengthen professional skills
-          through immersive and practice-oriented learning.
+        <p data-translate="training_mid_desc">
+          Mid-term trainings provide structured and immersive learning experiences aimed at developing and strengthening professional skills.
         </p>
 
-        <h4>Focus Areas</h4>
+        <h4 data-translate="training_mid_format_title">Format:</h4>
         <ul>
-          <li>Applied clinical skills</li>
-          <li>Hands-on learning experiences</li>
-          <li>Guided exercises and case discussions</li>
+          <li data-translate="training_mid_format_1">In-person or online</li>
+          <li data-translate="training_mid_format_2">Duration: Half day to two weeks</li>
+        </ul>
+
+        <h4 data-translate="training_mid_focus_title">Focus areas include:</h4>
+        <ul>
+          <li data-translate="training_mid_focus_1">Applied clinical skills</li>
+          <li data-translate="training_mid_focus_2">Practice-oriented learning</li>
+          <li data-translate="training_mid_focus_3">Guided exercises and case discussions</li>
         </ul>
 
         <p class="best-for">
-          <strong>Best suited for:</strong> Practitioners seeking hands-on learning and skill enhancement.
+          <strong data-translate="training_mid_best_title">Best suited for:</strong>
+          <span data-translate="training_mid_best_desc">
+            Practitioners seeking hands-on learning and skill enhancement.
+          </span>
         </p>
       </div>
     </div>
@@ -1424,32 +1760,36 @@ h1{text-align:center; margin-bottom:100px;}
     <!-- Long-Term Trainings -->
     <div class="training-card">
       <button class="training-toggle">
-        <h3>Long-Term Training Programs</h3>
-        <span>Comprehensive & Ongoing</span>
+        <div>
+          <h3 data-translate="training_long_title">Long-Term Training Programs</h3>
+          <span data-translate="training_long_subtitle">Comprehensive professional development pathways</span>
+        </div>
         <i class="fa fa-chevron-down"></i>
       </button>
 
       <div class="training-content">
-        <p>
-          Comprehensive professional development pathways that support deep,
-          sustained learning through an integrated structure.
+        <p data-translate="training_long_desc">
+          Long-term trainings are designed to support deep and sustained learning through an integrated structure.
         </p>
 
-        <h4>Core Components</h4>
+        <h4 data-translate="training_long_core_title">Core components:</h4>
         <ul>
-          <li>Theoretical training</li>
-          <li>Ongoing supervision</li>
+          <li data-translate="training_long_core_1">Theoretical training</li>
+          <li data-translate="training_long_core_2">Ongoing supervision</li>
         </ul>
 
-        <h4>Focus Areas</h4>
+        <h4 data-translate="training_long_focus_title">Focus areas include:</h4>
         <ul>
-          <li>Advanced conceptual understanding</li>
-          <li>Clinical application and case formulation</li>
-          <li>Progressive competency development</li>
+          <li data-translate="training_long_focus_1">Advanced conceptual understanding</li>
+          <li data-translate="training_long_focus_2">Clinical application and case formulation</li>
+          <li data-translate="training_long_focus_3">Progressive competency development</li>
         </ul>
 
         <p class="best-for">
-          <strong>Best suited for:</strong> Professionals seeking structured, long-term clinical training.
+          <strong data-translate="training_long_best_title">Best suited for:</strong>
+          <span data-translate="training_long_best_desc">
+            Professionals seeking structured, long-term clinical training.
+          </span>
         </p>
       </div>
     </div>
@@ -1457,53 +1797,37 @@ h1{text-align:center; margin-bottom:100px;}
     <!-- Supervision -->
     <div class="training-card">
       <button class="training-toggle">
-        <h3>Supervision Services</h3>
-        <span>Individual & Group • Online or In-person</span>
+        <div>
+          <h3 data-translate="supervision_title">Supervision Services</h3>
+          <span data-translate="supervision_subtitle">Individual and group supervision for psychotherapists</span>
+        </div>
         <i class="fa fa-chevron-down"></i>
       </button>
 
       <div class="training-content">
-        <p>
-          Supervision services designed to support ethical, reflective,
-          and effective clinical practice for psychotherapists.
+        <p data-translate="supervision_desc">
+          Supervision services focus on supporting ethical, reflective, and effective clinical practice.
         </p>
 
-        <h4>Focus Areas</h4>
+        <h4 data-translate="supervision_format_title">Format:</h4>
         <ul>
-          <li>Case discussion and formulation</li>
-          <li>Clinical reflection</li>
-          <li>Professional development and ethical practice</li>
+          <li data-translate="supervision_format_1">Individual or group supervision</li>
+          <li data-translate="supervision_format_2">Online or in-person</li>
+        </ul>
+
+        <h4 data-translate="supervision_focus_title">Focus areas include:</h4>
+        <ul>
+          <li data-translate="supervision_focus_1">Case discussion and formulation</li>
+          <li data-translate="supervision_focus_2">Clinical reflection</li>
+          <li data-translate="supervision_focus_3">Professional development and ethical practice</li>
         </ul>
 
         <p class="best-for">
-          <strong>Best suited for:</strong> Practicing psychotherapists seeking supervision and clinical support.
+          <strong data-translate="supervision_best_title">Best suited for:</strong>
+          <span data-translate="supervision_best_desc">
+            Practicing psychotherapists seeking supervision and clinical support.
+          </span>
         </p>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-
-   
-
-<!-- ===== New & Upcoming Events Section (IPT) ===== -->
-<section class="events-section">
-  <div class="events-container">
-   
-
-    <!-- ✅ CMS EVENTS WILL APPEAR HERE -->
-    <div id="cms-events" class="list-events"></div>
-
-    <!-- Existing manual event (KEEP IT) -->
-    <div class="list-events">
-      <div class="list-item" data-event="event11">
-        <img src="evnet11.jpeg" alt="Interpersonal Psychotherapy Training (IPT)">
-        <div class="list-item-body">
-          <h3>Interpersonal Psychotherapy Training (IPT)</h3>
-          <p>December 2025 | Dates: 5 • 6 • 12 • 13 | 4 full days | 400 USD</p>
-          <a class="view-btn">View Details</a>
-        </div>
       </div>
     </div>
 
@@ -2372,4 +2696,7 @@ document.querySelectorAll(".training-toggle").forEach(toggle => {
   
 });
 </script>
+<script src="scripts/translations.js"></script>
 
+
+ <script src="scripts/main.js"></script>

@@ -57,7 +57,7 @@
         <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
       </ul>
 
-      <!-- Language Switcher -->
+     
       <div class="language-switcher">
         <button class="lang-btn active" data-lang="en">EN</button>
         <span class="lang-separator">|</span>
@@ -93,7 +93,6 @@
     </nav>
   </div>
 
-</body>
 
 <section class="hero-header">
   <h1 data-translate="projects_hero_title">The Mental Health Lab</h1>
@@ -176,7 +175,9 @@
     }
   </script>
 
+<script src="scripts/main.js"></script>
 
+    <script src="scripts/translations.js"></script>
  
   
 
@@ -279,17 +280,7 @@
   margin-right: 8px;
 }
 
-/* ===== Animation ===== */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+
 
 /* ===== Mobile Friendly ===== */
 @media (max-width: 768px) {
@@ -333,7 +324,7 @@
     
     /* HERO HEADER */
     .hero-header {
-          margin-top: 120px;
+          margin-top: 80px;
       background: #4D9794;
       color: #fff;
       padding: 100px 0px;
@@ -354,6 +345,69 @@
 
   </style>
  
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const dropdowns = document.querySelectorAll(".nav-dropdown");
+
+  dropdowns.forEach(dropdown => {
+    const toggle = dropdown.querySelector(".dropdown-toggle");
+    const menu = dropdown.querySelector(".dropdown-menu");
+
+    if (!toggle || !menu) return;
+
+    menu.style.display = "none";
+    menu.style.opacity = "0";
+    menu.style.transform = "translateY(-6px)";
+    menu.style.transition = "all 0.25s ease";
+
+    toggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const isOpen = menu.classList.contains("open");
+
+      document.querySelectorAll(".dropdown-menu.open").forEach(m => {
+        if (m !== menu) {
+          m.classList.remove("open");
+          m.style.opacity = "0";
+          m.style.transform = "translateY(-6px)";
+          setTimeout(() => {
+            m.style.display = "none";
+          }, 200);
+        }
+      });
+
+      if (!isOpen) {
+        menu.style.display = "flex";
+        setTimeout(() => {
+          menu.classList.add("open");
+          menu.style.opacity = "1";
+          menu.style.transform = "translateY(0)";
+        }, 20);
+      } else {
+        menu.classList.remove("open");
+        menu.style.opacity = "0";
+        menu.style.transform = "translateY(-6px)";
+        setTimeout(() => {
+          menu.style.display = "none";
+        }, 200);
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!dropdown.contains(e.target)) {
+        menu.classList.remove("open");
+        menu.style.opacity = "0";
+        menu.style.transform = "translateY(-6px)";
+        setTimeout(() => {
+          menu.style.display = "none";
+        }, 200);
+      }
+    });
+  });
+});
+</script>
+
 
 
 
@@ -429,124 +483,3 @@
   </div>
 </footer>
   
-
-
-  <!-- Scripts (keep your site scripts) -->
-
-  <script src="scripts/main.js"></script>
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const dropdowns = document.querySelectorAll(".nav-dropdown");
-
-  dropdowns.forEach(dropdown => {
-    const toggle = dropdown.querySelector(".dropdown-toggle");
-    const menu = dropdown.querySelector(".dropdown-menu");
-
-    // أغلق القائمة بالبداية
-    menu.style.display = "none";
-    menu.style.opacity = "0";
-    menu.style.transform = "translateY(-6px)";
-    menu.style.transition = "all 0.25s ease";
-
-    // عند الضغط على الزر
-    toggle.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const isOpen = menu.classList.contains("open");
-
-      // أغلق أي قوائم مفتوحة أخرى
-      document.querySelectorAll(".dropdown-menu.open").forEach(m => {
-        m.classList.remove("open");
-        m.style.opacity = "0";
-        m.style.transform = "translateY(-6px)";
-        setTimeout(() => (m.style.display = "none"), 200);
-      });
-
-      // افتح أو أغلق القائمة الحالية
-      if (!isOpen) {
-        menu.style.display = "flex";
-        setTimeout(() => {
-          menu.classList.add("open");
-          menu.style.opacity = "1";
-          menu.style.transform = "translateY(0)";
-        }, 20);
-      } else {
-        menu.classList.remove("open");
-        menu.style.opacity = "0";
-        menu.style.transform = "translateY(-6px)";
-        setTimeout(() => (menu.style.display = "none"), 200);
-      }
-    });
-
-    // أغلق عند الضغط خارج القائمة
-    document.addEventListener("click", (e) => {
-      if (!dropdown.contains(e.target)) {
-        menu.classList.remove("open");
-        menu.style.opacity = "0";
-        menu.style.transform = "translateY(-6px)";
-        setTimeout(() => (menu.style.display = "none"), 200);
-      }
-    });
-  });
-});
-</script>
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const dropdowns = document.querySelectorAll(".nav-dropdown");
-
-  dropdowns.forEach(dropdown => {
-    const toggle = dropdown.querySelector(".dropdown-toggle");
-    const menu = dropdown.querySelector(".dropdown-menu");
-
-    // أغلق القائمة بالبداية
-    menu.style.display = "none";
-    menu.style.opacity = "0";
-    menu.style.transform = "translateY(-6px)";
-    menu.style.transition = "all 0.25s ease";
-
-    // عند الضغط على الزر
-    toggle.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const isOpen = menu.classList.contains("open");
-
-      // أغلق أي قوائم مفتوحة أخرى
-      document.querySelectorAll(".dropdown-menu.open").forEach(m => {
-        m.classList.remove("open");
-        m.style.opacity = "0";
-        m.style.transform = "translateY(-6px)";
-        setTimeout(() => (m.style.display = "none"), 200);
-      });
-
-      // افتح أو أغلق القائمة الحالية
-      if (!isOpen) {
-        menu.style.display = "flex";
-        setTimeout(() => {
-          menu.classList.add("open");
-          menu.style.opacity = "1";
-          menu.style.transform = "translateY(0)";
-        }, 20);
-      } else {
-        menu.classList.remove("open");
-        menu.style.opacity = "0";
-        menu.style.transform = "translateY(-6px)";
-        setTimeout(() => (menu.style.display = "none"), 200);
-      }
-    });
-
-    // أغلق عند الضغط خارج القائمة
-    document.addEventListener("click", (e) => {
-      if (!dropdown.contains(e.target)) {
-        menu.classList.remove("open");
-        menu.style.opacity = "0";
-        menu.style.transform = "translateY(-6px)";
-        setTimeout(() => (menu.style.display = "none"), 200);
-      }
-    });
-  });
-});
-
-
-</script>

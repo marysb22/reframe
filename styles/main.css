@@ -52,46 +52,687 @@
     box-sizing: border-box;
 }
 
+/* =========================================================
+   GLOBAL BILINGUAL LTR / RTL ARCHITECTURE
+   Production-safe Arabic RTL system
+   Keep English untouched, enable native Arabic behavior
+========================================================= */
+
+
+
+/* =========================
+   2) ROOT / HTML / BODY
+========================= */
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+html[lang="en"] {
+  direction: ltr;
+}
+
+html[lang="ar"] {
+  direction: rtl;
+}
+
 body {
-    font-family: 'Inter', sans-serif;
-    line-height: 1.6;
-    color: var(--text-primary);
-    background-color: var(--bg-primary);
-    transition: all 0.3s ease;
+  margin: 0;
+  font-family: var(--font-en);
+  line-height: var(--line-height-base);
+  letter-spacing: var(--letter-spacing-base);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
+  overflow-x: hidden;
 }
 
-/* RTL Support */
-[dir="rtl"] {
-    font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
+html[lang="ar"] body,
+body[dir="rtl"] {
+  font-family: var(--font-ar);
+  line-height: var(--line-height-ar);
+  letter-spacing: var(--letter-spacing-ar);
 }
 
-[dir="rtl"] .container {
-    direction: rtl;
-    text-align: right;
+/* =========================
+   3) GLOBAL TYPOGRAPHY
+========================= */
+h1, h2, h3, h4, h5, h6,
+p, li, a, button, input, textarea, select, label, span {
+  margin-block-start: 0;
 }
 
-[dir="rtl"] .nav-menu {
-    flex-direction: row-reverse;
+html[lang="ar"] h1,
+html[lang="ar"] h2,
+html[lang="ar"] h3,
+html[lang="ar"] h4,
+html[lang="ar"] h5,
+html[lang="ar"] h6,
+html[lang="ar"] p,
+html[lang="ar"] li,
+html[lang="ar"] label,
+html[lang="ar"] input,
+html[lang="ar"] textarea,
+html[lang="ar"] select,
+html[lang="ar"] button {
+  text-align: start;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
-[dir="rtl"] .language-switcher {
-    order: -1;
+/* Arabic numerals / inline snippets / emails should stay visually stable */
+html[lang="ar"] .latin,
+html[lang="ar"] .number,
+html[lang="ar"] .email,
+html[lang="ar"] .phone,
+html[lang="ar"] code,
+html[lang="ar"] pre {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
 }
 
-[dir="rtl"] .hero-content {
-    grid-template-columns: 1fr 1fr;
+/* Improve Arabic punctuation flow */
+html[lang="ar"] p,
+html[lang="ar"] li,
+html[lang="ar"] blockquote {
+  unicode-bidi: plaintext;
 }
 
-[dir="rtl"] .hero-text {
-    text-align: right;
+/* =========================
+   4) LAYOUT FOUNDATIONS
+========================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-[dir="rtl"] .hero-buttons {
-    justify-content: flex-end;
+img,
+video,
+svg,
+canvas,
+iframe {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
-/* ==== Dropdown Modern Professional 2025 ==== */
+
+.container,
+.wrapper,
+.section-container {
+  width: min(100% - 2rem, 1200px);
+  margin-inline: auto;
+}
+
+.section,
+section {
+  position: relative;
+}
+
+html[lang="ar"] .container,
+html[lang="ar"] .wrapper,
+html[lang="ar"] .section-container,
+html[lang="ar"] section,
+html[lang="ar"] article,
+html[lang="ar"] aside,
+html[lang="ar"] main,
+html[lang="ar"] footer,
+html[lang="ar"] header {
+  direction: rtl;
+}
+
+/* Use logical alignment globally */
+.text-start { text-align: start; }
+.text-end { text-align: end; }
+.text-center { text-align: center; }
+
+/* =========================
+   5) FLEX / GRID RTL SAFETY
+========================= */
+/* Do not reverse everything globally.
+   Reverse only directional UI rows that represent reading flow. */
+
+html[lang="ar"] .row--flip,
+html[lang="ar"] .nav-menu,
+html[lang="ar"] .nav-actions,
+html[lang="ar"] .hero-buttons,
+html[lang="ar"] .button-group,
+html[lang="ar"] .inline-actions,
+html[lang="ar"] .meta-row,
+html[lang="ar"] .form-row--inline,
+html[lang="ar"] .footer-links,
+html[lang="ar"] .social-links,
+html[lang="ar"] .breadcrumb,
+html[lang="ar"] .list-inline {
+  flex-direction: row-reverse;
+}
+
+html[lang="ar"] .hero-text,
+html[lang="ar"] .content-block,
+html[lang="ar"] .section-heading,
+html[lang="ar"] .card-content,
+html[lang="ar"] .footer-content,
+html[lang="ar"] .form-group,
+html[lang="ar"] .modal-content,
+html[lang="ar"] .drawer-content,
+html[lang="ar"] .dropdown-menu {
+  text-align: right;
+}
+
+/* Keep symmetric grids stable */
+.hero-content,
+.cards-grid,
+.features-grid,
+.stats-grid,
+.testimonials-grid,
+.footer-grid,
+.form-grid,
+.content-grid {
+  align-items: stretch;
+}
+
+/* If you use side-by-side split layouts, enable safe visual flip */
+html[lang="ar"] .split-layout,
+html[lang="ar"] .hero-content.split,
+html[lang="ar"] .content-grid--split {
+  direction: rtl;
+}
+
+html[lang="ar"] .media-first {
+  direction: rtl;
+}
+
+html[lang="ar"] .media-first > :first-child {
+  order: 2;
+}
+
+html[lang="ar"] .media-first > :last-child {
+  order: 1;
+}
+
+/* =========================
+   6) NAVBAR / DROPDOWNS
+========================= */
+.navbar,
+.site-header,
+.nav,
+.nav-inner {
+  position: relative;
+}
+
+.nav-menu,
+.nav-actions,
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.nav-link,
+.dropdown-toggle,
+.language-switcher button {
+  text-align: start;
+}
+
 .nav-dropdown {
   position: relative;
+}
+
+.dropdown-menu,
+.nav-dropdown-menu {
+  position: absolute;
+  inset-block-start: calc(100% + 0.75rem);
+  inset-inline-start: 0;
+  min-width: 220px;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  background: #fff;
+  z-index: 1000;
+  text-align: start;
+}
+
+html[lang="ar"] .dropdown-menu,
+html[lang="ar"] .nav-dropdown-menu {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  text-align: right;
+}
+
+.dropdown-menu a,
+.nav-dropdown-menu a {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+html[lang="ar"] .dropdown-menu a,
+html[lang="ar"] .nav-dropdown-menu a {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+/* Mobile nav drawer */
+.mobile-menu,
+.nav-drawer,
+.sidebar-menu {
+  text-align: start;
+}
+
+html[lang="ar"] .mobile-menu,
+html[lang="ar"] .nav-drawer,
+html[lang="ar"] .sidebar-menu {
+  text-align: right;
+}
+
+html[lang="ar"] .mobile-menu .menu-item,
+html[lang="ar"] .nav-drawer .menu-item {
+  flex-direction: row-reverse;
+}
+
+/* =========================
+   7) HERO / CONTENT BLOCKS
+========================= */
+.hero,
+.hero-section {
+  overflow: clip;
+}
+
+.hero-content,
+.hero-grid {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+}
+
+.hero-text,
+.section-heading,
+.content-copy,
+.rich-text {
+  text-align: start;
+}
+
+html[lang="ar"] .hero-text,
+html[lang="ar"] .section-heading,
+html[lang="ar"] .content-copy,
+html[lang="ar"] .rich-text {
+  text-align: right;
+}
+
+.hero-buttons,
+.cta-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: flex-start;
+}
+
+html[lang="ar"] .hero-buttons,
+html[lang="ar"] .cta-group {
+  justify-content: flex-end;
+}
+
+/* =========================
+   8) CARDS / LISTS / COMPONENTS
+========================= */
+.card,
+.feature-card,
+.service-card,
+.event-card,
+.project-card,
+.team-card,
+.modal-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.card-content,
+.feature-card-content,
+.service-card-content,
+.event-card-content {
+  text-align: start;
+}
+
+html[lang="ar"] .card-content,
+html[lang="ar"] .feature-card-content,
+html[lang="ar"] .service-card-content,
+html[lang="ar"] .event-card-content {
+  text-align: right;
+}
+
+.card-meta,
+.card-actions,
+.item-meta,
+.badges-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+html[lang="ar"] .card-meta,
+html[lang="ar"] .card-actions,
+html[lang="ar"] .item-meta,
+html[lang="ar"] .badges-row {
+  flex-direction: row-reverse;
+}
+
+/* Lists */
+ul, ol {
+  padding-inline-start: 1.25rem;
+}
+
+html[lang="ar"] ul,
+html[lang="ar"] ol {
+  padding-inline-start: 0;
+  padding-inline-end: 1.25rem;
+}
+
+html[lang="ar"] li {
+  text-align: right;
+}
+
+/* =========================
+   9) FORMS
+========================= */
+form,
+.form,
+.form-layout {
+  direction: inherit;
+}
+
+label {
+  display: inline-block;
+  margin-block-end: 0.45rem;
+  text-align: start;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-sm);
+  padding-block: 0.85rem;
+  padding-inline: 1rem;
+  text-align: start;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 140px;
+}
+
+::placeholder {
+  color: #9ca3af;
+  opacity: 1;
+  text-align: start;
+}
+
+html[lang="ar"] label,
+html[lang="ar"] input,
+html[lang="ar"] textarea,
+html[lang="ar"] select,
+html[lang="ar"] ::placeholder {
+  text-align: right;
+}
+
+html[lang="ar"] input[type="email"],
+html[lang="ar"] input[type="url"],
+html[lang="ar"] input[type="tel"],
+html[lang="ar"] input[type="number"],
+html[lang="ar"] input[data-ltr="true"],
+html[lang="ar"] .input-ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+.form-row,
+.form-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+html[lang="ar"] .form-row,
+html[lang="ar"] .form-actions {
+  flex-direction: row-reverse;
+}
+
+.checkbox-group,
+.radio-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+html[lang="ar"] .checkbox-group,
+html[lang="ar"] .radio-group {
+  flex-direction: row-reverse;
+}
+
+/* =========================
+   10) MODALS / OVERLAYS / DRAWERS
+========================= */
+.modal,
+.overlay,
+.popup,
+.dialog {
+  direction: inherit;
+}
+
+.modal-content,
+.dialog-content,
+.drawer-content {
+  text-align: start;
+}
+
+html[lang="ar"] .modal-content,
+html[lang="ar"] .dialog-content,
+html[lang="ar"] .drawer-content {
+  text-align: right;
+}
+
+.modal-header,
+.dialog-header,
+.drawer-header,
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+html[lang="ar"] .modal-header,
+html[lang="ar"] .dialog-header,
+html[lang="ar"] .drawer-header,
+html[lang="ar"] .modal-actions {
+  flex-direction: row-reverse;
+}
+
+/* =========================
+   11) FOOTER
+========================= */
+.footer,
+.site-footer {
+  direction: inherit;
+}
+
+.footer-grid,
+.footer-bottom,
+.footer-links,
+.footer-social {
+  display: flex;
+  gap: 1rem;
+}
+
+html[lang="ar"] .footer-grid,
+html[lang="ar"] .footer-bottom,
+html[lang="ar"] .footer-links,
+html[lang="ar"] .footer-social {
+  flex-direction: row-reverse;
+}
+
+.footer p,
+.footer a,
+.site-footer p,
+.site-footer a {
+  text-align: start;
+}
+
+html[lang="ar"] .footer p,
+html[lang="ar"] .footer a,
+html[lang="ar"] .site-footer p,
+html[lang="ar"] .site-footer a {
+  text-align: right;
+}
+
+/* =========================
+   12) ICONS / CHEVRONS / ARROWS
+========================= */
+/* Only flip directional icons, not logos/photos/media */
+html[lang="ar"] .icon-chevron,
+html[lang="ar"] .icon-arrow,
+html[lang="ar"] .icon-directional,
+html[lang="ar"] [data-flip-rtl="true"] {
+  transform: scaleX(-1);
+}
+
+/* =========================
+   13) TABLES / DATA / EMBEDS
+========================= */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: start;
+  vertical-align: top;
+}
+
+html[lang="ar"] th,
+html[lang="ar"] td {
+  text-align: right;
+}
+
+html[lang="ar"] td[data-ltr="true"],
+html[lang="ar"] th[data-ltr="true"] {
+  direction: ltr;
+  text-align: left;
+}
+
+/* =========================
+   14) ACCESSIBILITY / UTILITIES
+========================= */
+[hidden] {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ms-auto { margin-inline-start: auto; }
+.me-auto { margin-inline-end: auto; }
+.ps-0 { padding-inline-start: 0; }
+.pe-0 { padding-inline-end: 0; }
+
+/* =========================
+   15) LANGUAGE SWITCHER
+========================= */
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+html[lang="ar"] .language-switcher {
+  flex-direction: row-reverse;
+}
+
+.language-switcher button[aria-pressed="true"] {
+  pointer-events: none;
+}
+
+/* =========================
+   16) SAFE OVERRIDES FOR COMMON PROBLEMS
+========================= */
+html[lang="ar"] .text-left { text-align: right !important; }
+html[lang="ar"] .text-right { text-align: right !important; }
+
+html[lang="ar"] .ml-auto { margin-left: 0 !important; margin-right: auto !important; }
+html[lang="ar"] .mr-auto { margin-right: 0 !important; margin-left: auto !important; }
+
+/* Avoid breaking media/cards/grids with global direction hacks */
+html[lang="ar"] img,
+html[lang="ar"] video,
+html[lang="ar"] picture,
+html[lang="ar"] .card-media,
+html[lang="ar"] .hero-media,
+html[lang="ar"] .map-embed,
+html[lang="ar"] iframe {
+  direction: ltr;
+}
+
+/* =========================
+   17) RESPONSIVE
+========================= */
+@media (max-width: 991px) {
+  .nav-menu,
+  .nav-actions,
+  .hero-buttons,
+  .footer-links,
+  .form-row,
+  .form-actions {
+    flex-wrap: wrap;
+  }
+
+  html[lang="ar"] .hero-content.split,
+  html[lang="ar"] .content-grid--split,
+  html[lang="ar"] .media-first {
+    direction: rtl;
+  }
+}
+
+@media (max-width: 767px) {
+  .container,
+  .wrapper,
+  .section-container {
+    width: min(100% - 1.25rem, 100%);
+  }
+
+  .hero-buttons,
+  .cta-group,
+  .form-actions,
+  .nav-actions {
+    width: 100%;
+  }
+
+  html[lang="ar"] .hero-buttons,
+  html[lang="ar"] .cta-group,
+  html[lang="ar"] .form-actions,
+  html[lang="ar"] .nav-actions {
+    justify-content: flex-end;
+  }
+
+  .dropdown-menu,
+  .nav-dropdown-menu {
+    min-width: min(92vw, 320px);
+  }
 }
 
 /* الزر */
@@ -1983,15 +2624,9 @@ body {
   box-shadow: 0 0 0 4px rgba(77,151,148,.18);  /* one clean focus ring */
 }
 
-/* If the ring feels too thick on mobile, reduce to 3px: */
-/* .form-group :is(input,textarea,select):focus { box-shadow: 0 0 0 3px rgba(77,151,148,.18); } */
 
-/* 3) Floating label reliability (inputs should have placeholder=" ") */
-.form-group input,
-.form-group textarea {
-  /* ensures :placeholder-shown works consistently */
-  placeholder-shown: auto;
-}
+
+
 
 /* Optional: ensure consistent input height/padding */
 .form-group input,
@@ -2867,21 +3502,4 @@ h1{text-align:center; margin-bottom:100px;}
       top: 1px !important;
     }
   }
-}
-
-html[dir="rtl"] body {
-  direction: rtl;
-  text-align: right;
-}
-
-html[dir="ltr"] body {
-  direction: ltr;
-  text-align: left;
-}
-body {
-  font-family: "Inter", sans-serif;
-}
-
-html[lang="ar"] body {
-  font-family: "Noto Naskh Arabic", serif;
 }

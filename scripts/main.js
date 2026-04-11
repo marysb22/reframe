@@ -29,7 +29,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // =========================
 // Language
-
 function initializeLanguageSwitcher() {
   const langButtons = document.querySelectorAll(".lang-btn");
 
@@ -37,18 +36,18 @@ function initializeLanguageSwitcher() {
     button.addEventListener("click", function () {
       const selectedLang = this.dataset.lang;
       localStorage.setItem("preferredLanguage", selectedLang);
-      switchLanguage(selectedLang);
-
-      langButtons.forEach((btn) => btn.classList.remove("active"));
-      this.classList.add("active");
+      applyLanguage(selectedLang);
     });
   });
 }
 
-function switchLanguage(lang) {
-  document.documentElement.lang = lang;
-  document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+function applyLanguage(lang) {
+  switchLanguage(lang);
+  applyDirectionSettings(lang);
+  updateLanguageButtons(lang);
+}
 
+function switchLanguage(lang) {
   document.querySelectorAll("[data-translate]").forEach((element) => {
     const key = element.getAttribute("data-translate");
     if (translations[lang] && translations[lang][key] !== undefined) {
@@ -69,91 +68,40 @@ function switchLanguage(lang) {
       element.textContent = translations[lang][key];
     }
   });
+}
 
-  const arBtn = document.querySelector('.lang-btn[data-lang="ar"]');
-  const enBtn = document.querySelector('.lang-btn[data-lang="en"]');
+function applyDirectionSettings(lang) {
+  const isArabic = lang === "ar";
 
-  if (arBtn) arBtn.classList.toggle("active", lang === "ar");
-  if (enBtn) enBtn.classList.toggle("active", lang === "en");
+  document.documentElement.lang = isArabic ? "ar" : "en";
+  document.documentElement.dir = isArabic ? "rtl" : "ltr";
+
+  document.body.classList.toggle("rtl", isArabic);
+  document.body.classList.toggle("ltr", !isArabic);
+
+  document.documentElement.classList.toggle("rtl", isArabic);
+  document.documentElement.classList.toggle("ltr", !isArabic);
+
+  // optional helper attribute
+  document.body.setAttribute("data-lang", lang);
+}
+
+function updateLanguageButtons(lang) {
+  const langButtons = document.querySelectorAll(".lang-btn");
+  langButtons.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.lang === lang);
+  });
 }
 
 function loadLanguagePreference() {
   const savedLang = localStorage.getItem("preferredLanguage") || "en";
-  switchLanguage(savedLang);
+  applyLanguage(savedLang);
 }
 
 document.addEventListener("DOMContentLoaded", function () {
   initializeLanguageSwitcher();
   loadLanguagePreference();
-  
 });
-// Navigation
-// =========================
-function initializeNavigation() {
-  const hamburger = document.querySelector(".hamburger");
-  const overlay = document.querySelector(".overlay");
-  const closeBtn = document.querySelector(".close-btn");
-  const navLinks = document.querySelectorAll(".overlay .nav-link");
-
-  if (hamburger && overlay) {
-    hamburger.addEventListener("click", function () {
-      hamburger.classList.toggle("active");
-      overlay.classList.toggle("active");
-      document.body.style.overflow = overlay.classList.contains("active") ? "hidden" : "";
-    });
-  }
-
-  if (closeBtn && hamburger && overlay) {
-    closeBtn.addEventListener("click", function () {
-      hamburger.classList.remove("active");
-      overlay.classList.remove("active");
-      document.body.style.overflow = "";
-    });
-  }
-
-  navLinks.forEach((link) => {
-    link.addEventListener("click", function () {
-      if (hamburger && overlay) {
-        hamburger.classList.remove("active");
-        overlay.classList.remove("active");
-        document.body.style.overflow = "";
-      }
-    });
-  });
-
-  if (overlay && hamburger) {
-    overlay.addEventListener("click", function (event) {
-      if (event.target === overlay) {
-        hamburger.classList.remove("active");
-        overlay.classList.remove("active");
-        document.body.style.overflow = "";
-      }
-    });
-  }
-
-  window.addEventListener(
-    "scroll",
-    debounce(function () {
-      const navbar = document.querySelector(".navbar");
-      if (!navbar) return;
-
-      if (window.scrollY > 50) {
-        navbar.classList.add("scrolled");
-      } else {
-        navbar.classList.remove("scrolled");
-      }
-    }, 10)
-  );
-
-  document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape" && overlay && overlay.classList.contains("active") && hamburger) {
-      hamburger.classList.remove("active");
-      overlay.classList.remove("active");
-      document.body.style.overflow = "";
-    }
-  });
-}
-
 // =========================
 // Newsletter Form
 // =========================
