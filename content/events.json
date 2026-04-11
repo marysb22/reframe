@@ -1,64 +1,105 @@
-
 {
   "date": "2025-08-16T09:30:00",
   "image": "/assets/uploads/puppetry.jpg",
   "register": "#",
   "fee": "Free Event – Limited to 20 participants (confirmation required)",
-
-
   "english": {
     "title": "Creative Puppetry for Healing: Working with Children in Gaza and Lebanon",
     "format": "In-person at Reframe",
     "facilitator": "Suzanne Groothuis – Artist & Theatre Maker",
     "about": "Suzanne Groothuis is an artist and theatre maker from Holland who has collaborated for many years with artists and psychologists in Gaza who work with children. She will soon visit Beirut as part of her research on the use of puppets with children who have experienced trauma. The goal of this session is to bring together psychotherapists and artists to share personal and professional experiences, ideas, and questions about how creative puppetry-making can support healing and resilience in communal and social contexts in places like Gaza and Lebanon.",
-    
     "learn": [
       "How can we create safe, creative spaces for children who have experienced trauma through puppetry?",
       "What specific issues need to be addressed in the context of Gaza and Lebanon that are often overlooked in Western research?",
       "What skills do creative facilitators need to ensure safety and well-being for children?"
     ],
-
     "who": [
       "Psychotherapists",
       "Artists and creative facilitators",
       "Mental health professionals working with children",
       "Community workers interested in creative expression"
     ],
-
     "outcomes": [
       "Enhanced understanding of creative tools for trauma recovery",
       "Cultural reflection on local challenges and healing practices",
       "Collaboration between art and psychology for child well-being"
     ],
-
     "facilitatorBio": "Suzanne Groothuis is a Dutch artist and theatre maker with extensive experience in using creative methods to address trauma. She has worked closely with professionals in Gaza on projects supporting children’s emotional resilience through art and performance. Her current research explores how puppetry can become a healing and educational tool, aiming to develop a trainer-to-trainer model."
   },
-
   "arabic": {
     "title": "الدمى الإبداعية للشفاء: العمل مع الأطفال في غزة ولبنان",
     "format": "حضوري في Reframe",
     "facilitator": "سوزان غروثويس – فنانة ومخرجة مسرحية",
     "about": "سوزان غروثويس هي فنانة ومخرجة مسرحية من هولندا، عملت لسنوات مع فنانين وأخصائيين نفسيين في غزة يعملون مع الأطفال. ستزور بيروت قريبًا ضمن أبحاثها حول استخدام الدمى مع الأطفال الذين مرّوا بتجارب صادمة. تهدف هذه الجلسة إلى جمع المعالجين النفسيين والفنانين لمشاركة الخبرات والأفكار حول كيفية استخدام الدمى الإبداعية لدعم الشفاء وتعزيز الصمود في المجتمعات مثل غزة ولبنان.",
-    
     "learn": [
       "كيف يمكننا خلق مساحات آمنة وإبداعية للأطفال الذين تعرضوا للصدمة باستخدام الدمى؟",
       "ما هي القضايا الخاصة بغزة ولبنان التي غالبًا ما يتم تجاهلها في الأبحاث الغربية؟",
       "ما المهارات التي يحتاجها الميسرون لضمان سلامة الأطفال ورفاههم؟"
     ],
-
     "who": [
       "معالجون نفسيون",
       "فنانون وميسرون إبداعيون",
       "اختصاصيو الصحة النفسية العاملون مع الأطفال",
       "عاملون مجتمعيون مهتمون بالتعبير الإبداعي"
     ],
-
     "outcomes": [
       "فهم أعمق لاستخدام الأدوات الإبداعية في علاج الصدمات",
       "تأمل ثقافي في التحديات المحلية وأساليب الشفاء",
       "تعزيز التعاون بين الفن وعلم النفس"
     ],
-
     "facilitatorBio": "سوزان غروثويس فنانة ومخرجة مسرحية لديها خبرة واسعة في استخدام الأساليب الإبداعية لمعالجة الصدمات. عملت مع مختصين في غزة لدعم الأطفال من خلال الفن. تركز أبحاثها الحالية على استخدام الدمى كوسيلة علاجية وتعليمية."
-  }
+  },
+  "events": [
+    {
+      "register": "#",
+      "date": "2025-08-16T21:30:00.000+03:00",
+      "image": "/assets/uploads/Evnet10.jpeg",
+      "fee": "Free Event – Limited to 20 participants (confirmation required)",
+      "arabic": {
+        "title": "الدمى الإبداعية من أجل الشفاء: العمل مع الأطفال في غزة ولبنان",
+        "format": "حضوري في Reframe",
+        "facilitator": "سوزان غروثويس – فنانة وصانعة مسرح",
+        "about": "سوزان غروثويس هي فنانة وصانعة مسرح من هولندا، تعاونت لسنوات عديدة مع فنانين وأخصائيين نفسيين في غزة يعملون مع الأطفال. وستزور بيروت قريبًا ضمن بحثها حول استخدام الدمى مع الأطفال الذين مرّوا بتجارب صادمة.\n\nتهدف هذه الجلسة إلى جمع المعالجين النفسيين والفنانين معًا لتبادل الخبرات الشخصية والمهنية، والأفكار، والأسئلة حول كيفية دعم صناعة الدمى الإبداعية لعمليات الشفاء وتعزيز الصمود في السياقات المجتمعية والاجتماعية في أماكن مثل غزة ولبنان.",
+        "learn": [
+          "كيف يمكننا خلق مساحات آمنة وإبداعية للأطفال الذين مرّوا بصدمات من خلال الدمى؟",
+          "ما القضايا الخاصة بغزة ولبنان التي يجب أخذها بعين الاعتبار وغالبًا ما يتم تجاهلها في الأبحاث الغربية؟",
+          "ما المهارات التي يحتاجها الميسرون الإبداعيون لضمان السلامة والرفاه النفسي للأطفال؟"
+        ],
+        "who": [
+          "المعالجون النفسيون",
+          "الفنانون والميسرون الإبداعيون",
+          "اختصاصيو الصحة النفسية العاملون مع الأطفال"
+        ],
+        "outcomes": [
+          "فهم أعمق للأدوات الإبداعية المستخدمة في التعافي من الصدمات",
+          "تأمل ثقافي في التحديات المحلية وممارسات الشفاء",
+          "تعزيز التعاون بين الفن وعلم النفس من أجل رفاه الأطفال"
+        ],
+        "facilitatorBio": "سوزان غروثويس هي فنانة وصانعة مسرح هولندية لديها خبرة واسعة في استخدام الأساليب الإبداعية لمعالجة الصدمات. عملت عن قرب مع مختصين في غزة في مشاريع تدعم الصمود النفسي للأطفال من خلال الفن والأداء. يركّز بحثها الحالي على كيفية تحويل الدمى إلى أداة علاجية وتعليمية، مع السعي لتطوير نموذج \"تدريب المدرّبين\" لتمكين الميسرين الذين يعملون مع الأطفال في بيئات الأزمات."
+      },
+      "english": {
+        "title": "Creative Puppetry for Healing: Working with Children in Gaza and Lebanon",
+        "format": "In-person at Reframe",
+        "facilitator": "Suzanne Groothuis – Artist & Theatre Maker",
+        "about": "Suzanne Groothuis is an artist and theatre maker from Holland who has collaborated for many years with artists and psychologists in Gaza who work with children. She will soon visit Beirut as part of her research on the use of puppets with children who have experienced trauma.\n\nThe goal of this session is to bring together psychotherapists and artists to share personal and professional experiences, ideas, and questions about how creative puppetry-making can support healing and resilience in communal and social contexts in places like Gaza and Lebanon.",
+        "learn": [
+          "How can we create safe, creative spaces for children who have experienced trauma through puppetry?",
+          "What specific issues need to be addressed in the context of Gaza and Lebanon that are often overlooked in Western research?",
+          "What skills do creative facilitators need to ensure safety and well-being for children?"
+        ],
+        "who": [
+          "What skills do creative facilitators need to ensure safety and well-being for children?",
+          "Artists and creative facilitators",
+          "Mental health professionals working with children",
+          "Community workers interested in creative expression"
+        ],
+        "outcomes": [
+          "Enhanced understanding of creative tools for trauma recovery",
+          "Cultural reflection on local challenges and healing practices",
+          "Collaboration between art and psychology for child well-being"
+        ],
+        "facilitatorBio": "Suzanne Groothuis is a Dutch artist and theatre maker with extensive experience in using creative methods to address trauma. She has worked closely with professionals in Gaza on projects supporting children’s emotional resilience through art and performance. Her current research explores how puppetry can become a healing and educational tool, aiming to develop a trainer-to-trainer model to empower facilitators working with children in crisis settings."
+      }
+    }
+  ]
 }
