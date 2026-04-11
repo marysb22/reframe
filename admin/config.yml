@@ -19,12 +19,6 @@ collections:
             widget: "list"
             summary: "{{fields.english.title}} / {{fields.arabic.title}}"
             fields:
-              - label: "Status"
-                name: "status"
-                widget: "select"
-                options: ["upcoming", "concluded"]
-                default: "upcoming"
-
               - label: "Date"
                 name: "date"
                 widget: "datetime"
@@ -39,6 +33,11 @@ collections:
                 widget: "string"
                 required: false
                 default: "#"
+
+              - label: "Fee"
+                name: "fee"
+                widget: "string"
+                required: false
 
               - label: "المحتوى العربي"
                 name: "arabic"
@@ -102,11 +101,6 @@ collections:
                     widget: "text"
                     required: false
 
-                  - label: "السعر"
-                    name: "fee"
-                    widget: "string"
-                    required: false
-
               - label: "English Content"
                 name: "english"
                 widget: "object"
@@ -167,9 +161,4 @@ collections:
                   - label: "Facilitator Bio"
                     name: "facilitatorBio"
                     widget: "text"
-                    required: false
-
-                  - label: "Fee"
-                    name: "fee"
-                    widget: "string"
                     required: false
