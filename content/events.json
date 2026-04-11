@@ -1,43 +1,25 @@
 {
   "events": [
     {
-      "register": "#",
       "status": "upcoming",
-      "date": "2026-04-11T14:00:00.000+03:00",
-      "image": "/assets/uploads/event3.webp",
+      "register": "#",
       "arabic": {
+        "facilitatorBio": "فس",
+        "title": "الصحة انفسية",
+        "format": "في",
+        "facilitator": "في",
+        "about": "في",
+        "fee": "100"
+      },
+      "date": "2026-04-11T14:45:00.000+03:00",
+      "image": "/assets/uploads/1-1-.webp",
+      "english": {
+        "title": "h",
         "format": "h",
         "facilitator": "h",
         "about": "h",
-        "learn": [
-          "h"
-        ],
-        "who": [
-          "h"
-        ],
-        "outcomes": [
-          "h"
-        ],
         "facilitatorBio": "h",
-        "fee": "100"
-      },
-      "english": {
-        "outcomes": [
-          "h"
-        ],
-        "learn": [
-          "h"
-        ],
-        "fee": "10",
-        "facilitator": "hi",
-        "about": "hi",
-        "translation": "arbic",
-        "format": "hi",
-        "title": "hi",
-        "facilitatorBio": "h",
-        "who": [
-          "h"
-        ]
+        "fee": "h"
       }
     }
   ]
