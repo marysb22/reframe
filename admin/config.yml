@@ -17,11 +17,13 @@ collections:
           - label: "Events"
             name: "events"
             widget: "list"
+            summary: "{{fields.english.title}} / {{fields.arabic.title}}"
             fields:
               - label: "Status"
                 name: "status"
                 widget: "select"
                 options: ["upcoming", "concluded"]
+                default: "upcoming"
 
               - label: "Date"
                 name: "date"
@@ -42,12 +44,12 @@ collections:
                 name: "arabic"
                 widget: "object"
                 fields:
-                  - { label: "Title", name: "title", widget: "string", required: false }
-                  - { label: "Format", name: "format", widget: "string", required: false }
-                  - { label: "Facilitator", name: "facilitator", widget: "string", required: false }
-                  - { label: "About", name: "about", widget: "text", required: false }
+                  - { label: "Title (Arabic)", name: "title", widget: "string", required: true }
+                  - { label: "Format (Arabic)", name: "format", widget: "string", required: false }
+                  - { label: "Facilitator (Arabic)", name: "facilitator", widget: "string", required: false }
+                  - { label: "About (Arabic)", name: "about", widget: "text", required: false }
 
-                  - label: "What You'll Learn"
+                  - label: "What You'll Learn (Arabic)"
                     name: "learn"
                     widget: "list"
                     required: false
@@ -58,7 +60,7 @@ collections:
                       name: "item"
                       widget: "string"
 
-                  - label: "Who Should Attend?"
+                  - label: "Who Should Attend? (Arabic)"
                     name: "who"
                     widget: "list"
                     required: false
@@ -69,7 +71,7 @@ collections:
                       name: "item"
                       widget: "string"
 
-                  - label: "Workshop Outcomes"
+                  - label: "Workshop Outcomes (Arabic)"
                     name: "outcomes"
                     widget: "list"
                     required: false
@@ -80,20 +82,19 @@ collections:
                       name: "item"
                       widget: "string"
 
-                  - { label: "Facilitator Bio", name: "facilitatorBio", widget: "text", required: false }
-                  - { label: "Fee", name: "fee", widget: "string", required: false }
-                  - { label: "Translation", name: "translation", widget: "string", required: false }
+                  - { label: "Facilitator Bio (Arabic)", name: "facilitatorBio", widget: "text", required: false }
+                  - { label: "Fee (Arabic)", name: "fee", widget: "string", required: false }
 
               - label: "English Content"
                 name: "english"
                 widget: "object"
                 fields:
-                  - { label: "Title", name: "title", widget: "string", required: false }
-                  - { label: "Format", name: "format", widget: "string", required: false }
-                  - { label: "Facilitator", name: "facilitator", widget: "string", required: false }
-                  - { label: "About", name: "about", widget: "text", required: false }
+                  - { label: "Title (English)", name: "title", widget: "string", required: true }
+                  - { label: "Format (English)", name: "format", widget: "string", required: false }
+                  - { label: "Facilitator (English)", name: "facilitator", widget: "string", required: false }
+                  - { label: "About (English)", name: "about", widget: "text", required: false }
 
-                  - label: "What You'll Learn"
+                  - label: "What You'll Learn (English)"
                     name: "learn"
                     widget: "list"
                     required: false
@@ -104,7 +105,7 @@ collections:
                       name: "item"
                       widget: "string"
 
-                  - label: "Who Should Attend?"
+                  - label: "Who Should Attend? (English)"
                     name: "who"
                     widget: "list"
                     required: false
@@ -115,7 +116,7 @@ collections:
                       name: "item"
                       widget: "string"
 
-                  - label: "Workshop Outcomes"
+                  - label: "Workshop Outcomes (English)"
                     name: "outcomes"
                     widget: "list"
                     required: false
@@ -126,6 +127,5 @@ collections:
                       name: "item"
                       widget: "string"
 
-                  - { label: "Facilitator Bio", name: "facilitatorBio", widget: "text", required: false }
-                  - { label: "Fee", name: "fee", widget: "string", required: false }
-                  - { label: "Translation", name: "translation", widget: "string", required: false }  
+                  - { label: "Facilitator Bio (English)", name: "facilitatorBio", widget: "text", required: false }
+                  - { label: "Fee (English)", name: "fee", widget: "string", required: false }  

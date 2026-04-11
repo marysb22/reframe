@@ -1510,135 +1510,29 @@ h1{text-align:center; margin-bottom:100px;}
   </div>
 </section>
 <script>
-
-document.addEventListener("DOMContentLoaded", () => {
-  const upcomingContainer = document.getElementById("cms-events");
-  const concludedContainer = document.getElementById("cms-events-concluded"); // (رح نعمله بالـ HTML تحت)
-
-  // Modal elements
-  const modal = document.getElementById('eventModal');
-  const modalImg = document.getElementById('modalImg');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalDate = document.getElementById('modalDate');
-  const modalFormat = document.getElementById('modalFormat');
-  const modalFacilitator = document.getElementById('modalFacilitator');
-  const modalAbout = document.getElementById('modalAbout');
-  const modalLearn = document.getElementById('modalLearn');
-  const modalWho = document.getElementById('modalWho');
-  const modalOutcomes = document.getElementById('modalOutcomes');
-  const modalFacilitatorBio = document.getElementById('modalFacilitatorBio');
-  const modalFee = document.getElementById('modalFee');
-  const modalRegister = document.getElementById('modalRegister');
-
-  // Register form modal
-  const registerModal = document.getElementById("registerModal");
-
-  let cmsEvents = [];
-
-  function safeArray(v) {
-    return Array.isArray(v) ? v : [];
-  }
-
-  function openDetails(event) {
-    modalImg.src = event.image || "";
-    modalTitle.textContent = event.title || "";
-
-    // date
-    const d = event.date ? new Date(event.date) : null;
-    modalDate.textContent = d && !isNaN(d) ? d.toLocaleString() : "";
-
-    modalFormat.textContent = event.format ? ("Format: " + event.format) : "";
-    modalFacilitator.textContent = event.facilitator ? ("Facilitator: " + event.facilitator) : "";
-    modalAbout.textContent = event.about || event.description || "";
-
-    // lists
-    modalLearn.innerHTML = "";
-    safeArray(event.learn).forEach(x => modalLearn.innerHTML += `<li>${x}</li>`);
-
-    modalWho.innerHTML = "";
-    safeArray(event.who).forEach(x => modalWho.innerHTML += `<li>${x}</li>`);
-
-    modalOutcomes.innerHTML = "";
-    safeArray(event.outcomes).forEach(x => modalOutcomes.innerHTML += `<li>${x}</li>`);
-
-    modalFacilitatorBio.textContent = event.facilitatorBio || "";
-    modalFee.textContent = event.fee ? ("Workshop Fee: " + event.fee) : "";
-
-    // Register behavior:
-    // - إذا register = "#" افتحي فورم التسجيل
-    // - إذا رابط حقيقي: افتحيه
-    modalRegister.onclick = (e) => {
-      e.preventDefault();
-      const link = (event.register || "#").trim();
-      if (link === "#" || link === "") {
-        registerModal.style.display = "block";
-      } else {
-        window.open(link, "_blank");
-      }
-    };
-
-    modal.style.display = "block";
-  }
-
-  function renderCard(event, container) {
-    const item = document.createElement("div");
-    item.className = "list-item";
-    item.innerHTML = `
-      <img src="${event.image || ''}" alt="${event.title || ''}">
-      <div class="list-item-body">
-        <h3>${event.title || ''}</h3>
-        <p>${event.date ? new Date(event.date).toDateString() : ''}</p>
-        <a class="view-btn">View Details</a>
-      </div>
-    `;
-
-    // click anywhere opens modal
-    item.addEventListener("click", () => openDetails(event));
-    container.appendChild(item);
-  }
-
- fetch("/content/events.json")
-  .then(res => res.json())
-    .then(data => {
-      cmsEvents = data.events || [];
-
-      if (upcomingContainer) upcomingContainer.innerHTML = "";
-      if (concludedContainer) concludedContainer.innerHTML = "";
-
-      cmsEvents.forEach(ev => {
-        if (ev.status === "upcoming") {
-          if (upcomingContainer) renderCard(ev, upcomingContainer);
-        } else if (ev.status === "concluded") {
-          if (concludedContainer) renderCard(ev, concludedContainer);
-        }
-      });
-    })
-    .catch(err => console.error("CMS events error:", err));
-
-  // modal close
-  document.querySelector('.modal-close').onclick = () => modal.style.display = "none";
-  document.getElementById('modalBack').onclick = () => modal.style.display = "none";
-  window.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
-});
-</script>
-<script>
 document.addEventListener("DOMContentLoaded", () => {
   const upcomingContainer = document.getElementById("cms-events");
   const concludedContainer = document.getElementById("cms-events-concluded");
 
-  const modal = document.getElementById('eventModal');
-  const modalImg = document.getElementById('modalImg');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalDate = document.getElementById('modalDate');
-  const modalFormat = document.getElementById('modalFormat');
-  const modalFacilitator = document.getElementById('modalFacilitator');
-  const modalAbout = document.getElementById('modalAbout');
-  const modalLearn = document.getElementById('modalLearn');
-  const modalWho = document.getElementById('modalWho');
-  const modalOutcomes = document.getElementById('modalOutcomes');
-  const modalFacilitatorBio = document.getElementById('modalFacilitatorBio');
-  const modalFee = document.getElementById('modalFee');
-  const modalRegister = document.getElementById('modalRegister');
+  const modal = document.getElementById("eventModal");
+  const modalImg = document.getElementById("modalImg");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalDate = document.getElementById("modalDate");
+  const modalFormat = document.getElementById("modalFormat");
+  const modalFacilitator = document.getElementById("modalFacilitator");
+  const modalAbout = document.getElementById("modalAbout");
+  const modalLearn = document.getElementById("modalLearn");
+  const modalWho = document.getElementById("modalWho");
+  const modalOutcomes = document.getElementById("modalOutcomes");
+  const modalFacilitatorBio = document.getElementById("modalFacilitatorBio");
+  const modalFee = document.getElementById("modalFee");
+  const modalRegister = document.getElementById("modalRegister");
+  const modalBack = document.getElementById("modalBack");
+
+  const modalLearnTitle = document.getElementById("modalLearnTitle");
+  const modalWhoTitle = document.getElementById("modalWhoTitle");
+  const modalOutcomesTitle = document.getElementById("modalOutcomesTitle");
+  const modalFacilitatorBioTitle = document.getElementById("modalFacilitatorBioTitle");
 
   const registerModal = document.getElementById("registerModal");
 
@@ -1652,20 +1546,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return document.documentElement.lang === "ar" ? "ar" : "en";
   }
 
-  function getValue(field) {
-    if (!field) return "";
-    if (typeof field === "string") return field;
-
+  function getEventContent(event) {
     const lang = getCurrentLang();
-    return field[lang] || field.en || field.ar || "";
-  }
-
-  function getList(field) {
-    if (!field) return [];
-    if (Array.isArray(field)) return field;
-
-    const lang = getCurrentLang();
-    return Array.isArray(field[lang]) ? field[lang] : [];
+    return lang === "ar" ? (event.arabic || {}) : (event.english || {});
   }
 
   function formatDate(dateString) {
@@ -1673,8 +1556,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const d = new Date(dateString);
     if (isNaN(d)) return "";
 
-    const lang = getCurrentLang() === "ar" ? "ar-LB" : "en-US";
-    return d.toLocaleString(lang, {
+    const locale = getCurrentLang() === "ar" ? "ar-LB" : "en-US";
+
+    return d.toLocaleString(locale, {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -1683,56 +1567,68 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function openDetails(event) {
-    modalImg.src = event.image || "";
-    modalImg.alt = getValue(event.title);
-
-    modalTitle.textContent = getValue(event.title);
-    modalDate.textContent = formatDate(event.date);
-
-    const formatText = getValue(event.format);
-    const facilitatorText = getValue(event.facilitator);
-    const aboutText = getValue(event.about);
-    const bioText = getValue(event.facilitatorBio);
-    const feeText = getValue(event.fee);
-
+  function setStaticModalLabels() {
     const isArabic = getCurrentLang() === "ar";
 
-    modalFormat.textContent = formatText
-      ? (isArabic ? "الصيغة: " + formatText : "Format: " + formatText)
+    modalLearnTitle.textContent = isArabic ? "ماذا ستتعلّم" : "What You’ll Learn";
+    modalWhoTitle.textContent = isArabic ? "من ينبغي أن يحضر؟" : "Who Should Attend?";
+    modalOutcomesTitle.textContent = isArabic ? "نتائج الورشة" : "Workshop Outcomes";
+    modalFacilitatorBioTitle.textContent = isArabic ? "عن المُيسّر" : "About the Facilitator";
+    modalRegister.textContent = isArabic ? "سجّل الآن" : "Register Now";
+    modalBack.textContent = isArabic ? "العودة إلى جميع الفعاليات" : "Back to All Events";
+  }
+
+  function openDetails(event) {
+    const content = getEventContent(event);
+    const isArabic = getCurrentLang() === "ar";
+
+    setStaticModalLabels();
+
+    modalImg.src = event.image || "";
+    modalImg.alt = content.title || "";
+
+    modalTitle.textContent = content.title || "";
+    modalDate.textContent = formatDate(event.date);
+
+    modalFormat.textContent = content.format
+      ? (isArabic ? "الصيغة: " + content.format : "Format: " + content.format)
       : "";
 
-    modalFacilitator.textContent = facilitatorText
-      ? (isArabic ? "الميسّر: " + facilitatorText : "Facilitator: " + facilitatorText)
+    modalFacilitator.textContent = content.facilitator
+      ? (isArabic ? "الميسّر: " + content.facilitator : "Facilitator: " + content.facilitator)
       : "";
 
-    modalAbout.textContent = aboutText || event.description || "";
+    modalAbout.textContent = content.about || "";
 
     modalLearn.innerHTML = "";
-    getList(event.learn).forEach(x => {
-      modalLearn.innerHTML += `<li>${x}</li>`;
+    safeArray(content.learn).forEach(item => {
+      modalLearn.innerHTML += `<li>${item}</li>`;
     });
 
     modalWho.innerHTML = "";
-    getList(event.who).forEach(x => {
-      modalWho.innerHTML += `<li>${x}</li>`;
+    safeArray(content.who).forEach(item => {
+      modalWho.innerHTML += `<li>${item}</li>`;
     });
 
     modalOutcomes.innerHTML = "";
-    getList(event.outcomes).forEach(x => {
-      modalOutcomes.innerHTML += `<li>${x}</li>`;
+    safeArray(content.outcomes).forEach(item => {
+      modalOutcomes.innerHTML += `<li>${item}</li>`;
     });
 
-    modalFacilitatorBio.textContent = bioText || "";
-    modalFee.textContent = feeText
-      ? (isArabic ? "رسوم الورشة: " + feeText : "Workshop Fee: " + feeText)
+    modalFacilitatorBio.textContent = content.facilitatorBio || "";
+
+    modalFee.textContent = content.fee
+      ? (isArabic ? "رسوم الورشة: " + content.fee : "Workshop Fee: " + content.fee)
       : "";
 
     modalRegister.onclick = (e) => {
       e.preventDefault();
       const link = (event.register || "#").trim();
+
       if (link === "#" || link === "") {
-        registerModal.style.display = "block";
+        if (registerModal) {
+          registerModal.style.display = "block";
+        }
       } else {
         window.open(link, "_blank");
       }
@@ -1742,15 +1638,18 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderCard(event, container) {
+    const content = getEventContent(event);
+    const isArabic = getCurrentLang() === "ar";
+
     const item = document.createElement("div");
     item.className = "list-item";
 
     item.innerHTML = `
-      <img src="${event.image || ''}" alt="${getValue(event.title)}">
+      <img src="${event.image || ""}" alt="${content.title || ""}">
       <div class="list-item-body">
-        <h3>${getValue(event.title)}</h3>
+        <h3>${content.title || ""}</h3>
         <p>${formatDate(event.date)}</p>
-        <a class="view-btn">${getCurrentLang() === "ar" ? "عرض التفاصيل" : "View Details"}</a>
+        <a class="view-btn">${isArabic ? "عرض التفاصيل" : "View Details"}</a>
       </div>
     `;
 
@@ -1758,32 +1657,50 @@ document.addEventListener("DOMContentLoaded", () => {
     container.appendChild(item);
   }
 
+  function renderEvents() {
+    if (upcomingContainer) upcomingContainer.innerHTML = "";
+    if (concludedContainer) concludedContainer.innerHTML = "";
+
+    cmsEvents.forEach(event => {
+      if (event.status === "upcoming") {
+        if (upcomingContainer) renderCard(event, upcomingContainer);
+      } else if (event.status === "concluded") {
+        if (concludedContainer) renderCard(event, concludedContainer);
+      }
+    });
+  }
+
   fetch("/content/events.json")
     .then(res => res.json())
     .then(data => {
-      cmsEvents = data.events || [];
-
-      if (upcomingContainer) upcomingContainer.innerHTML = "";
-      if (concludedContainer) concludedContainer.innerHTML = "";
-
-      cmsEvents.forEach(ev => {
-        if (ev.status === "upcoming") {
-          if (upcomingContainer) renderCard(ev, upcomingContainer);
-        } else if (ev.status === "concluded") {
-          if (concludedContainer) renderCard(ev, concludedContainer);
-        }
-      });
+      cmsEvents = Array.isArray(data.events) ? data.events : [];
+      renderEvents();
     })
     .catch(err => console.error("CMS events error:", err));
 
-  document.querySelector('.modal-close').onclick = () => modal.style.display = "none";
-  document.getElementById('modalBack').onclick = () => modal.style.display = "none";
+  document.querySelector(".modal-close").onclick = () => {
+    modal.style.display = "none";
+  };
+
+  modalBack.onclick = () => {
+    modal.style.display = "none";
+  };
+
   window.addEventListener("click", (e) => {
-    if (e.target === modal) modal.style.display = "none";
+    if (e.target === modal) {
+      modal.style.display = "none";
+    }
   });
+
+  window.addEventListener("languageChanged", () => {
+    renderEvents();
+    setStaticModalLabels();
+  });
+
+  setStaticModalLabels();
 });
 </script>
-
+    
 
 <section class="events-section">
   <div class="events-container">
@@ -1894,18 +1811,23 @@ document.addEventListener("DOMContentLoaded", () => {
       <p id="modalFormat"></p>
       <p id="modalFacilitator"></p>
       <p id="modalAbout"></p>
-      <h3>What You’ll Learn</h3>
-      <ul id="modalLearn"></ul>
-      <h3>Who Should Attend?</h3>
-      <ul id="modalWho"></ul>
-      <h3>Workshop Outcomes</h3>
-      <ul id="modalOutcomes"></ul>
-      <h3>About the Facilitator</h3>
-      <p id="modalFacilitatorBio"></p>
-      <p id="modalFee"></p>
-   <a href="#" class="view-btn" id="modalRegister">Register Now</a>
-<a class="back-btn" id="modalBack">Back to All Events</a>
 
+      <h3 id="modalLearnTitle">What You’ll Learn</h3>
+      <ul id="modalLearn"></ul>
+
+      <h3 id="modalWhoTitle">Who Should Attend?</h3>
+      <ul id="modalWho"></ul>
+
+      <h3 id="modalOutcomesTitle">Workshop Outcomes</h3>
+      <ul id="modalOutcomes"></ul>
+
+      <h3 id="modalFacilitatorBioTitle">About the Facilitator</h3>
+      <p id="modalFacilitatorBio"></p>
+
+      <p id="modalFee"></p>
+
+      <a href="#" class="view-btn" id="modalRegister">Register Now</a>
+      <a class="back-btn" id="modalBack">Back to All Events</a>
     </div>
   </div>
 </div>
