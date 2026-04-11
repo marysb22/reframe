@@ -100,6 +100,56 @@
         ],
         "facilitatorBio": "Suzanne Groothuis is a Dutch artist and theatre maker with extensive experience in using creative methods to address trauma. She has worked closely with professionals in Gaza on projects supporting children’s emotional resilience through art and performance. Her current research explores how puppetry can become a healing and educational tool, aiming to develop a trainer-to-trainer model to empower facilitators working with children in crisis settings."
       }
+    },
+    {
+      "register": "#",
+      "date": "2025-12-05T21:00:00.000+02:00",
+      "image": "/assets/uploads/evnet11.jpeg",
+      "fee": "400 USD",
+      "arabic": {
+        "title": "تدريب العلاج النفسي بين الأشخاص (IPT)",
+        "format": "حضوري في Reframe",
+        "facilitator": "بقيادة علي العطار – المدرب الرئيسي في IPT",
+        "about": "يمنح هذا التدريب اختصاصيي الصحة النفسية أدوات عملية قائمة على الأدلة للتعامل مع الاكتئاب والتحديات المرتبطة بالعلاقات من خلال إطار العلاج النفسي بين الأشخاص (IPT).\n\nسيتعرف المشاركون أيضًا إلى المجتمع المهني المرتبط بالجمعية الدولية للعلاج النفسي بين الأشخاص.\n\nإنه برنامج تدريبي منظم ومعتمد، صُمم لتطوير الخبرة السريرية وتعزيز الممارسة العلاجية المهنية.\n\nللمزيد من المعلومات يمكنكم التواصل على الرقم +961 70 839 473 أو زيارة www.reframemhs.com.",
+        "learn": [
+          "تطبيق تقنيات IPT مع المراجعين الذين يعانون من الاكتئاب وصعوبات العلاقات",
+          "اكتساب أدوات عملية لصياغة الحالة ووضع خطة التدخل",
+          "دمج أساليب IPT الحساسة ثقافيًا في العمل السريري اليومي"
+        ],
+        "who": [
+          "الأخصائيون النفسيون والمعالجون النفسيون والمرشدون",
+          "اختصاصيو الصحة النفسية الذين يبحثون عن تدريب متقدم قائم على الأدلة",
+          "طلاب الدراسات العليا في علم النفس السريري والإرشادي"
+        ],
+        "facilitatorBio": "علي العطار هو مدرب ومشرف معتمد في العلاج النفسي بين الأشخاص (IPT)، ويتمتع بخبرة واسعة في التدريب السريري والإشراف المهني في مختلف أنحاء الشرق الأوسط.",
+        "outcomes": [
+          "تعزيز القدرة على تطبيق IPT في سياقات متنوعة",
+          "تعزيز القدرة على تطبيق IPT في سياقات متنوعة",
+          "توسيع شبكة العلاقات المهنية مع مختصين دوليين في IPT"
+        ]
+      },
+      "english": {
+        "title": "Interpersonal Psychotherapy Training (IPT)",
+        "format": "In-person at Reframe",
+        "facilitator": "Led by Ali El Attar – IPT Main Trainer",
+        "about": "This training equips mental health professionals with practical, evidence-based tools to address depression and interpersonal challenges through the IPT framework.\n\nParticipants will connect with the International Society of IPT.\n\nA certified and structured program designed to advance clinical expertise and strengthen therapeutic practice.\n\nFor more information contact us at +961 70 839 473 or visit www.reframemhs.com.",
+        "learn": [
+          "This training equips mental health professionals with practical, evidence-based tools to address depression and interpersonal challenges through the IPT framework.  Participants will connect with the International Society of IPT.  A certified and structured program designed to advance clinical expertise and strengthen therapeutic practice.  For more information contact us at +961 70 839 473 or visit www.reframemhs.com.",
+          "This training equips mental health professionals with practical, evidence-based tools to address depression and interpersonal challenges through the IPT framework.  Participants will connect with the International Society of IPT.  A certified and structured program designed to advance clinical expertise and strengthen therapeutic practice.  For more information contact us at +961 70 839 473 or visit www.reframemhs.com.",
+          "Integrate culturally sensitive IPT methods into daily clinical work"
+        ],
+        "who": [
+          "Psychologists, psychotherapists, and counselors",
+          "Mental health professionals seeking advanced evidence-based training",
+          "Graduate students in clinical and counseling psychology"
+        ],
+        "outcomes": [
+          "Enhanced ability to apply IPT in diverse contexts",
+          "Certification-oriented professional development linked to the International Society of IPT",
+          "Expanded network with international IPT professionals"
+        ],
+        "facilitatorBio": "Ali El Attar is a certified IPT Trainer and Supervisor with extensive experience providing clinical training and supervision across the Middle East."
+      }
     }
   ]
 }
