@@ -39,57 +39,99 @@ collections:
                 widget: "string"
                 required: false
                 default: "#"
-- label: "المحتوى العربي"
-  name: "arabic"
-  widget: "object"
-  fields:
-    - { label: "العنوان", name: "title", widget: "string", required: true }
-    - { label: "الصيغة", name: "format", widget: "string", required: false }
-    - { label: "الميسّر", name: "facilitator", widget: "string", required: false }
-    - { label: "الوصف", name: "about", widget: "text", required: false }
 
-    - label: "ماذا ستتعلّم"
-      name: "learn"
-      widget: "list"
-      required: false
-      allow_add: true
-      field:
-        label: "أضف نقطة"
-        name: "item"
-        widget: "string"
+              - label: "المحتوى العربي"
+                name: "arabic"
+                widget: "object"
+                fields:
+                  - label: "العنوان"
+                    name: "title"
+                    widget: "string"
+                    required: true
 
-    - label: "من ينبغي أن يحضر؟"
-      name: "who"
-      widget: "list"
-      required: false
-      allow_add: true
-      field:
-        label: "أضف فئة"
-        name: "item"
-        widget: "string"
+                  - label: "الصيغة"
+                    name: "format"
+                    widget: "string"
+                    required: false
 
-    - label: "نتائج الورشة"
-      name: "outcomes"
-      widget: "list"
-      required: false
-      allow_add: true
-      field:
-        label: "أضف نتيجة"
-        name: "item"
-        widget: "string"
+                  - label: "الميسّر"
+                    name: "facilitator"
+                    widget: "string"
+                    required: false
 
-    - { label: "نبذة عن الميسّر", name: "facilitatorBio", widget: "text", required: false }
-    - { label: "السعر", name: "fee", widget: "string", required: false }
+                  - label: "الوصف"
+                    name: "about"
+                    widget: "text"
+                    required: false
+
+                  - label: "ماذا ستتعلّم"
+                    name: "learn"
+                    widget: "list"
+                    required: false
+                    allow_add: true
+                    collapsed: false
+                    field:
+                      label: "أضف نقطة"
+                      name: "item"
+                      widget: "string"
+
+                  - label: "من ينبغي أن يحضر؟"
+                    name: "who"
+                    widget: "list"
+                    required: false
+                    allow_add: true
+                    collapsed: false
+                    field:
+                      label: "أضف فئة"
+                      name: "item"
+                      widget: "string"
+
+                  - label: "نتائج الورشة"
+                    name: "outcomes"
+                    widget: "list"
+                    required: false
+                    allow_add: true
+                    collapsed: false
+                    field:
+                      label: "أضف نتيجة"
+                      name: "item"
+                      widget: "string"
+
+                  - label: "نبذة عن الميسّر"
+                    name: "facilitatorBio"
+                    widget: "text"
+                    required: false
+
+                  - label: "السعر"
+                    name: "fee"
+                    widget: "string"
+                    required: false
+
               - label: "English Content"
                 name: "english"
                 widget: "object"
                 fields:
-                  - { label: "Title (English)", name: "title", widget: "string", required: true }
-                  - { label: "Format (English)", name: "format", widget: "string", required: false }
-                  - { label: "Facilitator (English)", name: "facilitator", widget: "string", required: false }
-                  - { label: "About (English)", name: "about", widget: "text", required: false }
+                  - label: "Title"
+                    name: "title"
+                    widget: "string"
+                    required: true
 
-                  - label: "What You'll Learn (English)"
+                  - label: "Format"
+                    name: "format"
+                    widget: "string"
+                    required: false
+
+                  - label: "Facilitator"
+                    name: "facilitator"
+                    widget: "string"
+                    required: false
+
+                  - label: "About"
+                    name: "about"
+                    widget: "text"
+                    required: false
+
+                  - label: "What You'll Learn"
                     name: "learn"
                     widget: "list"
                     required: false
@@ -100,7 +142,7 @@ collections:
                       name: "item"
                       widget: "string"
 
-                  - label: "Who Should Attend? (English)"
+                  - label: "Who Should Attend?"
                     name: "who"
                     widget: "list"
                     required: false
@@ -111,7 +153,7 @@ collections:
                       name: "item"
                       widget: "string"
 
-                  - label: "Workshop Outcomes (English)"
+                  - label: "Workshop Outcomes"
                     name: "outcomes"
                     widget: "list"
                     required: false
@@ -122,5 +164,12 @@ collections:
                       name: "item"
                       widget: "string"
 
-                  - { label: "Facilitator Bio (English)", name: "facilitatorBio", widget: "text", required: false }
-                  - { label: "Fee (English)", name: "fee", widget: "string", required: false }  
+                  - label: "Facilitator Bio"
+                    name: "facilitatorBio"
+                    widget: "text"
+                    required: false
+
+                  - label: "Fee"
+                    name: "fee"
+                    widget: "string"
+                    required: false
