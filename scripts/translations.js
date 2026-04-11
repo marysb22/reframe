@@ -369,10 +369,8 @@ hub_cta_btn: "Book Now",
     plan_text: "Reframe’s vision for 2025-2030 rests on three pillars: systemic therapy leadership, the Work-Well Seal for mentally healthy workplaces, and culturally adapted programmes based on annual needs assessments. These efforts aim to strengthen mental health services across the MENA region and empower communities to thrive despite complex challenges.",
     plan_view_btn: "View Full Plan",
 
-    // ===== CALENDAR =====
-    calendar_title: "Upcoming Events",
-    calendar_subtitle: "Join our professional development programs and workshops",
-    calendar_month: "July 2025",
+
+  
     calendar_view_all: "View All Events",
     calendar_this_month: "This Month's Events",
     calendar_event1_title: "Peacebuilding & Psychosocial Support",
@@ -405,6 +403,8 @@ hub_cta_btn: "Book Now",
 
 
     // ===== PARTNERS =====
+
+  
     partners_title: "Our Partners & Collaborations",
     partners_subtitle: "Building stronger communities through strategic partnerships",
 
@@ -829,8 +829,7 @@ timeline_title: "الجدول الزمني لقصتنا",
     plan_view_btn: "عرض الخطة كاملة",
 
     // ===== CALENDAR =====
-    calendar_title: "الفعاليات القادمة",
-    calendar_subtitle: "انضم إلى برامجنا وورشات التطوير المهني",
+ 
     calendar_month: "يوليو 2025",
     calendar_view_all: "عرض جميع الفعاليات",
     calendar_this_month: "فعاليات هذا الشهر",

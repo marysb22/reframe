@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
      <script src="https://unpkg.com/netlify-cms@^2.10.192/dist/netlify-cms.js"></script>
- 
+ <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 <!-- ===== Register Form Modal ===== -->
@@ -405,105 +405,213 @@ document.addEventListener("DOMContentLoaded", () => {
   background: linear-gradient(to top, rgba(15, 23, 42, 0.10), rgba(15, 23, 42, 0.02));
   z-index: 1;
 }
+/* ===== GLOBAL FONT ===== */
+body {
+  font-family: 'Poppins', 'Inter', sans-serif;
+}
 
-/* ===== Arabic mode ===== */
+/* ===== ARABIC ===== */
+html[lang="ar"], 
+html[dir="rtl"] {
+  font-family: 'Cairo', sans-serif;
+}
+
+/* ===== TITLE ===== */
+.modal-body h2 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #0f172a;
+}
+
+/* Arabic title */
+html[lang="ar"] .modal-body h2,
+html[dir="rtl"] .modal-body h2 {
+  font-family: 'Cairo', sans-serif;
+  font-size: 2.6rem;
+  line-height: 1.5;
+  font-weight: 800;
+}
+
+/* ===== TEXT ===== */
+.modal-body p,
+.modal-body li {
+  font-size: 1.15rem;
+  line-height: 1.9;
+  color: #334155;
+}
+
+/* Arabic text */
+html[lang="ar"] .modal-body p,
+html[lang="ar"] .modal-body li,
+html[dir="rtl"] .modal-body p,
+html[dir="rtl"] .modal-body li {
+  font-family: 'Cairo', sans-serif;
+  font-size: 1.2rem;
+  line-height: 2;
+}
+
+/* ===== SUB TITLES ===== */
+.modal-body h3 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #166534;
+}
+
+/* Arabic subtitle */
+html[lang="ar"] .modal-body h3,
+html[dir="rtl"] .modal-body h3 {
+  font-family: 'Cairo', sans-serif;
+  font-size: 1.5rem;
+}
+/* =========================
+   CALENDAR TOP AREA
+========================= */
+.calendar-section {
+  text-align: center;
+}
+
+.calendar-topbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 24px 0 30px;
+}
+
+.calendar-title-side,
+.calendar-controls-side {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Month title */
+.calendar-title {
+  margin: 0;
+  text-align: center;
+  color: #0f172a;
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-size: clamp(2.2rem, 4.5vw, 4.3rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+/* Subtitle */
+.calendar-subtitle {
+  margin: 0;
+  text-align: center;
+  color: #334155;
+  font-size: 1.2rem;
+  line-height: 1.8;
+  max-width: 760px;
+}
+
+/* Nav */
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 0;
+}
+
+/* Arabic centered professionally */
 html[lang="ar"] .calendar-topbar,
 html[dir="rtl"] .calendar-topbar {
-  flex-direction: row-reverse;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+html[lang="ar"] .calendar-title-side,
+html[dir="rtl"] .calendar-title-side,
+html[lang="ar"] .calendar-controls-side,
+html[dir="rtl"] .calendar-controls-side {
+  align-items: center;
+  justify-content: center;
 }
 
 html[lang="ar"] .calendar-title,
 html[dir="rtl"] .calendar-title {
-  text-align: right;
-  font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
+  text-align: center;
+  direction: rtl;
+  font-family: 'Cairo', 'Noto Sans Arabic', sans-serif;
+  font-size: clamp(2.4rem, 5vw, 4.6rem);
+  font-weight: 800;
   line-height: 1.35;
+  letter-spacing: 0;
+}
+
+html[lang="ar"] .calendar-subtitle,
+html[dir="rtl"] .calendar-subtitle {
+  text-align: center;
+  direction: rtl;
+  font-family: 'Cairo', 'Noto Sans Arabic', sans-serif;
+  font-size: 1.28rem;
+  line-height: 2;
+  max-width: 820px;
 }
 
 html[lang="ar"] .calendar-nav,
 html[dir="rtl"] .calendar-nav {
-  flex-direction: row-reverse;
+  flex-direction: row;
+  justify-content: center;
 }
 
-html[lang="ar"] .calendar-header,
-html[dir="rtl"] .calendar-header,
-html[lang="ar"] .calendar-body,
-html[dir="rtl"] .calendar-body {
-  direction: rtl;
+/* Month / weekday cells */
+.calendar-header-cell {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 html[lang="ar"] .calendar-header-cell,
 html[dir="rtl"] .calendar-header-cell {
-  font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
+  font-family: 'Cairo', 'Noto Sans Arabic', sans-serif;
+  font-size: 1.08rem;
+  font-weight: 800;
+  text-align: center;
 }
 
-html[lang="ar"] .calendar-day,
-html[dir="rtl"] .calendar-day {
-  direction: rtl;
-}
-
-html[lang="ar"] .calendar-day .day-number,
-html[dir="rtl"] .calendar-day .day-number {
-  right: auto;
-  left: 8px;
-}
-
-@media (max-width: 992px) {
-  .calendar-body {
-    grid-auto-rows: 125px;
-  }
-}
-
+/* Mobile */
 @media (max-width: 768px) {
-  .calendar-topbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
+  .calendar-title {
+    font-size: 2.1rem;
   }
 
-  html[lang="ar"] .calendar-topbar,
-  html[dir="rtl"] .calendar-topbar {
-    flex-direction: column;
+  .calendar-subtitle {
+    font-size: 1rem;
+    max-width: 95%;
   }
 
-  .calendar-title,
   html[lang="ar"] .calendar-title,
   html[dir="rtl"] .calendar-title {
-    text-align: center;
+    font-size: 2.35rem;
   }
 
-  .calendar-nav {
-    justify-content: center;
-  }
-
-  .calendar-body {
-    grid-auto-rows: 90px;
+  html[lang="ar"] .calendar-subtitle,
+  html[dir="rtl"] .calendar-subtitle {
+    font-size: 1.08rem;
+    max-width: 95%;
   }
 
   .calendar-header-cell {
-    font-size: 0.8rem;
-    padding: 10px 4px;
+    font-size: 0.82rem;
   }
 
-  .calendar-day .day-number {
-    top: 6px;
-    right: 6px;
-    min-width: 24px;
-    height: 24px;
-    font-size: 0.72rem;
-  }
-
-  html[lang="ar"] .calendar-day .day-number,
-  html[dir="rtl"] .calendar-day .day-number {
-    right: auto;
-    left: 6px;
-  }
-
-  .calendar-arrow {
-    width: 40px;
-    height: 40px;
+  html[lang="ar"] .calendar-header-cell,
+  html[dir="rtl"] .calendar-header-cell {
+    font-size: 0.88rem;
   }
 }
+
 </style>
+
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
   const calendarTitle = document.getElementById("calendar-title");
@@ -1667,7 +1775,65 @@ h1{text-align:center; margin-bottom:100px;}
       
   
 
+/* ===== GLOBAL FONT ===== */
+body {
+  font-family: 'Poppins', 'Inter', sans-serif;
+}
 
+/* ===== ARABIC ===== */
+html[lang="ar"], 
+html[dir="rtl"] {
+  font-family: 'Cairo', sans-serif;
+}
+
+/* ===== TITLE ===== */
+.modal-body h2 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #0f172a;
+}
+
+/* Arabic title */
+html[lang="ar"] .modal-body h2,
+html[dir="rtl"] .modal-body h2 {
+  font-family: 'Cairo', sans-serif;
+  font-size: 2.6rem;
+  line-height: 1.5;
+  font-weight: 800;
+}
+
+/* ===== TEXT ===== */
+.modal-body p,
+.modal-body li {
+  font-size: 1.15rem;
+  line-height: 1.9;
+  color: #334155;
+}
+
+/* Arabic text */
+html[lang="ar"] .modal-body p,
+html[lang="ar"] .modal-body li,
+html[dir="rtl"] .modal-body p,
+html[dir="rtl"] .modal-body li {
+  font-family: 'Cairo', sans-serif;
+  font-size: 1.2rem;
+  line-height: 2;
+}
+
+/* ===== SUB TITLES ===== */
+.modal-body h3 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #166534;
+}
+
+/* Arabic subtitle */
+html[lang="ar"] .modal-body h3,
+html[dir="rtl"] .modal-body h3 {
+  font-family: 'Cairo', sans-serif;
+  font-size: 1.5rem;
+}
 </style>
 <section class="training-services">
   <div class="section-header">
@@ -2031,98 +2197,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
 
     <div class="list-events">
-      <div class="list-item" data-event="event1">
-        <img src="Evnet1.webp" alt="Event 1">
-        <div class="list-item-body">
-          <h3>The Invisible Weight</h3>
-          <p>Wednesday, July 30, 2025</p>
-          <a class="view-btn">View Details</a>
-        </div>
-      </div>
-
-      <div class="list-item" data-event="event2">
-        <img src="Evnet2.webp" alt="Event 2">
-        <div class="list-item-body">
-          <h3>Peacebuilding & Psychosocial Support</h3>
-          <p>Thursday, July 3, 2025</p>
-          <a class="view-btn">View Details</a>
-        </div>
-      </div>
-
-      <div class="list-item" data-event="event3">
-        <img src="Evnet3.webp" alt="Event 3">
-        <div class="list-item-body">
-          <h3>Staff Care Toolkit</h3>
-          <p>Tuesday, June 24, 2025</p>
-          <a class="view-btn">View Details</a>
-        </div>
-      </div>
-
-      <div class="list-item" data-event="event4">
-        <img src="Evnet4.webp" alt="Event 4">
-        <div class="list-item-body">
-          <h3>Beyond Post-Traumatic Stress</h3>
-          <p>Thursday, May 29, 2025</p>
-          <a class="view-btn">View Details</a>
-        </div>
-      </div>
-
-      <div class="list-item" data-event="event5">
-        <img src="Evnet6.jpeg" alt="Event 5">
-        <div class="list-item-body">
-          <h3>Bedwetting Care</h3>
-          <p>Monday, May 26, 2025</p>
-          <a class="view-btn">View Details</a>
-        </div>
-      </div>
-
-      <div class="list-item" data-event="event6">
-        <img src="Evnet5.jpeg" alt="Event 6">
-        <div class="list-item-body">
-          <h3>Beyond Post-Traumatic Stress (In-person)</h3>
-          <p>May 22 & 24, 2025</p>
-          <a class="view-btn">View Details</a>
-        </div>
-      </div>
-
-      <div class="list-item" data-event="event7">
-        <img src="Evnet7.webp" alt="Event 7">
-        <div class="list-item-body">
-          <h3>How Dietitians Can Support Clients</h3>
-          <p>Saturday, May 3, 2025</p>
-          <a class="view-btn">View Details</a>
-        </div>
-      </div>
-
-      <div class="list-item" data-event="event8">
-        <img src="Evnet9.webp" alt="Event 8">
-        <div class="list-item-body">
-          <h3>Peacebuilding with Psychosocial Support</h3>
-          <p>Thursday, May 1, 2025</p>
-          <a class="view-btn">View Details</a>
-        </div>
-      </div>
-
-      <div class="list-item" data-event="event9">
-        <img src="Evnet8.webp" alt="Event 9">
-        <div class="list-item-body">
-          <h3>Adapting and Implementing IPT</h3>
-          <p>Monday, April 28, 2025</p>
-          <a class="view-btn">View Details</a>
-        </div>
-      </div>
-      
-      <div class="list-item" data-event="event10">
-        <img src="Evnet10.jpeg" alt="Event 10">
-        <div class="list-item-body">
-          <h3>Creative Puppetry for Healing: Working with Children in Gaza and Lebanon</h3>
-          <p>Saturday, August 16, 2025 | 9:30 AM – 11:30 AM Beirut Time</p>
-          <a class="view-btn">View Details</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+    
 
 <!-- ==== MODAL ==== -->
 <div id="eventModal" class="modal">
@@ -2155,466 +2230,302 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>
   </div>
 </div>
+<section class="events-section">
+  <div class="events-container">
+    <div class="list-events" id="cms-events"></div>
+  </div>
+</section>
+
+<!-- ==== MODAL ==== -->
+<div id="eventModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close">&times;</span>
+    <img src="" alt="Event Image" id="modalImg">
+
+    <div class="modal-body">
+      <h2 id="modalTitle"></h2>
+      <p id="modalDate"></p>
+      <p id="modalFormat"></p>
+      <p id="modalFacilitator"></p>
+      <p id="modalAbout"></p>
+
+      <section id="modalLearnSection">
+        <h3 id="modalLearnTitle">What You’ll Learn</h3>
+        <ul id="modalLearn"></ul>
+      </section>
+
+      <section id="modalWhoSection">
+        <h3 id="modalWhoTitle">Who Should Attend?</h3>
+        <ul id="modalWho"></ul>
+      </section>
+
+      <section id="modalOutcomesSection">
+        <h3 id="modalOutcomesTitle">Workshop Outcomes</h3>
+        <ul id="modalOutcomes"></ul>
+      </section>
+
+      <section id="modalFacilitatorBioSection">
+        <h3 id="modalFacilitatorBioTitle">About the Facilitator</h3>
+        <p id="modalFacilitatorBio"></p>
+      </section>
+
+      <p id="modalFee"></p>
+
+      <div class="modal-buttons">
+        <a href="#" class="view-btn" id="modalRegister">Register Now</a>
+        <a href="#" class="back-btn" id="modalBack">Back to All Events</a>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-const events = {
+document.addEventListener("DOMContentLoaded", () => {
+  const eventsContainer = document.getElementById("cms-events");
 
-  event11: {
-  img: "evnet11.jpeg",
-   title: "Interpersonal Psychotherapy Training (IPT)",
-  date: "December 2025 | Dates: 5 • 6 • 12 • 13  |  4 full days  |  400 USD",
-  format: "In-person at Reframe",
-  facilitator: "Led by Ali El Attar – IPT Main Trainer",
-  about: `This training equips mental health professionals with practical, evidence-based tools 
-  to address depression and interpersonal challenges through the IPT framework.
-  Participants will connect with the International Society of IPT.
-  A certified and structured program designed to advance clinical expertise and strengthen therapeutic practice.
-  For more information contact us at +961 70 839 473 or visit www.reframemhs.com.`,
-  learn: [
-    "Apply IPT techniques with clients experiencing depression and relational difficulties.",
-    "Gain hands-on tools for case formulation and intervention planning.",
-    "Integrate culturally sensitive IPT methods into daily clinical work."
-  ],
-  who: [
-    "Psychologists, psychotherapists, and counselors.",
-    "Mental health professionals seeking advanced evidence-based training.",
-    "Graduate students in clinical and counseling psychology."
-  ],
-  outcomes: [
-    "Enhanced ability to apply IPT in diverse contexts.",
-    "Certification endorsed by the International Society of IPT.",
-    "Expanded network with international IPT professionals."
-  ],
-  facilitatorBio: `Ali El Attar is a certified IPT Trainer and Supervisor with extensive experience
-  providing clinical training and supervision across the Middle East.`,
-  fee: "Workshop Fee: 400 USD (4 full days)",
-  register: "#"
-},
+  const modal = document.getElementById("eventModal");
+  const modalImg = document.getElementById("modalImg");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalDate = document.getElementById("modalDate");
+  const modalFormat = document.getElementById("modalFormat");
+  const modalFacilitator = document.getElementById("modalFacilitator");
+  const modalAbout = document.getElementById("modalAbout");
+  const modalLearn = document.getElementById("modalLearn");
+  const modalWho = document.getElementById("modalWho");
+  const modalOutcomes = document.getElementById("modalOutcomes");
+  const modalFacilitatorBio = document.getElementById("modalFacilitatorBio");
+  const modalFee = document.getElementById("modalFee");
+  const modalRegister = document.getElementById("modalRegister");
+  const modalBack = document.getElementById("modalBack");
 
- event1: {
-  img: "Evnet1.webp",
-  title: "The Invisible Weight: Foundations of Eating Disorder Care for Dietitians",
-  date: "Wednesday, July 30, 2025 | 8:00 PM – 9:00 PM Beirut Time",
-  format: "Zoom Link via Reframe",
-  facilitator: "Dr. Tala Abdallah",
-  about: `As a dietitian, you may be one of the first, and sometimes the only, professionals clients struggling with disordered eating turn to. 
-Yet many in the field receive limited training on how to recognize, support, or refer those navigating eating disorders. 
-This workshop is designed to bridge that gap.
+  const modalLearnTitle = document.getElementById("modalLearnTitle");
+  const modalWhoTitle = document.getElementById("modalWhoTitle");
+  const modalOutcomesTitle = document.getElementById("modalOutcomesTitle");
+  const modalFacilitatorBioTitle = document.getElementById("modalFacilitatorBioTitle");
 
-Led by Dr. Tala Abdallah, a UK-licensed Clinical Psychologist and Lebanese-licensed Dietitian, this training offers a practical foundation in eating disorder care, with a focus on providing sensitive, psychologically-informed support in a post-pandemic, body-conscious world.
+  const modalLearnSection = document.getElementById("modalLearnSection");
+  const modalWhoSection = document.getElementById("modalWhoSection");
+  const modalOutcomesSection = document.getElementById("modalOutcomesSection");
+  const modalFacilitatorBioSection = document.getElementById("modalFacilitatorBioSection");
 
-This isn’t just a workshop, it’s a call to elevate the standard of care in dietetics and empower dietitians to confidently meet the growing mental health needs of their clients.`,
-  
-  learn: [
-    "Recognize signs of disordered eating and understand when and how to refer to mental health professionals.",
-    "Clarify your role as a dietitian in the eating disorder treatment process.",
-    "Gain an overview of screening, assessment, and intervention techniques used in eating disorder care."
-  ],
+  const registerModal = document.getElementById("registerModal");
+  const closeBtn = document.querySelector(".modal-close");
 
-  who: [
-    "Registered Dietitians.",
-    "Nutritionists.",
-    "Dietetic Students.",
-    "Health professionals working in clinical or outpatient nutrition settings."
-  ],
+  if (!eventsContainer || !modal) return;
 
-  outcomes: [
-    "Increased confidence in supporting clients with disordered eating.",
-    "A clearer understanding of how to navigate conversations around food and body image.",
-    "Practical tools to provide compassionate, non-harmful care."
-  ],
+  let cmsEvents = [];
 
-  facilitatorBio: `Dr. Tala Abdallah is a UK-licensed Clinical Psychologist and Lebanese-licensed Dietitian with over a decade of experience across psychology and nutrition. 
-She holds a Doctorate in Clinical Psychology and a Master’s in Health Psychology from University College London, alongside dual Bachelor’s degrees in Nutrition & Dietetics and Psychology from the American University of Beirut.
+  function safeArray(value) {
+    return Array.isArray(value) ? value : [];
+  }
 
-Her clinical experience spans the UK’s NHS and private settings in London and Beirut. She specializes in eating disorders, body image, anxiety, and self-worth, working with clients from diverse cultural backgrounds.
+  function getCurrentLang() {
+    const lang = (document.documentElement.lang || "en").toLowerCase();
+    return lang.startsWith("ar") ? "ar" : "en";
+  }
 
-Tala is the founder of Ginger & Walnut, a practice blending gut and mental health for holistic healing. Through her work, she aims to make compassionate, evidence-based care more accessible, especially for Arab and expat communities.
+  function isArabic() {
+    return getCurrentLang() === "ar";
+  }
 
-She delivers trainings and psychoeducational workshops for health professionals across Lebanon, focusing on eating disorder awareness, culturally informed care, and capacity building. Therapy is offered in English, Arabic, and French.`,
+  function getEventContent(event) {
+    return isArabic() ? (event.arabic || {}) : (event.english || {});
+  }
 
-  fee: "Workshop Fee: Starting $20 contribution",
-  register: "#"
-},
+  function formatDate(dateString) {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "";
 
-event2: {
-  img: "Evnet2.webp",
-  title: "Peacebuilding and Psychosocial Support for Children: A Practical Toolkit",
-  date: "Thursday, July 3, 2025 | 8:00 PM – 10:00 PM Beirut Time",
-  format: "Online",
-  facilitator: "May Aoun and Oussama Safa",
-  about: `Peacebuilding and Psychosocial Support for Children: A Practical Toolkit Workshop with Oussama Safa and May Aoun.
+    return d.toLocaleString(isArabic() ? "ar-LB" : "en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
 
-This workshop will take a deep dive into the connection between peacebuilding and psychosocial support by introducing a groundbreaking intervention toolkit developed for that purpose.`,
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
 
-  learn: [
-    "Develop an understanding of the intersection between peacebuilding, non-violent approaches, and psychosocial support (PSS).",
-    "Explore an innovative intervention toolkit designed for children, and appreciate the role of storytelling and experiential learning in child learning.",
-    "Recognize the importance of integrating essential life skills—such as peacebuilding and psychosocial support—at an early age."
-  ],
+  function setModalLabels() {
+    if (isArabic()) {
+      modalLearnTitle.textContent = "ماذا ستتعلّم";
+      modalWhoTitle.textContent = "من ينبغي أن يحضر؟";
+      modalOutcomesTitle.textContent = "نتائج الورشة";
+      modalFacilitatorBioTitle.textContent = "نبذة عن الميسّر";
+      modalRegister.textContent = "سجّل الآن";
+      modalBack.textContent = "العودة إلى جميع الفعاليات";
+    } else {
+      modalLearnTitle.textContent = "What You'll Learn";
+      modalWhoTitle.textContent = "Who Should Attend?";
+      modalOutcomesTitle.textContent = "Workshop Outcomes";
+      modalFacilitatorBioTitle.textContent = "Facilitator Bio";
+      modalRegister.textContent = "Register Now";
+      modalBack.textContent = "Back to All Events";
+    }
+  }
 
-  who: [
-    "Psychosocial support (PSS) specialists, officers, and facilitators.",
-    "Conflict resolution practitioners.",
-    "Professionals in the NGO and humanitarian sectors working with children, either directly or indirectly.",
-    "Members of the general public with an interest in child-focused interventions."
-  ],
+  function fillList(listElement, items) {
+    listElement.innerHTML = "";
+    safeArray(items).forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      listElement.appendChild(li);
+    });
+  }
 
-  outcomes: [
-    "Increased confidence in supporting clients with disordered eating.",
-    "A clearer understanding of how to navigate conversations around food and body image.",
-    "Practical tools to provide compassionate, non-harmful care."
-  ],
+  function toggleSection(section, show) {
+    if (section) {
+      section.style.display = show ? "block" : "none";
+    }
+  }
 
-  facilitatorBio: `This event will be recorded and you can use the ticket function to pre-purchase the recording before the event. 
-This will be useful for colleagues who are not able to attend the event live and also for those who attend the event live and want to watch it again.
+  function openDetails(event) {
+    const content = getEventContent(event);
 
-This event will be hosted on the Zoom meeting platform where we will use our cameras and microphones to interact with each other as a group.`,
+    setModalLabels();
 
-  fee: "Workshop Fee: Starting $20 contribution",
-  register: "#"
-},
+    modalImg.src = event.image || "";
+    modalImg.alt = content.title || "";
 
+    modalTitle.textContent = content.title || "";
+    modalDate.textContent = formatDate(event.date);
 
-  event3: {
-    img: "Evnet3.webp",
-    title: "Staff Care Toolkit: Mediator, Symbol, and Story Methods for Conflict Zones",
-    date: "Tuesday, June 24, 2025 | 8:00 PM – 10:00 PM Beirut Time",
-    format: "Live Online Session via Onlinevents",
-    facilitator: "Ali El Attar",
-    about: `In regions affected by war and instability, staff and frontline professionals are often left without adequate tools to process their own experiences while supporting others. This online workshop offers an integrative approach rooted in mediation, symbolic expression, and narrative techniques.`,
-    learn: [
-      "Apply mediators, third objects, and expressive methods to facilitate safe communication in high-risk environments.",
-      "Use stories and proverbs as catalysts for transformation.",
-      "Practice field-tested staff care exercises: Dixsyst, The Table, and The Anchor."
-    ],
-    who: ["Psychologists", "Counselors", "Staff care consultants", "HR professionals"],
-    outcomes: [
-      "Fresh perspectives on staff care",
-      "Applicable tools for self-care",
-      "Enhanced resilience strategies"
-    ],
-    fee: "Pay what you can – contributions start at $20",
-    translation: "Translation provided to English",
-    register: "#"
-  },
-  event4: {
-  img: "Evnet4.webp",
-  title: "Metaphor in Psychotherapy",
-  date: "Wednesday, June 11 – Saturday, June 14, 2025",
-  format: "In-person at Reframe",
-  facilitator: "Karim Dakroub",
+    modalFormat.textContent = content.format
+      ? (isArabic() ? `الصيغة: ${content.format}` : `Format: ${content.format}`)
+      : "";
 
-  about: `Metaphor is more than a linguistic device — it is a doorway to transformation. 
-In this 4-day in-person training, Dr. Karim Dakroub invites participants to rediscover metaphor as a dynamic, lived experience in psychotherapy. 
-Integrating approaches from psychoanalysis, systemic therapy, psychodrama, and art therapy, this workshop highlights metaphor’s role as a transitional object, expressive tool, and bridge to deeper psychological insight.
+    modalFacilitator.textContent = content.facilitator
+      ? (isArabic() ? `الميسّر: ${content.facilitator}` : `Facilitator: ${content.facilitator}`)
+      : "";
 
-Through a balance of theory and hands-on exercises, participants will engage with creative modalities such as drama, storytelling, art, and craftwork. 
-The goal: to expand the therapist’s toolkit with accessible, imaginative techniques that deepen emotional processing and self-expression.`,
+    modalAbout.textContent = content.about || "";
 
-  learn: [
-    "Integrates theoretical foundations from diverse psychotherapeutic schools.",
-    "Focuses on experiential and artistic techniques including drama, storywriting, visual arts, and crafts.",
-    "Offers practical tools that can be tested and applied directly within clinical practice."
-  ],
+    fillList(modalLearn, content.learn);
+    fillList(modalWho, content.who);
+    fillList(modalOutcomes, content.outcomes);
 
-  who: [
-    "Psychotherapists.",
-    "Clinical psychology students.",
-    "Psychosocial support workers.",
-    "Professionals seeking to integrate creative, evidence-based methods into their therapeutic approach."
-  ],
+    modalFacilitatorBio.textContent = content.facilitatorBio || "";
+    modalFee.textContent = event.fee
+      ? (isArabic() ? `رسوم الورشة: ${event.fee}` : `Workshop Fee: ${event.fee}`)
+      : "";
 
-  outcomes: [
-    "Empowers professionals with new expressive tools.",
-    "Enhances emotional access within therapy sessions.",
-    "Provides practical, creative strategies for facilitating deeper client engagement."
-  ],
+    toggleSection(modalLearnSection, safeArray(content.learn).length > 0);
+    toggleSection(modalWhoSection, safeArray(content.who).length > 0);
+    toggleSection(modalOutcomesSection, safeArray(content.outcomes).length > 0);
+    toggleSection(modalFacilitatorBioSection, !!content.facilitatorBio);
 
-  facilitatorBio: `Dr. Karim Dakroub is a leading psychotherapist and educator recognized for integrating creative arts and systemic approaches in psychotherapy. 
-He has extensive experience training professionals across the Middle East and beyond, with a focus on expressive, culturally grounded therapeutic methods.`,
+    modalRegister.onclick = (e) => {
+      e.preventDefault();
+      const link = (event.register || "#").trim();
 
-  fee: "Workshop Fee: $350",
-  register: "#"
-},
+      if (!link || link === "#") {
+        if (registerModal) {
+          registerModal.style.display = "block";
+        }
+      } else {
+        window.open(link, "_blank");
+      }
+    };
 
-  event5: {
-    img: "Evnet6.jpeg",
-    title: "Bedwetting Care",
-    date: "Monday, May 26, 2025 | 8:00 PM – 10:00 PM Beirut Time",
-    format: "Live Online Session via Onlinevents",
-    facilitator: "Eliane Ibrahim",
-    about: `Enuresis (bedwetting) can be deeply distressing for children. This workshop introduces a psychosomatic approach based on the work of Professor Sami Ali, using theater and movement to address emotional roots.`,
-    learn: [
-      "Understand somatic imprinting and its role in enuresis.",
-      "Use creative, non-verbal techniques in therapy.",
-      "Bridge mind-body connections in child therapy."
-    ],
-    who: [
-      "Child therapists and counselors",
-      "Psychologists and psychotherapists",
-      "Social workers and psychomotor therapists"
-    ],
-    outcomes: [
-      "New somatic approaches to therapy",
-      "Creative tools for child healing",
-      "Holistic therapeutic frameworks"
-    ],
-    fee: "Pay what you can – contributions start at $20",
-    translation: "Translation provided to English",
-    register: "#"
-  },
+    modal.style.display = "block";
+  }
 
-  event6: {
-    img: "Evnet5.jpeg",
-    title: "Beyond Post-Traumatic Stress",
-    date: "May 22 & 24, 2025 | 9:30 AM – 4:00 PM Beirut Time",
-    location: "In-person at Reframe",
-    facilitator: "Myra Saad",
-    fee: "150$",
-    about: `The Beyond Post-Traumatic Stress workshop reframes trauma through the lens of Continuous Traumatic Stress (CTS). Led by Myra Saad, this immersive two-day experience empowers professionals to create culturally relevant psychosocial support frameworks.`,
-    learn: [
-      "Understand continuous traumatic stress in unstable environments.",
-      "Set culturally relevant goals in psychosocial practice.",
-      "Apply creative tools for emotional healing and resilience."
-    ],
-    who: [
-      "Mental health professionals in conflict zones",
-      "Psychotherapists expanding trauma practice",
-      "Frontliners and social workers"
-    ],
-    outcomes: [
-      "Reframe trauma from a Global South perspective",
-      "Gain actionable knowledge on CTS",
-      "Collaborate through creative reflective practices"
-    ],
-    register: "#"
-  },
+  function createEventCard(event) {
+    const content = getEventContent(event);
 
-  event7: {
-    img: "Evnet7.webp",
-    title: "How Dietitians Can Support Clients with Eating Disorders - Beyond the Meal Plan",
-    date: "Saturday, May 3, 2025 | 9:30 AM – 1:00 PM Beirut Time",
-    format: "Live Online via Reframe",
-    facilitator: "Tala Abdallah",
-    fee: "50$",
-    about: `This workshop explores how dietitians can support clients with eating disorders using compassionate, non-diet approaches.`,
-    learn: [
-      "Recognize signs of eating disorders in different settings.",
-      "Know when to refer clients for specialized care.",
-      "Apply screening and assessment tools effectively.",
-      "Promote intuitive eating and holistic recovery."
-    ],
-    who: [
-      "Registered Dietitians and Nutritionists",
-      "Dietetic interns and students",
-      "Allied health professionals"
-    ],
-    outcomes: [
-      "Increased confidence in supporting ED clients",
-      "Improved screening and referral skills",
-      "Deeper understanding of non-diet interventions"
-    ],
-    register: "#"
-  },
+    const item = document.createElement("div");
+    item.className = "list-item";
+    item.setAttribute("data-title", content.title || "");
 
-  event8: {
-    img: "Evnet9.webp",
-    title: "Peacebuilding with Psychosocial Support",
-    date: "Thursday, May 1, 2025 | 8:00 PM – 10:00 PM Beirut Time",
-    format: "Online via Onlinevents",
-    facilitators: "Oussama Safa & May Aoun",
-    about: `This workshop introduces a peacebuilding toolkit that integrates psychosocial support and non-violent conflict resolution for children.`,
-    learn: [
-      "Understand peacebuilding principles in PSS contexts.",
-      "Explore storytelling and experiential learning methods.",
-      "Integrate life skills like emotional regulation and cooperation."
-    ],
-    who: [
-      "PSS professionals and child specialists",
-      "Peacebuilding practitioners",
-      "NGO workers and educators"
-    ],
-    outcomes: [
-      "Field-tested PSS and peacebuilding integration",
-      "Creative intervention tools for children",
-      "Enhanced community-based resilience"
-    ],
-    fee: "Pay what you can – contributions start at $20",
-    translation: "Translation provided to English",
-    register: "#"
-  },
+    item.innerHTML = `
+      <img src="${escapeHtml(event.image || "")}" alt="${escapeHtml(content.title || "")}">
+      <div class="list-item-body">
+        <h3>${escapeHtml(content.title || "")}</h3>
+        <p>${escapeHtml(formatDate(event.date))}</p>
+        <a href="#" class="view-btn">${isArabic() ? "عرض التفاصيل" : "View Details"}</a>
+      </div>
+    `;
 
-  event9: {
-    img: "Evnet8.webp",
-    title: "Adapting and Implementing IPT in Humanitarian Settings",
-    date: "Monday, April 28, 2025 | 8:00 PM – 10:00 PM Beirut Time",
-    format: "Online",
-    facilitator: "Lena Verdelli – Psychologist & IPT Expert",
-    about: `For clinicians and humanitarian workers seeking to adapt Interpersonal Therapy (IPT) to crisis and diverse cultural contexts. Learn from real-world case studies from Peru and Bangladesh.`,
-    learn: [
-      "Adapt IPT to diverse cultural and crisis contexts.",
-      "Overcome barriers to effective implementation.",
-      "Understand IPT’s impact on depression and PTSD."
-    ],
-    who: [
-      "Clinicians and humanitarian workers",
-      "Policy makers and program managers",
-      "Mental health professionals in global settings"
-    ],
-    outcomes: [
-      "Improved adaptability in IPT implementation",
-      "Enhanced understanding of IPT in humanitarian work"
-    ],
-    fee: "Pay what you can – contributions start at $20",
-    translation: "Translation provided to Arabic",
-    register: "#"
-  },
-  event10: {
-  img: "Evnet10.jpeg",
-  title: "Creative Puppetry for Healing: Working with Children in Gaza and Lebanon",
-  date: "Saturday, August 16, 2025 | 9:30 AM – 11:30 AM Beirut Time",
-  format: "In-person at Reframe",
-  facilitator: "Suzanne Groothuis – Artist & Theatre Maker",
-  
-  about: `Suzanne Groothuis is an artist and theatre maker from Holland who has collaborated for many years with artists and psychologists in Gaza who work with children. She will soon visit Beirut as part of her research on the use of puppets with children who have experienced trauma. 
-The goal of this session is to bring together psychotherapists and artists to share personal and professional experiences, ideas, and questions about how creative puppetry-making can support healing and resilience in communal and social contexts in places like Gaza and Lebanon.`,
+    item.addEventListener("click", (e) => {
+      e.preventDefault();
+      openDetails(event);
+    });
 
-  learn: [
-    "How can we create safe, creative spaces for children who have experienced trauma through puppetry?",
-    "What specific issues need to be addressed in the context of Gaza and Lebanon that are often overlooked in Western research?",
-    "What skills do creative facilitators need to ensure safety and well-being for children?"
-  ],
+    return item;
+  }
 
-  who: [
-    "Psychotherapists",
-    "Artists and creative facilitators",
-    "Mental health professionals working with children",
-    "Community workers interested in creative expression"
-  ],
+  function renderEvents() {
+    eventsContainer.innerHTML = "";
 
-  outcomes: [
-    "Enhanced understanding of creative tools for trauma recovery",
-    "Cultural reflection on local challenges and healing practices",
-    "Collaboration between art and psychology for child well-being"
-  ],
+    const sortedEvents = [...cmsEvents].sort((a, b) => {
+      const dateA = new Date(a.date).getTime() || 0;
+      const dateB = new Date(b.date).getTime() || 0;
+      return dateB - dateA;
+    });
 
-  facilitatorBio: `Suzanne Groothuis is a Dutch artist and theatre maker with extensive experience in using creative methods to address trauma. 
-She has worked closely with professionals in Gaza on projects supporting children’s emotional resilience through art and performance. 
-Her current research explores how puppetry can become a healing and educational tool, aiming to develop a “trainer-to-trainer” model to empower facilitators working with children in crisis settings.`,
+    sortedEvents.forEach((event) => {
+      eventsContainer.appendChild(createEventCard(event));
+    });
+  }
 
-  fee: "Free Event – Limited to 20 participants (confirmation required)",
-  translation: "Discussion held in English with Arabic facilitation support",
-  register: "#"
-},
+  function closeEventModal() {
+    modal.style.display = "none";
+  }
 
-};
+  fetch("/content/events.json")
+    .then((res) => res.json())
+    .then((data) => {
+      cmsEvents = Array.isArray(data.events) ? data.events : [];
+      renderEvents();
+    })
+    .catch((err) => console.error("CMS events error:", err));
 
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closeEventModal);
+  }
 
+  if (modalBack) {
+    modalBack.addEventListener("click", (e) => {
+      e.preventDefault();
+      closeEventModal();
+    });
+  }
 
-// Modal Logic
-const modal = document.getElementById('eventModal');
-const modalImg = document.getElementById('modalImg');
-const modalTitle = document.getElementById('modalTitle');
-const modalDate = document.getElementById('modalDate');
-const modalFormat = document.getElementById('modalFormat');
-const modalFacilitator = document.getElementById('modalFacilitator');
-const modalAbout = document.getElementById('modalAbout');
-const modalLearn = document.getElementById('modalLearn');
-const modalWho = document.getElementById('modalWho');
-const modalOutcomes = document.getElementById('modalOutcomes');
-const modalFacilitatorBio = document.getElementById('modalFacilitatorBio');
-const modalFee = document.getElementById('modalFee');
-const modalRegister = document.getElementById('modalRegister');
-
-document.querySelectorAll('.card, .list-item').forEach(item=>{
-  item.addEventListener('click', ()=>{
-    const e=events[item.dataset.event];
-    modalImg.src=e.img;
-    modalTitle.innerText=e.title;
-    modalDate.innerText=e.date;
-    modalFormat.innerText="Format: "+e.format;
-    modalFacilitator.innerText="Facilitator: "+e.facilitator;
-    modalAbout.innerText=e.about;
-    modalLearn.innerHTML=""; e.learn.forEach(l=>modalLearn.innerHTML+=`<li>${l}</li>`);
-    modalWho.innerHTML=""; e.who.forEach(w=>modalWho.innerHTML+=`<li>${w}</li>`);
-    modalOutcomes.innerHTML=""; e.outcomes.forEach(o=>modalOutcomes.innerHTML+=`<li>${o}</li>`);
-    modalFacilitatorBio.innerText = e.facilitatorBio || "";
-    modalFee.innerText=e.fee;
-    modalRegister.href=e.register;
-    modal.style.display="block";
+  window.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      closeEventModal();
+    }
   });
-});
 
-document.querySelector('.modal-close').onclick = ()=>modal.style.display="none";
-document.getElementById('modalBack').onclick = ()=>modal.style.display="none";
-window.onclick = e=>{if(e.target==modal) modal.style.display='none';};
+  document.addEventListener("language:changed", () => {
+    renderEvents();
+    setModalLabels();
+  });
+
+  const langObserver = new MutationObserver(() => {
+    renderEvents();
+    setModalLabels();
+  });
+
+  langObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["lang", "dir"]
+  });
+
+  setModalLabels();
+});
 </script>
 
 
-</section>
-
-
-<!-- Footer -->
-<footer class="footer">
-  <div class="container">
-    <div class="footer-content">
-      
-      <div class="footer-section">
-        <h3>Reframe MHS</h3>
-        <p data-translate="footer_description">Unlocking the innate potential and resilience within each person and group across the Middle East.</p>
-      </div>
-
-      <div class="footer-section">
-        <h4 data-translate="footer_quick_links">Quick Links</h4>
-        <ul>
-          <li><a href="about.html" data-translate="nav_about">About Us</a></li>
-          <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
-          <li><a href="training.html" data-translate="nav_training">Training</a></li>
-          <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
-        </ul>
-      </div>
-
-      <div class="footer-section">
-        <h4 data-translate="footer_services">Services</h4>
-        <ul>
-          <li><a href="#" data-translate="footer_training">Training Programs</a></li>
-          <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
-          <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
-          <li><a href="#" data-translate="footer_resources">Resources</a></li>
-        </ul>
-      </div>
-
-      <div class="footer-section">
-        <h4 data-translate="footer_connect">Connect</h4>
-        <div class="social-links">
-          <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-          <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-          <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-        </div>
-
-        <!-- Newsletter -->
-        <div class="subscribe-section">
-          <div class="subscribe-box">
-            <h2 data-translate="footer_subscribe_title">Stay Connected</h2>
-            <p data-translate="footer_subscribe_text">Subscribe to our newsletter for updates, workshops, and events.</p>
-            <form class="subscribe-form" action="#" method="post">
-              <input type="email" name="email" placeholder="Enter your email" required>
-              <button type="submit" class="btn btn-primary">Subscribe</button>
-            </form>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="footer-bottom">
-      <p data-translate="footer_copyright">&copy;2025 Reframe Mental Health Services. All rights reserved.</p>
-    </div>
-  </div>
-</footer>
-
-  
 
 <script src="scripts/translations.js"></script>
 
@@ -2700,3 +2611,73 @@ document.querySelectorAll(".training-toggle").forEach(toggle => {
 
 
  <script src="scripts/main.js"></script>
+
+ </section>
+
+ 
+
+
+
+
+
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      
+      <div class="footer-section">
+        <h3>Reframe MHS</h3>
+        <p data-translate="footer_description">Unlocking the innate potential and resilience within each person and group across the Middle East.</p>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_quick_links">Quick Links</h4>
+        <ul>
+          <li><a href="about.html" data-translate="nav_about">About Us</a></li>
+          <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
+          <li><a href="training.html" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_services">Services</h4>
+        <ul>
+          <li><a href="#" data-translate="footer_training">Training Programs</a></li>
+          <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
+          <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
+          <li><a href="#" data-translate="footer_resources">Resources</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_connect">Connect</h4>
+        <div class="social-links">
+          <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+          <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        </div>
+
+        <!-- Newsletter -->
+        <div class="subscribe-section">
+          <div class="subscribe-box">
+            <h2 data-translate="footer_subscribe_title">Stay Connected</h2>
+            <p data-translate="footer_subscribe_text">Subscribe to our newsletter for updates, workshops, and events.</p>
+            <form class="subscribe-form" action="#" method="post">
+              <input type="email" name="email" placeholder="Enter your email" required>
+              <button type="submit" class="btn btn-primary">Subscribe</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      <p data-translate="footer_copyright">&copy; 2026 Reframe Mental Health Services. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+  
