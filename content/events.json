@@ -150,6 +150,57 @@
         ],
         "facilitatorBio": "Ali El Attar is a certified IPT Trainer and Supervisor with extensive experience providing clinical training and supervision across the Middle East."
       }
+    },
+    {
+      "register": "#",
+      "date": "2025-07-30T20:00:00.000+03:00",
+      "image": "/assets/uploads/Evnet1.webp",
+      "fee": "Starting $20 contribution",
+      "arabic": {
+        "title": "الوزن غير المرئي: أساسيات التعامل مع اضطرابات الأكل لاختصاصيي التغذية",
+        "format": "عبر الإنترنت (Zoom)",
+        "facilitator": "د. تالا عبدالله",
+        "about": "بصفتك اختصاصي/ة تغذية، قد تكون من أوائل – وأحيانًا الوحيدين – الذين يلجأ إليهم الأشخاص الذين يعانون من اضطرابات الأكل.\n\nلكن الكثير من العاملين في هذا المجال لا يحصلون على تدريب كافٍ للتعرف على هذه الحالات أو دعمها أو تحويلها إلى مختصين.\n\nتهدف هذه الورشة إلى سد هذه الفجوة من خلال تقديم أساس عملي للتعامل مع اضطرابات الأكل بطريقة حساسة ومبنية على فهم نفسي.\n\nتُقدَّم الورشة من قبل د. تالا عبدالله، وهي أخصائية نفسية إكلينيكية مرخصة في المملكة المتحدة واختصاصية تغذية مرخصة في لبنان، وتقدم منظورًا متكاملاً يجمع بين الصحة النفسية والتغذية.",
+        "learn": [
+          "التعرف على علامات اضطرابات الأكل ومعرفة متى يجب تحويل الحالة إلى مختص",
+          "فهم دور اختصاصي التغذية ضمن فريق علاج اضطرابات الأكل",
+          "التعرف على أساليب التقييم والتدخل المستخدمة في هذا المجال"
+        ],
+        "who": [
+          "اختصاصيو التغذية",
+          "طلاب التغذية",
+          "اختصاصيو الصحة العاملون في المجال الغذائي"
+        ],
+        "outcomes": [
+          "زيادة الثقة في التعامل مع حالات اضطرابات الأكل",
+          "تحسين مهارات التواصل مع المرضى حول الطعام وصورة الجسد",
+          "اكتساب أدوات عملية لتقديم دعم آمن وفعال"
+        ],
+        "facilitatorBio": "د. تالا عبدالله هي أخصائية نفسية إكلينيكية مرخصة في المملكة المتحدة واختصاصية تغذية مرخصة في لبنان، تمتلك أكثر من 10 سنوات من الخبرة في مجالي الصحة النفسية والتغذية.\n\nتحمل دكتوراه في علم النفس الإكلينيكي وماجستير في علم النفس الصحي من جامعة لندن، إضافة إلى شهادات في التغذية وعلم النفس من الجامعة الأمريكية في بيروت.\n\nتعمل مع حالات اضطرابات الأكل والقلق وصورة الجسد، وتقدم تدريبات وورش عمل للمهنيين في لبنان."
+      },
+      "english": {
+        "title": "The Invisible Weight: Foundations of Eating Disorder Care for Dietitians",
+        "format": "Online (Zoom via Reframe)",
+        "facilitator": "Dr. Tala Abdallah",
+        "about": "As a dietitian, you may be one of the first, and sometimes the only, professionals clients struggling with disordered eating turn to.\n\nYet many in the field receive limited training on how to recognize, support, or refer such cases.\n\nThis workshop is designed to bridge that gap by offering a practical foundation in eating disorder care, with a focus on psychologically-informed and compassionate support.\n\nLed by Dr. Tala Abdallah, a UK-licensed Clinical Psychologist and Lebanese-licensed Dietitian, the training brings together mental health and nutrition expertise.",
+        "learn": [
+          "Recognize signs of disordered eating and know when to refer",
+          "Understand your role as a dietitian in treatment",
+          "Learn screening, assessment, and intervention basics"
+        ],
+        "who": [
+          "Registered Dietitians",
+          "Nutritionists",
+          "Dietetic Students",
+          "Health professionals in nutrition settings"
+        ],
+        "outcomes": [
+          "Increased confidence in supporting eating disorder clients",
+          "Improved communication around food and body image",
+          "Practical tools for safe and compassionate care"
+        ],
+        "facilitatorBio": "Dr. Tala Abdallah is a UK-licensed Clinical Psychologist and Lebanese-licensed Dietitian with over a decade of experience.\n\nShe holds a Doctorate in Clinical Psychology and a Master’s in Health Psychology from University College London, and degrees in Nutrition and Psychology from AUB.\n\nShe specializes in eating disorders, body image, and anxiety, and provides training across Lebanon."
+      }
     }
   ]
 }
