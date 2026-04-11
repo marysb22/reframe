@@ -3,23 +3,38 @@
     {
       "status": "upcoming",
       "register": "#",
+      "date": "2026-04-11T20:21:00.000+03:00",
+      "image": "/assets/uploads/post-5.webp",
       "arabic": {
-        "facilitatorBio": "فس",
-        "title": "الصحة انفسية",
-        "format": "في",
-        "facilitator": "في",
-        "about": "في",
-        "fee": "100"
+        "outcomes": [
+          "\"تحسين المهارات المهنية\", \"فهم أعمق للتحليل النفسي\", \"تطبيق عملي للمفاهيم\" "
+        ],
+        "learn": [
+          " \"فهم دور المحلل النفسي في العصر الحديث\", \"تطوير مهارات التواصل العلاجي\", \"تحليل الحالات الواقعية بعمق\""
+        ],
+        "fee": "50",
+        "facilitator": "وسام قطيط",
+        "about": "ورشة تفاعلية تستكشف التحديات والفرص التي يواجهها المحلل النفسي في العصر الحديث، مع التركيز على الممارسة الواقعية والتطور المهني.\",\n",
+        "format": "عبر الإنترنت",
+        "title": "أن تكون محللًا نفسيًا في عام 2026",
+        "facilitatorBio": "محلل نفسي وخبير في الصحة النفسية مع خبرة تزيد عن",
+        "who": [
+          "\"طلاب علم النفس\", \"المعالجون النفسيون\", \"المهتمون بالصحة النفسية\""
+        ]
       },
-      "date": "2026-04-11T14:45:00.000+03:00",
-      "image": "/assets/uploads/1-1-.webp",
       "english": {
-        "title": "h",
-        "format": "h",
-        "facilitator": "h",
-        "about": "h",
-        "facilitatorBio": "h",
-        "fee": "h"
+        "title": "Being a Psychoanalyst in 2026",
+        "format": "Being a Psychoanalyst in 2026",
+        "facilitator": "Wissam Kotait",
+        "about": ": \"An interactive workshop exploring the challenges and opportunities of being a psychoanalyst in the modern era, with a strong focus on real-world practice and professional growth.\",",
+        "learn": [
+          "\"Understand the role of a psychoanalyst today\", \"Develop therapeutic communication skills\", \"Analyze real-life cases effectively\""
+        ],
+        "who": [
+          "\"Psychology students\", \"Mental health professionals\", \"Anyone interested in mental health\""
+        ],
+        "facilitatorBio": "\"Enhanced professional skills\",\n\"Deeper understanding of psychoanalysis\",\n\"Practical application of concepts\"",
+        "fee": "100"
       }
     }
   ]
