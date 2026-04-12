@@ -201,35 +201,6 @@
         ],
         "facilitatorBio": "Dr. Tala Abdallah is a UK-licensed Clinical Psychologist and Lebanese-licensed Dietitian with over a decade of experience.\n\nShe holds a Doctorate in Clinical Psychology and a Master’s in Health Psychology from University College London, and degrees in Nutrition and Psychology from AUB.\n\nShe specializes in eating disorders, body image, and anxiety, and provides training across Lebanon."
       }
-    },
-    {
-      "register": "#",
-      "date": "2026-04-15T17:03:00.000+03:00",
-      "image": "/assets/uploads/event10.jpeg",
-      "fee": ".",
-      "arabic": {
-        "title": ".",
-        "format": ".",
-        "facilitator": ".",
-        "about": ".",
-        "learn": [
-          "."
-        ],
-        "who": [
-          "."
-        ],
-        "outcomes": [
-          "."
-        ],
-        "facilitatorBio": "/"
-      },
-      "english": {
-        "title": ".",
-        "format": ".",
-        "facilitator": ".",
-        "about": ".",
-        "facilitatorBio": "."
-      }
     }
   ]
 }
