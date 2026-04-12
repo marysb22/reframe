@@ -28,7 +28,7 @@
       <!-- Logo -->
       <div class="nav-logo">
         <a href="index.html">
-          <img src="logo.gif" alt="Company Logo" width="220" />
+<img src="logos/logo.gif" alt="Company Logo" width="220" />
         </a>
       </div>
 
@@ -173,15 +173,12 @@
 
     </nav>
   </div>
-
-
-
 <section class="hero">
   <div class="bento-grid">
-    <img src="pro3.jpg" alt="photo 1" class="bento-item large" />
-    <img src="pro1.jpg" alt="photo 2" class="bento-item tall" />
-    <img src="pro3.jpg" alt="photo 3" class="bento-item small" />
-    <img src="PRO4.jpeg" alt="photo 4" class="bento-item wide" />
+    <img src="photos/pro3.jpg" alt="photo 1" class="bento-item large" />
+    <img src="photos/pro1.jpg" alt="photo 2" class="bento-item tall" />
+    <img src="photos/pro3.jpg" alt="photo 3" class="bento-item small" />
+    <img src="photos/PRO4.jpeg" alt="photo 4" class="bento-item wide" />
   </div>
 
   <div class="hero-overlay">
@@ -192,14 +189,9 @@
       </p>
     </div>
   </div>
-<section class="hero-section">
-  <div class="mobile-hero">
-    <img src="pro3.jpg" alt="Reframe Hero Mobile">
-  </div>
 </section>
 
 
-</section>
 
 <style>
 /* ================= HERO SECTION ================= */
@@ -323,7 +315,10 @@
   display: block; /* يشيل الفراغ الأبيض تحت الصورة */
 }
 
-
+.section-header h2 {
+  position: relative;
+  top: -80px;
+}
 
 </style>
 
@@ -404,9 +399,10 @@
       <div class="calendar-half">
         <div class="section-header">
           <h2 data-translate="calendar_title">Upcoming Events</h2>
-          <p data-translate="calendar_subtitle">Join our professional development programs and workshops</p>
-        </div>
-
+         
+<div class="event-preview">
+  <img id="event-preview-img" src="" alt="event preview">
+</div>
         <div class="calendar-widget">
         <div class="calendar-header">
   <button class="prev-month">
@@ -440,7 +436,7 @@
 </div>
 
 
-          <div class="upcoming-events">
+  <div class="upcoming-events">
   <div class="events-header">
     <a href="events.html" class="view-all-btn" data-translate="events_view_all">View All Events</a>
     <h4 data-translate="events_this_month">This Month's Events</h4>
@@ -639,47 +635,57 @@ tabBtns.forEach(btn => {
 
     <div class="partners-carousel">
       <div class="carousel-track" id="carousel-track">
+
         <div class="partner-item">
-          <img src="FCDC.jpg" alt="FCDC">
+          <img src="logos/FCDC.jpg" alt="FCDC">
           <span></span>
         </div>
+
         <div class="partner-item">
-          <img src="E1.png" alt="Mental Health Foundation">
+          <img src="logos/E1.png" alt="Mental Health Foundation">
           <span></span>
         </div>
-     
+
         <div class="partner-item">
-          <img src="z.jpeg" alt="Regional University">
+          <img src="logos/z.jpeg" alt="Regional University">
           <span></span>
         </div>
+
         <div class="partner-item">
-          <img src="kl.jpeg" alt="NGO Consortium">
+          <img src="logos/kl.jpeg" alt="NGO Consortium">
           <span></span>
         </div>
+
         <div class="partner-item">
-          <img src="hr.png" alt="Corporate Wellness">
+          <img src="logos/hr.png" alt="Corporate Wellness">
           <span></span>
         </div>
+
         <div class="partner-item">
-          <img src="1premiere .png" alt="Premiere">
+          <img src="logos/1premiere.png" alt="Premiere">
           <span></span>
         </div>
+
         <div class="partner-item">
-          <img src="forum.jpeg" alt="Forum">
+          <img src="logos/forum.jpeg" alt="Forum">
           <span></span>
         </div>
+
         <div class="partner-item">
-          <img src="e3.jpeg" alt="E3">
+          <img src="logos/e3.jpeg" alt="E3">
           <span>caritas Lebanon</span>
         </div>
+
         <div class="partner-item">
-          <img src="immap.jpeg" alt="IMMAP">
+          <img src="logos/immap.jpeg" alt="IMMAP">
           <span></span>
         </div>
+
       </div>
     </div>
   </div>
-  <style>
+</section>
+<style>
 /* ===== Variables ===== */
 :root {
   --primary-color: #1E3F5A;
@@ -838,23 +844,13 @@ html, body {
     font-weight: 600;
 }
 
-.event-dot {
-    width: 6px;
-    height: 6px;
-    background: var(--primary-blue);
-    border-radius: 50%;
-    position: absolute;
-    bottom: 4px;
-    left: 50%;
-    transform: translateX(-50%);
-}
 
 .upcoming-events h4 {
   text-align: center;                      /* يوسطن النص */
   font-size: clamp(1.2rem, 0.9rem + 1.2vw, 1.6rem);
   color: var(--primary-color, #1e3f5a);    /* نفس اللون */
   font-weight: 900;
-  margin: 0 auto 25px;                     /* تباعد أصغر شوي */
+  margin: 0 auto 20px;                     /* تباعد أصغر شوي */
   letter-spacing: 0.3px;
   display: block;
   width: 100%;
@@ -871,6 +867,7 @@ html, body {
   background: var(--secondary-color, #4D9794);
   border-radius: 999px;
   opacity: .9;
+  
 }
 
 
@@ -1229,7 +1226,7 @@ html, body {
 /* ===== Section Header ===== */
 .milestones-section .section-header {
   text-align: center;
-  margin-bottom: 70px;
+  margin-bottom: 100px;
   max-width: 720px;
   margin-inline: auto;
 }
@@ -1698,10 +1695,106 @@ section {
   text-align: center;
 }
 
+.events-preview-slider {
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  margin: 14px 0 24px;
+}
+
+.events-preview-track {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: max-content;
+  animation: previewScroll 22s linear infinite;
+  will-change: transform;
+}
+
+.event-preview-item {
+  flex: 0 0 auto;
+  width: 95px;
+  height: 95px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.10);
+}
+
+.event-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.event-preview-item:hover img {
+  transform: scale(1.06);
+}
+
+.events-preview-slider:hover .events-preview-track {
+  animation-play-state: paused;
+}
+
+@keyframes previewScroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
 </style>
 
 
 <script>
+  function initUpcomingEventsSlider(events) {
+  const track = document.getElementById("events-preview-track");
+  if (!track || !Array.isArray(events)) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const upcomingEvents = events
+    .filter(event => {
+      if (!event || !event.date) return false;
+
+      const eventDate = new Date(event.date);
+      if (isNaN(eventDate)) return false;
+
+      eventDate.setHours(0, 0, 0, 0);
+
+      return eventDate >= today && (event.image || event.img || event.photo);
+    })
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  if (!upcomingEvents.length) {
+    track.innerHTML = "";
+    track.parentElement.style.display = "none";
+    return;
+  }
+
+  track.parentElement.style.display = "flex";
+
+  const sliderEvents = [...upcomingEvents, ...upcomingEvents];
+
+  track.innerHTML = sliderEvents.map(event => {
+    const imageSrc = event.image || event.img || event.photo || "";
+    const imageAlt =
+      event.title_en ||
+      event.title_ar ||
+      event.title ||
+      "Event";
+
+    return `
+      <div class="event-preview-item">
+        <img src="${imageSrc}" alt="${imageAlt}">
+      </div>
+    `;
+  }).join("");
+}
   
 (() => {
   const root  = document.querySelector('.partners-carousel');
@@ -1947,13 +2040,7 @@ const monthLabel = document.querySelector(".calendar-month-label");
         dayEl.style.fontWeight = "600";
       }
 
-      // Mark event days
-      if (eventDates.includes(day)) {
-        dayEl.classList.add("event-date");
-        const dot = document.createElement("div");
-        dot.classList.add("event-dot");
-        dayEl.appendChild(dot);
-      }
+     
 
       datesContainer.appendChild(dayEl);
     }

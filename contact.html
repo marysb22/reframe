@@ -22,7 +22,7 @@
     <!-- Logo -->
     <div class="nav-logo">
       <a href="index.html">
-        <img src="logo.gif" alt="Company Logo" width="220" />
+        <img src="logos/logo.gif" alt="Company Logo" width="220" />
       </a>
     </div>
 
@@ -166,7 +166,7 @@
             <label for="phone" data-translate="form_phone">Phone Number</label>
           </div>
 
-         <div class="form-group">
+  <div class="form-group">
   <select id="subject" name="subject" required>
     <option value="" disabled selected hidden>Select a subject</option>
     <option value="training">Training Programs</option>
@@ -365,7 +365,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => (m.style.display = "none"), 200);
       });
 
-      // افتح أو أغلق القائمة الحالية
+      
       if (!isOpen) {
         menu.style.display = "flex";
         setTimeout(() => {
@@ -381,7 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // أغلق عند الضغط خارج القائمة
+
     document.addEventListener("click", (e) => {
       if (!dropdown.contains(e.target)) {
         menu.classList.remove("open");

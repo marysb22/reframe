@@ -1,7 +1,7 @@
 // Main JavaScript file for Reframe MHS website with bilingual support
 
 document.addEventListener("DOMContentLoaded", function () {
-  initializeNavigation();
+
   initializeLanguageSwitcher();
   initializeNewsletterForm();
   initializeContactForm();
@@ -98,10 +98,7 @@ function loadLanguagePreference() {
   applyLanguage(savedLang);
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-  initializeLanguageSwitcher();
-  loadLanguagePreference();
-});
+
 // =========================
 // Newsletter Form
 // =========================
@@ -365,6 +362,12 @@ function initializeSmoothScrolling() {
   });
 }
 
+
+  const langButtons = document.querySelectorAll(".lang-btn");
+  langButtons.forEach((button) => {
+    const lang = button.dataset.lang;
+    button.setAttribute("aria-label", `Switch to ${lang === "en" ? "English" : "Arabic"}`);
+  });
 // =========================
 // Accessibility
 // =========================
@@ -389,31 +392,28 @@ function initializeAccessibility() {
       }
     });
   }
-
-  const langButtons = document.querySelectorAll(".lang-btn");
-  langButtons.forEach((button) => {
-    const lang = button.dataset.lang;
-    button.setAttribute("aria-label", `Switch to ${lang === "en" ? "English" : "Arabic"}`);
-  });
-
-  const overlay = document.querySelector(".overlay");
-  const hamburgerBtn = document.querySelector(".hamburger");
-
-  if (overlay && hamburgerBtn) {
-    hamburgerBtn.setAttribute("aria-expanded", "false");
-    hamburgerBtn.setAttribute("aria-controls", "mobile-menu");
-    overlay.setAttribute("id", "mobile-menu");
-
-    const updateAriaExpanded = () => {
-      const isActive = overlay.classList.contains("active");
-      hamburgerBtn.setAttribute("aria-expanded", isActive.toString());
-      overlay.setAttribute("aria-hidden", (!isActive).toString());
-    };
-
-    const observer = new MutationObserver(updateAriaExpanded);
-    observer.observe(overlay, { attributes: true, attributeFilter: ["class"] });
-  }
 }
+function initializeNavigation() {
+  const hamburger = document.querySelector(".hamburger");
+  const overlay = document.querySelector(".overlay");
+  const navMenu = document.querySelector(".nav-menu");
+
+  if (!hamburger) return;
+
+  const menu = overlay || navMenu;
+  if (!menu) return;
+
+  hamburger.setAttribute("aria-expanded", "false");
+  menu.setAttribute("aria-hidden", "true");
+
+  hamburger.addEventListener("click", () => {
+    const isOpen = menu.classList.toggle("active");
+    hamburger.classList.toggle("active", isOpen);
+    hamburger.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    menu.setAttribute("aria-hidden", isOpen ? "false" : "true");
+  });
+}
+
 
 // =========================
 // Gallery
@@ -801,4 +801,5 @@ style.textContent = `
     border: 2px solid var(--primary-blue);
   }
 `;
+
 document.head.appendChild(style);

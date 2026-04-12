@@ -119,7 +119,7 @@ contact_address_title: "Address",
     // Events page
     events_hero_title: "Upcoming Events",
     events_hero_subtitle: "Join our professional development programs, workshops, and training sessions designed for mental health professionals",
-    calendar_title: "July 2025",
+
     calendar_subtitle: "View our upcoming training sessions and workshops",
     calendar_sun: "Sun",
     calendar_mon: "Mon",
@@ -603,12 +603,14 @@ accreditation_hashtags: "#Accreditation #LOPsy #SystemicPsychotherapy #Professio
 accreditation_cta_title: "Are you ready to reserve your spot?",
 accreditation_cta_text: "Contact us today and make your next event a success in every sense.",
 accreditation_cta_button: "Book Now",
+  calendar_title: "Upcoming Events"
 
   },
 
  
 
   ar: {
+       calendar_title: "الأحداث القادمة",
     accreditation_title: "نفخر بمشاركة خبر اعتمادنا الرسمي!",
 accreditation_desc_1: "حصلت Reframe على اعتماد رسمي من نقابة النفسانيين في لبنان (LOPsy) كمركز تدريب في العلاج النفسي النظمي، وذلك للفترة الممتدة من 1 تشرين الأول 2025 إلى 31 تشرين الأول 2027.",
 accreditation_desc_2: "يعكس هذا الاعتماد التزامنا المستمر بالتميّز، والنزاهة، والممارسة القائمة على الأدلة العلمية في مجال الصحة النفسية، كما يعزّز رسالتنا في تمكين المهنيين في مختلف أنحاء الشرق الأوسط من خلال تدريب وإشراف عاليي الجودة ومُلائمين ثقافيًا.",
