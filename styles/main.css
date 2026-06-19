@@ -559,43 +559,6 @@ html[lang="ar"] .modal-actions {
 }
 
 /* =========================
-   11) FOOTER
-========================= */
-.footer,
-.site-footer {
-  direction: inherit;
-}
-
-.footer-grid,
-.footer-bottom,
-.footer-links,
-.footer-social {
-  display: flex;
-  gap: 1rem;
-}
-
-html[lang="ar"] .footer-grid,
-html[lang="ar"] .footer-bottom,
-html[lang="ar"] .footer-links,
-html[lang="ar"] .footer-social {
-  flex-direction: row-reverse;
-}
-
-.footer p,
-.footer a,
-.site-footer p,
-.site-footer a {
-  text-align: start;
-}
-
-html[lang="ar"] .footer p,
-html[lang="ar"] .footer a,
-html[lang="ar"] .site-footer p,
-html[lang="ar"] .site-footer a {
-  text-align: right;
-}
-
-/* =========================
    12) ICONS / CHEVRONS / ARROWS
 ========================= */
 /* Only flip directional icons, not logos/photos/media */
