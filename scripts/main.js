@@ -1,7 +1,7 @@
 // Main JavaScript file for Reframe MHS website with bilingual support
 
 document.addEventListener("DOMContentLoaded", function () {
-
+initializeNavigation();
   initializeLanguageSwitcher();
   initializeNewsletterForm();
   initializeContactForm();
