@@ -1388,73 +1388,75 @@ body {
     left: 10px;
   }
 }
-/* === PRO Mobile Header & Hero Fix === */
 @media (max-width: 992px) {
-  /* --- Header Container --- */
   .navbar {
-    background: rgba(255, 255, 255, 0.95) !important;
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid #eee;
-    height: 70px !important;
+    height: 76px !important;
+    background: #fff !important;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 999;
   }
 
   .nav-container {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    padding: 0 1rem !important;
-    position: relative;
-    height: 70px !important;
+    height: 76px !important;
+    display: grid !important;
+    grid-template-columns: 60px 1fr 95px;
+    align-items: center;
+    padding: 0 14px !important;
   }
 
-  /* --- Remove login on mobile --- */
-  .nav-actions a[href*="login"],
-  .nav-actions .login,
-  .nav-actions button {
-    display: none !important;
-  }
-
-  /* --- Logo first --- */
-  .nav-logo {
-    order: 1 !important;
-    flex: 1;
-    display: flex;
-    justify-content: flex-start;
-  }
-
-  .nav-logo img {
-    width: 160px !important;
-    height: auto;
-    display: block;
-  }
-
-  /* --- Language switcher second --- */
-  .language-switcher {
-    order: 2 !important;
-    margin: 0 auto;
-    background: #fff;
-    border: 1.5px solid #e3e3e3;
-    border-radius: 30px;
-    padding: 4px 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  }
-
-  /* --- Hamburger third --- */
   .hamburger {
-    order: 3 !important;
-    position: relative;
-    right: 0;
-    margin-left: auto;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    width: 40px;
-    height: 40px;
+    grid-column: 1;
+    grid-row: 1;
+    width: 44px;
+    height: 44px;
     display: flex !important;
     align-items: center;
     justify-content: center;
+    position: static !important;
+    margin: 0 !important;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 14px;
   }
+
+  .nav-logo {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .nav-logo img {
+    width: 155px !important;
+    height: auto !important;
+  }
+
+  .language-switcher {
+    grid-column: 3;
+    grid-row: 1;
+    position: static !important;
+    margin: 0 !important;
+    justify-self: end;
+    display: flex !important;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 16px;
+    padding: 8px 12px;
+  }
+
+  .nav-menu,
+  .login-btn {
+    display: none !important;
+  }
+
+  .hero {
+    margin-top: 76px !important;
+  }
+}
 
   /* --- Hero section refinement --- */
   .hero {
