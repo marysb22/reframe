@@ -24,7 +24,6 @@
             window.netlifyIdentity.open("recovery");
           }
 
-          // لو الرابط خاص بدعوة مستخدم جديد
           if (!user && hash.includes("invite_token")) {
             window.netlifyIdentity.open("signup");
           }
