@@ -166,21 +166,24 @@ h3 {
   margin-bottom: 6px;
 }
 
-p {
+.hub-block p,
+.hub-cta p {
   font-size: 1.5rem;
   color: #4D9794;
   margin: 10px 0 14px 0;
   line-height: 3;
   letter-spacing: 0.15px;
   opacity: 0.95;
-  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-p:hover {
-  opacity: 1;
-  transform: translateX(3px);
+.hub-block h2,
+.hub-cta h2 {
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  color: #1E3F5A;
+  margin-bottom: 10px;
+  position: relative;
+  display: inline-block;
 }
-
 /* ===== Hero Section ===== */
 .hub-hero {
   text-align: center;
