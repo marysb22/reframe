@@ -2466,13 +2466,7 @@ body {
   color:#4D9794;
 }
 
-/* Focus Shadow */
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-  border-color: #4D9794;
-  box-shadow: 0 0 15px rgba(22,160,133,0.2);
-}
+
 
 /* ---------- Modern Send Button ---------- */
 .contact-form button {
@@ -2600,6 +2594,7 @@ body {
   line-height: 1.3;
   border-width: 2px;
   border-radius: 12px;
+    
 }
 
 
@@ -2782,14 +2777,6 @@ body {
   }
 }
 
-/* ================= RTL Support ================= */
-[dir="rtl"] .footer-content {
-  text-align: right;
-}
-
-[dir="rtl"] .social-links {
-  justify-content: flex-end;
-}
 
 
 /* RTL Footer adjustments */
