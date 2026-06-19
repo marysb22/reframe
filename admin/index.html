@@ -20,7 +20,6 @@
         window.netlifyIdentity.on("init", (user) => {
           const hash = window.location.hash || "";
 
-          // لو الرابط خاص بإعادة تعيين كلمة المرور
           if (!user && hash.includes("recovery_token")) {
             window.netlifyIdentity.open("recovery");
           }
@@ -31,17 +30,15 @@
           }
         });
 
-        // بعد تسجيل الدخول
         window.netlifyIdentity.on("login", () => {
           Twindow.location.href = "/admin/";
         });
 
-        // بعد تسجيل الخروج
         window.netlifyIdentity.on("logout", () => {
           window.location.href = "/admin/";
         });
 
-        // معالجة روابط identity مثل recovery/invite/confirm
+        
         if (typeof window.netlifyIdentity.handleAuthCallback === "function") {
           window.netlifyIdentity.handleAuthCallback();
         }
