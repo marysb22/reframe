@@ -396,25 +396,29 @@ function initializeAccessibility() {
 function initializeNavigation() {
   const hamburger = document.querySelector(".hamburger");
   const overlay = document.querySelector(".overlay");
-  const navMenu = document.querySelector(".nav-menu");
+  const closeBtn = document.querySelector(".close-btn");
 
-  if (!hamburger) return;
-
-  const menu = overlay || navMenu;
-  if (!menu) return;
+  if (!hamburger || !overlay) return;
 
   hamburger.setAttribute("aria-expanded", "false");
-  menu.setAttribute("aria-hidden", "true");
+  overlay.setAttribute("aria-hidden", "true");
 
   hamburger.addEventListener("click", () => {
-    const isOpen = menu.classList.toggle("active");
-    hamburger.classList.toggle("active", isOpen);
-    hamburger.setAttribute("aria-expanded", isOpen ? "true" : "false");
-    menu.setAttribute("aria-hidden", isOpen ? "false" : "true");
+    overlay.classList.add("active");
+    hamburger.classList.add("active");
+    hamburger.setAttribute("aria-expanded", "true");
+    overlay.setAttribute("aria-hidden", "false");
   });
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      overlay.classList.remove("active");
+      hamburger.classList.remove("active");
+      hamburger.setAttribute("aria-expanded", "false");
+      overlay.setAttribute("aria-hidden", "true");
+    });
+  }
 }
-
-
 // =========================
 // Gallery
 // =========================
