@@ -203,19 +203,38 @@
       }
     },
     {
-      "register": "#https://docs.google.com/forms/d/e/1FAIpQLScwEJiWURFq1i4gskXYqeGlW-TD0RwcWt-fGi-WjeGmtSHJvQ/viewform",
+      "register": "https://docs.google.com/forms/d/e/1FAIpQLScwEJiWURFq1i4gskXYqeGlW-TD0RwcWt-fGi-WjeGmtSHJvQ/viewform",
       "date": "2026-07-16T14:00:00.000+03:00",
       "english": {
         "about": "A talk led by Wissam Kotait , examines the contemporary position of psychoanalysis within a clinical culture increasingly shaped by demands for efficiency, measurable outcomes, and rapid solutions.\n\nParticipants will engage in critical reflection on psychodynamics today, the roles of analyst and analysand, and the ethical and political dimensions of psychoanalytic practice.\n\nThis talk emphasizes clinical thinking and reflection rather than techniques or ready-to-use tools.",
         "format": "💻 Format: Online",
-        "title": "Being a Psychoanalyst in 2026"
+        "title": "Being a Psychoanalyst in 2026",
+        "facilitator": "Wissam Kotait -  Mental Health Consultant - Psychotherapist",
+        "learn": [
+          "Reflection on psychodynamics today, the roles of analyst and analysand, and the ethical and political dimensions of psychoanalytic practice."
+        ],
+        "who": [
+          "ةental health practitioners, professionals in related fields, and anyone interested in psychoanalysis."
+        ],
+        "facilitatorBio": "Wissam describes his professional orientation as guided by a strong interest in psycho-social and anthropological studies, group and institutional dynamics, and the design and implementation of sustainable projects. He is also engaged in strengthening creative settings and alternative models of care."
       },
       "fee": "Contribution based approach between 20$ to 40$",
       "image": "/assets/uploads/720467780_17952676842157633_3965881217856711376_n.jpg",
       "arabic": {
         "title": "أن تكون محللًا نفسيًا عام 2026",
         "format": "جلسة عن بُعد",
-        "about": "جلسة حوارية يقدمها وسام قطيط، تتناول المكانة المعاصرة للتحليل النفسي في ظل ثقافة سريرية تتزايد فيها المطالب بالكفاءة، والنتائج القابلة للقياس، والحلول السريعة.\n\nسينخرط المشاركون في تأمل نقدي حول مكانة التفكير الدينامي النفسي اليوم، والأدوار المتغيرة لكل من المحلّل النفسي والمحلَّل، إلى جانب الأبعاد الأخلاقية والسياسية للممارسة التحليلية النفسية.\n\nتركّز هذه الجلسة على التفكير السريري والتأمل النقدي، بدلاً من تقديم تقنيات أو أدوات جاهزة للاستخدام، مؤكدةً على الأهمية المستمرة للاستقصاء والتحليل النفسي في الممارسة السريرية."
+        "about": "جلسة حوارية يقدمها وسام قطيط، تتناول المكانة المعاصرة للتحليل النفسي في ظل ثقافة سريرية تتزايد فيها المطالب بالكفاءة، والنتائج القابلة للقياس، والحلول السريعة.\n\nسينخرط المشاركون في تأمل نقدي حول مكانة التفكير الدينامي النفسي اليوم، والأدوار المتغيرة لكل من المحلّل النفسي والمحلَّل، إلى جانب الأبعاد الأخلاقية والسياسية للممارسة التحليلية النفسية.\n\nتركّز هذه الجلسة على التفكير السريري والتأمل النقدي، بدلاً من تقديم تقنيات أو أدوات جاهزة للاستخدام، مؤكدةً على الأهمية المستمرة للاستقصاء والتحليل النفسي في الممارسة السريرية.",
+        "facilitator": "وسام قطيط – مستشار في الصحة النفسية ومعالج نفسي",
+        "learn": [
+          "تقدّم هذه المحاضرة تأملاً في الديناميّات النفسية اليوم، وفي أدوار كل من المحلّل النفسي والمحلَّل، إضافة إلى الأبعاد الأخلاقية والسياسية للممارسة التحليلية النفسية."
+        ],
+        "who": [
+          " العاملين في مجال الصحة النفسية، والمهنيين في الحقول ذات الصلة، وكل من يهتم بالتحليل النفسي."
+        ],
+        "facilitatorBio": "يصف وسام توجهه المهني بأنه قائم على اهتمام عميق بالدراسات النفسية-الاجتماعية والأنثروبولوجية، وديناميات المجموعات والمؤسسات، وتصميم وتنفيذ المشاريع المستدامة. كما يعمل على تعزيز البيئات الإبداعية ونماذج الرعاية البديلة.",
+        "outcomes": [
+          "يكز هذا الحوار على التفكير السريري والتأمل النقدي، أكثر من تركيزه على التقنيات أو الأدوات الجاهزة للاستخدام."
+        ]
       }
     }
   ]
