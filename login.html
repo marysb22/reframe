@@ -107,16 +107,19 @@
                     <h1 data-translate="login_header_title">Welcome TO Reframe</h1>
                     <p data-translate="login_header_subtitle">Interested in working together? Fill out some info and we will be in touch shortly! We can't wait to hear from you</p>
                 </div>
-                
+
+                <!-- Error / status message box -->
+                <div id="loginMessage" class="login-message" style="display:none;"></div>
+
                 <form class="login-form" id="loginForm">
                     <div class="form-group">
-                        <label for="email" data-translate="email_label">Email Address</label>
+                        <label for="username" data-translate="username_label">Username</label>
                         <div class="input-wrapper">
-                            <i class="fas fa-envelope"></i>
-                            <input type="email" id="email" name="email" required placeholder="" data-translate-placeholder="email_placeholder">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="username" name="username" required placeholder="" data-translate-placeholder="username_placeholder">
                         </div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="password" data-translate="password_label">Password</label>
                         <div class="input-wrapper">
@@ -127,23 +130,24 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="form-options">
                         <label class="checkbox-label">
                             <input type="checkbox" name="remember">
                             <span class="checkmark"></span>
                             <span data-translate="remember_me">Remember me</span>
                         </label>
-                        <a href="#" class="forgot-password" data-translate="forgot_password">Forgot password?</a>
                     </div>
-                    
+
                     <button type="submit" class="btn btn-primary login-btn" data-translate="login_btn">Sign In</button>
-                    
+
                     <div class="login-divider">
                         <span data-translate="no_account_text">Don't have an account?</span>
                     </div>
-                    
-                    <a href="#" class="btn btn-outline register-btn" data-translate="register_btn">Create Account</a>
+
+                    <p style="text-align:center; font-size:.85rem; color:#5a6a78; margin:0;" data-translate="no_self_register_text">
+                        Accounts are issued by program administration. Contact support if you need access.
+                    </p>
                 </form>
             </div>
             <div class="login-info">
@@ -242,30 +246,74 @@
     <script src="scripts/translations.js"></script>
 <script src="scripts/main.js"></script>
     <script>
-        // Login form functionality
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // ---------------------------------------------------------------
+        // REAL login wiring — calls the backend at http://localhost:3000
+        // Make sure the backend server is running (node server.js) before
+        // testing this page.
+        // ---------------------------------------------------------------
+        const API_BASE = 'http://localhost:3000';
+
+        function showMessage(text, type) {
+            const box = document.getElementById('loginMessage');
+            box.textContent = text;
+            box.style.display = 'block';
+            box.className = 'login-message login-message-' + type;
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const submitButton = this.querySelector('.login-btn');
             const originalText = submitButton.textContent;
-            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
             submitButton.textContent = 'Signing In...';
             submitButton.disabled = true;
-            
-            // Simulate login process
-            setTimeout(() => {
-                showMessage('Login functionality will be implemented with backend integration.', 'info');
-                
+
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    showMessage(data.error || 'Login failed. Please try again.', 'error');
+                    return;
+                }
+
+                // Store the token for use on other pages (Profile, Payments, etc.)
+                localStorage.setItem('reframe_token', data.token);
+                localStorage.setItem('reframe_user', JSON.stringify(data.user));
+
+                if (data.user.must_change_password) {
+                    showMessage('Login successful. Please change your temporary password.', 'info');
+                    // Redirect to a change-password page once you build one, e.g.:
+                    // window.location.href = 'change-password.html';
+                } else {
+                    showMessage('Login successful. Redirecting...', 'success');
+                    // Redirect based on role once role-specific dashboards exist, e.g.:
+                    // const role = data.user.role;
+                    // window.location.href = role === 'admin' ? 'admin-dashboard.html' : 'PersonalProfile.html';
+                    setTimeout(() => { window.location.href = 'PersonalProfile.html'; }, 800);
+                }
+
+            } catch (err) {
+                console.error(err);
+                showMessage('Could not reach the server. Make sure the backend is running.', 'error');
+            } finally {
                 submitButton.textContent = originalText;
                 submitButton.disabled = false;
-            }, 1500);
+            }
         });
-        
-        // Password toggle functionality
+
+        // Password toggle functionality (unchanged)
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const passwordIcon = document.getElementById('passwordIcon');
-            
+
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
                 passwordIcon.classList.remove('fa-eye');
@@ -276,7 +324,6 @@
                 passwordIcon.classList.add('fa-eye');
             }
         }
-        
     </script>
    
 
@@ -353,6 +400,19 @@
   opacity: .92;
   margin: 0;
 }
+
+/* Status message box */
+.login-message{
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: .9rem;
+  font-weight: 600;
+  margin-bottom: 18px;
+  text-align: center;
+}
+.login-message-error{ background: #FBEAE8; color: #C0453A; border: 1px solid #f3cbc6; }
+.login-message-success{ background: #E7F1F0; color: #3B7D78; border: 1px solid #cfe3e1; }
+.login-message-info{ background: #FBF0E7; color: #B5622A; border: 1px solid #f0d9c4; }
 
 /* Form */
 .login-form .form-group{ margin-bottom: 18px; }
@@ -433,18 +493,10 @@
 .checkbox-label input[type="checkbox"]{
   width: 18px; height: 18px; accent-color: var(--brand);
 }
-.forgot-password{
-  color: var(--brand);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: .95rem;
-  transition: color .2s ease;
-}
-.forgot-password:hover{ color: var(--brand-600); }
 
 /* Buttons */
 .btn{ -webkit-tap-highlight-color: transparent; }
-.login-btn, .register-btn{
+.login-btn{
   width: 100%;
   height: 50px;
   border: 0; border-radius: var(--radius-md);
@@ -453,12 +505,14 @@
   display: inline-flex; align-items:center; justify-content:center;
   transition: background .25s ease, transform .15s ease, box-shadow .25s ease;
   box-shadow: 0 8px 20px rgba(77,151,148,.18);
+  cursor: pointer;
 }
-.login-btn:hover, .register-btn:hover{
+.login-btn:hover{
   background: var(--brand-600);
   transform: translateY(-1px);
 }
-.login-btn:active, .register-btn:active{ transform: translateY(0); }
+.login-btn:active{ transform: translateY(0); }
+.login-btn:disabled{ opacity: .7; cursor: not-allowed; }
 
 /* Divider */
 .login-divider{
@@ -519,7 +573,7 @@
   .input-wrapper input{ height: 48px; padding: 10px 56px 10px 42px; }
   .password-toggle{ right: 8px; width: 36px; height: 36px; }
   .form-options{ flex-direction: column; align-items: flex-start; gap: 10px; }
-  .login-btn, .register-btn{ height: 48px; }
+  .login-btn{ height: 48px; }
 }
 
 /* RTL support */
@@ -603,3 +657,5 @@ document.addEventListener("DOMContentLoaded", () => {
   
 });
 </script>
+</body>
+</html>
