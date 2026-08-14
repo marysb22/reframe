@@ -1,179 +1,64 @@
-﻿const db = require("../../db");
+﻿/**
+ * All of these expect the *joined* row shape produced by the queries in
+ * routes/admin.js (user_credentials LEFT JOIN supervisors LEFT JOIN
+ * students LEFT JOIN cohorts), not a raw single-table row -- see the
+ * SELECT list in admin.js's `USER_SELECT` constant for the exact columns
+ * these read.
+ */
 
-/** Small, safe summary used in login response / admin lists. */
-function toPublicUser(user) {
-  return {
-    id: user.id,
-    memberCode: user.member_code,
-    full_name: user.full_name,
-    role: user.role,
-    status: user.status,
-    must_change_password: !!user.must_change_password,
-    email: user.email,
-    cohort: user.cohort,
-    currentYear: user.current_year,
-    created_at: user.created_at,
-  };
-}
-
-/** Shape expected by profile.html's loadProfile(). */
-function toProfileResponse(user) {
-  const supervisors = db
-    .prepare(
-      `SELECT u.id, u.member_code, u.full_name
-       FROM user_supervisors us
-       JOIN users u ON u.id = us.supervisor_id
-       WHERE us.user_id = ?`
-    )
-    .all(user.id);
-
-  return {
-    id: user.id,
-    memberCode: user.member_code,
-    full_name: user.full_name,
-    role: user.role,
-    email: user.email,
-    gender: user.gender,
-    dateOfBirth: user.date_of_birth,
-    maritalStatus: user.marital_status,
-    phone: user.phone,
-    address: user.address,
-    highestDegree: user.highest_degree,
-    institution: user.institution,
-    certifications: user.certifications,
-    cohort: user.cohort,
-    currentYear: user.current_year,
-    cvFile: user.cv_file,
-    photo: user.photo,
-    must_change_password: !!user.must_change_password,
-    supervisors,
-  };
-}
-
-/** Row shown in a supervisor's "my students" list. */
-function toStudentSummary(user) {
-  return {
-    id: user.id,
-    memberCode: user.member_code,
-    full_name: user.full_name,
-    email: user.email,
-    cohort: user.cohort,
-    currentYear: user.current_year,
-    status: user.status,
-  };
-}
-
-function toRecord(row) {
+function toPublicUser(row) {
   return {
     id: row.id,
-    studentId: row.student_id,
-    supervisorId: row.supervisor_id,
-    supervisorName: row.supervisor_name,
-    recordType: row.record_type,
-    date: row.record_date,
-    time: row.record_time,
-    durationMinutes: row.duration_minutes,
+    memberCode: row.member_code,
+    role: row.role,
     status: row.status,
-    title: row.title,
-    content: row.content,
-    score: row.score,
-    createdAt: row.created_at,
+    full_name: row.full_name, // NOTE: snake_case deliberately -- the Admin
+    // Dashboard reads u.full_name, u.created_at, u.must_change_password
+    // directly (confirmed by grepping dashboard.html), same mixed
+    // convention as toStudentSummary's full_name field. Sending fullName
+    // here produced a blank Name column; sending createdAt/
+    // mustChangePassword camelCase produced "Invalid Date" everywhere
+    // and a broken "First login pending" indicator.
+    email: row.email,
+    must_change_password: row.must_change_password,
+    created_at: row.created_at,
+    supervisors: row.supervisors || [], // [] for supervisors/admins, real list for trainees
+  };
+}
+
+function toProfileResponse(row) {
+  return {
+    ...toPublicUser(row),
+    phone: row.phone,
+    photo: row.photo,
     updatedAt: row.updated_at,
+    // Student-only fields (null for a supervisor/admin row)
+    gender: row.gender,
+    dateOfBirth: row.date_of_birth,
+    maritalStatus: row.marital_status,
+    address: row.address,
+    cohort: row.cohort_name,
+    cohortId: row.cohort_id,
+    currentYear: row.current_year,
+    highestDegree: row.highest_degree,
+    institution: row.institution,
+    certifications: row.certifications,
+    cvFile: row.cv_file,
+    // Supervisor-only fields (null for a student/admin row)
+    specialization: row.specialization,
+    bio: row.bio,
   };
 }
 
-function toDocument(row) {
-  return {
-    id: row.id,
-    studentId: row.student_id,
-    uploadedBy: row.uploaded_by,
-    uploadedByName: row.uploaded_by_name,
-    filename: row.filename,
-    originalName: row.original_name,
-    createdAt: row.created_at,
-  };
-}
-
-function toMessage(row, currentUserId) {
-  return {
-    id: row.id,
-    senderId: row.sender_id,
-    senderName: row.sender_name,
-    recipientId: row.recipient_id,
-    content: row.content,
-    isRead: !!row.is_read,
-    isMine: row.sender_id === currentUserId,
-    createdAt: row.created_at,
-  };
-}
-
-/** Rolls a student's records up into the numbers My Profile/progress needs. */
-function toProgressSummary(records) {
-  const clinicalHours = records
-    .filter((r) => r.record_type === "clinical_hours")
-    .reduce((sum, r) => sum + (r.duration_minutes || 0), 0) / 60;
-
-  const attendanceRows = records.filter((r) => r.record_type === "attendance");
-  const presentCount = attendanceRows.filter((r) => r.status === "present").length;
-  const attendanceRate = attendanceRows.length ? Math.round((presentCount / attendanceRows.length) * 100) : null;
-
-  const assignments = records.filter((r) => r.record_type === "assignment");
-  const completedAssignments = assignments.filter((r) => r.status === "completed").length;
-
-  const evaluations = records.filter((r) => r.record_type === "evaluation" && r.score != null);
-  const averageEvaluationScore = evaluations.length
-    ? Math.round((evaluations.reduce((sum, r) => sum + r.score, 0) / evaluations.length) * 10) / 10
-    : null;
-
-  const trainingSessions = records.filter((r) => r.record_type === "training_session").length;
-  const supervisionSessions = records.filter((r) => r.record_type === "supervision_session").length;
-
-  return {
-    clinicalHours: Math.round(clinicalHours * 10) / 10,
-    attendanceRate,
-    trainingSessions,
-    supervisionSessions,
-    assignmentsTotal: assignments.length,
-    assignmentsCompleted: completedAssignments,
-    averageEvaluationScore,
-  };
-}
-
-function toMaterial(row) {
-  return {
-    id: row.id,
-    supervisorId: row.supervisor_id,
-    supervisorName: row.supervisor_name,
-    title: row.title,
-    description: row.description,
-    materialType: row.material_type,
-    filename: row.filename,
-    originalName: row.original_name,
-    externalUrl: row.external_url,
-    createdAt: row.created_at,
-  };
-}
-
-function toAnnouncement(row) {
-  return {
-    id: row.id,
-    supervisorId: row.supervisor_id,
-    supervisorName: row.supervisor_name,
-    title: row.title,
-    content: row.content,
-    createdAt: row.created_at,
-  };
-}
-
-function safeJsonArray(str) {
-  try {
-    const parsed = JSON.parse(str || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
+/**
+ * Converts an `events` row (JSONB columns already arrive as real JS
+ * arrays via node-postgres -- no JSON.parse needed, unlike the old
+ * SQLite-era TEXT-storing-JSON columns) into the nested
+ * { date, image, status, fee, register, english: {...}, arabic: {...} }
+ * shape that both events.html (public site) and the Admin Dashboard's
+ * event list already expect. The create/edit FORM still posts flat
+ * field names (englishTitle, arabicTitle, ...) -- see the route handlers.
+ */
 function toPublicEvent(row) {
   return {
     id: row.id,
@@ -187,9 +72,9 @@ function toPublicEvent(row) {
       format: row.format_en,
       facilitator: row.facilitator_en,
       about: row.about_en,
-      learn: safeJsonArray(row.learn_en),
-      who: safeJsonArray(row.who_en),
-      outcomes: safeJsonArray(row.outcomes_en),
+      learn: row.learn_en || [],
+      who: row.who_en || [],
+      outcomes: row.outcomes_en || [],
       facilitatorBio: row.facilitator_bio_en,
     },
     arabic: {
@@ -197,64 +82,204 @@ function toPublicEvent(row) {
       format: row.format_ar,
       facilitator: row.facilitator_ar,
       about: row.about_ar,
-      learn: safeJsonArray(row.learn_ar),
-      who: safeJsonArray(row.who_ar),
-      outcomes: safeJsonArray(row.outcomes_ar),
+      learn: row.learn_ar || [],
+      who: row.who_ar || [],
+      outcomes: row.outcomes_ar || [],
       facilitatorBio: row.facilitator_bio_ar,
     },
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
   };
 }
 
-/** Converts a raw payment_profiles row + its transactions into the
- * dollars-and-cents summary both the admin and student pages display. */
-function toPaymentSummary(user, totalFeeCents, transactions) {
+/**
+ * `transactions` is an array of raw payment_transactions rows (amount_cents
+ * as signed integers -- refunds/adjustments are negative). Computes paid/
+ * remaining/status live from the ledger rather than trusting the stored
+ * payments.status column, which the route handlers also keep in sync but
+ * shouldn't be the source of truth for a value this cheap to recompute.
+ */
+function toPaymentSummary(userRow, paymentsRow, transactions) {
+  const totalFeeCents = paymentsRow?.total_fee_cents || 0;
+  const discountCents = paymentsRow?.discount_cents || 0;
   const paidCents = transactions.reduce((sum, t) => sum + t.amount_cents, 0);
-  const remainingCents = totalFeeCents - paidCents;
+  const netFeeCents = Math.max(totalFeeCents - discountCents, 0);
+  const remainingCents = netFeeCents - paidCents;
 
   let status = "unpaid";
-  if (paidCents >= totalFeeCents && totalFeeCents > 0) status = "paid";
-  else if (paidCents > totalFeeCents) status = "overpaid";
+  if (paidCents > 0 && remainingCents <= 0) status = "paid";
   else if (paidCents > 0) status = "partial";
 
   return {
-    userId: user.id,
-    memberCode: user.member_code,
-    fullName: user.full_name,
+    userId: userRow.id,
+    fullName: userRow.full_name,
+    memberCode: userRow.member_code,
     totalFee: totalFeeCents / 100,
+    discount: discountCents / 100,
     paid: paidCents / 100,
-    remaining: remainingCents / 100,
+    remaining: Math.max(remainingCents, 0) / 100,
     status,
-    transactionCount: transactions.length,
+    paymentPlan: paymentsRow?.payment_plan || null,
+    nextDueDate: paymentsRow?.next_due_date || null,
   };
 }
 
 function toPaymentTransaction(row) {
   return {
     id: row.id,
-    userId: row.user_id,
     amount: row.amount_cents / 100,
+    transactionType: row.transaction_type,
     date: row.payment_date,
     method: row.method,
-    addedBy: row.added_by,
-    addedByName: row.added_by_name,
     notes: row.notes,
+    addedByName: row.added_by_name,
+    invoiceId: row.invoice_id,
     createdAt: row.created_at,
+  };
+}
+
+function toRecord(row) {
+  return {
+    id: row.id,
+    recordType: row.record_type,
+    date: row.record_date,
+    time: row.record_time,
+    durationMinutes: row.duration_minutes,
+    status: row.status,
+    title: row.title,
+    content: row.content,
+    score: row.score,
+    supervisorId: row.supervisor_id,
+    supervisorName: row.supervisor_name,
+    createdAt: row.created_at,
+  };
+}
+
+function toDocument(row) {
+  return {
+    id: row.id,
+    filename: row.filename,
+    originalName: row.original_name,
+    uploadedByName: row.uploaded_by_name,
+    createdAt: row.created_at,
+  };
+}
+
+function toMessage(row, viewerId) {
+  return {
+    id: row.id,
+    content: row.content,
+    senderName: row.sender_name,
+    isMine: Number(row.sender_id) === Number(viewerId),
+    isRead: row.is_read,
+    createdAt: row.created_at,
+  };
+}
+
+function toMaterial(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    materialType: row.material_type,
+    filename: row.filename,
+    originalName: row.original_name,
+    externalUrl: row.external_url,
+    supervisorName: row.supervisor_name,
+    createdAt: row.created_at,
+  };
+}
+
+function toAnnouncement(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    content: row.content,
+    supervisorName: row.supervisor_name,
+    createdAt: row.created_at,
+  };
+}
+
+function toStudentSummary(row) {
+  return {
+    id: row.id,
+    memberCode: row.member_code,
+    full_name: row.full_name, // NOTE: snake_case here deliberately -- the
+    // Supervisor Dashboard frontend (already built, not something to
+    // change here) consistently reads `s.full_name` in this one spot
+    // (student list, assign-by-ID toast, session/assignment/document
+    // panels), even though every other field on this object is
+    // camelCase. Sending `fullName` instead produced "undefined added
+    // to your students" on assignment -- reproduced and confirmed live.
+    status: row.status,
+    cohort: row.cohort_name,
+    currentYear: row.current_year,
+  };
+}
+
+/**
+ * Computes the numbers behind the profile-completion / progress cards via
+ * SQL aggregates against the normalized tables, rather than fetching every
+ * row and reducing in JS like the old flexible-table version did.
+ */
+async function computeProgressSummary(db, studentId) {
+  const [hoursRes, attendanceRes, sessionsRes, assignmentsRes, evalRes] = await Promise.all([
+    db.query(
+      `SELECT
+         COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id = $1), 0) AS training,
+         COALESCE((SELECT SUM(hours) FROM supervision_hours WHERE student_id = $1), 0) AS supervision`,
+      [studentId]
+    ),
+    db.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE status = 'present') AS present,
+         COUNT(*) AS total
+       FROM attendance WHERE student_id = $1`,
+      [studentId]
+    ),
+    db.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE session_type = 'training') AS training_sessions,
+         COUNT(*) FILTER (WHERE session_type = 'supervision') AS supervision_sessions
+       FROM sessions WHERE student_id = $1`,
+      [studentId]
+    ),
+    db.query(
+      `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'completed') AS completed
+       FROM assignments WHERE student_id = $1`,
+      [studentId]
+    ),
+    db.query(`SELECT AVG(score) AS avg_score FROM evaluations WHERE student_id = $1 AND score IS NOT NULL`, [
+      studentId,
+    ]),
+  ]);
+
+  const hours = hoursRes.rows[0];
+  const attendance = attendanceRes.rows[0];
+  const sessions = sessionsRes.rows[0];
+  const assignments = assignmentsRes.rows[0];
+  const avgScore = evalRes.rows[0].avg_score;
+
+  return {
+    clinicalHours: Number(hours.training) + Number(hours.supervision),
+    attendanceRate: Number(attendance.total) > 0 ? Math.round((Number(attendance.present) / Number(attendance.total)) * 100) : null,
+    trainingSessions: Number(sessions.training_sessions),
+    supervisionSessions: Number(sessions.supervision_sessions),
+    assignmentsTotal: Number(assignments.total),
+    assignmentsCompleted: Number(assignments.completed),
+    averageEvaluationScore: avgScore != null ? Math.round(Number(avgScore) * 10) / 10 : null,
   };
 }
 
 module.exports = {
   toPublicUser,
   toProfileResponse,
-  toStudentSummary,
-  toRecord,
-  toDocument,
-  toMessage,
-  toProgressSummary,
-  toMaterial,
-  toAnnouncement,
   toPublicEvent,
   toPaymentSummary,
   toPaymentTransaction,
+  toRecord,
+  toDocument,
+  toMessage,
+  toMaterial,
+  toAnnouncement,
+  toStudentSummary,
+  computeProgressSummary,
 };
