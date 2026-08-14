@@ -1,40 +1,24 @@
-﻿/**
- * Atomically generates the next member_code for a given prefix (TTR, SUP,
- * ADM) using SELECT ... FOR UPDATE to lock the counter row for the
- * duration of the caller's transaction -- two concurrent "create student"
- * requests can't ever be handed the same ID, because the second request's
- * FOR UPDATE blocks until the first transaction commits or rolls back.
- *
- * NOTE ON PREFIXES: the old SQLite-era route file used "ST" for trainees.
- * Every other artifact in this project (the schema's seed data, the
- * Supervisor Dashboard's "assign student by ID" placeholder, the
- * validation audit) already uses "TTR" instead. Standardized on "TTR"
- * here to match the majority convention and the schema as shipped --
- * flagging in case "ST" was actually the intended standard and it's this
- * file that should change instead.
- *
- * Must be called with the request's transactional client (see
- * middleware/auth.js -> asyncRoute) so the increment is part of the same
- * transaction as whatever INSERT uses the resulting ID.
- */
-async function generateNextId(client, prefix) {
-  const { rows } = await client.query(
-    "SELECT last_number FROM id_counters WHERE prefix = $1 FOR UPDATE",
-    [prefix]
-  );
+﻿const db = require("../../db");
+const config = require("../config");
 
-  if (!rows.length) {
-    // First ID ever issued for this prefix -- seed the counter row.
-    await client.query("INSERT INTO id_counters (prefix, last_number) VALUES ($1, 0)", [prefix]);
-  }
+function generateNextId(prefix = config.idPrefix, padLength = config.idPadLength) {
+  const tx = db.transaction((p) => {
+    const row = db.prepare("SELECT last_number FROM id_counters WHERE prefix = ?").get(p);
 
-  const { rows: updated } = await client.query(
-    "UPDATE id_counters SET last_number = last_number + 1 WHERE prefix = $1 RETURNING last_number",
-    [prefix]
-  );
+    const nextNumber = (row ? row.last_number : 0) + 1;
 
-  const number = updated[0].last_number;
-  return `${prefix}${String(number).padStart(3, "0")}`;
+    if (row) {
+      db.prepare("UPDATE id_counters SET last_number = ? WHERE prefix = ?").run(nextNumber, p);
+    } else {
+      db.prepare("INSERT INTO id_counters (prefix, last_number) VALUES (?, ?)").run(p, nextNumber);
+    }
+
+    return nextNumber;
+  });
+
+  const number = tx(prefix);
+  const padded = String(number).padStart(padLength, "0");
+  return `${prefix}${padded}`;
 }
 
 module.exports = { generateNextId };

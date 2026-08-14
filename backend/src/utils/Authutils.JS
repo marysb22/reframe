@@ -1,30 +1,36 @@
 ﻿const bcrypt = require("bcryptjs");
-const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
+const config = require("../config");
 
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS = 12;
 
-async function hashPassword(plain) {
-  return bcrypt.hash(plain, SALT_ROUNDS);
+function hashPassword(plainPassword) {
+  return bcrypt.hashSync(plainPassword, SALT_ROUNDS);
 }
 
-async function verifyPassword(plain, hash) {
-  return bcrypt.compare(plain, hash);
+function verifyPassword(plainPassword, hash) {
+  return bcrypt.compareSync(plainPassword, hash);
 }
 
-/**
- * Generates a random temporary password that's easy to read aloud/type
- * (no ambiguous characters like 0/O or 1/l/I), always 10 characters,
- * always includes at least one digit -- meets the >=8 character minimum
- * enforced elsewhere with room to spare.
- */
+function signToken(user) {
+  return jwt.sign(
+    { sub: user.id, role: user.role, member_code: user.member_code },
+    config.jwtSecret,
+    { expiresIn: config.jwtExpiresIn }
+  );
+}
+
+function verifyToken(token) {
+  return jwt.verify(token, config.jwtSecret);
+}
+
 function generateTempPassword() {
-  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  const bytes = crypto.randomBytes(10);
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
   let out = "";
-  for (let i = 0; i < 10; i++) {
-    out += alphabet[bytes[i] % alphabet.length];
+  for (let i = 0; i < 8; i++) {
+    out += chars[Math.floor(Math.random() * chars.length)];
   }
-  return out;
+  return `${out.slice(0, 4)}-${out.slice(4)}`;
 }
 
-module.exports = { hashPassword, verifyPassword, generateTempPassword };
+module.exports = { hashPassword, verifyPassword, signToken, verifyToken, generateTempPassword };
