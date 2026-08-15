@@ -156,6 +156,11 @@ tr:hover td{background:var(--surface-2);}
 .confirm-box .confirm-actions{display:flex;gap:10px;}
 .confirm-box .confirm-actions .btn{margin-top:0;}
 
+.trainer-card{background:var(--surface-2);border:1px solid var(--border-soft);border-radius:12px;padding:14px 16px;}
+.trainer-card .trainer-name-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;}
+.trainer-card .trainer-detail{font-size:12.5px;color:var(--muted);line-height:1.7;}
+.trainer-card .trainer-detail i{width:16px;text-align:center;color:var(--faint);}
+
 @media(max-width:1080px){.create-grid{grid-template-columns:1fr;}.settings-grid{grid-template-columns:1fr;}}
 @media(max-width:900px){.kpi-grid{grid-template-columns:1fr;}}
 @media(max-width:700px){
@@ -182,9 +187,8 @@ tr:hover td{background:var(--surface-2);}
 
     <div class="nav-label">Accounts</div>
     <ul>
-      <li><a data-section="students" href="#students"><i class="fa fa-user-graduate"></i>Students</a></li>
-      <li><a data-section="supervisors" href="#supervisors"><i class="fa fa-user-doctor"></i>Supervisors</a></li>
-      <li><a data-section="studentProfiles" href="#studentProfiles"><i class="fa fa-address-card"></i>Student Profiles</a></li>
+      <li><a data-section="groups" href="#groups"><i class="fa fa-people-group"></i>Groups</a></li>
+      <li><a data-section="studentProfiles" href="#studentProfiles"><i class="fa fa-address-card"></i>Trainee Profiles</a></li>
     </ul>
 
     <div class="nav-label">Content &amp; Finance</div>
@@ -225,13 +229,13 @@ tr:hover td{background:var(--surface-2);}
 
     <section class="kpi-grid">
       <div class="kpi-card"><label>Total accounts</label><h2 id="kpiTotal">&mdash;</h2></div>
-      <div class="kpi-card"><label>Students</label><h2 id="kpiStudents">&mdash;</h2></div>
-      <div class="kpi-card"><label>Supervisors</label><h2 id="kpiSupervisors">&mdash;</h2></div>
+      <div class="kpi-card"><label>Trainees</label><h2 id="kpiTrainees">&mdash;</h2></div>
+      <div class="kpi-card"><label>Groups</label><h2 id="kpiGroups">&mdash;</h2></div>
     </section>
 
     <div class="quick-links">
-      <button class="quick-link-card" onclick="showSection('students')"><i class="fa fa-user-graduate"></i><span>Manage students</span></button>
-      <button class="quick-link-card" onclick="showSection('supervisors')"><i class="fa fa-user-doctor"></i><span>Manage supervisors</span></button>
+      <button class="quick-link-card" onclick="showSection('groups')"><i class="fa fa-people-group"></i><span>Manage groups</span></button>
+      <button class="quick-link-card" onclick="showSection('studentProfiles')"><i class="fa fa-address-card"></i><span>Trainee profiles</span></button>
       <button class="quick-link-card" onclick="showSection('events')"><i class="fa fa-calendar-days"></i><span>Manage events</span></button>
       <button class="quick-link-card" onclick="showSection('payments')"><i class="fa fa-money-bill"></i><span>Manage payments</span></button>
     </div>
@@ -248,93 +252,86 @@ tr:hover td{background:var(--surface-2);}
   </section>
 
   <!-- ============================================================= -->
-  <!-- STUDENTS                                                       -->
+  <!-- GROUPS                                                         -->
   <!-- ============================================================= -->
-  <section class="dash-section" id="section-students" data-title="Students" data-eyebrow="Account management">
+  <section class="dash-section" id="section-groups" data-title="Groups" data-eyebrow="Account management">
 
     <div class="system-card">
-      <h3><i class="fa fa-user-graduate"></i>Add student</h3>
-      <p class="hint">Creates a Student account. ID auto-generates as ST001, ST002... unless you set one.</p>
-      <form id="studentForm">
-        <label>Student ID (optional)</label>
-        <input type="text" id="stuId" placeholder="Leave blank to auto-generate (ST001, ST002...)">
-        <label>Full name</label>
-        <input type="text" id="stuName" required placeholder="Full name">
-        <label>Default password</label>
-        <input type="text" id="stuPassword" value="password123">
-        <div class="field-hint">Give this ID and password to the student. They'll be required to change it on first login.</div>
-        <button type="submit" class="btn">Create student account</button>
+      <h3><i class="fa fa-people-group"></i>Add group</h3>
+      <p class="hint">Creates a complete group in one step -- 1 Master Trainer, 2 Trainers (ToT), and their Trainees. IDs auto-generate unless you set them. The Master Trainer and both Trainers share one password; every Trainee in the group shares another.</p>
+      <form id="groupForm">
+        <label>Group name</label>
+        <input type="text" id="grpName" required placeholder="e.g. Group A">
+
+        <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Master Trainer</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div><label style="margin-top:0;">Full name</label><input type="text" id="grpMasterName" required placeholder="Full name"></div>
+          <div><label style="margin-top:0;">ID (optional)</label><input type="text" id="grpMasterId" placeholder="Auto-generate"></div>
+        </div>
+
+        <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Trainer 1 (ToT)</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div><label style="margin-top:0;">Full name</label><input type="text" id="grpTrainer1Name" required placeholder="Full name"></div>
+          <div><label style="margin-top:0;">ID (optional)</label><input type="text" id="grpTrainer1Id" placeholder="Auto-generate"></div>
+        </div>
+
+        <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Trainer 2 (ToT)</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div><label style="margin-top:0;">Full name</label><input type="text" id="grpTrainer2Name" required placeholder="Full name"></div>
+          <div><label style="margin-top:0;">ID (optional)</label><input type="text" id="grpTrainer2Id" placeholder="Auto-generate"></div>
+        </div>
+
+        <label>Trainer password <span style="font-weight:400;color:var(--faint);">(shared by the Master Trainer and both Trainers)</span></label>
+        <input type="text" id="grpTrainerPassword" value="password123">
+
+        <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Trainees</h4>
+        <div id="grpTraineesList"></div>
+        <button type="button" class="btn btn-secondary" style="width:auto;margin-top:6px;" onclick="addTraineeRow()"><i class="fa fa-plus"></i> Add trainee</button>
+
+        <label>Trainee password <span style="font-weight:400;color:var(--faint);">(shared by every trainee in this group)</span></label>
+        <input type="text" id="grpTraineePassword" value="password123">
+
+        <div class="field-hint">Everyone will be required to change their password on first login.</div>
+        <button type="submit" class="btn">Create group</button>
       </form>
-      <div class="result-box" id="stuResult"></div>
+      <div class="result-box" id="grpResult"></div>
     </div>
 
     <div class="system-card">
-      <h3><i class="fa fa-users"></i>All students</h3>
+      <h3><i class="fa fa-people-group"></i>All groups</h3>
       <div class="toolbar" style="margin-top:16px;">
-        <input type="text" id="studentSearch" placeholder="Search by name or ID...">
-        <select id="studentStatusFilter">
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="suspended">Suspended</option>
-        </select>
+        <input type="text" id="groupSearch" placeholder="Search by group name...">
       </div>
       <table>
-        <thead><tr><th>Name</th><th>ID</th><th>Email</th><th>Supervisor(s)</th><th>Status</th><th>First login pending</th><th>Created</th><th>Actions</th></tr></thead>
-        <tbody id="studentsBody"><tr><td colspan="8" class="empty-state">Loading...</td></tr></tbody>
+        <thead>
+          <tr>
+            <th>Group</th>
+            <th>Master Trainer</th>
+            <th>Trainer 1 (ToT)</th>
+            <th>Trainer 2 (ToT)</th>
+            <th>Trainees</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="groupsBody">
+          <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+        </tbody>
       </table>
     </div>
 
   </section>
 
   <!-- ============================================================= -->
-  <!-- SUPERVISORS                                                    -->
+  <!-- TRAINEE PROFILES (full detail view)                            -->
   <!-- ============================================================= -->
-  <section class="dash-section" id="section-supervisors" data-title="Supervisors" data-eyebrow="Account management">
-
-    <div class="system-card">
-      <h3><i class="fa fa-user-doctor"></i>Add supervisor</h3>
-      <p class="hint">Creates a Supervisor account. ID auto-generates as SUP001, SUP002... unless you set one.</p>
-      <form id="supForm">
-        <label>Supervisor ID (optional)</label>
-        <input type="text" id="supId" placeholder="Leave blank to auto-generate (SUP001, SUP002...)">
-        <label>Full name</label>
-        <input type="text" id="supName" required placeholder="Full name">
-        <label>Default password</label>
-        <input type="text" id="supPassword" value="password123">
-        <div class="field-hint">Give this ID and password to the supervisor. They'll be required to change it on first login.</div>
-        <button type="submit" class="btn">Create supervisor account</button>
-      </form>
-      <div class="result-box" id="supResult"></div>
-    </div>
-
-    <div class="system-card">
-      <h3><i class="fa fa-users"></i>All supervisors</h3>
-      <div class="toolbar" style="margin-top:16px;">
-        <input type="text" id="supervisorSearch" placeholder="Search by name or ID...">
-        <select id="supervisorStatusFilter">
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="suspended">Suspended</option>
-        </select>
-      </div>
-      <table>
-        <thead><tr><th>Name</th><th>ID</th><th>Status</th><th>First login pending</th><th>Created</th><th>Actions</th></tr></thead>
-        <tbody id="supervisorsBody"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
-      </table>
-    </div>
-
-  </section>
-
-  <!-- ============================================================= -->
-  <!-- STUDENT PROFILES (full detail view)                            -->
-  <!-- ============================================================= -->
-  <section class="dash-section" id="section-studentProfiles" data-title="Student Profiles" data-eyebrow="Account management">
+  <section class="dash-section" id="section-studentProfiles" data-title="Trainee Profiles" data-eyebrow="Account management">
 
     <div class="system-card" id="spListWrap">
-      <h3><i class="fa fa-address-card"></i>Student Profiles</h3>
-      <p class="hint">Search by Student ID or name to open a complete profile: personal info, academic progress, documents, and payments.</p>
+      <h3><i class="fa fa-address-card"></i>Trainee Profiles</h3>
+      <p class="hint">Search by Trainee ID or name to open a complete profile: personal info, academic progress, trainers, hours, documents, and payments.</p>
       <div class="toolbar" style="margin-top:16px;">
-        <input type="text" id="spSearch" placeholder="Search by name or Student ID...">
+        <input type="text" id="spSearch" placeholder="Search by name or Trainee ID...">
       </div>
       <table>
         <thead><tr><th>Name</th><th>ID</th><th>Cohort</th><th>Year</th><th>Status</th><th></th></tr></thead>
@@ -357,13 +354,14 @@ tr:hover td{background:var(--surface-2);}
       <div class="toolbar" style="border-bottom:1px solid var(--border-soft);padding-bottom:14px;margin-bottom:18px;">
         <button class="btn btn-sm sp-tab active" data-tab="personal" onclick="switchSpTab('personal')" style="width:auto;margin:0;">Personal</button>
         <button class="btn btn-secondary btn-sm sp-tab" data-tab="academic" onclick="switchSpTab('academic')" style="width:auto;margin:0;">Academic</button>
+        <button class="btn btn-secondary btn-sm sp-tab" data-tab="trainers" onclick="switchSpTab('trainers')" style="width:auto;margin:0;">Trainers &amp; Hours</button>
         <button class="btn btn-secondary btn-sm sp-tab" data-tab="documents" onclick="switchSpTab('documents')" style="width:auto;margin:0;">Documents</button>
         <button class="btn btn-secondary btn-sm sp-tab" data-tab="payments" onclick="switchSpTab('payments')" style="width:auto;margin:0;">Payments</button>
       </div>
 
       <div id="spPanel-personal" class="sp-panel">
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
-          <div><label style="margin-top:0;">Student ID</label><div id="spF_memberCode">&mdash;</div></div>
+          <div><label style="margin-top:0;">Trainee ID</label><div id="spF_memberCode">&mdash;</div></div>
           <div><label style="margin-top:0;">Full name</label><div id="spF_fullName">&mdash;</div></div>
           <div><label style="margin-top:0;">Date of birth</label><div id="spF_dob">&mdash;</div></div>
           <div><label style="margin-top:0;">Gender</label><div id="spF_gender">&mdash;</div></div>
@@ -376,10 +374,9 @@ tr:hover td{background:var(--surface-2);}
       </div>
 
       <div id="spPanel-academic" class="sp-panel" style="display:none;">
-        <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px;">
+        <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:18px;">
           <div class="kpi-card"><label>Cohort</label><h2 id="spA_cohort" style="font-size:18px;">&mdash;</h2></div>
           <div class="kpi-card"><label>Program year</label><h2 id="spA_year" style="font-size:18px;">&mdash;</h2></div>
-          <div class="kpi-card"><label>Supervisor(s)</label><h2 id="spA_supervisors" style="font-size:14px;">&mdash;</h2></div>
         </div>
         <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
           <div class="kpi-card"><label>Clinical hours</label><h2 id="spA_hours" style="font-size:18px;">&mdash;</h2></div>
@@ -391,6 +388,21 @@ tr:hover td{background:var(--surface-2);}
         <table>
           <thead><tr><th>Type</th><th>Title</th><th>Date</th><th>Details</th><th>Logged by</th></tr></thead>
           <tbody id="spRecordsBody"><tr><td colspan="5" class="empty-state">No records yet.</td></tr></tbody>
+        </table>
+      </div>
+
+      <div id="spPanel-trainers" class="sp-panel" style="display:none;">
+        <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Master Trainer</h4>
+        <div id="spMasterTrainerWrap" style="margin-bottom:22px;"></div>
+
+        <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">ToT Trainers</h4>
+        <div id="spTotTrainersWrap" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;"></div>
+
+        <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Training Hours</h4>
+        <p class="hint" style="margin:0 0 10px;">Hours each trainer has logged supervising this trainee, plus the trainee's own logged clinical training hours.</p>
+        <table>
+          <thead><tr><th>Role</th><th style="text-align:right;">Hours</th></tr></thead>
+          <tbody id="spHoursBody"><tr><td colspan="2" class="empty-state">No hours logged yet.</td></tr></tbody>
         </table>
       </div>
 
@@ -503,7 +515,7 @@ tr:hover td{background:var(--surface-2);}
       <p class="hint">Search by ID or name to open a payment record, set the total program fee, and record payments.</p>
 
       <div class="toolbar" style="margin-top:16px;">
-        <input type="text" id="paymentSearch" placeholder="Search by Student ID, Supervisor ID, or name...">
+        <input type="text" id="paymentSearch" placeholder="Search by Trainee ID or name...">
       </div>
 
       <table>
@@ -543,7 +555,7 @@ tr:hover td{background:var(--surface-2);}
 
         <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Payment history</h4>
         <table>
-          <thead><tr><th>Payment ID</th><th>Student/Supervisor ID</th><th>Date</th><th>Amount</th><th>Method</th><th>Added by</th><th>Notes</th></tr></thead>
+          <thead><tr><th>Payment ID</th><th>Trainee ID</th><th>Date</th><th>Amount</th><th>Method</th><th>Added by</th><th>Notes</th></tr></thead>
           <tbody id="paymentHistoryBody"><tr><td colspan="7" class="empty-state">No payments yet.</td></tr></tbody>
         </table>
       </div>
@@ -591,7 +603,7 @@ tr:hover td{background:var(--surface-2);}
         <h3><i class="fa fa-bell"></i>Notification preferences</h3>
         <p class="hint">Saved on this device for now &mdash; ask your dev team to wire this to a backend endpoint when one exists.</p>
         <div class="toggle-row">
-          <div><strong>New account requests</strong><span>Get notified when a new student or supervisor is created.</span></div>
+          <div><strong>New account requests</strong><span>Get notified when a new group is created.</span></div>
           <label class="switch"><input type="checkbox" id="notifAccounts" checked><span class="switch-track"></span></label>
         </div>
         <div class="toggle-row">
@@ -631,13 +643,11 @@ if (!token) window.location.href = "login.html";
 
 async function apiRequest(url, options = {}) {
   try {
-    // FIX: spread options FIRST, then build headers as an actual merge
+    // Spread options FIRST, then build headers as an actual merge
     // (Authorization + Content-Type, then anything the caller passed on
     // top) instead of letting options.headers silently replace the whole
-    // headers object via a later spread -- that bug was dropping the
-    // Authorization header on every POST/PUT that set its own headers,
-    // which the backend correctly rejected with 401, which this function
-    // then treated as "session expired" and logged the user out.
+    // headers object -- that pattern drops the Authorization header on
+    // every POST/PUT that sets its own headers.
     const response = await fetch(API + url, {
       ...options,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(options.headers || {}) },
@@ -684,7 +694,7 @@ function copyText(text) {
 
 // ---- Section switching -------------------------------------------------
 
-const SECTION_IDS = ["dashboard", "students", "supervisors", "studentProfiles", "events", "payments", "settings"];
+const SECTION_IDS = ["dashboard", "groups", "studentProfiles", "events", "payments", "settings"];
 
 function showSection(name) {
   if (!SECTION_IDS.includes(name)) name = "dashboard";
@@ -787,7 +797,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("settingsMemberCode").value = me.memberCode || "";
   loadNotificationPrefs();
 
+  addTraineeRow();
   loadUsers();
+  loadGroups();
   loadEvents();
   loadPayments();
   restoreEventDraftIfAny();
@@ -796,7 +808,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   showSection(initialSection);
 });
 
-// ---- Accounts (students / supervisors) -------------------------------
+// ---- Accounts (loaded once, shared by KPIs / recent list / Trainee -----
+// Profiles -- Group membership itself is loaded separately by loadGroups())
 
 async function loadUsers() {
   const data = await apiRequest("/admin/users?pageSize=200");
@@ -804,15 +817,22 @@ async function loadUsers() {
   allUsers = data.users;
   renderKpis();
   renderRecentAccounts();
-  renderRoleTable("trainee", "studentSearch", "studentStatusFilter", "studentsBody");
-  renderRoleTable("supervisor", "supervisorSearch", "supervisorStatusFilter", "supervisorsBody");
   renderSpList();
 }
 
 function renderKpis() {
   document.getElementById("kpiTotal").textContent = allUsers.length;
-  document.getElementById("kpiStudents").textContent = allUsers.filter((u) => u.role === "trainee").length;
-  document.getElementById("kpiSupervisors").textContent = allUsers.filter((u) => u.role === "supervisor").length;
+  document.getElementById("kpiTrainees").textContent = allUsers.filter((u) => u.role === "trainee").length;
+}
+
+// Maps the raw account role (and, for a trainer-role account, its
+// supervisor_type) to the label the UI shows -- "Supervisor" never
+// appears; a trainer-role account is either a Master Trainer or a
+// Trainer (ToT).
+function roleDisplayLabel(u) {
+  if (u.role === "trainee") return "Trainee";
+  if (u.role === "supervisor") return u.supervisorType === "in_training" ? "Trainer (ToT)" : "Master Trainer";
+  return "Admin";
 }
 
 function renderRecentAccounts() {
@@ -826,64 +846,164 @@ function renderRecentAccounts() {
     <tr>
       <td><strong>${escapeHtml(u.full_name)}</strong></td>
       <td>${escapeHtml(u.memberCode)}</td>
-      <td><span class="pill ${u.role}">${escapeHtml(u.role)}</span></td>
+      <td><span class="pill ${u.role}">${escapeHtml(roleDisplayLabel(u))}</span></td>
       <td><span class="pill ${u.status}">${escapeHtml(u.status)}</span></td>
       <td>${new Date(u.created_at).toLocaleDateString()}</td>
     </tr>
   `).join("");
 }
 
-function renderRoleTable(role, searchInputId, statusFilterId, tbodyId) {
-  const searchEl = document.getElementById(searchInputId);
-  const statusEl = document.getElementById(statusFilterId);
-  const search = (searchEl.value || "").toLowerCase();
-  const statusFilter = statusEl.value;
+// ---- Groups (the only account-creation action Admin has -- creates a
+// Master Trainer + 2 Trainers (ToT) + Trainees as one unit) --------------
 
-  const filtered = allUsers.filter((u) => {
-    if (u.role !== role) return false;
-    const matchesSearch = u.full_name.toLowerCase().includes(search) || u.memberCode.toLowerCase().includes(search);
-    const matchesStatus = !statusFilter || u.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+let allGroups = [];
 
-  const body = document.getElementById(tbodyId);
-  const isStudent = role === "trainee";
-  const colCount = isStudent ? 8 : 6;
+function addTraineeRow(name = "", memberCode = "") {
+  const wrap = document.getElementById("grpTraineesList");
+  const row = document.createElement("div");
+  row.className = "grpTraineeRow";
+  row.style.cssText = "display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;";
+  row.innerHTML = `
+    <div><label style="margin-top:0;">Trainee name</label><input type="text" class="grpTraineeName" value="${escapeHtml(name)}" placeholder="Full name"></div>
+    <div><label style="margin-top:0;">ID (optional)</label><input type="text" class="grpTraineeId" value="${escapeHtml(memberCode)}" placeholder="Auto-generate"></div>
+    <button type="button" class="icon-btn danger" style="margin-bottom:0;" onclick="this.closest('.grpTraineeRow').remove()"><i class="fa fa-trash"></i></button>
+  `;
+  wrap.appendChild(row);
+}
+
+async function loadGroups() {
+  const data = await apiRequest("/admin/groups");
+  if (!data) return;
+  allGroups = data.groups;
+  document.getElementById("kpiGroups").textContent = allGroups.length;
+  renderGroups();
+}
+
+function renderGroups() {
+  const search = (document.getElementById("groupSearch").value || "").toLowerCase();
+  const filtered = allGroups.filter((g) => g.name.toLowerCase().includes(search));
+
+  const body = document.getElementById("groupsBody");
   if (!filtered.length) {
-    body.innerHTML = `<tr><td colspan="${colCount}" class="empty-state">No ${role === "trainee" ? "students" : "supervisors"} match.</td></tr>`;
+    body.innerHTML = '<tr><td colspan="7" class="empty-state">No groups match.</td></tr>';
     return;
   }
 
-  body.innerHTML = filtered.map((u) => `
+  body.innerHTML = filtered
+    .map(
+      (g) => `
     <tr>
-      <td><strong>${escapeHtml(u.full_name)}</strong></td>
-      <td>${escapeHtml(u.memberCode)}</td>
-      ${isStudent ? `<td>${escapeHtml(u.email || "&mdash;")}</td>` : ""}
-      ${isStudent ? `<td>${(u.supervisors && u.supervisors.length) ? u.supervisors.map((s) => escapeHtml(s.full_name)).join(", ") : "&mdash;"}</td>` : ""}
-      <td><span class="pill ${u.status}">${escapeHtml(u.status)}</span></td>
-      <td>${u.must_change_password ? '<span class="pill pending">Yes</span>' : "&mdash;"}</td>
-      <td>${new Date(u.created_at).toLocaleDateString()}</td>
-      <td>
-        ${isStudent ? `<button class="icon-btn" title="View full profile" onclick="openStudentProfile(${u.id})"><i class="fa fa-address-card"></i></button>` : ""}
-        <button class="icon-btn" title="${u.status === "active" ? "Suspend" : "Activate"}" onclick="confirmToggleStatus(${u.id}, '${u.status}', '${escapeHtml(u.full_name)}')">
-          <i class="fa ${u.status === "active" ? "fa-user-slash" : "fa-user-check"}"></i>
-        </button>
-        <button class="icon-btn danger" title="Delete account" onclick="confirmDeleteUser(${u.id}, '${escapeHtml(u.full_name)}', '${u.role}')">
-          <i class="fa fa-trash"></i>
-        </button>
-      </td>
+      <td><strong>${escapeHtml(g.name)}</strong></td>
+      <td>${g.masterTrainer ? escapeHtml(g.masterTrainer.full_name) : "&mdash;"}</td>
+      <td>${g.trainers[0] ? escapeHtml(g.trainers[0].full_name) : "&mdash;"}</td>
+      <td>${g.trainers[1] ? escapeHtml(g.trainers[1].full_name) : "&mdash;"}</td>
+      <td>${g.trainees.length}</td>
+      <td>${new Date(g.createdAt).toLocaleDateString()}</td>
+      <td><button class="icon-btn" title="View members" onclick="toggleGroupMembers(${g.id})"><i class="fa fa-eye"></i></button></td>
     </tr>
-  `).join("");
+    <tr id="groupMembers${g.id}" style="display:none;"><td colspan="7">${renderGroupMembers(g)}</td></tr>
+  `
+    )
+    .join("");
 }
 
-["studentSearch", "studentStatusFilter"].forEach((id) =>
-  document.getElementById(id).addEventListener("input", () => renderRoleTable("trainee", "studentSearch", "studentStatusFilter", "studentsBody"))
-);
-["supervisorSearch", "supervisorStatusFilter"].forEach((id) =>
-  document.getElementById(id).addEventListener("input", () => renderRoleTable("supervisor", "supervisorSearch", "supervisorStatusFilter", "supervisorsBody"))
-);
+function renderGroupMembers(g) {
+  const rows = [];
+  if (g.masterTrainer) rows.push({ ...g.masterTrainer, roleLabel: "Master Trainer", deleteRole: "supervisor" });
+  g.trainers.forEach((t) => rows.push({ ...t, roleLabel: "Trainer (ToT)", deleteRole: "supervisor" }));
+  g.trainees.forEach((t) => rows.push({ ...t, roleLabel: "Trainee", deleteRole: "trainee" }));
+  if (!rows.length) return '<div class="empty-state">No members.</div>';
+  return `
+    <table style="margin:0;">
+      <thead><tr><th>Name</th><th>Role</th><th>ID</th><th>Status</th><th>First login pending</th><th></th></tr></thead>
+      <tbody>
+        ${rows
+          .map(
+            (m) => `
+          <tr>
+            <td>${escapeHtml(m.full_name)}</td>
+            <td>${escapeHtml(m.roleLabel)}</td>
+            <td>${escapeHtml(m.member_code)}</td>
+            <td><span class="pill ${m.status}">${escapeHtml(m.status)}</span></td>
+            <td>${m.must_change_password ? '<span class="pill pending">Yes</span>' : "&mdash;"}</td>
+            <td>
+              <button class="icon-btn" title="${m.status === "active" ? "Suspend" : "Activate"}" onclick="confirmToggleStatus(${m.id}, '${m.status}', '${escapeHtml(m.full_name)}')"><i class="fa ${m.status === "active" ? "fa-user-slash" : "fa-user-check"}"></i></button>
+              <button class="icon-btn danger" title="Delete" onclick="confirmDeleteUser(${m.id}, '${escapeHtml(m.full_name)}', '${m.deleteRole}')"><i class="fa fa-trash"></i></button>
+            </td>
+          </tr>
+        `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
 
-// ---- Student Profiles (full detail view) --------------------------------
+function toggleGroupMembers(id) {
+  const row = document.getElementById(`groupMembers${id}`);
+  row.style.display = row.style.display === "none" ? "table-row" : "none";
+}
+
+document.getElementById("groupSearch").addEventListener("input", renderGroups);
+
+document.getElementById("groupForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const name = document.getElementById("grpName").value.trim();
+  const masterTrainer = {
+    fullName: document.getElementById("grpMasterName").value.trim(),
+    memberCode: document.getElementById("grpMasterId").value.trim() || undefined,
+  };
+  const trainers = [
+    {
+      fullName: document.getElementById("grpTrainer1Name").value.trim(),
+      memberCode: document.getElementById("grpTrainer1Id").value.trim() || undefined,
+    },
+    {
+      fullName: document.getElementById("grpTrainer2Name").value.trim(),
+      memberCode: document.getElementById("grpTrainer2Id").value.trim() || undefined,
+    },
+  ];
+  const trainerPassword = document.getElementById("grpTrainerPassword").value.trim() || undefined;
+  const traineePassword = document.getElementById("grpTraineePassword").value.trim() || undefined;
+
+  const trainees = [];
+  document.querySelectorAll("#grpTraineesList .grpTraineeRow").forEach((row) => {
+    const fullName = row.querySelector(".grpTraineeName").value.trim();
+    const memberCode = row.querySelector(".grpTraineeId").value.trim();
+    if (fullName) trainees.push({ fullName, memberCode: memberCode || undefined });
+  });
+  if (!trainees.length) {
+    showToast("Add at least one trainee", "error");
+    return;
+  }
+
+  const result = await apiRequest("/admin/groups", {
+    method: "POST",
+    body: JSON.stringify({ name, masterTrainer, trainers, trainees, trainerPassword, traineePassword }),
+  });
+
+  if (result) {
+    const box = document.getElementById("grpResult");
+    box.className = "result-box show";
+    box.innerHTML = `
+      <div class="rlabel">Group "${escapeHtml(result.group.name)}" created</div>
+      <div class="result-row"><span>Master Trainer</span><strong>${escapeHtml(result.masterTrainer.fullName)} (${escapeHtml(result.masterTrainer.memberCode)})</strong></div>
+      ${result.trainers.map((t) => `<div class="result-row"><span>Trainer (ToT)</span><strong>${escapeHtml(t.fullName)} (${escapeHtml(t.memberCode)})</strong></div>`).join("")}
+      <div class="result-row"><span>Trainer password</span><strong>${escapeHtml(result.trainerPassword)}</strong> <button class="copy-btn" onclick="copyText('${result.trainerPassword}')">Copy</button></div>
+      ${result.trainees.map((t) => `<div class="result-row"><span>Trainee</span><strong>${escapeHtml(t.fullName)} (${escapeHtml(t.memberCode)})</strong></div>`).join("")}
+      <div class="result-row"><span>Trainee password</span><strong>${escapeHtml(result.traineePassword)}</strong> <button class="copy-btn" onclick="copyText('${result.traineePassword}')">Copy</button></div>
+    `;
+    showToast("Group created", "success");
+    document.getElementById("groupForm").reset();
+    document.getElementById("grpTraineesList").innerHTML = "";
+    addTraineeRow();
+    loadUsers();
+    loadGroups();
+  }
+});
+
+// ---- Trainee Profiles (full detail view) --------------------------------
 
 function renderSpList() {
   const search = (document.getElementById("spSearch").value || "").toLowerCase();
@@ -894,7 +1014,7 @@ function renderSpList() {
 
   const body = document.getElementById("spListBody");
   if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="6" class="empty-state">No students match.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No trainees match.</td></tr>';
     return;
   }
 
@@ -947,11 +1067,70 @@ function switchSpTab(tab) {
   });
 }
 
+// Renders one Master Trainer / Trainer (ToT) info card from everything
+// the backend has on file for them (name, ID, contact, specialization,
+// bio) plus the hours they've logged supervising this specific trainee.
+function renderTrainerCard(t, emptyLabel) {
+  if (!t) return `<div class="empty-state">No ${emptyLabel} assigned yet.</div>`;
+  return `
+    <div class="trainer-card">
+      <div class="trainer-name-row">
+        <strong>${escapeHtml(t.fullName)}</strong>
+        <span class="pill supervisor">${escapeHtml(t.memberCode)}</span>
+      </div>
+      <div class="trainer-detail">
+        ${t.email ? `<div><i class="fa fa-envelope"></i> ${escapeHtml(t.email)}</div>` : ""}
+        ${t.phone ? `<div><i class="fa fa-phone"></i> ${escapeHtml(t.phone)}</div>` : ""}
+        ${t.specialization ? `<div><i class="fa fa-briefcase-medical"></i> ${escapeHtml(t.specialization)}</div>` : ""}
+        <div><i class="fa fa-clock"></i> ${Number(t.hours || 0).toFixed(1)} hours logged with this trainee</div>
+        ${t.bio ? `<div style="margin-top:6px;">${escapeHtml(t.bio)}</div>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function renderTrainersAndHours(data) {
+  document.getElementById("spMasterTrainerWrap").innerHTML = renderTrainerCard(data.masterTrainer, "Master Trainer");
+
+  const totWrap = document.getElementById("spTotTrainersWrap");
+  const totTrainers = data.totTrainers || [];
+  if (!totTrainers.length) {
+    totWrap.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No ToT Trainers assigned yet.</div>';
+  } else {
+    totWrap.innerHTML = totTrainers
+      .map(
+        (t, i) => `
+      <div>
+        <p class="hint" style="margin:0 0 6px;font-weight:600;color:var(--text);">Trainer ${i + 1} (ToT)</p>
+        ${renderTrainerCard(t, "Trainer (ToT)")}
+      </div>
+    `
+      )
+      .join("");
+  }
+
+  const th = data.trainingHours || {};
+  const hoursRows = [
+    ...(th.totTrainers || []).map((t, i) => ({ role: `ToT Trainer ${i + 1} (${t.fullName})`, hours: t.hours })),
+    th.masterTrainer ? { role: `Master Trainer (${th.masterTrainer.fullName})`, hours: th.masterTrainer.hours } : null,
+    th.trainee ? { role: `Trainee (${th.trainee.fullName})`, hours: th.trainee.hours } : null,
+  ].filter(Boolean);
+
+  const hoursBody = document.getElementById("spHoursBody");
+  hoursBody.innerHTML = hoursRows.length
+    ? hoursRows
+        .map(
+          (r) => `<tr><td>${escapeHtml(r.role)}</td><td style="text-align:right;">${Number(r.hours || 0).toFixed(1)}</td></tr>`
+        )
+        .join("")
+    : '<tr><td colspan="2" class="empty-state">No hours logged yet.</td></tr>';
+}
+
 function renderStudentProfile(data) {
   const p = data.profile;
 
   document.getElementById("spName").textContent = p.full_name;
-  document.getElementById("spMeta").textContent = `${p.memberCode} \u00b7 ${p.cohort || "No cohort"} \u00b7 Registered ${new Date(p.created_at).toLocaleDateString()}`;
+  document.getElementById("spMeta").textContent = `${p.memberCode} · ${p.cohort || "No cohort"} · Registered ${new Date(p.created_at).toLocaleDateString()}`;
   const initials = (p.full_name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("");
   document.getElementById("spPhoto").innerHTML = p.photo
     ? `<img src="http://localhost:3000/uploads/photos/${p.photo}" style="width:100%;height:100%;object-fit:cover;">`
@@ -960,25 +1139,23 @@ function renderStudentProfile(data) {
   // Personal
   document.getElementById("spF_memberCode").textContent = p.memberCode;
   document.getElementById("spF_fullName").textContent = p.full_name;
-  document.getElementById("spF_dob").textContent = p.dateOfBirth ? new Date(p.dateOfBirth).toLocaleDateString() : "\u2014";
-  document.getElementById("spF_gender").textContent = p.gender || "\u2014";
-  document.getElementById("spF_phone").textContent = p.phone || "\u2014";
-  document.getElementById("spF_email").textContent = p.email || "\u2014";
-  document.getElementById("spF_address").textContent = p.address || "\u2014";
+  document.getElementById("spF_dob").textContent = p.dateOfBirth ? new Date(p.dateOfBirth).toLocaleDateString() : "—";
+  document.getElementById("spF_gender").textContent = p.gender || "—";
+  document.getElementById("spF_phone").textContent = p.phone || "—";
+  document.getElementById("spF_email").textContent = p.email || "—";
+  document.getElementById("spF_address").textContent = p.address || "—";
   document.getElementById("spF_status").innerHTML = `<span class="pill ${p.status}">${escapeHtml(p.status)}</span>`;
   document.getElementById("spF_created").textContent = new Date(p.created_at).toLocaleDateString();
 
   // Academic
-  document.getElementById("spA_cohort").textContent = p.cohort || "\u2014";
-  document.getElementById("spA_year").textContent = p.currentYear ? "Year " + p.currentYear : "\u2014";
-  document.getElementById("spA_supervisors").textContent =
-    p.supervisors && p.supervisors.length ? p.supervisors.map((s) => s.full_name).join(", ") : "Unassigned";
+  document.getElementById("spA_cohort").textContent = p.cohort || "—";
+  document.getElementById("spA_year").textContent = p.currentYear ? "Year " + p.currentYear : "—";
 
   const prog = data.progress;
-  document.getElementById("spA_hours").textContent = prog.clinicalHours ?? "\u2014";
-  document.getElementById("spA_attendance").textContent = prog.attendanceRate != null ? prog.attendanceRate + "%" : "\u2014";
+  document.getElementById("spA_hours").textContent = prog.clinicalHours ?? "—";
+  document.getElementById("spA_attendance").textContent = prog.attendanceRate != null ? prog.attendanceRate + "%" : "—";
   document.getElementById("spA_assignments").textContent = `${prog.assignmentsCompleted ?? 0}/${prog.assignmentsTotal ?? 0}`;
-  document.getElementById("spA_eval").textContent = prog.averageEvaluationScore ?? "\u2014";
+  document.getElementById("spA_eval").textContent = prog.averageEvaluationScore ?? "—";
 
   const recordsBody = document.getElementById("spRecordsBody");
   if (!data.records.length) {
@@ -1001,6 +1178,9 @@ function renderStudentProfile(data) {
       })
       .join("");
   }
+
+  // Trainers & Hours
+  renderTrainersAndHours(data);
 
   // Documents
   renderSpDocuments(data.documents);
@@ -1062,16 +1242,12 @@ async function deleteDocument(docId) {
   const result = await apiRequest(`/admin/documents/${docId}`, { method: "DELETE" });
   if (result !== null) {
     showToast("Document deleted", "success");
-    // Update the UI immediately without a page refresh or re-fetching
-    // the whole profile -- just drop it from the in-memory list and
-    // re-render that one panel.
     if (currentSpData) {
       currentSpData.documents = currentSpData.documents.filter((d) => d.id !== docId);
       renderSpDocuments(currentSpData.documents);
     }
   }
 }
-
 
 function confirmDeleteUser(id, name, role) {
   openConfirm(
@@ -1092,18 +1268,19 @@ async function deleteUser(id, role, force = false) {
     if (response.ok) {
       showToast(force ? "Account and all its data permanently deleted" : "Account deleted", "success");
       loadUsers();
+      loadGroups();
       return;
     }
 
-    // The one case worth a special follow-up: a STUDENT blocked because
-    // they have real history. Offer permanent delete explicitly, with a
-    // much stronger warning, rather than silently failing. Supervisors/
-    // admins with history are never offered this -- see admin.js, their
-    // records belong to other people's training data too.
+    // A TRAINEE blocked because they have real history gets offered a
+    // permanent delete explicitly, with a much stronger warning, rather
+    // than silently failing. Master Trainers/Trainers (ToT) with history
+    // are never offered this -- their records belong to other trainees'
+    // training data too.
     if (response.status === 409 && role === "trainee" && /can't be deleted/.test(body?.error || "")) {
       openConfirm(
-        "Permanently erase this student instead?",
-        `${body.error} This will PERMANENTLY delete every session, hours record, document, payment record, and message tied to this student. There is no undo. Only do this if you specifically need to erase this person's data (e.g. a duplicate account or a formal data-deletion request).`,
+        "Permanently erase this trainee instead?",
+        `${body.error} This will PERMANENTLY delete every session, hours record, document, payment record, and message tied to this trainee. There is no undo. Only do this if you specifically need to erase this person's data (e.g. a duplicate account or a formal data-deletion request).`,
         () => deleteUser(id, role, true)
       );
       return;
@@ -1127,8 +1304,6 @@ function confirmToggleStatus(id, currentStatus, name) {
   );
 }
 
-// NOTE: PATCH /admin/users/:id/status is also not in the code you shared --
-// same caveat as deleteUser() above.
 async function toggleUserStatus(id, nextStatus) {
   const result = await apiRequest(`/admin/users/${id}/status`, {
     method: "PATCH",
@@ -1137,56 +1312,12 @@ async function toggleUserStatus(id, nextStatus) {
   if (result !== null) {
     showToast(`Account ${nextStatus === "active" ? "activated" : "suspended"}`, "success");
     loadUsers();
+    loadGroups();
   }
 }
-
-async function createUser(role, idFieldId, nameFieldId, passwordFieldId, resultBoxId) {
-  const memberCode = document.getElementById(idFieldId).value.trim();
-  const full_name = document.getElementById(nameFieldId).value.trim();
-  const tempPassword = document.getElementById(passwordFieldId).value.trim() || undefined;
-
-  if (!full_name) {
-    showToast("Full name is required", "error");
-    return;
-  }
-
-  const payload = { full_name, role };
-  if (memberCode) payload.memberCode = memberCode;
-  if (tempPassword) payload.tempPassword = tempPassword;
-
-  const result = await apiRequest("/admin/users", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-  if (result) {
-    const box = document.getElementById(resultBoxId);
-    box.className = "result-box show";
-    box.innerHTML = `
-      <div class="rlabel">Account created — give these to the ${role === "trainee" ? "student" : "supervisor"}</div>
-      <div class="result-row"><span>ID</span><strong>${escapeHtml(result.memberCode)}</strong> <button class="copy-btn" onclick="copyText('${result.memberCode}')">Copy</button></div>
-      <div class="result-row"><span>Password</span><strong>${escapeHtml(result.tempPassword)}</strong> <button class="copy-btn" onclick="copyText('${result.tempPassword}')">Copy</button></div>
-    `;
-    showToast(`${role === "trainee" ? "Student" : "Supervisor"} account created`, "success");
-    loadUsers();
-  }
-}
-
-document.getElementById("studentForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  createUser("trainee", "stuId", "stuName", "stuPassword", "stuResult");
-});
-
-document.getElementById("supForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  createUser("supervisor", "supId", "supName", "supPassword", "supResult");
-});
 
 // ---- Settings: profile + password + notifications --------------------
 
-// NOTE: PUT /admin/profile is a guess following your existing naming
-// convention (/profile/me already exists for reads). Point this at
-// whatever your real "update my profile" endpoint is.
 document.getElementById("profileForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const payload = {
@@ -1200,7 +1331,6 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
   }
 });
 
-// NOTE: POST /auth/change-password is a guess -- confirm the real path.
 document.getElementById("passwordForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const currentPassword = document.getElementById("currentPassword").value;
@@ -1212,12 +1342,18 @@ document.getElementById("passwordForm").addEventListener("submit", async (e) => 
     return;
   }
 
+  const submitBtn = document.querySelector("#passwordForm button[type=submit]");
+  submitBtn.disabled = true;
+
   const result = await apiRequest("/auth/change-password", {
     method: "POST",
     body: JSON.stringify({ currentPassword, newPassword }),
   });
+
+  submitBtn.disabled = false;
+
   if (result) {
-    showToast("Password updated", "success");
+    showToast("Password updated successfully", "success");
     document.getElementById("passwordForm").reset();
   }
 });
@@ -1270,7 +1406,7 @@ function renderPayments() {
 
   const body = document.getElementById("paymentsBody");
   if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="7" class="empty-state">No matching users.</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="empty-state">No matching trainees.</td></tr>';
     return;
   }
 

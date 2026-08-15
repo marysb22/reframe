@@ -23,6 +23,7 @@ function toPublicUser(row) {
     must_change_password: row.must_change_password,
     created_at: row.created_at,
     supervisors: row.supervisors || [], // [] for supervisors/admins, real list for trainees
+    supervisorType: row.supervisor_type, // 'primary' (Master Trainer) | 'in_training' (Trainer/ToT); null for trainees/admins
   };
 }
 

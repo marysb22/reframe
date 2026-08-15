@@ -116,19 +116,52 @@ CREATE TABLE admin_users (
 COMMENT ON TABLE admin_users IS
   'Profile extension of user_credentials for role = admin. One static/seeded admin account per requirement #5; more can be added later, still Admin-only creatable.';
 
+-- supervisor_type / primary_supervisor_id encode the required hierarchy
+-- (the "supervisor" role is displayed everywhere in the UI as either
+-- Master Trainer or Trainer (ToT) -- the word "Supervisor" itself is
+-- internal-only, never user-facing):
+--   Admin
+--     -> Master Trainer     (supervisor_type = 'primary', primary_supervisor_id IS NULL)
+--          -> Trainer 1 (ToT)  (supervisor_type = 'in_training', primary_supervisor_id = the Master Trainer's id)
+--          -> Trainer 2 (ToT)  (supervisor_type = 'in_training', primary_supervisor_id = the Master Trainer's id)
+-- Both Trainers (ToT) point directly at the same Master Trainer row --
+-- never at each other -- so there is no way to represent one reporting to
+-- the other. A Group is the unit Admin actually creates: 1 Master Trainer
+-- + 2 Trainers (ToT) + their Trainees, all in one operation, all sharing
+-- this group_id.
+CREATE TABLE groups (
+  id            BIGSERIAL PRIMARY KEY,
+  name          TEXT NOT NULL UNIQUE,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE groups IS
+  'A Group = 1 Master Trainer + 2 Trainers (ToT) + their Trainees, created together as one unit by Admin. See supervisors.group_id / students.group_id.';
+
 CREATE TABLE supervisors (
-  id                BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
-  full_name         TEXT NOT NULL,
-  email             TEXT UNIQUE,
-  phone             TEXT,
-  photo             TEXT,
-  bio               TEXT,
-  specialization    TEXT,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                     BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
+  full_name              TEXT NOT NULL,
+  email                  TEXT UNIQUE,
+  phone                  TEXT,
+  photo                  TEXT,
+  bio                    TEXT,
+  specialization         TEXT,
+  supervisor_type        TEXT NOT NULL DEFAULT 'primary' CHECK (supervisor_type IN ('primary', 'in_training')),
+  -- RESTRICT, not SET NULL: setting this NULL on delete would violate the
+  -- CHECK below for an 'in_training' row. A Master Trainer with Trainers
+  -- (ToT) assigned must be reassigned (or the Trainers deleted/reassigned
+  -- first) before they can be deleted -- suspend instead.
+  primary_supervisor_id  BIGINT REFERENCES supervisors(id) ON DELETE RESTRICT,
+  group_id               BIGINT REFERENCES groups(id) ON DELETE SET NULL,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (
+    (supervisor_type = 'primary' AND primary_supervisor_id IS NULL) OR
+    (supervisor_type = 'in_training' AND primary_supervisor_id IS NOT NULL)
+  )
 );
 COMMENT ON TABLE supervisors IS
-  'Profile extension of user_credentials for role = supervisor. Only Admin creates these rows.';
+  'Profile extension of user_credentials for role = supervisor (displayed as Master Trainer / Trainer (ToT) in the Admin UI). Only Admin creates these rows, as part of creating a Group. supervisor_type/primary_supervisor_id encode the Master Trainer + 2 Trainers-in-Training hierarchy; group_id ties them to their Group.';
 
 CREATE TABLE students (
   id                  BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
@@ -146,11 +179,12 @@ CREATE TABLE students (
   current_year        INTEGER CHECK (current_year IS NULL OR current_year BETWEEN 1 AND 10),
   cv_file             TEXT,                  -- stored filename in uploads/cv
   photo               TEXT,                  -- stored filename in uploads/photos
+  group_id            BIGINT REFERENCES groups(id) ON DELETE SET NULL,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 COMMENT ON TABLE students IS
-  'Profile extension of user_credentials for role = trainee. Only Admin creates these rows; Supervisors may only assign existing students, never create new ones.';
+  'Profile extension of user_credentials for role = trainee (displayed as Trainee in the Admin UI). Only Admin creates these rows, as part of creating a Group; group_id ties a trainee to their Group.';
 
 CREATE TABLE supervisor_students (
   supervisor_id   BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
@@ -589,7 +623,10 @@ COMMENT ON TABLE audit_logs IS 'Generalizes the old activity_log table with stru
 CREATE INDEX idx_user_credentials_role_status ON user_credentials(role, status);
 
 CREATE INDEX idx_students_cohort ON students(cohort_id);
+CREATE INDEX idx_students_group ON students(group_id);
 CREATE INDEX idx_supervisor_students_student ON supervisor_students(student_id);
+CREATE INDEX idx_supervisors_primary ON supervisors(primary_supervisor_id);
+CREATE INDEX idx_supervisors_group ON supervisors(group_id);
 
 CREATE INDEX idx_sessions_student_date ON sessions(student_id, session_date DESC);
 CREATE INDEX idx_sessions_supervisor_date ON sessions(supervisor_id, session_date DESC);
@@ -668,19 +705,22 @@ END $$;
 
 
 -- =============================================================================
--- SECTION 14: SEED DATA (1 Admin, 1 Supervisor, 1 Student)
+-- SECTION 14: SEED DATA (bootstrap Admin account only)
 -- =============================================================================
--- Passwords below are bcrypt hashes of the literal string 'password123'
--- purely as a placeholder -- replace with real hashes generated by your
--- application before using this in any real environment. Every seeded
--- account has must_change_password = TRUE, so first login forces a reset
--- regardless.
+-- Only the one real account needed to bootstrap the system: nobody can log
+-- in and create Groups/Trainers/Trainees through the app until an Admin
+-- account exists. No demo Group, Trainer, or Trainee rows are seeded here
+-- -- those are created for real through the Admin Dashboard's "Add group"
+-- flow, not hard-coded into the schema.
+--
+-- The password hash below is a placeholder, NOT a valid bcrypt hash --
+-- replace it with a real hash before deploying (e.g. run
+-- backend/seed-password.js, or hash a real password and UPDATE this row
+-- directly) before anyone can log in as ADM001. must_change_password is
+-- TRUE so the very first login forces a real password to be set.
 
 INSERT INTO id_counters (prefix, last_number) VALUES
-  ('ADM', 1), ('SUP', 1), ('TTR', 1);
-
-INSERT INTO cohorts (id, name, start_date, description) VALUES
-  (1, 'Cohort 2026-A', '2026-01-01', 'Inaugural systemic psychotherapy training cohort');
+  ('ADM', 1), ('SUP', 0), ('TTR', 0);
 
 -- Admin
 INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
@@ -688,34 +728,11 @@ VALUES (1, 'ADM001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxx
 INSERT INTO admin_users (id, full_name, email)
 VALUES (1, 'System Administrator', 'admin@reframe-mhs.org');
 
--- Supervisor
-INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
-VALUES (2, 'SUP001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'supervisor', 'active', TRUE);
-INSERT INTO supervisors (id, full_name, email, specialization)
-VALUES (2, 'Dr. Layla Haddad', 'l.haddad@reframe-mhs.org', 'Systemic Psychotherapy');
+-- Keep the sequence in sync with the manually-specified id above
+SELECT setval('user_credentials_id_seq', 1, true);
 
--- Student
-INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
-VALUES (3, 'TTR001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'trainee', 'active', TRUE);
-INSERT INTO students (id, full_name, email, cohort_id, current_year)
-VALUES (3, 'Mary Sbeity', 'mary.sbeity@example.com', 1, 1);
-
--- Keep the sequences in sync with the manually-specified ids above
-SELECT setval('user_credentials_id_seq', 3, true);
-SELECT setval('cohorts_id_seq', 1, true);
-
--- Assign the seeded student to the seeded supervisor
-INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by)
-VALUES (2, 3, 1);
-
--- Baseline settings/privacy rows for all three seeded accounts
-INSERT INTO settings (user_id) VALUES (1), (2), (3);
-INSERT INTO privacy_preferences (user_id) VALUES (1), (2), (3);
-
--- Empty fee agreement for the seeded student so the Payments page has
--- something to display rather than a missing row
-INSERT INTO payments (student_id, total_fee_cents, status)
-VALUES (3, 150000, 'unpaid');  -- $1,500.00 total fee, nothing paid yet
+INSERT INTO settings (user_id) VALUES (1);
+INSERT INTO privacy_preferences (user_id) VALUES (1);
 
 
 -- =============================================================================

@@ -32,7 +32,7 @@ const USER_SELECT = `
     COALESCE(sup.email, st.email) AS email,
     COALESCE(sup.phone, st.phone) AS phone,
     COALESCE(sup.photo, st.photo) AS photo,
-    sup.specialization, sup.bio,
+    sup.specialization, sup.bio, sup.supervisor_type,
     st.gender, st.date_of_birth, st.marital_status, st.address, st.certifications, st.cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year, st.highest_degree, st.institution,
     COALESCE(
@@ -443,6 +443,221 @@ router.delete(
 // what the Admin/Supervisor/Student dashboards all already call. Two
 // endpoints doing the same thing is a maintenance trap waiting to diverge.
 
+// ---- Groups (Admin's only account-creation action) ----------------------
+// A Group is 1 Master Trainer (supervisors.supervisor_type = 'primary') +
+// 2 Trainers/ToT (supervisor_type = 'in_training', primary_supervisor_id
+// pointing at the Master Trainer) + N Trainees, all created together and
+// tied to one groups row. See database/reframe_mhs_schema.sql's design
+// notes on `supervisors` and `groups` for the full hierarchy rationale.
+
+const MEMBER_FIELDS = `
+  json_build_object(
+    'id', member.id, 'full_name', member.full_name, 'member_code', cred.member_code,
+    'status', cred.status, 'must_change_password', cred.must_change_password
+  )
+`;
+
+// GET /api/admin/groups
+router.get(
+  "/groups",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(`
+      SELECT
+        g.id, g.name, g.created_at,
+        (
+          SELECT json_build_object(
+            'id', member.id, 'full_name', member.full_name, 'member_code', cred.member_code,
+            'status', cred.status, 'must_change_password', cred.must_change_password,
+            'email', member.email, 'phone', member.phone,
+            'specialization', member.specialization, 'bio', member.bio
+          )
+          FROM supervisors member JOIN user_credentials cred ON cred.id = member.id
+          WHERE member.group_id = g.id AND member.supervisor_type = 'primary'
+          LIMIT 1
+        ) AS master_trainer,
+        COALESCE((
+          SELECT json_agg(
+            json_build_object(
+              'id', member.id, 'full_name', member.full_name, 'member_code', cred.member_code,
+              'status', cred.status, 'must_change_password', cred.must_change_password,
+              'email', member.email, 'phone', member.phone,
+              'specialization', member.specialization, 'bio', member.bio
+            ) ORDER BY member.full_name
+          )
+          FROM supervisors member JOIN user_credentials cred ON cred.id = member.id
+          WHERE member.group_id = g.id AND member.supervisor_type = 'in_training'
+        ), '[]') AS trainers,
+        COALESCE((
+          SELECT json_agg(${MEMBER_FIELDS} ORDER BY member.full_name)
+          FROM students member JOIN user_credentials cred ON cred.id = member.id
+          WHERE member.group_id = g.id
+        ), '[]') AS trainees
+      FROM groups g
+      ORDER BY g.created_at DESC
+    `);
+
+    res.json({
+      groups: rows.map((g) => ({
+        id: g.id,
+        name: g.name,
+        createdAt: g.created_at,
+        masterTrainer: g.master_trainer,
+        trainers: g.trainers,
+        trainees: g.trainees,
+      })),
+    });
+  })
+);
+
+// POST /api/admin/groups
+// { name, masterTrainer: {fullName, memberCode?}, trainers: [{fullName, memberCode?} x2],
+//   trainees: [{fullName, memberCode?}, ...], trainerPassword?, traineePassword? }
+router.post(
+  "/groups",
+  asyncRoute(async (req, res, db) => {
+    const body = req.body || {};
+    const name = String(body.name || "").trim();
+    const masterTrainerIn = body.masterTrainer || {};
+    const trainersIn = Array.isArray(body.trainers) ? body.trainers : [];
+    const traineesIn = Array.isArray(body.trainees) ? body.trainees : [];
+
+    if (!name) return res.status(400).json({ error: "Group name is required" });
+    if (!masterTrainerIn.fullName || !String(masterTrainerIn.fullName).trim()) {
+      return res.status(400).json({ error: "Master Trainer full name is required" });
+    }
+    if (trainersIn.length !== 2 || trainersIn.some((t) => !t?.fullName || !String(t.fullName).trim())) {
+      return res.status(400).json({ error: "Both Trainer (ToT) full names are required" });
+    }
+    if (!traineesIn.length || traineesIn.some((t) => !t?.fullName || !String(t.fullName).trim())) {
+      return res.status(400).json({ error: "At least one trainee full name is required" });
+    }
+
+    const { rows: nameRows } = await db.query("SELECT id FROM groups WHERE name = $1", [name]);
+    if (nameRows.length) return res.status(409).json({ error: `A group named "${name}" already exists` });
+
+    // Resolve every member code up front (before creating anyone) so a
+    // conflict on, say, the second trainee doesn't leave the master
+    // trainer/trainers already created -- asyncRoute rolls back the whole
+    // transaction on any thrown error, but an early `return` here commits
+    // whatever ran so far, so nothing gets inserted until all codes check out.
+    async function resolveCode(manualCode, prefix) {
+      if (manualCode && String(manualCode).trim()) {
+        const code = String(manualCode).trim().toUpperCase();
+        const { rows } = await db.query("SELECT id FROM user_credentials WHERE member_code = $1", [code]);
+        if (rows.length) return { conflict: `ID "${code}" is already in use` };
+        return { code };
+      }
+      return { code: await generateNextId(db, prefix) };
+    }
+
+    const masterCode = await resolveCode(masterTrainerIn.memberCode, "SUP");
+    if (masterCode.conflict) return res.status(409).json({ error: masterCode.conflict });
+
+    const trainerCodes = [];
+    for (const t of trainersIn) {
+      const resolved = await resolveCode(t.memberCode, "SUP");
+      if (resolved.conflict) return res.status(409).json({ error: resolved.conflict });
+      trainerCodes.push(resolved.code);
+    }
+
+    const traineeCodes = [];
+    for (const t of traineesIn) {
+      const resolved = await resolveCode(t.memberCode, "TTR");
+      if (resolved.conflict) return res.status(409).json({ error: resolved.conflict });
+      traineeCodes.push(resolved.code);
+    }
+
+    const trainerPlainPassword =
+      body.trainerPassword && String(body.trainerPassword).length >= 8
+        ? String(body.trainerPassword)
+        : generateTempPassword();
+    const traineePlainPassword =
+      body.traineePassword && String(body.traineePassword).length >= 8
+        ? String(body.traineePassword)
+        : generateTempPassword();
+    const trainerHash = await hashPassword(trainerPlainPassword);
+    const traineeHash = await hashPassword(traineePlainPassword);
+
+    const { rows: groupRows } = await db.query(
+      "INSERT INTO groups (name) VALUES ($1) RETURNING id, name, created_at",
+      [name]
+    );
+    const group = groupRows[0];
+
+    async function insertSupervisor(fullName, memberCode, supervisorType, primarySupervisorId) {
+      const cred = await db.query(
+        `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password)
+         VALUES ($1, $2, 'supervisor', TRUE) RETURNING id`,
+        [memberCode, trainerHash]
+      );
+      const id = cred.rows[0].id;
+      await db.query(
+        `INSERT INTO supervisors (id, full_name, supervisor_type, primary_supervisor_id, group_id)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [id, fullName.trim(), supervisorType, primarySupervisorId, group.id]
+      );
+      await db.query("INSERT INTO settings (user_id) VALUES ($1)", [id]);
+      await db.query("INSERT INTO privacy_preferences (user_id) VALUES ($1)", [id]);
+      return { id, fullName: fullName.trim(), memberCode };
+    }
+
+    const masterTrainer = await insertSupervisor(masterTrainerIn.fullName, masterCode.code, "primary", null);
+
+    const trainers = [];
+    for (let i = 0; i < trainersIn.length; i++) {
+      trainers.push(
+        await insertSupervisor(trainersIn[i].fullName, trainerCodes[i], "in_training", masterTrainer.id)
+      );
+    }
+
+    const trainerRoleIds = [masterTrainer.id, ...trainers.map((t) => t.id)];
+    const trainees = [];
+    for (let i = 0; i < traineesIn.length; i++) {
+      const memberCode = traineeCodes[i];
+      const cred = await db.query(
+        `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password)
+         VALUES ($1, $2, 'trainee', TRUE) RETURNING id`,
+        [memberCode, traineeHash]
+      );
+      const id = cred.rows[0].id;
+      await db.query(`INSERT INTO students (id, full_name, group_id) VALUES ($1, $2, $3)`, [
+        id,
+        traineesIn[i].fullName.trim(),
+        group.id,
+      ]);
+      await db.query("INSERT INTO settings (user_id) VALUES ($1)", [id]);
+      await db.query("INSERT INTO privacy_preferences (user_id) VALUES ($1)", [id]);
+      await db.query("INSERT INTO payments (student_id, total_fee_cents) VALUES ($1, 0)", [id]);
+
+      // Assign this trainee to all three trainer-role accounts in the
+      // group (Master Trainer + both Trainers/ToT) so messaging,
+      // materials, and assignments work from all three, not just one.
+      for (const trainerId of trainerRoleIds) {
+        await db.query(
+          "INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+          [trainerId, id, req.user.id]
+        );
+      }
+
+      trainees.push({ id, fullName: traineesIn[i].fullName.trim(), memberCode });
+    }
+
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'group_created', 'groups', $2)",
+      [req.user.id, group.id]
+    );
+
+    res.status(201).json({
+      group: { id: group.id, name: group.name },
+      masterTrainer,
+      trainers,
+      trainerPassword: trainerPlainPassword,
+      trainees,
+      traineePassword: traineePlainPassword,
+    });
+  })
+);
+
 // ---- Student Profiles (full detail view, admin-only) --------------------
 // Unlike routes/supervisor.js's GET /students/:id, this has NO
 // supervisor_students assignment check -- Admin can view ANY student's
@@ -487,6 +702,8 @@ router.get(
       transactions
     );
 
+    const { masterTrainer, totTrainers, trainingHours } = await getTrainersAndHours(db, id, profile.full_name);
+
     res.json({
       profile,
       records,
@@ -494,9 +711,74 @@ router.get(
       progress,
       payment,
       paymentTransactions: transactions.map(toPaymentTransaction),
+      masterTrainer,
+      totTrainers,
+      trainingHours,
     });
   })
 );
+
+// Looks up this trainee's assigned Master Trainer + Trainer(s)/ToT (via
+// supervisor_students, the caseload assignment table -- see its schema
+// comment) along with the supervision hours each of them has logged for
+// this specific trainee, plus the trainee's own logged training hours.
+// Reuses training_hours/supervision_hours as-is; no new tables.
+async function getTrainersAndHours(db, studentId, studentFullName) {
+  const { rows: supervisorRows } = await db.query(
+    `SELECT sup.id, sup.full_name, sup.email, sup.phone, sup.specialization, sup.bio,
+            sup.supervisor_type, uc.member_code, uc.status
+     FROM supervisor_students ss
+     JOIN supervisors sup ON sup.id = ss.supervisor_id
+     JOIN user_credentials uc ON uc.id = sup.id
+     WHERE ss.student_id = $1
+     ORDER BY sup.supervisor_type, sup.full_name`,
+    [studentId]
+  );
+
+  const { rows: hoursRows } = await db.query(
+    `SELECT supervisor_id, COALESCE(SUM(hours), 0) AS hours
+     FROM supervision_hours WHERE student_id = $1 GROUP BY supervisor_id`,
+    [studentId]
+  );
+  const hoursBySupervisor = {};
+  hoursRows.forEach((r) => (hoursBySupervisor[r.supervisor_id] = Number(r.hours)));
+
+  const { rows: traineeHoursRows } = await db.query(
+    "SELECT COALESCE(SUM(hours), 0) AS hours FROM training_hours WHERE student_id = $1",
+    [studentId]
+  );
+  const traineeHours = Number(traineeHoursRows[0].hours);
+
+  function toTrainerInfo(row) {
+    return {
+      id: row.id,
+      fullName: row.full_name,
+      memberCode: row.member_code,
+      status: row.status,
+      email: row.email,
+      phone: row.phone,
+      specialization: row.specialization,
+      bio: row.bio,
+      hours: hoursBySupervisor[row.id] || 0,
+    };
+  }
+
+  const masterTrainerRow = supervisorRows.find((s) => s.supervisor_type === "primary");
+  const totTrainerRows = supervisorRows.filter((s) => s.supervisor_type === "in_training");
+
+  const masterTrainer = masterTrainerRow ? toTrainerInfo(masterTrainerRow) : null;
+  const totTrainers = totTrainerRows.map(toTrainerInfo);
+
+  return {
+    masterTrainer,
+    totTrainers,
+    trainingHours: {
+      trainee: { fullName: studentFullName, hours: traineeHours },
+      masterTrainer: masterTrainer ? { fullName: masterTrainer.fullName, hours: masterTrainer.hours } : null,
+      totTrainers: totTrainers.map((t) => ({ fullName: t.fullName, hours: t.hours })),
+    },
+  };
+}
 
 // DELETE /api/admin/documents/:id
 // Removes a student document -- both the DB row AND the file on disk.
