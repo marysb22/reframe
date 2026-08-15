@@ -325,7 +325,7 @@ table{display:block;overflow-x:auto;white-space:nowrap;}
 </div>
 <div class="top-right">
 <button class="bell-btn"><i class="fa fa-bell"></i><span class="dot" id="notifDot" style="display:none;"></span></button>
-<div class="profile-mini"><div class="avatar-circle" id="supervisorInitials">&mdash;</div><div><strong id="supervisorName">Loading...</strong><span>Supervisor</span></div></div>
+<div class="profile-mini"><div class="avatar-circle" id="supervisorInitials">&mdash;</div><div><strong id="supervisorName">Loading...</strong><span id="supervisorRoleLabel">Supervisor</span></div></div>
 <button class="logout-btn" onclick="logout()">Log out</button>
 </div>
 </header>
@@ -970,6 +970,19 @@ async function loadMe() {
     }
     document.getElementById("supervisorName").textContent = me.full_name;
     document.getElementById("supervisorInitials").textContent = initials(me.full_name);
+    // Hierarchy: exactly 1 Primary Supervisor + 2 Supervisors in Training
+    // per team, admin-assigned -- see routes/admin.js's supervisor-hierarchy
+    // validation. Both Supervisors in Training report directly to the same
+    // Primary, never to each other.
+    const roleLabelEl = document.getElementById("supervisorRoleLabel");
+    if (me.supervisorType === "in_training") {
+      roleLabelEl.textContent = me.primarySupervisorName
+        ? `Supervisor in Training · reports to ${me.primarySupervisorName}`
+        : "Supervisor in Training";
+    } else if (me.supervisorType === "primary") {
+      const teamCount = (me.traineesInTraining || []).length;
+      roleLabelEl.textContent = `Primary Supervisor · ${teamCount}/2 in training`;
+    }
     document.getElementById("settingsName").value = me.full_name || "";
     document.getElementById("settingsEmail").value = me.email || "";
     document.getElementById("settingsPhone").value = me.phone || "";

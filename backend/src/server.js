@@ -25,6 +25,8 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/profile", require("./routes/profile"));
 app.use("/api/supervisor", require("./routes/supervisor"));
+app.use("/api/designer", require("./routes/designer"));
+app.use("/api/events", require("./routes/events"));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 

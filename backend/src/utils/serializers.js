@@ -23,6 +23,15 @@ function toPublicUser(row) {
     must_change_password: row.must_change_password,
     created_at: row.created_at,
     supervisors: row.supervisors || [], // [] for supervisors/admins, real list for trainees
+    // Supervisor hierarchy (null/[] for trainee/admin/designer rows):
+    // supervisorType is 'primary' or 'in_training'; a 'primary' row's
+    // traineesInTraining lists the up-to-2 Supervisors in Training
+    // reporting to them, an 'in_training' row's primarySupervisor* fields
+    // name who they report to.
+    supervisorType: row.supervisor_type || null,
+    primarySupervisorId: row.primary_supervisor_id || null,
+    primarySupervisorName: row.primary_supervisor_name || null,
+    traineesInTraining: row.trainees_in_training || [],
   };
 }
 

@@ -48,6 +48,7 @@ function requireRole(...roles) {
 
 const requireAdmin = requireRole("admin");
 const requireSupervisor = requireRole("supervisor");
+const requireDesigner = requireRole("designer");
 
 /**
  * Wraps a route handler in its own Postgres transaction with the RLS
@@ -73,4 +74,4 @@ function asyncRoute(handler) {
   };
 }
 
-module.exports = { requireAuth, requireAdmin, requireSupervisor, requireRole, asyncRoute };
+module.exports = { requireAuth, requireAdmin, requireSupervisor, requireDesigner, requireRole, asyncRoute };

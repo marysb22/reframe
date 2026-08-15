@@ -189,8 +189,12 @@ tr:hover td{background:var(--surface-2);}
 
     <div class="nav-label">Content &amp; Finance</div>
     <ul>
-      <li><a href="admin-events.html"><i class="fa fa-calendar-days"></i>Events</a></li>
       <li><a data-section="payments" href="#payments"><i class="fa fa-money-bill"></i>Payments</a></li>
+    </ul>
+
+    <div class="nav-label">Designers</div>
+    <ul>
+      <li><a data-section="designers" href="#designers"><i class="fa fa-pen-ruler"></i>Designers</a></li>
     </ul>
 
     <div class="nav-label">System</div>
@@ -232,7 +236,7 @@ tr:hover td{background:var(--surface-2);}
     <div class="quick-links">
       <button class="quick-link-card" onclick="showSection('students')"><i class="fa fa-user-graduate"></i><span>Manage students</span></button>
       <button class="quick-link-card" onclick="showSection('supervisors')"><i class="fa fa-user-doctor"></i><span>Manage supervisors</span></button>
-      <button class="quick-link-card" onclick="showSection('events')"><i class="fa fa-calendar-days"></i><span>Manage events</span></button>
+      <button class="quick-link-card" onclick="showSection('designers')"><i class="fa fa-pen-ruler"></i><span>Manage designers</span></button>
       <button class="quick-link-card" onclick="showSection('payments')"><i class="fa fa-money-bill"></i><span>Manage payments</span></button>
     </div>
 
@@ -293,12 +297,20 @@ tr:hover td{background:var(--surface-2);}
 
     <div class="system-card">
       <h3><i class="fa fa-user-doctor"></i>Add supervisor</h3>
-      <p class="hint">Creates a Supervisor account. ID auto-generates as SUP001, SUP002... unless you set one.</p>
+      <p class="hint">Creates a Supervisor account. ID auto-generates as SUP001, SUP002... unless you set one. Every Supervisor is either a Primary Supervisor or a Supervisor in Training reporting directly to one -- a Primary Supervisor cannot create or reassign their own trainees, only Admin can.</p>
       <form id="supForm">
         <label>Supervisor ID (optional)</label>
         <input type="text" id="supId" placeholder="Leave blank to auto-generate (SUP001, SUP002...)">
         <label>Full name</label>
         <input type="text" id="supName" required placeholder="Full name">
+        <label>Supervisor type</label>
+        <select id="supType" onchange="onSupTypeChange()">
+          <option value="primary">Primary Supervisor</option>
+          <option value="in_training">Supervisor in Training</option>
+        </select>
+        <label id="supPrimaryLabel" style="display:none;">Reports to (Primary Supervisor)</label>
+        <select id="supPrimaryId" style="display:none;"></select>
+        <div class="field-hint" id="supPrimaryHint" style="display:none;">A Primary Supervisor can have at most 2 Supervisors in Training.</div>
         <label>Default password</label>
         <input type="text" id="supPassword" value="password123">
         <div class="field-hint">Give this ID and password to the supervisor. They'll be required to change it on first login.</div>
@@ -318,8 +330,8 @@ tr:hover td{background:var(--surface-2);}
         </select>
       </div>
       <table>
-        <thead><tr><th>Name</th><th>ID</th><th>Status</th><th>First login pending</th><th>Created</th><th>Actions</th></tr></thead>
-        <tbody id="supervisorsBody"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+        <thead><tr><th>Name</th><th>ID</th><th>Hierarchy</th><th>Status</th><th>First login pending</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody id="supervisorsBody"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
 
@@ -421,73 +433,31 @@ tr:hover td{background:var(--surface-2);}
   </section>
 
   <!-- ============================================================= -->
-  <!-- EVENTS                                                         -->
+  <!-- DESIGNERS                                                      -->
   <!-- ============================================================= -->
-  <section class="dash-section" id="section-events" data-title="Events" data-eyebrow="Public site content">
+  <section class="dash-section" id="section-designers" data-title="Designers" data-eyebrow="Account management">
 
-    <div class="system-card" style="margin-bottom:0;">
-      <h3><i class="fa fa-calendar-days"></i>Events (public site)</h3>
-      <p class="hint">Create, edit, or remove events shown on the public events page. Changes appear instantly.</p>
-      <button class="btn" style="width:auto;margin-top:0;" onclick="openEventForm()"><i class="fa fa-plus"></i> New event</button>
+    <div class="system-card">
+      <h3><i class="fa fa-pen-ruler"></i>Add designer</h3>
+      <p class="hint">Creates a Designer account. ID auto-generates as DES001, DES002... unless you set one. Designers manage their own Events from their own dashboard -- Admin does not create, edit, or delete events.</p>
+      <form id="designerForm">
+        <label>Designer ID (optional)</label>
+        <input type="text" id="desId" placeholder="Leave blank to auto-generate (DES001, DES002...)">
+        <label>Full name</label>
+        <input type="text" id="desName" required placeholder="Full name">
+        <label>Default password</label>
+        <input type="text" id="desPassword" value="password123">
+        <div class="field-hint">Give this ID and password to the designer. They'll be required to change it on first login.</div>
+        <button type="submit" class="btn">Create designer account</button>
+      </form>
+      <div class="result-box" id="desResult"></div>
+    </div>
 
-      <div id="eventFormWrap" style="display:none;margin-top:20px;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:18px;">
-        <form id="eventForm">
-          <input type="hidden" id="evId">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-            <div>
-              <label>Date &amp; time</label>
-              <input type="datetime-local" id="evDate" required>
-            </div>
-            <div>
-              <label>Status</label>
-              <input list="statusOptions" id="evStatus" value="upcoming">
-              <datalist id="statusOptions"><option value="upcoming"><option value="concluded"></datalist>
-            </div>
-            <div>
-              <label>Image</label>
-              <input type="file" id="evImageFile" accept="image/*" onchange="uploadEventImage()">
-              <input type="hidden" id="evImage">
-              <div id="evImagePreviewWrap" style="margin-top:8px;display:none;">
-                <img id="evImagePreview" style="max-width:160px;border-radius:8px;display:block;">
-                <span id="evImageStatus" style="font-size:11px;color:var(--muted);"></span>
-              </div>
-            </div>
-            <div>
-              <label>Fee</label>
-              <input type="text" id="evFee" placeholder="$150 or Free">
-            </div>
-            <div style="grid-column:1/-1;">
-              <label>Registration link</label>
-              <input type="text" id="evRegister" placeholder="https://... or # if not ready yet">
-            </div>
-          </div>
-
-          <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">English content</h4>
-          <label>Title (optional)</label><input type="text" id="evTitleEn">
-          <label>Format</label><input type="text" id="evFormatEn" placeholder="In-person, 3 days">
-          <label>Facilitator</label><input type="text" id="evFacilitatorEn">
-          <label>About</label><input type="text" id="evAboutEn">
-          <label>What you'll learn (one per line)</label><textarea id="evLearnEn" style="height:70px;"></textarea>
-          <label>Who should attend (one per line)</label><textarea id="evWhoEn" style="height:70px;"></textarea>
-          <label>Outcomes (one per line)</label><textarea id="evOutcomesEn" style="height:70px;"></textarea>
-          <label>Facilitator bio</label><input type="text" id="evFacilitatorBioEn">
-
-          <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Arabic content (optional)</h4>
-          <label>العنوان</label><input type="text" id="evTitleAr">
-          <label>الصيغة</label><input type="text" id="evFormatAr">
-          <label>الميسّر</label><input type="text" id="evFacilitatorAr">
-          <label>نبذة</label><input type="text" id="evAboutAr">
-
-          <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;">
-            <button type="button" class="btn btn-secondary" onclick="closeEventForm()">Cancel</button>
-            <button type="submit" class="btn">Save event</button>
-          </div>
-        </form>
-      </div>
-
-      <table style="margin-top:20px;">
-        <thead><tr><th>Title</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody id="eventsBody"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
+    <div class="system-card">
+      <h3><i class="fa fa-users"></i>All designers</h3>
+      <table>
+        <thead><tr><th>Name</th><th>ID</th><th>Status</th><th>First login pending</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody id="designersBody"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
 
@@ -598,10 +568,6 @@ tr:hover td{background:var(--surface-2);}
           <div><strong>Payment activity</strong><span>Get notified when a payment is recorded.</span></div>
           <label class="switch"><input type="checkbox" id="notifPayments" checked><span class="switch-track"></span></label>
         </div>
-        <div class="toggle-row">
-          <div><strong>Event registrations</strong><span>Get notified about new public-site event registrations.</span></div>
-          <label class="switch"><input type="checkbox" id="notifEvents"><span class="switch-track"></span></label>
-        </div>
         <button class="btn" style="width:auto;" onclick="saveNotificationPrefs()">Save preferences</button>
       </div>
 
@@ -684,7 +650,7 @@ function copyText(text) {
 
 // ---- Section switching -------------------------------------------------
 
-const SECTION_IDS = ["dashboard", "students", "supervisors", "studentProfiles", "events", "payments", "settings"];
+const SECTION_IDS = ["dashboard", "students", "supervisors", "studentProfiles", "designers", "payments", "settings"];
 
 function showSection(name) {
   if (!SECTION_IDS.includes(name)) name = "dashboard";
@@ -770,7 +736,10 @@ async function guardAdmin() {
   if (me.role !== "admin") {
     showToast("Admin access required. Redirecting to your dashboard.", "error");
     setTimeout(() => {
-      window.location.href = me.role === "supervisor" ? "supervisor-dashboard.html" : "PersonalProfile.html";
+      window.location.href =
+        me.role === "supervisor" ? "supervisor-dashboard.html" :
+        me.role === "designer" ? "DesignerDashboard.html" :
+        "PersonalProfile.html";
     }, 800);
     return null;
   }
@@ -788,9 +757,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadNotificationPrefs();
 
   loadUsers();
-  loadEvents();
+  loadDesigners();
   loadPayments();
-  restoreEventDraftIfAny();
 
   const initialSection = window.location.hash.slice(1) || "dashboard";
   showSection(initialSection);
@@ -848,7 +816,7 @@ function renderRoleTable(role, searchInputId, statusFilterId, tbodyId) {
 
   const body = document.getElementById(tbodyId);
   const isStudent = role === "trainee";
-  const colCount = isStudent ? 8 : 6;
+  const colCount = isStudent ? 8 : 7;
   if (!filtered.length) {
     body.innerHTML = `<tr><td colspan="${colCount}" class="empty-state">No ${role === "trainee" ? "students" : "supervisors"} match.</td></tr>`;
     return;
@@ -860,6 +828,7 @@ function renderRoleTable(role, searchInputId, statusFilterId, tbodyId) {
       <td>${escapeHtml(u.memberCode)}</td>
       ${isStudent ? `<td>${escapeHtml(u.email || "&mdash;")}</td>` : ""}
       ${isStudent ? `<td>${(u.supervisors && u.supervisors.length) ? u.supervisors.map((s) => escapeHtml(s.full_name)).join(", ") : "&mdash;"}</td>` : ""}
+      ${!isStudent ? `<td>${supervisorHierarchyLabel(u)}</td>` : ""}
       <td><span class="pill ${u.status}">${escapeHtml(u.status)}</span></td>
       <td>${u.must_change_password ? '<span class="pill pending">Yes</span>' : "&mdash;"}</td>
       <td>${new Date(u.created_at).toLocaleDateString()}</td>
@@ -874,6 +843,15 @@ function renderRoleTable(role, searchInputId, statusFilterId, tbodyId) {
       </td>
     </tr>
   `).join("");
+}
+
+function supervisorHierarchyLabel(u) {
+  if (u.supervisorType === "in_training") {
+    const primaryName = u.primarySupervisorName ? escapeHtml(u.primarySupervisorName) : "&mdash;";
+    return `<span class="pill pending">In Training</span> <span style="color:var(--muted);font-size:12px;">reports to ${primaryName}</span>`;
+  }
+  const count = (u.traineesInTraining || []).length;
+  return `<span class="pill active">Primary</span> <span style="color:var(--muted);font-size:12px;">${count}/2 in training</span>`;
 }
 
 ["studentSearch", "studentStatusFilter"].forEach((id) =>
@@ -1154,6 +1132,19 @@ async function createUser(role, idFieldId, nameFieldId, passwordFieldId, resultB
   if (memberCode) payload.memberCode = memberCode;
   if (tempPassword) payload.tempPassword = tempPassword;
 
+  if (role === "supervisor") {
+    const supType = document.getElementById("supType").value;
+    payload.supervisorType = supType;
+    if (supType === "in_training") {
+      const primaryId = document.getElementById("supPrimaryId").value;
+      if (!primaryId) {
+        showToast("Choose which Primary Supervisor this account reports to", "error");
+        return;
+      }
+      payload.primarySupervisorId = Number(primaryId);
+    }
+  }
+
   const result = await apiRequest("/admin/users", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -1168,8 +1159,33 @@ async function createUser(role, idFieldId, nameFieldId, passwordFieldId, resultB
       <div class="result-row"><span>Password</span><strong>${escapeHtml(result.tempPassword)}</strong> <button class="copy-btn" onclick="copyText('${result.tempPassword}')">Copy</button></div>
     `;
     showToast(`${role === "trainee" ? "Student" : "Supervisor"} account created`, "success");
+    if (role === "supervisor") document.getElementById("supForm").reset();
+    onSupTypeChange();
     loadUsers();
   }
+}
+
+// ---- Supervisor hierarchy: type toggle + primary-supervisor picker -----
+
+function onSupTypeChange() {
+  const isInTraining = document.getElementById("supType").value === "in_training";
+  document.getElementById("supPrimaryLabel").style.display = isInTraining ? "block" : "none";
+  document.getElementById("supPrimaryId").style.display = isInTraining ? "block" : "none";
+  document.getElementById("supPrimaryHint").style.display = isInTraining ? "block" : "none";
+  if (isInTraining) populateSupPrimaryOptions();
+}
+
+function populateSupPrimaryOptions() {
+  const select = document.getElementById("supPrimaryId");
+  const primaries = allUsers.filter((u) => u.role === "supervisor" && u.supervisorType === "primary");
+  select.innerHTML =
+    '<option value="">Select a Primary Supervisor...</option>' +
+    primaries
+      .map((p) => {
+        const full = (p.traineesInTraining || []).length >= 2;
+        return `<option value="${p.id}" ${full ? "disabled" : ""}>${escapeHtml(p.full_name)} (${escapeHtml(p.memberCode)})${full ? " — full (2/2)" : ""}</option>`;
+      })
+      .join("");
 }
 
 document.getElementById("studentForm").addEventListener("submit", (e) => {
@@ -1233,14 +1249,12 @@ function loadNotificationPrefs() {
     const prefs = JSON.parse(raw);
     if (typeof prefs.accounts === "boolean") document.getElementById("notifAccounts").checked = prefs.accounts;
     if (typeof prefs.payments === "boolean") document.getElementById("notifPayments").checked = prefs.payments;
-    if (typeof prefs.events === "boolean") document.getElementById("notifEvents").checked = prefs.events;
   } catch (err) { /* ignore malformed local data */ }
 }
 function saveNotificationPrefs() {
   const prefs = {
     accounts: document.getElementById("notifAccounts").checked,
     payments: document.getElementById("notifPayments").checked,
-    events: document.getElementById("notifEvents").checked,
   };
   localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
   showToast("Preferences saved on this device", "success");
@@ -1377,34 +1391,41 @@ document.getElementById("paymentForm").addEventListener("submit", async (e) => {
   }
 });
 
-// ---- Events -------------------------------------------------------
+// ---- Designers (account management -- NOT event management; a designer's
+// own events are only ever visible/editable from their own dashboard,
+// scoped server-side to that designer) -----------------------------------
 
-let allEvents = [];
-let editingEventId = null;
+let allDesigners = [];
 
-async function loadEvents() {
-  const data = await apiRequest("/admin/events");
+async function loadDesigners() {
+  const data = await apiRequest("/admin/designers");
   if (!data) return;
-  allEvents = data.events;
-  renderEvents();
+  allDesigners = data.designers;
+  renderDesigners();
 }
 
-function renderEvents() {
-  const body = document.getElementById("eventsBody");
-  if (!allEvents.length) {
-    body.innerHTML = '<tr><td colspan="4" class="empty-state">No events yet.</td></tr>';
+function renderDesigners() {
+  const body = document.getElementById("designersBody");
+  if (!allDesigners.length) {
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No designers yet.</td></tr>';
     return;
   }
-  body.innerHTML = allEvents
+  body.innerHTML = allDesigners
     .map(
-      (e) => `
+      (d) => `
     <tr>
-      <td><strong>${e.english.title ? escapeHtml(e.english.title) : "<em>Untitled event</em>"}</strong></td>
-      <td>${new Date(e.date).toLocaleString()}</td>
-      <td><span class="pill ${e.status === "upcoming" ? "active" : "pending"}">${escapeHtml(e.status)}</span></td>
+      <td><strong>${escapeHtml(d.full_name)}</strong></td>
+      <td>${escapeHtml(d.memberCode)}</td>
+      <td><span class="pill ${d.status}">${escapeHtml(d.status)}</span></td>
+      <td>${d.must_change_password ? '<span class="pill pending">Yes</span>' : "&mdash;"}</td>
+      <td>${new Date(d.created_at).toLocaleDateString()}</td>
       <td>
-        <button class="icon-btn" onclick='editEvent(${e.id})'><i class="fa fa-pen"></i></button>
-        <button class="icon-btn danger" onclick="confirmDeleteEvent(${e.id})"><i class="fa fa-trash"></i></button>
+        <button class="icon-btn" title="${d.status === "active" ? "Suspend" : "Activate"}" onclick="confirmToggleDesignerStatus(${d.id}, '${d.status}', '${escapeHtml(d.full_name)}')">
+          <i class="fa ${d.status === "active" ? "fa-user-slash" : "fa-user-check"}"></i>
+        </button>
+        <button class="icon-btn danger" title="Delete account" onclick="confirmDeleteDesigner(${d.id}, '${escapeHtml(d.full_name)}')">
+          <i class="fa fa-trash"></i>
+        </button>
       </td>
     </tr>
   `
@@ -1412,192 +1433,76 @@ function renderEvents() {
     .join("");
 }
 
-function linesToArray(text) {
-  return text.split("\n").map((s) => s.trim()).filter(Boolean);
-}
-function arrayToLines(arr) {
-  return (arr || []).join("\n");
-}
+async function createDesigner(idFieldId, nameFieldId, passwordFieldId, resultBoxId) {
+  const memberCode = document.getElementById(idFieldId).value.trim();
+  const full_name = document.getElementById(nameFieldId).value.trim();
+  const tempPassword = document.getElementById(passwordFieldId).value.trim() || undefined;
 
-async function uploadEventImage() {
-  const fileInput = document.getElementById("evImageFile");
-  const file = fileInput.files[0];
-  if (!file) return;
-
-  const statusEl = document.getElementById("evImageStatus");
-  statusEl.textContent = "Uploading...";
-  document.getElementById("evImagePreviewWrap").style.display = "block";
-
-  const form = new FormData();
-  form.append("image", file);
-  try {
-    const response = await fetch(`${API}/admin/events/upload-image`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      throw new Error(body?.error || "Upload failed");
-    }
-    const data = await response.json();
-    document.getElementById("evImage").value = data.url;
-    document.getElementById("evImagePreview").src = "http://localhost:3000" + data.url;
-    statusEl.textContent = "Uploaded";
-    saveEventDraft();
-  } catch (err) {
-    statusEl.textContent = "";
-    showToast(err.message, "error");
+  if (!full_name) {
+    showToast("Full name is required", "error");
+    return;
   }
-}
 
-function openEventForm() {
-  editingEventId = null;
-  document.getElementById("eventForm").reset();
-  document.getElementById("evStatus").value = "upcoming";
-  document.getElementById("evImage").value = "";
-  document.getElementById("evImagePreviewWrap").style.display = "none";
-  document.getElementById("eventFormWrap").style.display = "block";
-  clearEventDraft();
-}
-function closeEventForm() {
-  document.getElementById("eventFormWrap").style.display = "none";
-  clearEventDraft();
-}
+  const payload = { full_name };
+  if (memberCode) payload.memberCode = memberCode;
+  if (tempPassword) payload.tempPassword = tempPassword;
 
-// ---- Draft auto-save --------------------------------------------------
-const EVENT_DRAFT_KEY = "eventFormDraft";
-const EVENT_FORM_FIELD_IDS = [
-  "evId", "evDate", "evStatus", "evImage", "evFee", "evRegister",
-  "evTitleEn", "evFormatEn", "evFacilitatorEn", "evAboutEn",
-  "evLearnEn", "evWhoEn", "evOutcomesEn", "evFacilitatorBioEn",
-  "evTitleAr", "evFormatAr", "evFacilitatorAr", "evAboutAr",
-];
-
-function saveEventDraft() {
-  const draft = {};
-  EVENT_FORM_FIELD_IDS.forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) draft[id] = el.value;
+  const result = await apiRequest("/admin/designers", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
-  sessionStorage.setItem(EVENT_DRAFT_KEY, JSON.stringify(draft));
-}
-function clearEventDraft() {
-  sessionStorage.removeItem(EVENT_DRAFT_KEY);
-}
-function restoreEventDraftIfAny() {
-  const raw = sessionStorage.getItem(EVENT_DRAFT_KEY);
-  if (!raw) return;
-  try {
-    const draft = JSON.parse(raw);
-    const hasContent = Object.values(draft).some((v) => v && v !== "upcoming");
-    if (!hasContent) return;
 
-    editingEventId = draft.evId || null;
-    EVENT_FORM_FIELD_IDS.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el && draft[id] !== undefined) el.value = draft[id];
-    });
-    if (draft.evImage) {
-      document.getElementById("evImagePreview").src = draft.evImage.startsWith("http")
-        ? draft.evImage
-        : "http://localhost:3000" + draft.evImage;
-      document.getElementById("evImagePreviewWrap").style.display = "block";
-    }
-    document.getElementById("eventFormWrap").style.display = "block";
-    showToast("Restored your unsaved event draft", "success");
-    showSection("events");
-  } catch (err) {
-    clearEventDraft();
+  if (result) {
+    const box = document.getElementById(resultBoxId);
+    box.className = "result-box show";
+    box.innerHTML = `
+      <div class="rlabel">Account created — give these to the designer</div>
+      <div class="result-row"><span>ID</span><strong>${escapeHtml(result.memberCode)}</strong> <button class="copy-btn" onclick="copyText('${result.memberCode}')">Copy</button></div>
+      <div class="result-row"><span>Password</span><strong>${escapeHtml(result.tempPassword)}</strong> <button class="copy-btn" onclick="copyText('${result.tempPassword}')">Copy</button></div>
+    `;
+    showToast("Designer account created", "success");
+    loadDesigners();
   }
 }
 
-document.getElementById("eventForm").addEventListener("input", saveEventDraft);
+document.getElementById("designerForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  createDesigner("desId", "desName", "desPassword", "desResult");
+});
 
-function editEvent(id) {
-  const ev = allEvents.find((e) => e.id === id);
-  if (!ev) return;
-  editingEventId = id;
-
-  document.getElementById("evDate").value = ev.date ? ev.date.slice(0, 16) : "";
-  document.getElementById("evStatus").value = ev.status;
-  document.getElementById("evImage").value = ev.image || "";
-  if (ev.image) {
-    document.getElementById("evImagePreview").src = ev.image.startsWith("http") ? ev.image : "http://localhost:3000" + ev.image;
-    document.getElementById("evImageStatus").textContent = "Current image";
-    document.getElementById("evImagePreviewWrap").style.display = "block";
-  } else {
-    document.getElementById("evImagePreviewWrap").style.display = "none";
-  }
-  document.getElementById("evFee").value = ev.fee || "";
-  document.getElementById("evRegister").value = ev.register || "";
-
-  document.getElementById("evTitleEn").value = ev.english.title || "";
-  document.getElementById("evFormatEn").value = ev.english.format || "";
-  document.getElementById("evFacilitatorEn").value = ev.english.facilitator || "";
-  document.getElementById("evAboutEn").value = ev.english.about || "";
-  document.getElementById("evLearnEn").value = arrayToLines(ev.english.learn);
-  document.getElementById("evWhoEn").value = arrayToLines(ev.english.who);
-  document.getElementById("evOutcomesEn").value = arrayToLines(ev.english.outcomes);
-  document.getElementById("evFacilitatorBioEn").value = ev.english.facilitatorBio || "";
-
-  document.getElementById("evTitleAr").value = ev.arabic.title || "";
-  document.getElementById("evFormatAr").value = ev.arabic.format || "";
-  document.getElementById("evFacilitatorAr").value = ev.arabic.facilitator || "";
-  document.getElementById("evAboutAr").value = ev.arabic.about || "";
-
-  document.getElementById("eventFormWrap").style.display = "block";
-  document.getElementById("eventFormWrap").scrollIntoView({ behavior: "smooth" });
-}
-
-function confirmDeleteEvent(id) {
+function confirmToggleDesignerStatus(id, currentStatus, name) {
+  const nextStatus = currentStatus === "active" ? "suspended" : "active";
   openConfirm(
-    "Delete this event?",
-    "This removes it from the public events page immediately. This can't be undone.",
-    () => deleteEvent(id)
+    `${nextStatus === "suspended" ? "Suspend" : "Activate"} ${name}?`,
+    nextStatus === "suspended"
+      ? "They won't be able to log in until reactivated."
+      : "They'll be able to log in again.",
+    async () => {
+      const result = await apiRequest(`/admin/users/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (result) {
+        showToast(`Designer ${nextStatus}`, "success");
+        loadDesigners();
+      }
+    }
   );
 }
 
-async function deleteEvent(id) {
-  const result = await apiRequest(`/admin/events/${id}`, { method: "DELETE" });
-  if (result) {
-    showToast("Event deleted", "success");
-    loadEvents();
-  }
+function confirmDeleteDesigner(id, name) {
+  openConfirm(
+    `Delete ${name}?`,
+    "This permanently deletes the designer account. Their events stay published, just no longer attributed to them. This can't be undone.",
+    async () => {
+      const result = await apiRequest(`/admin/users/${id}`, { method: "DELETE" });
+      if (result) {
+        showToast("Designer deleted", "success");
+        loadDesigners();
+      }
+    }
+  );
 }
-
-document.getElementById("eventForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const payload = {
-    date: document.getElementById("evDate").value,
-    status: document.getElementById("evStatus").value,
-    image: document.getElementById("evImage").value,
-    fee: document.getElementById("evFee").value,
-    register: document.getElementById("evRegister").value,
-    englishTitle: document.getElementById("evTitleEn").value,
-    englishFormat: document.getElementById("evFormatEn").value,
-    englishFacilitator: document.getElementById("evFacilitatorEn").value,
-    englishAbout: document.getElementById("evAboutEn").value,
-    englishLearn: linesToArray(document.getElementById("evLearnEn").value),
-    englishWho: linesToArray(document.getElementById("evWhoEn").value),
-    englishOutcomes: linesToArray(document.getElementById("evOutcomesEn").value),
-    englishFacilitatorBio: document.getElementById("evFacilitatorBioEn").value,
-    arabicTitle: document.getElementById("evTitleAr").value,
-    arabicFormat: document.getElementById("evFormatAr").value,
-    arabicFacilitator: document.getElementById("evFacilitatorAr").value,
-    arabicAbout: document.getElementById("evAboutAr").value,
-  };
-
-  const url = editingEventId ? `/admin/events/${editingEventId}` : "/admin/events";
-  const method = editingEventId ? "PUT" : "POST";
-
-  const result = await apiRequest(url, { method, body: JSON.stringify(payload) });
-  if (result) {
-    showToast(editingEventId ? "Event updated" : "Event created", "success");
-    closeEventForm();
-    loadEvents();
-  }
-});
 </script>
 </body>
 </html>

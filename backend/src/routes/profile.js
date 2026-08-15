@@ -27,18 +27,26 @@ const PROFILE_SELECT = `
   SELECT
     uc.id, uc.member_code, uc.role, uc.status, uc.must_change_password,
     uc.created_at, uc.updated_at,
-    COALESCE(a.full_name, sup.full_name, st.full_name) AS full_name,
-    COALESCE(a.email, sup.email, st.email) AS email,
-    COALESCE(a.phone, sup.phone, st.phone) AS phone,
-    COALESCE(a.photo, sup.photo, st.photo) AS photo,
+    COALESCE(a.full_name, sup.full_name, st.full_name, des.full_name) AS full_name,
+    COALESCE(a.email, sup.email, st.email, des.email) AS email,
+    COALESCE(a.phone, sup.phone, st.phone, des.phone) AS phone,
+    COALESCE(a.photo, sup.photo, st.photo, des.photo) AS photo,
     st.gender, st.date_of_birth, st.marital_status, st.address,
     st.highest_degree, st.institution, st.certifications, st.cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year,
-    sup.specialization, sup.bio
+    sup.specialization, sup.bio,
+    sup.supervisor_type, sup.primary_supervisor_id, psup.full_name AS primary_supervisor_name,
+    COALESCE(
+      (SELECT json_agg(json_build_object('id', tot.id, 'full_name', tot.full_name) ORDER BY tot.full_name)
+       FROM supervisors tot WHERE tot.primary_supervisor_id = sup.id),
+      '[]'
+    ) AS trainees_in_training
   FROM user_credentials uc
   LEFT JOIN admin_users a ON a.id = uc.id
   LEFT JOIN supervisors sup ON sup.id = uc.id
+  LEFT JOIN supervisors psup ON psup.id = sup.primary_supervisor_id
   LEFT JOIN students st ON st.id = uc.id
+  LEFT JOIN designers des ON des.id = uc.id
   LEFT JOIN cohorts c ON c.id = st.cohort_id
   WHERE uc.id = $1
 `;
@@ -96,7 +104,11 @@ router.put(
       return res.status(400).json({ error: "Full name is required" });
     }
 
-    const table = req.user.role === "trainee" ? "students" : req.user.role === "supervisor" ? "supervisors" : "admin_users";
+    const table =
+      req.user.role === "trainee" ? "students" :
+      req.user.role === "supervisor" ? "supervisors" :
+      req.user.role === "designer" ? "designers" :
+      "admin_users";
 
     if (email) {
       const { rows: existing } = await db.query(`SELECT id FROM ${table} WHERE email = $1 AND id != $2`, [
@@ -130,6 +142,11 @@ router.put(
     } else if (table === "supervisors") {
       await db.query(
         `UPDATE supervisors SET full_name = $1, email = $2, phone = $3, updated_at = now() WHERE id = $4`,
+        [full_name.trim(), email || null, phone || null, req.user.id]
+      );
+    } else if (table === "designers") {
+      await db.query(
+        `UPDATE designers SET full_name = $1, email = $2, phone = $3, updated_at = now() WHERE id = $4`,
         [full_name.trim(), email || null, phone || null, req.user.id]
       );
     } else {
@@ -190,7 +207,11 @@ router.post("/photo", requireAuth, (req, res) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No photo uploaded" });
 
-    const table = req.user.role === "trainee" ? "students" : req.user.role === "supervisor" ? "supervisors" : "admin_users";
+    const table =
+      req.user.role === "trainee" ? "students" :
+      req.user.role === "supervisor" ? "supervisors" :
+      req.user.role === "designer" ? "designers" :
+      "admin_users";
     const { pool } = require("../db");
     await pool.query(`UPDATE ${table} SET photo = $1, updated_at = now() WHERE id = $2`, [
       req.file.filename,

@@ -84,7 +84,7 @@ CREATE TABLE user_credentials (
   id                     BIGSERIAL PRIMARY KEY,
   member_code            TEXT NOT NULL UNIQUE,
   password_hash          TEXT NOT NULL,
-  role                   TEXT NOT NULL CHECK (role IN ('trainee', 'supervisor', 'admin')),
+  role                   TEXT NOT NULL CHECK (role IN ('trainee', 'supervisor', 'admin', 'designer')),
   status                 TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended')),
   must_change_password   BOOLEAN NOT NULL DEFAULT TRUE,
   last_login_at          TIMESTAMPTZ,
@@ -116,19 +116,52 @@ CREATE TABLE admin_users (
 COMMENT ON TABLE admin_users IS
   'Profile extension of user_credentials for role = admin. One static/seeded admin account per requirement #5; more can be added later, still Admin-only creatable.';
 
+CREATE TABLE designers (
+  id            BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
+  full_name     TEXT NOT NULL,
+  email         TEXT UNIQUE,
+  phone         TEXT,
+  photo         TEXT,                        -- stored filename in uploads/photos
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE designers IS
+  'Profile extension of user_credentials for role = designer. Owns the events they create (see events.created_by); only Admin creates these accounts.';
+
+-- supervisor_type / primary_supervisor_id encode the required hierarchy:
+--   Admin
+--     -> Primary Supervisor            (supervisor_type = 'primary', primary_supervisor_id IS NULL)
+--          -> Supervisor in Training 1  (supervisor_type = 'in_training', primary_supervisor_id = the primary's id)
+--          -> Supervisor in Training 2  (supervisor_type = 'in_training', primary_supervisor_id = the primary's id)
+-- Both Supervisors in Training point directly at the same Primary row --
+-- never at each other -- so there is no way to represent one SIT reporting
+-- to another. Only Admin ever writes these columns (routes/admin.js); a
+-- Primary Supervisor has no account-creation or reassignment route of its
+-- own, so it can't create or move its own trainees.
 CREATE TABLE supervisors (
-  id                BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
-  full_name         TEXT NOT NULL,
-  email             TEXT UNIQUE,
-  phone             TEXT,
-  photo             TEXT,
-  bio               TEXT,
-  specialization    TEXT,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                     BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
+  full_name              TEXT NOT NULL,
+  email                  TEXT UNIQUE,
+  phone                  TEXT,
+  photo                  TEXT,
+  bio                    TEXT,
+  specialization         TEXT,
+  supervisor_type        TEXT NOT NULL DEFAULT 'primary' CHECK (supervisor_type IN ('primary', 'in_training')),
+  -- RESTRICT, not SET NULL: setting this NULL on delete would violate the
+  -- CHECK below for an 'in_training' row. A Primary Supervisor with
+  -- trainees assigned must be reassigned (or the trainees deleted/
+  -- reassigned first) before they can be deleted -- suspend instead, same
+  -- as every other non-trainee role with dependent history in this schema.
+  primary_supervisor_id  BIGINT REFERENCES supervisors(id) ON DELETE RESTRICT,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (
+    (supervisor_type = 'primary' AND primary_supervisor_id IS NULL) OR
+    (supervisor_type = 'in_training' AND primary_supervisor_id IS NOT NULL)
+  )
 );
 COMMENT ON TABLE supervisors IS
-  'Profile extension of user_credentials for role = supervisor. Only Admin creates these rows.';
+  'Profile extension of user_credentials for role = supervisor. Only Admin creates these rows. supervisor_type/primary_supervisor_id encode the required 1 Primary + 2 Supervisors-in-Training hierarchy -- see the comment above the table.';
 
 CREATE TABLE students (
   id                  BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
@@ -538,7 +571,7 @@ CREATE TABLE notifications (
 
 CREATE TABLE events (
   id                  BIGSERIAL PRIMARY KEY,
-  created_by          BIGINT REFERENCES admin_users(id) ON DELETE SET NULL,
+  created_by          BIGINT REFERENCES user_credentials(id) ON DELETE SET NULL,
   event_date          TIMESTAMPTZ NOT NULL,
   image               TEXT,
   status              TEXT NOT NULL DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'concluded')),
@@ -566,7 +599,7 @@ CREATE TABLE events (
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-COMMENT ON TABLE events IS 'Public events.html page content, managed from the Admin Dashboard. learn_en/who_en/outcomes_en etc. are JSON arrays of strings (native JSONB in Postgres, vs. JSON-in-TEXT in the original SQLite version).';
+COMMENT ON TABLE events IS 'Public events.html page content, managed by Designer accounts. created_by is the owning designer (or NULL for legacy/admin-authored rows); a designer may only manage rows where created_by = their own id. learn_en/who_en/outcomes_en etc. are JSON arrays of strings (native JSONB in Postgres, vs. JSON-in-TEXT in the original SQLite version).';
 
 CREATE TABLE audit_logs (
   id           BIGSERIAL PRIMARY KEY,
@@ -590,6 +623,7 @@ CREATE INDEX idx_user_credentials_role_status ON user_credentials(role, status);
 
 CREATE INDEX idx_students_cohort ON students(cohort_id);
 CREATE INDEX idx_supervisor_students_student ON supervisor_students(student_id);
+CREATE INDEX idx_supervisors_primary ON supervisors(primary_supervisor_id);
 
 CREATE INDEX idx_sessions_student_date ON sessions(student_id, session_date DESC);
 CREATE INDEX idx_sessions_supervisor_date ON sessions(supervisor_id, session_date DESC);
@@ -688,11 +722,23 @@ VALUES (1, 'ADM001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxx
 INSERT INTO admin_users (id, full_name, email)
 VALUES (1, 'System Administrator', 'admin@reframe-mhs.org');
 
--- Supervisor
+-- Primary Supervisor
 INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
 VALUES (2, 'SUP001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'supervisor', 'active', TRUE);
-INSERT INTO supervisors (id, full_name, email, specialization)
-VALUES (2, 'Dr. Layla Haddad', 'l.haddad@reframe-mhs.org', 'Systemic Psychotherapy');
+INSERT INTO supervisors (id, full_name, email, specialization, supervisor_type)
+VALUES (2, 'Dr. Layla Haddad', 'l.haddad@reframe-mhs.org', 'Systemic Psychotherapy', 'primary');
+
+-- Supervisors in Training -- both report directly to the Primary Supervisor
+-- above (id 2), never to each other
+INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
+VALUES (5, 'SUP002', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'supervisor', 'active', TRUE);
+INSERT INTO supervisors (id, full_name, email, supervisor_type, primary_supervisor_id)
+VALUES (5, 'Karim Aoun', 'k.aoun@reframe-mhs.org', 'in_training', 2);
+
+INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
+VALUES (6, 'SUP003', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'supervisor', 'active', TRUE);
+INSERT INTO supervisors (id, full_name, email, supervisor_type, primary_supervisor_id)
+VALUES (6, 'Dana Khalil', 'd.khalil@reframe-mhs.org', 'in_training', 2);
 
 -- Student
 INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
@@ -700,17 +746,23 @@ VALUES (3, 'TTR001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxx
 INSERT INTO students (id, full_name, email, cohort_id, current_year)
 VALUES (3, 'Mary Sbeity', 'mary.sbeity@example.com', 1, 1);
 
+-- Designer (owns Events; Admin has no Event read/write access -- see routes/designer.js)
+INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
+VALUES (4, 'DES001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'designer', 'active', TRUE);
+INSERT INTO designers (id, full_name, email)
+VALUES (4, 'Rana Fakhoury', 'r.fakhoury@reframe-mhs.org');
+
 -- Keep the sequences in sync with the manually-specified ids above
-SELECT setval('user_credentials_id_seq', 3, true);
+SELECT setval('user_credentials_id_seq', 6, true);
 SELECT setval('cohorts_id_seq', 1, true);
 
--- Assign the seeded student to the seeded supervisor
+-- Assign the seeded student to the seeded (primary) supervisor
 INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by)
 VALUES (2, 3, 1);
 
--- Baseline settings/privacy rows for all three seeded accounts
-INSERT INTO settings (user_id) VALUES (1), (2), (3);
-INSERT INTO privacy_preferences (user_id) VALUES (1), (2), (3);
+-- Baseline settings/privacy rows for all six seeded accounts
+INSERT INTO settings (user_id) VALUES (1), (2), (3), (4), (5), (6);
+INSERT INTO privacy_preferences (user_id) VALUES (1), (2), (3), (4), (5), (6);
 
 -- Empty fee agreement for the seeded student so the Payments page has
 -- something to display rather than a missing row

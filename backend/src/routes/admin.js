@@ -7,14 +7,12 @@ const { hashPassword, generateTempPassword } = require("../utils/authUtils");
 const {
   toPublicUser,
   toProfileResponse,
-  toPublicEvent,
   toPaymentSummary,
   toPaymentTransaction,
   toRecord,
   toDocument,
   computeProgressSummary,
 } = require("../utils/serializers");
-const { eventImageUpload } = require("../utils/uploads");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
 
 const router = express.Router();
@@ -33,6 +31,7 @@ const USER_SELECT = `
     COALESCE(sup.phone, st.phone) AS phone,
     COALESCE(sup.photo, st.photo) AS photo,
     sup.specialization, sup.bio,
+    sup.supervisor_type, sup.primary_supervisor_id, psup.full_name AS primary_supervisor_name,
     st.gender, st.date_of_birth, st.marital_status, st.address, st.certifications, st.cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year, st.highest_degree, st.institution,
     COALESCE(
@@ -40,9 +39,15 @@ const USER_SELECT = `
        FROM supervisor_students ss JOIN supervisors sup2 ON sup2.id = ss.supervisor_id
        WHERE ss.student_id = uc.id),
       '[]'
-    ) AS supervisors
+    ) AS supervisors,
+    COALESCE(
+      (SELECT json_agg(json_build_object('id', tot.id, 'full_name', tot.full_name) ORDER BY tot.full_name)
+       FROM supervisors tot WHERE tot.primary_supervisor_id = sup.id),
+      '[]'
+    ) AS trainees_in_training
   FROM user_credentials uc
   LEFT JOIN supervisors sup ON sup.id = uc.id
+  LEFT JOIN supervisors psup ON psup.id = sup.primary_supervisor_id
   LEFT JOIN students st ON st.id = uc.id
   LEFT JOIN cohorts c ON c.id = st.cohort_id
 `;
@@ -62,6 +67,51 @@ async function resolveCohortId(db, cohortName) {
   return created.rows[0].id;
 }
 
+/**
+ * Enforces the required Supervisor hierarchy: exactly 1 Primary Supervisor
+ * with up to 2 Supervisors in Training reporting directly to it (never to
+ * each other). Returns { supervisorType, primarySupervisorId } on success,
+ * or { error } with an HTTP status to send back. `excludeSupervisorId` is
+ * used on update, so a Primary being edited doesn't count itself as its
+ * own trainee-limit check.
+ */
+async function validateSupervisorHierarchy(db, rawType, rawPrimaryId, excludeSupervisorId) {
+  const supervisorType = rawType === "in_training" ? "in_training" : "primary";
+
+  if (supervisorType === "primary") {
+    return { supervisorType, primarySupervisorId: null };
+  }
+
+  const primarySupervisorId = parseIdParam(rawPrimaryId);
+  if (!primarySupervisorId) {
+    return { status: 400, error: "A Supervisor in Training must be assigned to a Primary Supervisor" };
+  }
+
+  const { rows } = await db.query(
+    "SELECT id, supervisor_type FROM supervisors WHERE id = $1",
+    [primarySupervisorId]
+  );
+  if (!rows.length || rows[0].supervisor_type !== "primary") {
+    return { status: 400, error: "primarySupervisorId must refer to an existing Primary Supervisor" };
+  }
+
+  const countParams = [primarySupervisorId];
+  let countQuery = "SELECT COUNT(*) AS n FROM supervisors WHERE primary_supervisor_id = $1";
+  if (excludeSupervisorId) {
+    countParams.push(excludeSupervisorId);
+    countQuery += " AND id != $2";
+  }
+  const { rows: countRows } = await db.query(countQuery, countParams);
+  if (Number(countRows[0].n) >= 2) {
+    return {
+      status: 409,
+      error: "This Primary Supervisor already has 2 Supervisors in Training assigned -- the hierarchy allows exactly 2.",
+    };
+  }
+
+  return { supervisorType, primarySupervisorId };
+}
+
 // ---- Accounts (Students + Supervisors) ---------------------------------
 
 // POST /api/admin/users
@@ -79,6 +129,8 @@ router.post(
       currentYear,
       tempPassword,
       memberCode: manualCode,
+      supervisorType,
+      primarySupervisorId,
     } = req.body || {};
 
     if (!full_name || !String(full_name).trim()) {
@@ -92,6 +144,12 @@ router.post(
       });
     }
     const finalRole = allowedRoles.includes(role) ? role : "trainee";
+
+    let hierarchy = { supervisorType: "primary", primarySupervisorId: null };
+    if (finalRole === "supervisor") {
+      hierarchy = await validateSupervisorHierarchy(db, supervisorType, primarySupervisorId);
+      if (hierarchy.error) return res.status(hierarchy.status).json({ error: hierarchy.error });
+    }
 
     if (email) {
       const emailCol = finalRole === "trainee" ? "students" : "supervisors";
@@ -128,11 +186,10 @@ router.post(
         [newId, full_name.trim(), email || null, cohortId, currentYear || null]
       );
     } else {
-      await db.query(`INSERT INTO supervisors (id, full_name, email) VALUES ($1, $2, $3)`, [
-        newId,
-        full_name.trim(),
-        email || null,
-      ]);
+      await db.query(
+        `INSERT INTO supervisors (id, full_name, email, supervisor_type, primary_supervisor_id) VALUES ($1, $2, $3, $4, $5)`,
+        [newId, full_name.trim(), email || null, hierarchy.supervisorType, hierarchy.primarySupervisorId]
+      );
     }
 
     // Every account gets baseline settings/privacy rows so those pages
@@ -239,7 +296,17 @@ router.put(
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ error: "Account not found" });
 
-    const { cohort, currentYear, status, supervisorIds, fullName, email, phone } = req.body || {};
+    const {
+      cohort,
+      currentYear,
+      status,
+      supervisorIds,
+      fullName,
+      email,
+      phone,
+      supervisorType,
+      primarySupervisorId,
+    } = req.body || {};
     const allowedStatus = ["active", "suspended"];
 
     if (status !== undefined && !allowedStatus.includes(status)) {
@@ -247,6 +314,34 @@ router.put(
     }
     if (status !== undefined) {
       await db.query("UPDATE user_credentials SET status = $1, updated_at = now() WHERE id = $2", [status, id]);
+    }
+
+    if (existing.role === "supervisor" && supervisorType !== undefined) {
+      if (supervisorType === "primary") {
+        const { rows: dependents } = await db.query(
+          "SELECT id FROM supervisors WHERE primary_supervisor_id = $1 LIMIT 1",
+          [id]
+        );
+        if (dependents.length) {
+          return res.status(409).json({
+            error: "Can't change this Primary Supervisor to Supervisor in Training while they still have Supervisors in Training assigned to them. Reassign those first.",
+          });
+        }
+        await db.query(
+          "UPDATE supervisors SET supervisor_type = 'primary', primary_supervisor_id = NULL, updated_at = now() WHERE id = $1",
+          [id]
+        );
+      } else {
+        const hierarchy = await validateSupervisorHierarchy(db, supervisorType, primarySupervisorId, id);
+        if (hierarchy.error) return res.status(hierarchy.status).json({ error: hierarchy.error });
+        if (Number(primarySupervisorId) === id) {
+          return res.status(400).json({ error: "A supervisor can't be their own Primary Supervisor" });
+        }
+        await db.query(
+          "UPDATE supervisors SET supervisor_type = 'in_training', primary_supervisor_id = $1, updated_at = now() WHERE id = $2",
+          [hierarchy.primarySupervisorId, id]
+        );
+      }
     }
 
     const profileTable = existing.role === "trainee" ? "students" : "supervisors";
@@ -529,139 +624,91 @@ router.delete(
   })
 );
 
-// ---- Events (public site management) -----------------------------------
+// NOTE: Event management used to live here (upload-image, GET/POST/PUT/
+// DELETE /events). It has been moved to routes/designer.js, scoped to
+// `created_by = <the calling designer>` -- Admin no longer has any Event
+// read/write access, enforced at the route level (requireDesigner), not
+// just hidden in the UI. The public site reads events via the new
+// unauthenticated routes/events.js (mounted at /api/events).
 
-router.post("/events/upload-image", (req, res) => {
-  eventImageUpload.single("image")(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    res.status(201).json({ url: `/uploads/events/${req.file.filename}` });
-  });
-});
+// ---- Designers (account management) --------------------------------------
+// Deliberately NOT folded into USER_SELECT/toPublicUser above -- those are
+// built around the students/supervisors profile-table join and reused by
+// the existing Students/Supervisors admin UI. Designers are a distinct,
+// much simpler profile shape, so this is a small parallel set of routes
+// rather than retrofitting the shared query. Suspend/activate, password
+// reset, and delete for a designer account already work via the existing
+// role-agnostic /users/:id/status, /users/:id/reset-password, and
+// /users/:id routes below -- no need to duplicate those here.
 
-/** Admin forms send either a real array or newline-separated bullet text -- normalize to an array either way. */
-function toArray(value) {
-  if (Array.isArray(value)) return value;
-  if (typeof value === "string") {
-    return value.split("\n").map((s) => s.trim()).filter(Boolean);
-  }
-  return [];
-}
+const DESIGNER_SELECT = `
+  SELECT uc.id, uc.member_code, uc.role, uc.status, uc.must_change_password, uc.created_at,
+         d.full_name, d.email, d.phone, d.photo
+  FROM user_credentials uc
+  JOIN designers d ON d.id = uc.id
+`;
 
-router.get(
-  "/events",
-  asyncRoute(async (req, res, db) => {
-    const { rows } = await db.query("SELECT * FROM events ORDER BY event_date DESC");
-    res.json({ events: rows.map(toPublicEvent) });
-  })
-);
-
+// POST /api/admin/designers  { full_name, email?, memberCode?, tempPassword? }
 router.post(
-  "/events",
+  "/designers",
   asyncRoute(async (req, res, db) => {
-    const b = req.body || {};
-    if (!b.date) return res.status(400).json({ error: "date is required" });
+    const { full_name, email, tempPassword, memberCode: manualCode } = req.body || {};
 
-    const { rows } = await db.query(
-      `INSERT INTO events (
-        created_by, event_date, image, status, fee, register_url,
-        title_en, format_en, facilitator_en, about_en, learn_en, who_en, outcomes_en, facilitator_bio_en,
-        title_ar, format_ar, facilitator_ar, about_ar, learn_ar, who_ar, outcomes_ar, facilitator_bio_ar
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
-      RETURNING *`,
-      [
-        req.user.id,
-        b.date,
-        b.image || null,
-        ["upcoming", "concluded"].includes(b.status) ? b.status : "upcoming",
-        b.fee || null,
-        b.register || null,
-        b.englishTitle || null,
-        b.englishFormat || null,
-        b.englishFacilitator || null,
-        b.englishAbout || null,
-        JSON.stringify(toArray(b.englishLearn)),
-        JSON.stringify(toArray(b.englishWho)),
-        JSON.stringify(toArray(b.englishOutcomes)),
-        b.englishFacilitatorBio || null,
-        b.arabicTitle || null,
-        b.arabicFormat || null,
-        b.arabicFacilitator || null,
-        b.arabicAbout || null,
-        JSON.stringify(toArray(b.arabicLearn)),
-        JSON.stringify(toArray(b.arabicWho)),
-        JSON.stringify(toArray(b.arabicOutcomes)),
-        b.arabicFacilitatorBio || null,
-      ]
+    if (!full_name || !String(full_name).trim()) {
+      return res.status(400).json({ error: "Full name is required" });
+    }
+
+    if (email) {
+      const existing = await db.query("SELECT id FROM designers WHERE email = $1", [email]);
+      if (existing.rows.length) return res.status(409).json({ error: "That email is already in use" });
+    }
+
+    let memberCode;
+    if (manualCode && String(manualCode).trim()) {
+      memberCode = String(manualCode).trim().toUpperCase();
+      const taken = await db.query("SELECT id FROM user_credentials WHERE member_code = $1", [memberCode]);
+      if (taken.rows.length) return res.status(409).json({ error: `ID "${memberCode}" is already in use` });
+    } else {
+      memberCode = await generateNextId(db, "DES");
+    }
+
+    const plainTempPassword =
+      tempPassword && String(tempPassword).length >= 8 ? tempPassword : generateTempPassword();
+    const passwordHash = await hashPassword(plainTempPassword);
+
+    const credInsert = await db.query(
+      `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password)
+       VALUES ($1, $2, 'designer', TRUE) RETURNING id`,
+      [memberCode, passwordHash]
+    );
+    const newId = credInsert.rows[0].id;
+
+    await db.query(`INSERT INTO designers (id, full_name, email) VALUES ($1, $2, $3)`, [
+      newId,
+      full_name.trim(),
+      email || null,
+    ]);
+
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'account_created', 'user_credentials', $2)",
+      [req.user.id, newId]
     );
 
-    res.status(201).json(toPublicEvent(rows[0]));
+    const { rows } = await db.query(`${DESIGNER_SELECT} WHERE uc.id = $1`, [newId]);
+    res.status(201).json({
+      designer: toPublicUser(rows[0]),
+      memberCode,
+      tempPassword: plainTempPassword,
+    });
   })
 );
 
-router.put(
-  "/events/:id",
+// GET /api/admin/designers
+router.get(
+  "/designers",
   asyncRoute(async (req, res, db) => {
-    const id = parseIdParam(req.params.id);
-    if (!id) return res.status(400).json({ error: "Invalid event id" });
-
-    const { rows: existingRows } = await db.query("SELECT * FROM events WHERE id = $1", [id]);
-    const existing = existingRows[0];
-    if (!existing) return res.status(404).json({ error: "Event not found" });
-
-    const b = req.body || {};
-    const { rows } = await db.query(
-      `UPDATE events SET
-        event_date = $1, image = $2, status = $3, fee = $4, register_url = $5,
-        title_en = $6, format_en = $7, facilitator_en = $8, about_en = $9,
-        learn_en = $10, who_en = $11, outcomes_en = $12, facilitator_bio_en = $13,
-        title_ar = $14, format_ar = $15, facilitator_ar = $16, about_ar = $17,
-        learn_ar = $18, who_ar = $19, outcomes_ar = $20, facilitator_bio_ar = $21,
-        updated_at = now()
-       WHERE id = $22 RETURNING *`,
-      [
-        b.date ?? existing.event_date,
-        b.image ?? existing.image,
-        ["upcoming", "concluded"].includes(b.status) ? b.status : existing.status,
-        b.fee ?? existing.fee,
-        b.register ?? existing.register_url,
-        b.englishTitle ?? existing.title_en,
-        b.englishFormat ?? existing.format_en,
-        b.englishFacilitator ?? existing.facilitator_en,
-        b.englishAbout ?? existing.about_en,
-        b.englishLearn !== undefined ? JSON.stringify(toArray(b.englishLearn)) : JSON.stringify(existing.learn_en),
-        b.englishWho !== undefined ? JSON.stringify(toArray(b.englishWho)) : JSON.stringify(existing.who_en),
-        b.englishOutcomes !== undefined
-          ? JSON.stringify(toArray(b.englishOutcomes))
-          : JSON.stringify(existing.outcomes_en),
-        b.englishFacilitatorBio ?? existing.facilitator_bio_en,
-        b.arabicTitle ?? existing.title_ar,
-        b.arabicFormat ?? existing.format_ar,
-        b.arabicFacilitator ?? existing.facilitator_ar,
-        b.arabicAbout ?? existing.about_ar,
-        b.arabicLearn !== undefined ? JSON.stringify(toArray(b.arabicLearn)) : JSON.stringify(existing.learn_ar),
-        b.arabicWho !== undefined ? JSON.stringify(toArray(b.arabicWho)) : JSON.stringify(existing.who_ar),
-        b.arabicOutcomes !== undefined
-          ? JSON.stringify(toArray(b.arabicOutcomes))
-          : JSON.stringify(existing.outcomes_ar),
-        b.arabicFacilitatorBio ?? existing.facilitator_bio_ar,
-        id,
-      ]
-    );
-
-    res.json(toPublicEvent(rows[0]));
-  })
-);
-
-router.delete(
-  "/events/:id",
-  asyncRoute(async (req, res, db) => {
-    const id = parseIdParam(req.params.id);
-    if (!id) return res.status(400).json({ error: "Invalid event id" });
-
-    const { rowCount } = await db.query("DELETE FROM events WHERE id = $1", [id]);
-    if (!rowCount) return res.status(404).json({ error: "Event not found" });
-    res.json({ success: true });
+    const { rows } = await db.query(`${DESIGNER_SELECT} ORDER BY uc.id DESC`);
+    res.json({ designers: rows.map(toPublicUser) });
   })
 );
 

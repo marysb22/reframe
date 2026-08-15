@@ -307,6 +307,7 @@
                 const destination =
                     role === 'admin' ? 'AdminDashboard.html' :
                     role === 'supervisor' ? 'supervisor-dashboard.html' :
+                    role === 'designer' ? 'DesignerDashboard.html' :
                     'PersonalProfile.html';
 
                 setTimeout(() => { window.location.href = destination; }, 800);
