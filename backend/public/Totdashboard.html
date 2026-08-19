@@ -1,0 +1,3610 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trainer in Training (ToT) Dashboard | Reframe MHS System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lexend:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+         :root {
+            --primary: #2E7D78;
+            --primary-light: #4D9794;
+            --primary-dark: #215E5A;
+            --ink: #0F1B1E;
+            --bg: #F4F6F5;
+            --surface: #ffffff;
+            --surface-2: #FAFBFA;
+            --text: #16211F;
+            --muted: #5D6C6A;
+            --faint: #8B9997;
+            --border: #E4E9E7;
+            --border-soft: #EEF2F1;
+            --success: #1D7A4C;
+            --success-bg: #E4F5EA;
+            --warning: #B5730F;
+            --warning-bg: #FCF0DC;
+            --danger: #B3372E;
+            --danger-bg: #FBEAE8;
+            --info: #2563a8;
+            --info-bg: #e8f1fb;
+            --radius-lg: 22px;
+            --radius-md: 14px;
+            --radius-sm: 10px;
+            --shadow-card: 0 1px 2px rgba(15, 27, 30, .04), 0 8px 24px rgba(15, 27, 30, .06);
+            --shadow-pop: 0 20px 60px rgba(15, 27, 30, .18);
+            --sidebar-w: 264px;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            font-family: "Inter", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: "Lexend", "Inter", sans-serif;
+            letter-spacing: -.01em;
+        }
+        
+        .system-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: var(--sidebar-w);
+            background: linear-gradient(190deg, #0F2320 0%, #0A1716 65%, #0A1615 100%);
+            color: #EAF1EF;
+            position: fixed;
+            height: 100vh;
+            padding: 26px 18px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            z-index: 40;
+            transition: transform .25s ease;
+        }
+        
+        .system-logo {
+            display: flex;
+            gap: 13px;
+            align-items: center;
+            padding: 4px 8px 22px;
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+        }
+        
+        .system-logo .mark {
+            width: 40px;
+            height: 40px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            display: grid;
+            place-items: center;
+            font-family: "Lexend";
+            font-weight: 700;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        
+        .system-logo h2 {
+            font-size: 16px;
+            margin: 0;
+            font-weight: 700;
+        }
+        
+        .system-logo p {
+            font-size: 11px;
+            color: #8FA6A2;
+            margin: 2px 0 0;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+        
+        .sidebar nav {
+            margin-top: 22px;
+            flex: 1;
+        }
+        
+        .nav-label {
+            font-size: 10.5px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: #6E8681;
+            padding: 0 14px;
+            margin: 18px 0 8px;
+        }
+        
+        .nav-label:first-child {
+            margin-top: 0;
+        }
+        
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .sidebar li {
+            margin-bottom: 3px;
+        }
+        
+        .sidebar a {
+            padding: 11px 14px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #B7CAC6;
+            font-weight: 500;
+            font-size: 13.5px;
+            transition: .15s;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .sidebar a i {
+            width: 18px;
+            text-align: center;
+            font-size: 14px;
+            opacity: .85;
+        }
+        
+        .sidebar a:hover {
+            background: rgba(255, 255, 255, .06);
+            color: #fff;
+        }
+        
+        .sidebar a.active {
+            background: rgba(77, 151, 148, .22);
+            color: #fff;
+        }
+        
+        .sidebar a.active i {
+            color: #6FC7BE;
+            opacity: 1;
+        }
+        
+        .system-version {
+            padding: 14px;
+            color: #5C7570;
+            font-size: 11px;
+            border-top: 1px solid rgba(255, 255, 255, .08);
+            margin-top: 10px;
+        }
+        
+        .system-version strong {
+            display: block;
+            color: #B7CAC6;
+            margin-top: 3px;
+            font-weight: 600;
+        }
+        
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 20, 18, .45);
+            z-index: 35;
+        }
+        
+        .sidebar-backdrop.show {
+            display: block;
+        }
+        
+        .mobile-toggle {
+            display: none;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text);
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        
+        .main-content {
+            margin-left: var(--sidebar-w);
+            width: calc(100% - var(--sidebar-w));
+            padding: 28px 36px 60px;
+        }
+        
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 26px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        
+        .topbar h1 {
+            margin: 0;
+            font-size: 23px;
+            font-weight: 700;
+        }
+        
+        .topbar .eyebrow {
+            font-size: 12px;
+            color: var(--faint);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .top-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        
+        .bell-btn {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--muted);
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+        }
+        
+        .bell-btn .dot {
+            position: absolute;
+            top: 8px;
+            right: 9px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--danger);
+        }
+        
+        .profile-mini {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .avatar-circle {
+            width: 38px;
+            height: 38px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            font-size: 13px;
+            font-family: "Lexend";
+            overflow: hidden;
+        }
+        
+        .avatar-circle img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .profile-mini strong {
+            display: block;
+            font-size: 13.5px;
+        }
+        
+        .profile-mini span {
+            display: block;
+            color: var(--muted);
+            font-size: 11.5px;
+        }
+        
+        .logout-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 9px 15px;
+            color: var(--muted);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12.5px;
+        }
+        
+        .logout-btn:hover {
+            background: var(--danger-bg);
+            color: var(--danger);
+            border-color: #f3d3d0;
+        }
+        /* ===== Section visibility ===== */
+        
+        .dash-section {
+            display: none;
+        }
+        
+        .dash-section.active-section {
+            display: block;
+            animation: fadeIn .25s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .kpi-card {
+            background: var(--surface);
+            padding: 18px 20px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-soft);
+            box-shadow: var(--shadow-card);
+        }
+        
+        .kpi-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 14px;
+        }
+        
+        .kpi-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--surface-2);
+            color: var(--primary);
+            display: grid;
+            place-items: center;
+            font-size: 15px;
+            border: 1px solid var(--border-soft);
+        }
+        
+        .kpi-card label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .kpi-card h2 {
+            margin: 4px 0 0;
+            font-size: 25px;
+            font-weight: 700;
+        }
+        
+        .widget-row {
+            display: grid;
+            grid-template-columns: 1.15fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+            align-items: start;
+        }
+        
+        .widget {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-soft);
+            box-shadow: var(--shadow-card);
+            padding: 22px;
+        }
+        
+        .widget-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        
+        .widget-title h3 {
+            margin: 0;
+            font-size: 14.5px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+        
+        .widget-title h3 i {
+            color: var(--primary);
+            font-size: 13px;
+        }
+        
+        .widget-title .tag {
+            font-size: 11px;
+            background: var(--surface-2);
+            color: var(--muted);
+            padding: 4px 9px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        
+        .sched-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+        }
+        
+        .sched-item {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 11px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+        }
+        
+        .sched-time {
+            min-width: 56px;
+            text-align: center;
+            font-family: "Lexend";
+            font-weight: 600;
+            font-size: 12.5px;
+            color: var(--primary-dark);
+        }
+        
+        .sched-time small {
+            display: block;
+            font-size: 10px;
+            color: var(--faint);
+            font-weight: 500;
+        }
+        
+        .sched-item .sinfo {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .sched-item .sinfo strong {
+            display: block;
+            font-size: 13px;
+        }
+        
+        .sched-item .sinfo span {
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+        
+        .sched-badge {
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: .02em;
+        }
+        
+        .sched-badge.training_session {
+            background: var(--info-bg);
+            color: var(--info);
+        }
+        
+        .sched-badge.supervision_session {
+            background: #efe7fb;
+            color: #6a3fb0;
+        }
+        
+        .sched-badge.meeting {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+        
+        .activity-feed {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .activity-feed li {
+            display: flex;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-soft);
+        }
+        
+        .activity-feed li:last-child {
+            border-bottom: none;
+        }
+        
+        .activity-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+        
+        .activity-feed .atext {
+            font-size: 13px;
+        }
+        
+        .activity-feed .atext strong {
+            font-weight: 600;
+        }
+        
+        .activity-feed .atime {
+            font-size: 11px;
+            color: var(--faint);
+            margin-top: 2px;
+        }
+        
+        .system-card {
+            background: var(--surface);
+            padding: 26px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-soft);
+            box-shadow: var(--shadow-card);
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+        
+        .card-title-left {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+        }
+        
+        .card-title i {
+            width: 38px;
+            height: 38px;
+            background: var(--surface-2);
+            color: var(--primary);
+            border-radius: 11px;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--border-soft);
+            font-size: 15px;
+        }
+        
+        .card-title h2 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 700;
+        }
+        
+        .card-subtitle {
+            color: var(--muted);
+            font-size: 12.5px;
+            margin: -12px 0 18px;
+        }
+        
+        .notice-banner {
+            background: var(--warning-bg);
+            color: var(--warning);
+            border-radius: 12px;
+            padding: 11px 15px;
+            font-size: 12px;
+            margin-bottom: 18px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            line-height: 1.5;
+        }
+        
+        .notice-banner i {
+            margin-top: 2px;
+        }
+        
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: .15s;
+        }
+        
+        .btn:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background: var(--surface-2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--border-soft);
+        }
+        
+        .btn-danger {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+        
+        .btn-danger:hover {
+            background: #f7d9d6;
+        }
+        
+        .btn-sm {
+            padding: 7px 13px;
+            font-size: 12.5px;
+        }
+        
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+        
+        .toolbar input,
+        .toolbar select {
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 0 14px;
+            font-size: 13.5px;
+            flex: 1;
+            min-width: 200px;
+            background: var(--surface-2);
+            font-family: inherit;
+        }
+        
+        .toolbar input:focus,
+        .toolbar select:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            background: var(--surface);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            text-align: left;
+            padding: 10px 14px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--faint);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        td {
+            padding: 13px 14px;
+            border-bottom: 1px solid var(--border-soft);
+            font-size: 13.5px;
+        }
+        
+        tr:hover td {
+            background: var(--surface-2);
+        }
+        
+        .pill {
+            padding: 4px 11px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+        }
+        
+        .pill.present,
+        .pill.completed,
+        .pill.active {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+        
+        .pill.absent {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+        
+        .pill.excused,
+        .pill.pending {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+        
+        .row-actions {
+            display: flex;
+            gap: 7px;
+        }
+        
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--muted);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            transition: .15s;
+            font-size: 12.5px;
+        }
+        
+        .icon-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .icon-btn.danger:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 34px;
+            color: var(--faint);
+            font-size: 13px;
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 20, 19, .55);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(2px);
+        }
+        
+        .modal-overlay.open {
+            display: flex;
+        }
+        
+        .modal-box {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            width: 100%;
+            max-width: 460px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: var(--shadow-pop);
+        }
+        
+        .modal-box.wide {
+            max-width: 840px;
+        }
+        
+        .modal-box h3 {
+            margin: 0 0 18px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .modal-box label {
+            display: block;
+            font-weight: 600;
+            font-size: 12.5px;
+            margin-bottom: 6px;
+            margin-top: 14px;
+            color: var(--muted);
+        }
+        
+        .modal-box input,
+        .modal-box select,
+        .modal-box textarea {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            font-size: 13.5px;
+            font-family: inherit;
+            background: var(--surface-2);
+        }
+        
+        .modal-box input:focus,
+        .modal-box select:focus,
+        .modal-box textarea:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            background: var(--surface);
+        }
+        
+        .modal-box input,
+        .modal-box select {
+            height: 42px;
+        }
+        
+        .modal-box textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 22px;
+        }
+        
+        .modal-actions .btn {
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: var(--faint);
+            cursor: pointer;
+        }
+        
+        .confirm-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 20, 18, .5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+            padding: 20px;
+        }
+        
+        .confirm-overlay.show {
+            display: flex;
+        }
+        
+        .confirm-box {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 22px;
+            max-width: 360px;
+            width: 100%;
+            box-shadow: var(--shadow-pop);
+        }
+        
+        .confirm-box h4 {
+            margin: 0 0 8px;
+            font-size: 15px;
+        }
+        
+        .confirm-box p {
+            margin: 0 0 18px;
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+        
+        .confirm-box .confirm-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .confirm-box .confirm-actions .btn {
+            margin-top: 0;
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            padding: 13px 20px;
+            border-radius: 11px;
+            font-weight: 600;
+            font-size: 13px;
+            box-shadow: var(--shadow-pop);
+            z-index: 9999;
+            animation: slideIn .2s ease;
+        }
+        
+        .toast.success {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+        
+        .toast.error {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateY(16px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .loading-row td {
+            text-align: center;
+            padding: 28px;
+            color: var(--faint);
+        }
+        
+        .student-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .student-header h3 {
+            margin: 0 0 3px;
+            font-size: 19px;
+        }
+        
+        .student-header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 12.5px;
+        }
+        
+        .progress-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 22px;
+        }
+        
+        .progress-cell {
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+        
+        .progress-cell label {
+            display: block;
+            color: var(--faint);
+            font-size: 11px;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .progress-cell strong {
+            font-size: 18px;
+            font-family: "Lexend";
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-soft);
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+        }
+        
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 7px 13px;
+            border-radius: 9px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+        }
+        
+        .tab-btn:hover {
+            background: var(--surface-2);
+        }
+        
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .record-form {
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .record-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        
+        .record-form label {
+            margin-top: 0;
+        }
+        
+        .record-form .full {
+            grid-column: 1/-1;
+        }
+        
+        .record-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+        }
+        
+        .record-item {
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            padding: 13px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .record-item .rmeta {
+            color: var(--faint);
+            font-size: 11.5px;
+            margin-top: 3px;
+        }
+        
+        .record-item .rcontent {
+            margin-top: 6px;
+            font-size: 12.5px;
+        }
+        
+        .doc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .doc-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            padding: 11px 15px;
+            border-radius: 11px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .doc-item a {
+            color: var(--primary);
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 12.5px;
+        }
+        
+        .chat-thread {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 14px;
+            padding: 4px;
+        }
+        
+        .chat-bubble {
+            max-width: 75%;
+            padding: 9px 13px;
+            border-radius: 13px;
+            font-size: 12.5px;
+        }
+        
+        .chat-bubble.mine {
+            align-self: flex-end;
+            background: var(--primary);
+            color: white;
+        }
+        
+        .chat-bubble.theirs {
+            align-self: flex-start;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+        }
+        
+        .chat-bubble .meta {
+            font-size: 10.5px;
+            opacity: .75;
+            margin-top: 4px;
+        }
+        
+        .chat-compose {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-compose textarea {
+            flex: 1;
+            min-height: 42px;
+        }
+        
+        .inbox-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .inbox-item {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            padding: 13px 15px;
+            border-radius: 13px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            cursor: pointer;
+            transition: .15s;
+        }
+        
+        .inbox-item:hover {
+            border-color: var(--primary-light);
+        }
+        
+        .inbox-item .inbox-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        
+        .inbox-item .inbox-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .inbox-item .inbox-info strong {
+            display: block;
+            font-size: 13.5px;
+        }
+        
+        .inbox-item .inbox-info span {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .inbox-item .inbox-time {
+            font-size: 11px;
+            color: var(--faint);
+            flex-shrink: 0;
+        }
+        
+        .material-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+        
+        .material-card {
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            padding: 16px;
+        }
+        
+        .material-card .mtype {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+        
+        .material-card h4 {
+            margin: 0 0 6px;
+            font-size: 13.5px;
+        }
+        
+        .material-card p {
+            margin: 0 0 10px;
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+        
+        .material-card a.mlink {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 12.5px;
+            text-decoration: none;
+        }
+        
+        .material-card .row-actions {
+            margin-top: 10px;
+        }
+        
+        .meeting-card {
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .meeting-card .mplatform {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--primary);
+            margin-bottom: 6px;
+        }
+        
+        .meeting-card h4 {
+            margin: 0 0 4px;
+            font-size: 14px;
+        }
+        
+        .meeting-card .mwhen {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        
+        .meeting-card a.mlink {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 12.5px;
+            text-decoration: none;
+        }
+        /* ===== Calendar ===== */
+        
+        .cal-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .cal-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .cal-nav {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .cal-arrow {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            color: var(--muted);
+        }
+        
+        .cal-arrow:hover {
+            background: var(--surface-2);
+        }
+        
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 1px;
+            background: var(--border-soft);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .cal-headcell {
+            background: var(--surface-2);
+            padding: 8px 6px;
+            text-align: center;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--faint);
+            text-transform: uppercase;
+        }
+        
+        .cal-cell {
+            background: var(--surface);
+            min-height: 84px;
+            padding: 6px;
+            font-size: 11px;
+            position: relative;
+        }
+        
+        .cal-cell.empty {
+            background: var(--surface-2);
+        }
+        
+        .cal-cell.today {
+            box-shadow: inset 0 0 0 2px var(--primary-light);
+        }
+        
+        .cal-daynum {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+        }
+        
+        .cal-event {
+            margin-top: 4px;
+            font-size: 10px;
+            background: var(--info-bg);
+            color: var(--info);
+            padding: 2px 5px;
+            border-radius: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .cal-event.meeting {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+        
+        @media(max-width:700px) {
+            .cal-cell {
+                min-height: 56px;
+                font-size: 10px;
+            }
+        }
+        
+        @media(max-width:1200px) {
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .widget-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media(max-width:900px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media(max-width:700px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.mobile-open {
+                transform: translateX(0);
+                box-shadow: 0 0 40px rgba(0, 0, 0, .35);
+            }
+            .main-content {
+                margin: 0;
+                width: 100%;
+                padding: 20px;
+            }
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 14px;
+            }
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            .mobile-toggle {
+                display: flex;
+            }
+        }
+        
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-soft);
+        }
+        
+        .toggle-row:last-child {
+            border-bottom: none;
+        }
+        
+        .toggle-row div strong {
+            font-size: 13.5px;
+            display: block;
+        }
+        
+        .toggle-row div span {
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+        
+        .switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .switch-track {
+            position: absolute;
+            inset: 0;
+            background: #d9dfdd;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: .2s;
+        }
+        
+        .switch-track::before {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            left: 3px;
+            top: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: .2s;
+        }
+        
+        .switch input:checked+.switch-track {
+            background: var(--primary);
+        }
+        
+        .switch input:checked+.switch-track::before {
+            transform: translateX(18px);
+        }
+        
+        .avatar-upload-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 6px;
+        }
+        
+        .avatar-upload-row .avatar-circle {
+            width: 56px;
+            height: 56px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="system-layout">
+
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+        <aside class="sidebar" id="sidebar">
+            <div class="system-logo">
+                <div class="mark">RM</div>
+                <div>
+                    <h2>Reframe MHS</h2>
+                    <p>ToT console</p>
+                </div>
+            </div>
+            <nav>
+                <div class="nav-label">Workspace</div>
+                <ul>
+                    <li><a data-section="dashboard" class="active" href="#dashboard"><i class="fa fa-gauge"></i>Dashboard</a></li>
+                    <li><a data-section="students" href="#students"><i class="fa fa-user-graduate"></i>My trainees</a></li>
+                    <li><a data-section="calendar" href="#calendar"><i class="fa fa-calendar"></i>Calendar</a></li>
+                </ul>
+                <div class="nav-label">Training</div>
+                <ul>
+                    <li><a data-section="materials" href="#materials"><i class="fa fa-book-open"></i>Learning materials</a></li>
+                    <li><a data-section="assignments" href="#assignments"><i class="fa fa-list-check"></i>Assignments</a></li>
+                    <li><a data-section="sessions" href="#sessions"><i class="fa fa-chalkboard-user"></i>Sessions</a></li>
+                    <li><a data-section="meetings" href="#meetings"><i class="fa fa-video"></i>Meetings</a></li>
+                </ul>
+                <div class="nav-label">Communication</div>
+                <ul>
+                    <li><a data-section="chat" href="#chat"><i class="fa fa-comments"></i>Chat</a></li>
+                    <li><a data-section="documents" href="#documents"><i class="fa fa-folder-open"></i>Documents</a></li>
+                    <li><a data-section="announcements" href="#announcements"><i class="fa fa-bullhorn"></i>Announcements</a></li>
+                </ul>
+                <div class="nav-label">Account</div>
+                <ul>
+                    <li><a data-section="settings" href="#settings"><i class="fa fa-gear"></i>Settings</a></li>
+                </ul>
+            </nav>
+            <div class="system-version">System<strong>2026.1 &middot; ToT</strong></div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="mobile-toggle" id="mobileToggle" aria-label="Open menu"><i class="fa fa-bars"></i></button>
+                    <div>
+                        <div class="eyebrow" id="sectionEyebrow">ToT console</div>
+                        <h1 id="sectionTitle">Good to see you</h1>
+                    </div>
+                </div>
+                <div class="top-right">
+                    <button class="bell-btn"><i class="fa fa-bell"></i><span class="dot" id="notifDot" style="display:none;"></span></button>
+                    <div class="profile-mini">
+                        <div class="avatar-circle" id="supervisorInitials">&mdash;</div>
+                        <div><strong id="supervisorName">Loading...</strong><span>ToT</span></div>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">Log out</button>
+                </div>
+            </header>
+
+            <!-- ============================================================= -->
+            <!-- DASHBOARD                                                      -->
+            <!-- ============================================================= -->
+            <section class="dash-section active-section" id="section-dashboard" data-title="Good to see you" data-eyebrow="ToT console">
+
+                <section class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon"><i class="fa fa-user-graduate"></i></div>
+                        </div><label>Assigned trainees</label>
+                        <h2 id="kpiStudents">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon"><i class="fa fa-stopwatch"></i></div>
+                        </div><label>Clinical hours logged</label>
+                        <h2 id="kpiHours">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon"><i class="fa fa-calendar-check"></i></div>
+                        </div><label>Avg. attendance</label>
+                        <h2 id="kpiAttendance">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon"><i class="fa fa-list-check"></i></div>
+                        </div><label>Open assignments</label>
+                        <h2 id="kpiAssignments">&mdash;</h2>
+                    </div>
+                </section>
+
+                <section class="widget-row">
+                    <div class="widget">
+                        <div class="widget-title">
+                            <h3><i class="fa fa-calendar-day"></i>Today &amp; upcoming sessions</h3><span class="tag" id="schedCount">&mdash;</span></div>
+                        <ul class="sched-list" id="scheduleList">
+                            <li class="empty-state">Loading schedule...</li>
+                        </ul>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-title">
+                            <h3><i class="fa fa-clock-rotate-left"></i>Recent activity</h3>
+                        </div>
+                        <ul class="activity-feed" id="activityFeed">
+                            <li class="empty-state">Loading activity...</li>
+                        </ul>
+                    </div>
+                </section>
+
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- MY STUDENTS                                                    -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-students" data-title="My trainees" data-eyebrow="Caseload">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-user-graduate"></i>
+                            <h2>My trainees</h2>
+                        </div>
+                        <button class="btn" onclick="openAssignModal()"><i class="fa fa-plus"></i>Assign trainee by ID</button>
+                    </div>
+                    <p class="card-subtitle">Only Admin can create Trainee IDs. Assign an existing ID to add that trainee to your caseload.</p>
+
+                    <div class="toolbar">
+                        <input type="text" id="studentSearch" placeholder="Search by name or trainee ID...">
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Trainee ID</th>
+                                <th>Cohort</th>
+                                <th>Year</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsBody">
+                            <tr class="loading-row">
+                                <td colspan="6">Loading trainees...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- CALENDAR                                                       -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-calendar" data-title="Calendar" data-eyebrow="Schedule">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-calendar"></i>
+                            <h2>Calendar</h2>
+                        </div>
+                    </div>
+                    <div class="notice-banner">
+                        <i class="fa fa-circle-info"></i>
+                        <span>This calendar is seeded from <code>/supervisor/schedule</code> (the API path itself is unchanged), which currently only returns today + near-term upcoming items rather than a full date range. Browsing to a month with nothing loaded yet will look empty even if sessions exist there &mdash; ask your backend team for a <code>?start=&amp;end=</code> range option on that endpoint for accurate month-to-month browsing.</span>
+                    </div>
+                    <div class="cal-topbar">
+                        <h3 class="cal-title" id="calTitle">&mdash;</h3>
+                        <div class="cal-nav">
+                            <button class="cal-arrow" id="calPrev"><i class="fa fa-chevron-left"></i></button>
+                            <button class="cal-arrow" id="calNext"><i class="fa fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="cal-grid" id="calHeader"></div>
+                    <div class="cal-grid" id="calBody" style="margin-top:1px;"></div>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- LEARNING MATERIALS                                             -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-materials" data-title="Learning materials" data-eyebrow="Training">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-book-open"></i>
+                            <h2>Learning materials</h2>
+                        </div>
+                        <button class="btn" onclick="openMaterialModal()"><i class="fa fa-plus"></i>Share material</button>
+                    </div>
+                    <p class="card-subtitle">Shared with every trainee currently assigned to you &mdash; they see this automatically on their My Profile page.</p>
+                    <div class="material-grid" id="materialsGrid">
+                        <div class="empty-state">Loading materials...</div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- ASSIGNMENTS                                                    -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-assignments" data-title="Assignments" data-eyebrow="Training">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-list-check"></i>
+                            <h2>Assignments</h2>
+                        </div>
+                        <button class="btn" onclick="openAssignmentModal()"><i class="fa fa-plus"></i>New assignment</button>
+                    </div>
+                    <p class="card-subtitle">Across your whole caseload. Deadlines map to the record date; edit or delete from here or from a trainee's own profile.</p>
+                    <div class="notice-banner">
+                        <i class="fa fa-circle-info"></i>
+                        <span>The current schema has no <code>assignment_submissions</code> table, so trainees can't yet upload a file back for you to review here &mdash; this view tracks title, deadline, and pending/completed status only. Ask your backend team to add that table when file submissions are needed.</span>
+                    </div>
+                    <div class="toolbar">
+                        <input type="text" id="assignmentSearch" placeholder="Search by title or trainee...">
+                        <select id="assignmentStatusFilter">
+<option value="">All statuses</option>
+<option value="pending">Pending</option>
+<option value="completed">Completed</option>
+</select>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Trainee</th>
+                                <th>Deadline</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assignmentsBody">
+                            <tr class="loading-row">
+                                <td colspan="5">Loading assignments...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- SESSIONS                                                       -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-sessions" data-title="Sessions" data-eyebrow="Training">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-chalkboard-user"></i>
+                            <h2>Sessions</h2>
+                        </div>
+                        <button class="btn" onclick="openSessionModal()"><i class="fa fa-plus"></i>Schedule session</button>
+                    </div>
+                    <p class="card-subtitle">Training and supervision sessions across your whole caseload. Attendance and hours can still be logged from each trainee's profile.</p>
+                    <div class="toolbar">
+                        <input type="text" id="sessionSearch" placeholder="Search by title or trainee...">
+                        <select id="sessionTypeFilter">
+<option value="">All types</option>
+<option value="training_session">Training sessions</option>
+<option value="supervision_session">Supervision sessions</option>
+</select>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Trainee</th>
+                                <th>Type</th>
+                                <th>Date &amp; time</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsBody">
+                            <tr class="loading-row">
+                                <td colspan="6">Loading sessions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- MEETINGS                                                       -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-meetings" data-title="Meetings" data-eyebrow="Training">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-video"></i>
+                            <h2>Online meetings</h2>
+                        </div>
+                        <button class="btn" onclick="openMeetingModal()"><i class="fa fa-plus"></i>New meeting</button>
+                    </div>
+                    <p class="card-subtitle">Zoom, Microsoft Teams, or Google Meet links shared with your assigned trainees.</p>
+                    <div id="meetingsList">
+                        <div class="empty-state">Loading meetings...</div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- CHAT                                                           -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-chat" data-title="Chat" data-eyebrow="Communication">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-comments"></i>
+                            <h2>Chat</h2>
+                        </div>
+                    </div>
+                    <p class="card-subtitle">One conversation per assigned trainee. Click a conversation to open the full thread.</p>
+                    <div class="notice-banner">
+                        <i class="fa fa-circle-info"></i>
+                        <span>This inbox is built by fetching each assigned trainee's message thread individually (there's no aggregate <code>/supervisor/conversations</code> endpoint yet). Fine for a normal caseload size; if you're training a very large number of trainees, ask your backend team for a single aggregate endpoint instead.</span>
+                    </div>
+                    <ul class="inbox-list" id="chatInboxList">
+                        <li class="empty-state">Loading conversations...</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- DOCUMENTS                                                      -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-documents" data-title="Documents" data-eyebrow="Communication">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-folder-open"></i>
+                            <h2>Documents</h2>
+                        </div>
+                    </div>
+                    <p class="card-subtitle">Every file uploaded to any of your assigned trainees' profiles, newest first. Upload a new document from a trainee's own profile.</p>
+                    <ul class="doc-list" id="allDocumentsList">
+                        <li class="empty-state">Loading documents...</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- ANNOUNCEMENTS                                                  -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-announcements" data-title="Announcements" data-eyebrow="Communication">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-bullhorn"></i>
+                            <h2>Announcements</h2>
+                        </div>
+                        <button class="btn" onclick="openAnnouncementModal()"><i class="fa fa-plus"></i>New announcement</button>
+                    </div>
+                    <p class="card-subtitle">Posted to every trainee currently assigned to you.</p>
+                    <ul class="record-list" id="announcementsList">
+                        <li class="empty-state">Loading announcements...</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- SETTINGS                                                       -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-settings" data-title="Settings" data-eyebrow="Account">
+                <div class="settings-grid">
+
+                    <div class="system-card">
+                        <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-id-badge" style="color:var(--primary);"></i>Profile</h2>
+                        <p class="card-subtitle" style="margin-top:4px;">Your account information as shown across the system.</p>
+                        <div class="avatar-upload-row">
+                            <div class="avatar-circle" id="settingsAvatarPreview">&mdash;</div>
+                            <div>
+                                <input type="file" id="settingsPhotoFile" accept="image/*" style="height:auto;padding:6px 0;">
+                                <div style="font-size:11px;color:var(--faint);margin-top:4px;">JPG or PNG.</div>
+                            </div>
+                        </div>
+                        <form id="profileForm">
+                            <label>Full name</label>
+                            <input type="text" id="settingsName" placeholder="Full name">
+                            <label>Email</label>
+                            <input type="email" id="settingsEmail" placeholder="you@reframe.org">
+                            <label>Phone</label>
+                            <input type="text" id="settingsPhone" placeholder="Phone number">
+                            <label>ToT ID</label>
+                            <input type="text" id="settingsMemberCode" disabled>
+                            <button type="submit" class="btn">Save profile</button>
+                        </form>
+                    </div>
+
+                    <div class="system-card">
+                        <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-lock" style="color:var(--primary);"></i>Security &amp; password</h2>
+                        <p class="card-subtitle" style="margin-top:4px;">Update your password. You'll stay logged in on this device.</p>
+                        <form id="passwordForm">
+                            <label>Current password</label>
+                            <input type="password" id="currentPassword" required>
+                            <label>New password</label>
+                            <input type="password" id="newPassword" required minlength="8">
+                            <label>Confirm new password</label>
+                            <input type="password" id="confirmPassword" required minlength="8">
+                            <div class="card-subtitle" style="margin:6px 0 0;">Minimum 8 characters.</div>
+                            <button type="submit" class="btn">Change password</button>
+                        </form>
+                    </div>
+
+                    <div class="system-card" style="grid-column:1/-1;">
+                        <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-bell" style="color:var(--primary);"></i>Notification preferences</h2>
+                        <p class="card-subtitle" style="margin-top:4px;">Saved on this device for now &mdash; ask your backend team to wire this to a real endpoint when one exists.</p>
+                        <div class="toggle-row">
+                            <div><strong>New messages</strong><span>Get notified when a trainee sends you a message.</span></div>
+                            <label class="switch"><input type="checkbox" id="notifMessages" checked><span class="switch-track"></span></label>
+                        </div>
+                        <div class="toggle-row">
+                            <div><strong>Assignment submissions</strong><span>Get notified about assignment activity.</span></div>
+                            <label class="switch"><input type="checkbox" id="notifAssignments" checked><span class="switch-track"></span></label>
+                        </div>
+                        <div class="toggle-row">
+                            <div><strong>Upcoming sessions</strong><span>Get a reminder before scheduled sessions.</span></div>
+                            <label class="switch"><input type="checkbox" id="notifSessions" checked><span class="switch-track"></span></label>
+                        </div>
+                        <button class="btn" style="width:auto;" onclick="saveNotificationPrefs()">Save preferences</button>
+                    </div>
+
+                    <div class="system-card" style="grid-column:1/-1;">
+                        <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-user-shield" style="color:var(--primary);"></i>Privacy</h2>
+                        <div class="toggle-row">
+                            <div><strong>Show my profile photo to trainees</strong><span>If off, trainees see your initials instead of your photo.</span></div>
+                            <label class="switch"><input type="checkbox" id="privacyShowPhoto" checked><span class="switch-track"></span></label>
+                        </div>
+                        <button class="btn" style="width:auto;" onclick="saveNotificationPrefs()">Save preferences</button>
+                    </div>
+
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ASSIGN STUDENT MODAL -->
+    <div class="modal-overlay" id="assignModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('assignModal')">&times;</button>
+            <h3>Assign trainee by ID</h3>
+            <p style="color:var(--muted);font-size:12.5px;margin:-8px 0 0;">Enter the trainee's ID (e.g. TTR002). They'll appear in your list immediately, and you'll appear on their profile.</p>
+            <form id="assignForm">
+                <label>Trainee ID</label>
+                <input type="text" id="assignStudentCode" required placeholder="TTR002">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('assignModal')">Cancel</button>
+                    <button type="submit" class="btn">Assign</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SHARE MATERIAL MODAL -->
+    <div class="modal-overlay" id="materialModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('materialModal')">&times;</button>
+            <h3>Share a learning material</h3>
+            <form id="materialForm">
+                <label>Title</label>
+                <input type="text" id="matTitle" required>
+                <label>Description (optional)</label>
+                <textarea id="matDescription"></textarea>
+                <label>Type</label>
+                <select id="matType" onchange="toggleMaterialTypeFields()">
+<option value="document">Document (PDF / Word / PowerPoint)</option>
+<option value="image">Image</option>
+<option value="video">Video</option>
+<option value="audio">Audio</option>
+<option value="worksheet">Worksheet</option>
+<option value="assignment">Assignment</option>
+<option value="reading">Reading</option>
+<option value="link">External link</option>
+</select>
+                <div id="matFileWrap"><label>File</label><input type="file" id="matFile" accept=".pdf,.doc,.docx,.ppt,.pptx,image/*,video/*,audio/*"></div>
+                <div id="matUrlWrap" style="display:none;"><label>URL</label><input type="url" id="matUrl" placeholder="https://..."></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('materialModal')">Cancel</button>
+                    <button type="submit" class="btn">Share</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- NEW ANNOUNCEMENT MODAL -->
+    <div class="modal-overlay" id="announcementModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('announcementModal')">&times;</button>
+            <h3>New announcement</h3>
+            <form id="announcementForm">
+                <label>Title</label>
+                <input type="text" id="annTitle" required>
+                <label>Message</label>
+                <textarea id="annContent" required></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('announcementModal')">Cancel</button>
+                    <button type="submit" class="btn">Post to all trainees</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- NEW ASSIGNMENT MODAL (caseload-wide) -->
+    <div class="modal-overlay" id="assignmentModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('assignmentModal')">&times;</button>
+            <h3 id="assignmentModalTitle">New assignment</h3>
+            <form id="assignmentModalForm">
+                <input type="hidden" id="asgEditId">
+                <label>Trainee</label>
+                <select id="asgStudent" required></select>
+                <label>Title</label>
+                <input type="text" id="asgTitle" required>
+                <label>Deadline</label>
+                <input type="date" id="asgDeadline">
+                <label>Status</label>
+                <select id="asgStatus">
+<option value="pending">Pending</option>
+<option value="completed">Completed</option>
+</select>
+                <label>Description / instructions</label>
+                <textarea id="asgContent"></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('assignmentModal')">Cancel</button>
+                    <button type="submit" class="btn">Save assignment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- NEW SESSION MODAL (caseload-wide) -->
+    <div class="modal-overlay" id="sessionModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('sessionModal')">&times;</button>
+            <h3 id="sessionModalTitle">Schedule session</h3>
+            <form id="sessionModalForm">
+                <input type="hidden" id="sesEditId">
+                <input type="hidden" id="sesEditType">
+                <label>Trainee</label>
+                <select id="sesStudent" required></select>
+                <label>Session type</label>
+                <select id="sesType">
+<option value="training_session">Training session</option>
+<option value="supervision_session">Supervision session</option>
+</select>
+                <label>Title</label>
+                <input type="text" id="sesTitle" required>
+                <label>Date</label>
+                <input type="date" id="sesDate">
+                <label>Time</label>
+                <input type="time" id="sesTime">
+                <label>Duration (minutes)</label>
+                <input type="number" min="0" id="sesDuration">
+                <label>Notes</label>
+                <textarea id="sesContent"></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('sessionModal')">Cancel</button>
+                    <button type="submit" class="btn">Save session</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- NEW MEETING MODAL -->
+    <div class="modal-overlay" id="meetingModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('meetingModal')">&times;</button>
+            <h3 id="meetingModalTitle">New meeting</h3>
+            <form id="meetingModalForm">
+                <input type="hidden" id="mtgEditId">
+                <label>Title</label>
+                <input type="text" id="mtgTitle" required placeholder="Weekly check-in">
+                <label>Share with</label>
+                <select id="mtgStudent">
+<option value="">My whole caseload</option>
+</select>
+                <label>Platform</label>
+                <select id="mtgPlatform">
+<option value="zoom">Zoom</option>
+<option value="teams">Microsoft Teams</option>
+<option value="meet">Google Meet</option>
+<option value="other">Other</option>
+</select>
+                <label>Meeting link</label>
+                <input type="url" id="mtgUrl" required placeholder="https://...">
+                <label>Date &amp; time</label>
+                <input type="datetime-local" id="mtgWhen">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('meetingModal')">Cancel</button>
+                    <button type="submit" class="btn">Save meeting</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- STUDENT DETAIL MODAL -->
+    <div class="modal-overlay" id="studentModal">
+        <div class="modal-box wide">
+            <button class="close-modal" onclick="closeModal('studentModal')">&times;</button>
+
+            <div class="student-header">
+                <div>
+                    <h3 id="sdName">&mdash;</h3>
+                    <p id="sdMeta">&mdash;</p>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="confirmRemoveCurrentStudent()"><i class="fa fa-user-xmark"></i> Remove from my trainees</button>
+            </div>
+
+            <div class="progress-grid" id="sdProgress"></div>
+
+            <div class="tabs" id="sdTabs"></div>
+
+            <div id="sdPanels"></div>
+
+        </div>
+    </div>
+
+    <!-- Confirmation dialog -->
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-box">
+            <h4 id="confirmTitle">Are you sure?</h4>
+            <p id="confirmMessage"></p>
+            <div class="confirm-actions">
+                <button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button>
+                <button class="btn btn-danger" id="confirmActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = "http://localhost:3000/api";
+        const UPLOADS = "http://localhost:3000/uploads";
+
+        const token = localStorage.getItem("token") || localStorage.getItem("reframe_token");
+        if (!token) window.location.href = "login.html";
+
+        let currentStudentId = null;
+        let currentStudentData = null;
+        let activeTab = "overview";
+        let editingRecordId = null;
+        let allStudents = [];
+
+        // FIX (rename pass): the real backend's RECORD_TYPE_TABLES has separate
+        // "training_hours" and "supervision_hours" tables -- "clinical_hours" isn't
+        // a valid recordType there and would 400. Split into the two real types,
+        // and drop the unsupported "title" field on hours (the hours tables only
+        // have hour_date / hours / description columns).
+        const RECORD_TYPES = {
+            attendance: {
+                label: "Attendance",
+                icon: "fa-calendar-check",
+                fields: ["date", "status", "content"],
+                statusOptions: ["present", "absent", "excused"]
+            },
+            training_session: {
+                label: "Training sessions",
+                icon: "fa-chalkboard-user",
+                fields: ["date", "time", "duration", "title", "content"]
+            },
+            supervision_session: {
+                label: "Supervision sessions",
+                icon: "fa-user-doctor",
+                fields: ["date", "time", "duration", "title", "content"]
+            },
+            training_hours: {
+                label: "Training hours",
+                icon: "fa-stopwatch",
+                fields: ["date", "duration", "content"]
+            },
+            supervision_hours: {
+                label: "Supervision hours",
+                icon: "fa-stopwatch",
+                fields: ["date", "duration", "content"]
+            },
+            assignment: {
+                label: "Assignments",
+                icon: "fa-list-check",
+                fields: ["title", "date", "status", "content"],
+                statusOptions: ["pending", "completed"]
+            },
+            note: {
+                label: "Notes",
+                icon: "fa-note-sticky",
+                fields: ["date", "content"]
+            },
+            evaluation: {
+                label: "Evaluations",
+                icon: "fa-star",
+                fields: ["date", "title", "score", "content"]
+            },
+        };
+        const TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "documents", "messages"];
+
+        async function apiRequest(url, options = {}) {
+            try {
+                const response = await fetch(API + url, {
+                    ...options,
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        ...(options.headers || {})
+                    },
+                });
+                if (response.status === 401) {
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("reframe_token");
+                    window.location.href = "login.html";
+                    return null;
+                }
+                const body = await response.json().catch(() => null);
+                if (!response.ok) throw new Error(body ? .error || "Request failed");
+                return body;
+            } catch (err) {
+                showToast(err.message || "Connection error", "error");
+                return null;
+            }
+        }
+
+        function showToast(text, type) {
+            const box = document.createElement("div");
+            box.className = "toast " + type;
+            box.textContent = text;
+            document.body.appendChild(box);
+            setTimeout(() => box.remove(), 3000);
+        }
+
+        function escapeHtml(str) {
+            return String(str ? ? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function initials(name) {
+            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] ? .toUpperCase() || "").join("");
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add("open");
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove("open");
+        }
+
+        function logout() {
+            localStorage.removeItem("token");
+            localStorage.removeItem("reframe_token");
+            localStorage.removeItem("reframe_user");
+            localStorage.removeItem("user");
+            window.location.href = "login.html";
+        }
+
+        function openConfirm(title, message, onConfirm) {
+            document.getElementById("confirmTitle").textContent = title;
+            document.getElementById("confirmMessage").textContent = message;
+            const btn = document.getElementById("confirmActionBtn");
+            const freshBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(freshBtn, btn);
+            freshBtn.addEventListener("click", () => {
+                closeConfirm();
+                onConfirm();
+            });
+            document.getElementById("confirmOverlay").classList.add("show");
+        }
+
+        function closeConfirm() {
+            document.getElementById("confirmOverlay").classList.remove("show");
+        }
+
+        const SECTION_IDS = [
+            "dashboard", "students", "calendar", "materials", "assignments", "sessions",
+            "meetings", "chat", "documents", "announcements", "settings",
+        ];
+
+        const SECTION_LOADERS = {
+            calendar: () => loadCalendar(),
+            assignments: () => loadAssignments(),
+            sessions: () => loadSessions(),
+            meetings: () => loadMeetings(),
+            chat: () => loadChatInbox(),
+            documents: () => loadAllDocuments(),
+        };
+        const loadedSections = new Set(["dashboard", "students", "materials", "announcements"]);
+
+        function showSection(name) {
+            if (!SECTION_IDS.includes(name)) name = "dashboard";
+
+            SECTION_IDS.forEach((id) => {
+                const el = document.getElementById("section-" + id);
+                if (el) el.classList.toggle("active-section", id === name);
+            });
+
+            document.querySelectorAll(".sidebar a[data-section]").forEach((a) => {
+                a.classList.toggle("active", a.dataset.section === name);
+            });
+
+            const activeEl = document.getElementById("section-" + name);
+            if (activeEl) {
+                document.getElementById("sectionTitle").textContent = activeEl.dataset.title || "Dashboard";
+                document.getElementById("sectionEyebrow").textContent = activeEl.dataset.eyebrow || "ToT console";
+            }
+
+            if (window.location.hash.slice(1) !== name) {
+                history.replaceState(null, "", "#" + name);
+            }
+
+            if (!loadedSections.has(name) && SECTION_LOADERS[name]) {
+                loadedSections.add(name);
+                SECTION_LOADERS[name]();
+            }
+
+            closeMobileSidebar();
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+        }
+
+        document.querySelectorAll(".sidebar a[data-section]").forEach((link) => {
+            link.addEventListener("click", (e) => {
+                e.preventDefault();
+                showSection(link.dataset.section);
+            });
+        });
+        window.addEventListener("hashchange", () => showSection(window.location.hash.slice(1)));
+
+        const sidebarEl = document.getElementById("sidebar");
+        const sidebarBackdrop = document.getElementById("sidebarBackdrop");
+        document.getElementById("mobileToggle").addEventListener("click", () => {
+            sidebarEl.classList.add("mobile-open");
+            sidebarBackdrop.classList.add("show");
+        });
+        sidebarBackdrop.addEventListener("click", closeMobileSidebar);
+
+        function closeMobileSidebar() {
+            sidebarEl.classList.remove("mobile-open");
+            sidebarBackdrop.classList.remove("show");
+        }
+
+        async function loadMe() {
+            const me = await apiRequest("/profile/me");
+            if (me) {
+                if (me.must_change_password) {
+                    window.location.href = "change-password.html";
+                    return;
+                }
+                document.getElementById("supervisorName").textContent = me.full_name;
+                document.getElementById("supervisorInitials").textContent = initials(me.full_name);
+                document.getElementById("settingsName").value = me.full_name || "";
+                document.getElementById("settingsEmail").value = me.email || "";
+                document.getElementById("settingsPhone").value = me.phone || "";
+                document.getElementById("settingsMemberCode").value = me.memberCode || "";
+                document.getElementById("settingsAvatarPreview").textContent = initials(me.full_name);
+                if (me.photo) {
+                    document.getElementById("supervisorInitials").innerHTML = `<img src="${UPLOADS}/photos/${me.photo}" alt="">`;
+                    document.getElementById("settingsAvatarPreview").innerHTML = `<img src="${UPLOADS}/photos/${me.photo}" alt="">`;
+                }
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", async() => {
+            await loadMe();
+            await loadStudents();
+            await loadSchedule();
+            await loadActivity();
+            await loadMaterials();
+            await loadAnnouncements();
+            loadNotificationPrefs();
+
+            const initialSection = window.location.hash.slice(1) || "dashboard";
+            showSection(initialSection);
+        });
+
+        async function loadStudents() {
+            const data = await apiRequest("/supervisor/students");
+            if (!data) return;
+            allStudents = data.students;
+            renderStudents();
+            loadKpis();
+            populateStudentPickers();
+        }
+
+        function populateStudentPickers() {
+            const options = allStudents
+                .map((s) => `<option value="${s.id}">${escapeHtml(s.full_name)} (${escapeHtml(s.memberCode)})</option>`)
+                .join("");
+            const asgSel = document.getElementById("asgStudent");
+            const sesSel = document.getElementById("sesStudent");
+            if (asgSel) asgSel.innerHTML = options || '<option value="">No trainees assigned yet</option>';
+            if (sesSel) sesSel.innerHTML = options || '<option value="">No trainees assigned yet</option>';
+
+            const mtgSel = document.getElementById("mtgStudent");
+            if (mtgSel) {
+                mtgSel.innerHTML =
+                    '<option value="">My whole caseload</option>' +
+                    allStudents.map((s) => `<option value="${s.id}">${escapeHtml(s.full_name)} (${escapeHtml(s.memberCode)})</option>`).join("");
+            }
+        }
+
+        function renderStudents() {
+            const search = document.getElementById("studentSearch").value.toLowerCase();
+            const filtered = allStudents.filter(
+                (s) => s.full_name.toLowerCase().includes(search) || s.memberCode.toLowerCase().includes(search)
+            );
+
+            const body = document.getElementById("studentsBody");
+            if (!filtered.length) {
+                body.innerHTML = `<tr><td colspan="6" class="empty-state">No trainees match. Use "Assign trainee by ID" to add one.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = filtered
+                .map(
+                    (s) => `
+    <tr>
+      <td><strong>${escapeHtml(s.full_name)}</strong></td>
+      <td>${escapeHtml(s.memberCode)}</td>
+      <td>${escapeHtml(s.cohort || "&mdash;")}</td>
+      <td>${s.currentYear ? "Year " + s.currentYear : "&mdash;"}</td>
+      <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" title="Open profile" onclick="openStudent(${s.id})"><i class="fa fa-eye"></i></button>
+          <button class="icon-btn" title="Message" onclick="openStudent(${s.id}, 'messages')"><i class="fa fa-comment"></i></button>
+        </div>
+      </td>
+    </tr>
+  `
+                )
+                .join("");
+        }
+
+        async function loadKpis() {
+            document.getElementById("kpiStudents").textContent = allStudents.length;
+
+            let totalHours = 0,
+                totalRate = 0,
+                rateCount = 0,
+                openAssignments = 0;
+            for (const s of allStudents) {
+                const detail = await apiRequest(`/supervisor/students/${s.id}`);
+                if (!detail) continue;
+                totalHours += detail.progress.clinicalHours || 0;
+                if (detail.progress.attendanceRate != null) {
+                    totalRate += detail.progress.attendanceRate;
+                    rateCount++;
+                }
+                openAssignments += (detail.progress.assignmentsTotal - detail.progress.assignmentsCompleted);
+            }
+            document.getElementById("kpiHours").textContent = Math.round(totalHours * 10) / 10;
+            document.getElementById("kpiAttendance").textContent = rateCount ? Math.round(totalRate / rateCount) + "%" : "&mdash;";
+            document.getElementById("kpiAssignments").textContent = openAssignments;
+        }
+
+        async function loadSchedule() {
+            const data = await apiRequest("/supervisor/schedule");
+            const list = document.getElementById("scheduleList");
+            if (!data) return;
+
+            const items = [...data.today.map((i) => ({...i,
+                isToday: true
+            })), ...data.upcoming];
+            document.getElementById("schedCount").textContent = `${data.today.length} today`;
+
+            if (!items.length) {
+                list.innerHTML = '<li class="empty-state">No upcoming sessions scheduled.</li>';
+                return;
+            }
+
+            list.innerHTML = items
+                .map((i) => `
+      <li class="sched-item">
+        <div class="sched-time">${i.time || "--:--"}<small>${i.isToday ? "Today" : i.date}</small></div>
+        <div class="sinfo"><strong>${escapeHtml(i.title || RECORD_TYPES[i.recordType].label)}</strong><span>${escapeHtml(i.studentName)} &middot; ${escapeHtml(i.studentCode)}</span></div>
+        <span class="sched-badge ${i.recordType}">${i.recordType === "training_session" ? "Training" : "Supervision"}</span>
+      </li>
+    `)
+                .join("");
+        }
+
+        async function loadActivity() {
+            const data = await apiRequest("/supervisor/activity");
+            const feed = document.getElementById("activityFeed");
+            if (!data) return;
+            if (!data.activity.length) {
+                feed.innerHTML = '<li class="empty-state">No recent activity yet.</li>';
+                return;
+            }
+            feed.innerHTML = data.activity
+                .map((a) => `
+      <li>
+        <div class="activity-dot"></div>
+        <div>
+          <div class="atext"><strong>${escapeHtml(a.studentName)}</strong> &mdash; ${escapeHtml(a.action)}</div>
+          <div class="atime">${new Date(a.createdAt).toLocaleString()}</div>
+        </div>
+      </li>
+    `)
+                .join("");
+        }
+
+        document.getElementById("assignForm").addEventListener("submit", async(e) => {
+            e.preventDefault();
+            const studentCode = document.getElementById("assignStudentCode").value.trim();
+            const result = await apiRequest("/supervisor/students", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    studentCode
+                }),
+            });
+            if (result) {
+                showToast(`${result.student.full_name} added to your trainees`, "success");
+                closeModal("assignModal");
+                document.getElementById("assignForm").reset();
+                loadStudents();
+            }
+        });
+
+        function openAssignModal() {
+            document.getElementById("assignForm").reset();
+            openModal("assignModal");
+        }
+
+        document.getElementById("studentSearch").addEventListener("input", renderStudents);
+
+        async function openStudent(studentId, initialTab) {
+            currentStudentId = studentId;
+            const data = await apiRequest(`/supervisor/students/${studentId}`);
+            if (!data) return;
+            currentStudentData = data;
+
+            document.getElementById("sdName").textContent = data.student.full_name;
+            document.getElementById("sdMeta").textContent =
+                `${data.student.memberCode} \u00b7 ${data.student.cohort || "No cohort"} \u00b7 ${data.student.currentYear ? "Year " + data.student.currentYear : "No year set"}`;
+
+            renderProgress(data.progress);
+            renderTabs();
+            activeTab = initialTab || "overview";
+            await renderActivePanel();
+            openModal("studentModal");
+            showSection("students");
+        }
+
+        function renderProgress(p) {
+            const cells = [
+                ["Clinical hours", p.clinicalHours],
+                ["Attendance", p.attendanceRate != null ? p.attendanceRate + "%" : "&mdash;"],
+                ["Training sessions", p.trainingSessions],
+                ["Supervision sessions", p.supervisionSessions],
+                ["Assignments", `${p.assignmentsCompleted}/${p.assignmentsTotal}`],
+                ["Avg. evaluation", p.averageEvaluationScore ? ? "&mdash;"],
+            ];
+            document.getElementById("sdProgress").innerHTML = cells
+                .map(([label, value]) => `<div class="progress-cell"><label>${label}</label><strong>${value}</strong></div>`)
+                .join("");
+        }
+
+        function renderTabs() {
+            const labels = {
+                overview: "Overview",
+                documents: "Documents",
+                messages: "Messages"
+            };
+            document.getElementById("sdTabs").innerHTML = TAB_ORDER.map((t) => {
+                const label = RECORD_TYPES[t] ? .label || labels[t];
+                return `<button class="tab-btn ${t === activeTab ? "active" : ""}" onclick="switchTab('${t}')">${label}</button>`;
+            }).join("");
+        }
+
+        async function switchTab(tab) {
+            activeTab = tab;
+            renderTabs();
+            await renderActivePanel();
+        }
+
+        async function renderActivePanel() {
+            const container = document.getElementById("sdPanels");
+            editingRecordId = null;
+
+            if (activeTab === "overview") {
+                container.innerHTML = `<p style="color:var(--muted);font-size:13px;">Use the tabs above to log attendance, sessions, hours, assignments, notes, and evaluations. Everything you add here appears immediately on the trainee's My Profile page.</p>`;
+                return;
+            }
+
+            if (activeTab === "documents") {
+                renderDocumentsPanel(container);
+                return;
+            }
+
+            if (activeTab === "messages") {
+                await renderMessagesPanel(container);
+                return;
+            }
+
+            renderRecordPanel(container, activeTab);
+        }
+
+        function fieldInput(type, field, value) {
+            value = value ? ? "";
+            if (field === "date") return `<div><label>Date</label><input type="date" id="rf_date" value="${escapeHtml(value)}"></div>`;
+            if (field === "time") return `<div><label>Time</label><input type="time" id="rf_time" value="${escapeHtml(value)}"></div>`;
+            if (field === "duration") return `<div><label>Duration (minutes)</label><input type="number" min="0" id="rf_duration" value="${escapeHtml(value)}"></div>`;
+            if (field === "title") return `<div><label>Title</label><input type="text" id="rf_title" value="${escapeHtml(value)}"></div>`;
+            if (field === "score") return `<div><label>Score (0-100)</label><input type="number" min="0" max="100" id="rf_score" value="${escapeHtml(value)}"></div>`;
+            if (field === "status") {
+                const options = RECORD_TYPES[type].statusOptions;
+                return `<div><label>Status</label><select id="rf_status">${options
+      .map((o) => `<option value="${o}" ${o === value ? "selected" : ""}>${o}</option>`)
+      .join("")}</select></div>`;
+  }
+  if (field === "content") return `<div class="full"><label>Notes</label><textarea id="rf_content">${escapeHtml(value)}</textarea></div>`;
+  return "";
+}
+
+function renderRecordPanel(container, type) {
+  const config = RECORD_TYPES[type];
+  const records = currentStudentData.records.filter((r) => r.recordType === type);
+  const editing = editingRecordId ? records.find((r) => r.id === editingRecordId) : null;
+
+  container.innerHTML = `
+    <form class="record-form" id="recordForm">
+      <div class="record-form-grid">
+        ${config.fields.map((f) => fieldInput(type, f, editing ? mapEditValue(editing, f) : "")).join("")}
+      </div>
+      <div class="modal-actions">
+        ${editing ? '<button type="button" class="btn btn-secondary" onclick="cancelEditRecord()">Cancel edit</button>' : ""}
+        <button type="submit" class="btn">${editing ? "Save changes" : "Add " + config.label.replace(/s$/, "")}</button>
+      </div>
+    </form>
+    <ul class="record-list" id="recordList">
+      ${records.length ? records.map((r) => recordItemHtml(type, r)).join("") : '<li class="empty-state">No entries yet.</li>'}
+    </ul>
+  `;
+
+  document.getElementById("recordForm").addEventListener("submit", (e) => submitRecordForm(e, type));
+}
+
+function mapEditValue(record, field) {
+  if (field === "date") return record.date || "";
+  if (field === "time") return record.time || "";
+  if (field === "duration") return record.durationMinutes ?? "";
+  if (field === "title") return record.title || "";
+  if (field === "score") return record.score ?? "";
+  if (field === "status") return record.status || "";
+  if (field === "content") return record.content || "";
+  return "";
+}
+
+function recordItemHtml(type, r) {
+  const bits = [];
+  if (r.date) bits.push(r.date + (r.time ? " " + r.time : ""));
+  if (r.durationMinutes) bits.push(r.durationMinutes + " min");
+  if (r.score != null) bits.push("Score: " + r.score);
+  if (r.status) bits.push(`<span class="pill ${r.status}">${escapeHtml(r.status)}</span>`);
+
+  return `
+    <li class="record-item">
+      <div>
+        ${r.title ? `<strong>${escapeHtml(r.title)}</strong>` : ""}
+        <div class="rmeta">${bits.join(" &middot; ")} &middot; logged by ${escapeHtml(r.supervisorName)}</div>
+        ${r.content ? `<div class="rcontent">${escapeHtml(r.content)}</div>` : ""}
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" title="Edit" onclick="editRecord(${r.id})"><i class="fa fa-pen"></i></button>
+        <button class="icon-btn danger" title="Delete" onclick="confirmDeleteRecord('${type}', ${r.id})"><i class="fa fa-trash"></i></button>
+      </div>
+    </li>
+  `;
+}
+
+function editRecord(id) {
+  editingRecordId = id;
+  renderRecordPanel(document.getElementById("sdPanels"), activeTab);
+}
+function cancelEditRecord() {
+  editingRecordId = null;
+  renderRecordPanel(document.getElementById("sdPanels"), activeTab);
+}
+
+async function submitRecordForm(e, type) {
+  e.preventDefault();
+  const payload = { recordType: type };
+  const get = (id) => document.getElementById(id)?.value;
+  if (get("rf_date")) payload.date = get("rf_date");
+  if (get("rf_time")) payload.time = get("rf_time");
+  if (get("rf_duration")) payload.durationMinutes = Number(get("rf_duration"));
+  if (get("rf_title")) payload.title = get("rf_title");
+  if (get("rf_score")) payload.score = Number(get("rf_score"));
+  if (get("rf_status")) payload.status = get("rf_status");
+  if (get("rf_content")) payload.content = get("rf_content");
+
+  // FIX (rename pass): type-scoped URL to match the real backend.
+  const url = editingRecordId
+    ? `/supervisor/records/${type}/${editingRecordId}`
+    : `/supervisor/students/${currentStudentId}/records`;
+  const method = editingRecordId ? "PUT" : "POST";
+
+  const result = await apiRequest(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (result) {
+    showToast(editingRecordId ? "Entry updated" : "Entry added", "success");
+    editingRecordId = null;
+    await refreshCurrentStudent();
+    loadSchedule();
+    loadedSections.delete("assignments");
+    loadedSections.delete("sessions");
+  }
+}
+
+// FIX (rename pass): the real backend scopes record PUT/DELETE by type --
+// /supervisor/records/:recordType/:recordId, not just :recordId -- since
+// each record type lives in its own table. confirmDeleteRecord/deleteRecord
+// now take the type through, same as submitRecordForm already does.
+function confirmDeleteRecord(type, id) {
+  openConfirm("Delete this entry?", "This can't be undone.", () => deleteRecord(type, id));
+}
+async function deleteRecord(type, id) {
+  const result = await apiRequest(`/supervisor/records/${type}/${id}`, { method: "DELETE" });
+  if (result) {
+    showToast("Entry deleted", "success");
+    await refreshCurrentStudent();
+    loadSchedule();
+  }
+}
+
+async function refreshCurrentStudent() {
+  const data = await apiRequest(`/supervisor/students/${currentStudentId}`);
+  if (!data) return;
+  currentStudentData = data;
+  renderProgress(data.progress);
+  await renderActivePanel();
+  loadKpis();
+}
+
+function renderDocumentsPanel(container) {
+  const docs = currentStudentData.documents;
+  container.innerHTML = `
+    <form class="record-form" id="docForm">
+      <label>Upload a document (PDF, Word, or image)</label>
+      <input type="file" id="docFile" accept=".pdf,.doc,.docx,image/*" required>
+      <div class="modal-actions"><button type="submit" class="btn">Upload</button></div>
+    </form>
+    <ul class="doc-list">
+      ${docs.length ? docs.map((d) => `
+        <li class="doc-item">
+          <div>
+            <a href="${UPLOADS}/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
+            <div class="rmeta">uploaded by ${escapeHtml(d.uploadedByName)}</div>
+          </div>
+        </li>
+      `).join("") : '<li class="empty-state" style="list-style:none;">No documents uploaded yet.</li>'}
+    </ul>
+  `;
+
+  document.getElementById("docForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const file = document.getElementById("docFile").files[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append("document", file);
+    try {
+      const response = await fetch(`${API}/supervisor/students/${currentStudentId}/documents`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || "Upload failed");
+      }
+      showToast("Document uploaded", "success");
+      await refreshCurrentStudent();
+      loadedSections.delete("documents");
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  });
+}
+
+async function renderMessagesPanel(container) {
+  container.innerHTML = `<div class="chat-thread" id="chatThread"><div class="empty-state">Loading messages...</div></div>
+    <div class="chat-compose"><textarea id="chatInput" placeholder="Write a message to this trainee..."></textarea><button class="btn" onclick="sendMessage()"><i class="fa fa-paper-plane"></i></button></div>`;
+
+  const data = await apiRequest(`/supervisor/students/${currentStudentId}/messages`);
+  const thread = document.getElementById("chatThread");
+  if (!data || !data.messages.length) {
+    thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>';
+    return;
+  }
+  thread.innerHTML = data.messages
+    .map(
+      (m) => `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"}">${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}</div></div>`
+    )
+    .join("");
+  thread.scrollTop = thread.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById("chatInput");
+  const content = input.value.trim();
+  if (!content) return;
+  const result = await apiRequest(`/supervisor/students/${currentStudentId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (result) {
+    input.value = "";
+    await renderMessagesPanel(document.getElementById("sdPanels"));
+    loadedSections.delete("chat");
+  }
+}
+
+function confirmRemoveCurrentStudent() {
+  openConfirm(
+    "Remove this trainee?",
+    "This removes them from your caseload. Their records and history stay intact and can be restored by re-assigning their ID.",
+    removeCurrentStudent
+  );
+}
+async function removeCurrentStudent() {
+  const result = await apiRequest(`/supervisor/students/${currentStudentId}`, { method: "DELETE" });
+  if (result) {
+    showToast("Trainee removed from your list", "success");
+    closeModal("studentModal");
+    loadStudents();
+  }
+}
+
+const MATERIAL_ICONS = {
+  document: "fa-file-lines", image: "fa-image", video: "fa-video", audio: "fa-music",
+  link: "fa-link", assignment: "fa-list-check", worksheet: "fa-file-pen", reading: "fa-book",
+};
+
+async function loadMaterials() {
+  const data = await apiRequest("/supervisor/materials");
+  const grid = document.getElementById("materialsGrid");
+  if (!data) return;
+  if (!data.materials.length) {
+    grid.innerHTML = '<div class="empty-state">Nothing shared yet.</div>';
+    return;
+  }
+  grid.innerHTML = data.materials
+    .map((m) => `
+      <div class="material-card">
+        <div class="mtype"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i> ${escapeHtml(m.materialType)}</div>
+        <h4>${escapeHtml(m.title)}</h4>
+        ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ""}
+        ${m.externalUrl
+          ? `<a class="mlink" href="${escapeHtml(m.externalUrl)}" target="_blank" rel="noopener">Open link</a>`
+          : `<a class="mlink" href="${UPLOADS}/materials/${m.filename}" target="_blank" rel="noopener">Download ${escapeHtml(m.originalName || "")}</a>`}
+        <div class="row-actions">
+          <button class="icon-btn danger" title="Delete" onclick="confirmDeleteMaterial(${m.id})"><i class="fa fa-trash"></i></button>
+        </div>
+      </div>
+    `)
+    .join("");
+}
+
+function openMaterialModal() {
+  document.getElementById("materialForm").reset();
+  toggleMaterialTypeFields();
+  openModal("materialModal");
+}
+
+function toggleMaterialTypeFields() {
+  const isLink = document.getElementById("matType").value === "link";
+  document.getElementById("matFileWrap").style.display = isLink ? "none" : "block";
+  document.getElementById("matUrlWrap").style.display = isLink ? "block" : "none";
+}
+
+document.getElementById("materialForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = document.getElementById("matTitle").value;
+  const description = document.getElementById("matDescription").value;
+  const materialType = document.getElementById("matType").value;
+
+  let result;
+  if (materialType === "link") {
+    const externalUrl = document.getElementById("matUrl").value;
+    if (!externalUrl) return showToast("Enter a URL", "error");
+    result = await apiRequest("/supervisor/materials", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, description, materialType, externalUrl }),
+    });
+  } else {
+    const file = document.getElementById("matFile").files[0];
+    if (!file) return showToast("Choose a file", "error");
+    const form = new FormData();
+    form.append("title", title);
+    form.append("description", description);
+    form.append("materialType", materialType);
+    form.append("file", file);
+    try {
+      const response = await fetch(`${API}/supervisor/materials`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || "Upload failed");
+      }
+      result = await response.json();
+    } catch (err) {
+      showToast(err.message, "error");
+      return;
+    }
+  }
+
+  if (result) {
+    showToast("Material shared with your trainees", "success");
+    closeModal("materialModal");
+    loadMaterials();
+  }
+});
+
+function confirmDeleteMaterial(id) {
+  openConfirm("Remove this material?", "This removes it for all trainees immediately.", () => deleteMaterial(id));
+}
+async function deleteMaterial(id) {
+  const result = await apiRequest(`/supervisor/materials/${id}`, { method: "DELETE" });
+  if (result) {
+    showToast("Material removed", "success");
+    loadMaterials();
+  }
+}
+
+async function loadAnnouncements() {
+  const data = await apiRequest("/supervisor/announcements");
+  const list = document.getElementById("announcementsList");
+  if (!data) return;
+  if (!data.announcements.length) {
+    list.innerHTML = '<li class="empty-state">No announcements posted yet.</li>';
+    return;
+  }
+  list.innerHTML = data.announcements
+    .map((a) => `
+      <li class="record-item">
+        <div>
+          <strong>${escapeHtml(a.title)}</strong>
+          <div class="rmeta">${new Date(a.createdAt).toLocaleString()}</div>
+          <div class="rcontent">${escapeHtml(a.content)}</div>
+        </div>
+        <div class="row-actions">
+          <button class="icon-btn danger" title="Delete" onclick="confirmDeleteAnnouncement(${a.id})"><i class="fa fa-trash"></i></button>
+        </div>
+      </li>
+    `)
+    .join("");
+}
+
+function openAnnouncementModal() {
+  document.getElementById("announcementForm").reset();
+  openModal("announcementModal");
+}
+
+document.getElementById("announcementForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = document.getElementById("annTitle").value;
+  const content = document.getElementById("annContent").value;
+  const result = await apiRequest("/supervisor/announcements", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, content }),
+  });
+  if (result) {
+    showToast("Announcement posted", "success");
+    closeModal("announcementModal");
+    loadAnnouncements();
+  }
+});
+
+function confirmDeleteAnnouncement(id) {
+  openConfirm("Delete this announcement?", "This can't be undone.", () => deleteAnnouncement(id));
+}
+async function deleteAnnouncement(id) {
+  const result = await apiRequest(`/supervisor/announcements/${id}`, { method: "DELETE" });
+  if (result) {
+    showToast("Announcement deleted", "success");
+    loadAnnouncements();
+  }
+}
+
+let allAssignments = [];
+
+async function loadAssignments() {
+  const body = document.getElementById("assignmentsBody");
+  body.innerHTML = '<tr class="loading-row"><td colspan="5">Loading assignments...</td></tr>';
+  allAssignments = [];
+  for (const s of allStudents) {
+    const detail = await apiRequest(`/supervisor/students/${s.id}`);
+    if (!detail) continue;
+    detail.records
+      .filter((r) => r.recordType === "assignment")
+      .forEach((r) => allAssignments.push({ ...r, studentName: s.full_name, studentCode: s.memberCode, studentId: s.id }));
+  }
+  renderAssignments();
+}
+
+function renderAssignments() {
+  const search = (document.getElementById("assignmentSearch").value || "").toLowerCase();
+  const statusFilter = document.getElementById("assignmentStatusFilter").value;
+  const filtered = allAssignments.filter((a) => {
+    const matchesSearch = (a.title || "").toLowerCase().includes(search) || a.studentName.toLowerCase().includes(search);
+    const matchesStatus = !statusFilter || a.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const body = document.getElementById("assignmentsBody");
+  if (!filtered.length) {
+    body.innerHTML = '<tr><td colspan="5" class="empty-state">No assignments match. Create one with "New assignment".</td></tr>';
+    return;
+  }
+
+  body.innerHTML = filtered
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+    .map((a) => `
+      <tr>
+        <td><strong>${escapeHtml(a.title || "Untitled")}</strong></td>
+        <td>${escapeHtml(a.studentName)} <span style="color:var(--faint);">(${escapeHtml(a.studentCode)})</span></td>
+        <td>${a.date ? escapeHtml(a.date) : "&mdash;"}</td>
+        <td><span class="pill ${a.status || "pending"}">${escapeHtml(a.status || "pending")}</span></td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn" title="Edit" onclick="editAssignment(${a.id})"><i class="fa fa-pen"></i></button>
+            <button class="icon-btn danger" title="Delete" onclick="confirmDeleteAssignment(${a.id})"><i class="fa fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+    `)
+    .join("");
+}
+
+document.getElementById("assignmentSearch").addEventListener("input", renderAssignments);
+document.getElementById("assignmentStatusFilter").addEventListener("change", renderAssignments);
+
+function openAssignmentModal(assignment) {
+  const form = document.getElementById("assignmentModalForm");
+  form.reset();
+  document.getElementById("asgEditId").value = "";
+  document.getElementById("assignmentModalTitle").textContent = "New assignment";
+  if (assignment) {
+    document.getElementById("asgEditId").value = assignment.id;
+    document.getElementById("assignmentModalTitle").textContent = "Edit assignment";
+    document.getElementById("asgStudent").value = assignment.studentId;
+    document.getElementById("asgTitle").value = assignment.title || "";
+    document.getElementById("asgDeadline").value = assignment.date || "";
+    document.getElementById("asgStatus").value = assignment.status || "pending";
+    document.getElementById("asgContent").value = assignment.content || "";
+  }
+  openModal("assignmentModal");
+}
+
+function editAssignment(id) {
+  const a = allAssignments.find((x) => x.id === id);
+  if (a) openAssignmentModal(a);
+}
+
+document.getElementById("assignmentModalForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const editId = document.getElementById("asgEditId").value;
+  const studentId = document.getElementById("asgStudent").value;
+  const payload = {
+    recordType: "assignment",
+    title: document.getElementById("asgTitle").value,
+    date: document.getElementById("asgDeadline").value,
+    status: document.getElementById("asgStatus").value,
+    content: document.getElementById("asgContent").value,
+  };
+
+  // FIX (rename pass): type-scoped URL ("assignment") to match the real backend.
+  const url = editId ? `/supervisor/records/assignment/${editId}` : `/supervisor/students/${studentId}/records`;
+  const method = editId ? "PUT" : "POST";
+  const result = await apiRequest(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+
+  if (result) {
+    showToast(editId ? "Assignment updated" : "Assignment created", "success");
+    closeModal("assignmentModal");
+    loadAssignments();
+    if (currentStudentId == studentId) refreshCurrentStudent();
+  }
+});
+
+function confirmDeleteAssignment(id) {
+  openConfirm("Delete this assignment?", "This can't be undone.", async () => {
+    // FIX (rename pass): type-scoped URL to match the real backend.
+    const result = await apiRequest(`/supervisor/records/assignment/${id}`, { method: "DELETE" });
+    if (result) {
+      showToast("Assignment deleted", "success");
+      loadAssignments();
+    }
+  });
+}
+
+let allSessions = [];
+
+async function loadSessions() {
+  const body = document.getElementById("sessionsBody");
+  body.innerHTML = '<tr class="loading-row"><td colspan="6">Loading sessions...</td></tr>';
+  allSessions = [];
+  for (const s of allStudents) {
+    const detail = await apiRequest(`/supervisor/students/${s.id}`);
+    if (!detail) continue;
+    detail.records
+      .filter((r) => r.recordType === "training_session" || r.recordType === "supervision_session")
+      .forEach((r) => allSessions.push({ ...r, studentName: s.full_name, studentCode: s.memberCode, studentId: s.id }));
+  }
+  renderSessions();
+}
+
+function renderSessions() {
+  const search = (document.getElementById("sessionSearch").value || "").toLowerCase();
+  const typeFilter = document.getElementById("sessionTypeFilter").value;
+  const filtered = allSessions.filter((s) => {
+    const matchesSearch = (s.title || "").toLowerCase().includes(search) || s.studentName.toLowerCase().includes(search);
+    const matchesType = !typeFilter || s.recordType === typeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  const body = document.getElementById("sessionsBody");
+  if (!filtered.length) {
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No sessions match. Create one with "Schedule session".</td></tr>';
+    return;
+  }
+
+  body.innerHTML = filtered
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+    .map((s) => `
+      <tr>
+        <td><strong>${escapeHtml(s.title || "Untitled")}</strong></td>
+        <td>${escapeHtml(s.studentName)} <span style="color:var(--faint);">(${escapeHtml(s.studentCode)})</span></td>
+        <td><span class="sched-badge ${s.recordType}">${s.recordType === "training_session" ? "Training" : "Supervision"}</span></td>
+        <td>${s.date ? escapeHtml(s.date) : "&mdash;"}${s.time ? " " + escapeHtml(s.time) : ""}</td>
+        <td>${s.durationMinutes ? s.durationMinutes + " min" : "&mdash;"}</td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn" title="Edit" onclick="editSession(${s.id})"><i class="fa fa-pen"></i></button>
+            <button class="icon-btn danger" title="Delete" onclick="confirmDeleteSession(${s.id})"><i class="fa fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+    `)
+    .join("");
+}
+
+document.getElementById("sessionSearch").addEventListener("input", renderSessions);
+document.getElementById("sessionTypeFilter").addEventListener("change", renderSessions);
+
+function openSessionModal(session) {
+  const form = document.getElementById("sessionModalForm");
+  form.reset();
+  document.getElementById("sesEditId").value = "";
+  document.getElementById("sesEditType").value = "";
+  document.getElementById("sessionModalTitle").textContent = "Schedule session";
+  if (session) {
+    document.getElementById("sesEditId").value = session.id;
+    document.getElementById("sesEditType").value = session.recordType;
+    document.getElementById("sessionModalTitle").textContent = "Edit session";
+    document.getElementById("sesStudent").value = session.studentId;
+    document.getElementById("sesType").value = session.recordType;
+    document.getElementById("sesTitle").value = session.title || "";
+    document.getElementById("sesDate").value = session.date || "";
+    document.getElementById("sesTime").value = session.time || "";
+    document.getElementById("sesDuration").value = session.durationMinutes || "";
+    document.getElementById("sesContent").value = session.content || "";
+  }
+  openModal("sessionModal");
+}
+
+function editSession(id) {
+  const s = allSessions.find((x) => x.id === id);
+  if (s) openSessionModal(s);
+}
+
+document.getElementById("sessionModalForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const editId = document.getElementById("sesEditId").value;
+  // FIX (rename pass): use the record's actual stored type for the PUT URL,
+  // not whatever the "Session type" dropdown currently shows -- the backend
+  // can't move a record between tables on update, and a training_session's
+  // stored type never actually changes on edit.
+  const editType = document.getElementById("sesEditType").value;
+  const studentId = document.getElementById("sesStudent").value;
+  const payload = {
+    recordType: document.getElementById("sesType").value,
+    title: document.getElementById("sesTitle").value,
+    date: document.getElementById("sesDate").value,
+    time: document.getElementById("sesTime").value,
+    durationMinutes: document.getElementById("sesDuration").value ? Number(document.getElementById("sesDuration").value) : undefined,
+    content: document.getElementById("sesContent").value,
+  };
+
+  const url = editId ? `/supervisor/records/${editType}/${editId}` : `/supervisor/students/${studentId}/records`;
+  const method = editId ? "PUT" : "POST";
+  const result = await apiRequest(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+
+  if (result) {
+    showToast(editId ? "Session updated" : "Session scheduled", "success");
+    closeModal("sessionModal");
+    loadSessions();
+    loadSchedule();
+    if (currentStudentId == studentId) refreshCurrentStudent();
+  }
+});
+
+function confirmDeleteSession(id) {
+  const s = allSessions.find((x) => x.id === id);
+  const type = s ? s.recordType : "training_session";
+  openConfirm("Delete this session?", "This can't be undone.", async () => {
+    // FIX (rename pass): type-scoped URL to match the real backend.
+    const result = await apiRequest(`/supervisor/records/${type}/${id}`, { method: "DELETE" });
+    if (result) {
+      showToast("Session deleted", "success");
+      loadSessions();
+      loadSchedule();
+    }
+  });
+}
+
+let allMeetings = [];
+
+async function loadMeetings() {
+  const wrap = document.getElementById("meetingsList");
+  wrap.innerHTML = '<div class="empty-state">Loading meetings...</div>';
+  const data = await apiRequest("/supervisor/meetings");
+  if (!data) {
+    wrap.innerHTML = '<div class="empty-state">Couldn\'t load meetings. This endpoint may not exist on the backend yet.</div>';
+    return;
+  }
+  allMeetings = data.meetings || [];
+  renderMeetings();
+}
+
+const PLATFORM_LABELS = { zoom: "Zoom", teams: "Microsoft Teams", meet: "Google Meet", other: "Other" };
+
+function renderMeetings() {
+  const wrap = document.getElementById("meetingsList");
+  if (!allMeetings.length) {
+    wrap.innerHTML = '<div class="empty-state">No meetings scheduled yet.</div>';
+    return;
+  }
+  wrap.innerHTML = allMeetings
+    .map((m) => `
+      <div class="meeting-card">
+        <div>
+          <div class="mplatform"><i class="fa fa-video"></i> ${escapeHtml(PLATFORM_LABELS[m.platform] || m.platform)}</div>
+          <h4>${escapeHtml(m.title)}</h4>
+          <div class="mwhen">${m.scheduledAt ? new Date(m.scheduledAt).toLocaleString() : "No time set"} &middot; ${m.studentName ? "with " + escapeHtml(m.studentName) : "Whole caseload"}</div>
+          <a class="mlink" href="${escapeHtml(m.meetingUrl)}" target="_blank" rel="noopener">Join link <i class="fa fa-arrow-up-right-from-square"></i></a>
+        </div>
+        <div class="row-actions">
+          <button class="icon-btn" title="Edit" onclick="editMeeting(${m.id})"><i class="fa fa-pen"></i></button>
+          <button class="icon-btn danger" title="Delete" onclick="confirmDeleteMeeting(${m.id})"><i class="fa fa-trash"></i></button>
+        </div>
+      </div>
+    `)
+    .join("");
+}
+
+function openMeetingModal(meeting) {
+  const form = document.getElementById("meetingModalForm");
+  form.reset();
+  document.getElementById("mtgEditId").value = "";
+  document.getElementById("meetingModalTitle").textContent = "New meeting";
+  if (meeting) {
+    document.getElementById("mtgEditId").value = meeting.id;
+    document.getElementById("meetingModalTitle").textContent = "Edit meeting";
+    document.getElementById("mtgTitle").value = meeting.title || "";
+    document.getElementById("mtgStudent").value = meeting.studentId || "";
+    document.getElementById("mtgPlatform").value = meeting.platform || "zoom";
+    document.getElementById("mtgUrl").value = meeting.meetingUrl || "";
+    document.getElementById("mtgWhen").value = meeting.scheduledAt ? meeting.scheduledAt.slice(0, 16) : "";
+  }
+  openModal("meetingModal");
+}
+
+function editMeeting(id) {
+  const m = allMeetings.find((x) => x.id === id);
+  if (m) openMeetingModal(m);
+}
+
+document.getElementById("meetingModalForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const editId = document.getElementById("mtgEditId").value;
+  const payload = {
+    title: document.getElementById("mtgTitle").value,
+    studentId: document.getElementById("mtgStudent").value || null,
+    platform: document.getElementById("mtgPlatform").value,
+    meetingUrl: document.getElementById("mtgUrl").value,
+    scheduledAt: document.getElementById("mtgWhen").value || null,
+  };
+
+  const url = editId ? `/supervisor/meetings/${editId}` : "/supervisor/meetings";
+  const method = editId ? "PUT" : "POST";
+  const result = await apiRequest(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+
+  if (result) {
+    showToast(editId ? "Meeting updated" : "Meeting scheduled", "success");
+    closeModal("meetingModal");
+    loadMeetings();
+  }
+});
+
+function confirmDeleteMeeting(id) {
+  openConfirm("Delete this meeting?", "Assigned trainees will no longer see this link.", async () => {
+    const result = await apiRequest(`/supervisor/meetings/${id}`, { method: "DELETE" });
+    if (result) {
+      showToast("Meeting deleted", "success");
+      loadMeetings();
+    }
+  });
+}
+
+async function loadChatInbox() {
+  const list = document.getElementById("chatInboxList");
+  list.innerHTML = '<li class="empty-state">Loading conversations...</li>';
+
+  if (!allStudents.length) {
+    list.innerHTML = '<li class="empty-state">No trainees assigned yet.</li>';
+    return;
+  }
+
+  const conversations = [];
+  for (const s of allStudents) {
+    const data = await apiRequest(`/supervisor/students/${s.id}/messages`);
+    if (!data || !data.messages.length) {
+      conversations.push({ student: s, last: null });
+      continue;
+    }
+    const last = data.messages[data.messages.length - 1];
+    conversations.push({ student: s, last });
+  }
+
+  conversations.sort((a, b) => {
+    const at = a.last ? new Date(a.last.createdAt).getTime() : 0;
+    const bt = b.last ? new Date(b.last.createdAt).getTime() : 0;
+    return bt - at;
+  });
+
+  list.innerHTML = conversations
+    .map(({ student, last }) => `
+      <li class="inbox-item" onclick="openStudent(${student.id}, 'messages')">
+        <div class="inbox-avatar">${escapeHtml(initials(student.full_name))}</div>
+        <div class="inbox-info">
+          <strong>${escapeHtml(student.full_name)}</strong>
+          <span>${last ? escapeHtml(last.content) : "No messages yet \u2014 say hello"}</span>
+        </div>
+        <div class="inbox-time">${last ? new Date(last.createdAt).toLocaleDateString() : ""}</div>
+      </li>
+    `)
+    .join("");
+}
+
+async function loadAllDocuments() {
+  const list = document.getElementById("allDocumentsList");
+  list.innerHTML = '<li class="empty-state">Loading documents...</li>';
+
+  if (!allStudents.length) {
+    list.innerHTML = '<li class="empty-state">No trainees assigned yet.</li>';
+    return;
+  }
+
+  const allDocs = [];
+  for (const s of allStudents) {
+    const detail = await apiRequest(`/supervisor/students/${s.id}`);
+    if (!detail) continue;
+    detail.documents.forEach((d) => allDocs.push({ ...d, studentName: s.full_name, studentCode: s.memberCode }));
+  }
+
+  if (!allDocs.length) {
+    list.innerHTML = '<li class="empty-state">No documents uploaded yet.</li>';
+    return;
+  }
+
+  allDocs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  list.innerHTML = allDocs
+    .map((d) => `
+      <li class="doc-item">
+        <div>
+          <a href="${UPLOADS}/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
+          <div class="rmeta">${escapeHtml(d.studentName)} (${escapeHtml(d.studentCode)}) &middot; uploaded by ${escapeHtml(d.uploadedByName)}</div>
+        </div>
+      </li>
+    `)
+    .join("");
+}
+
+let calViewYear, calViewMonth;
+let calItems = [];
+
+async function loadCalendar() {
+  const today = new Date();
+  calViewYear = today.getFullYear();
+  calViewMonth = today.getMonth();
+
+  const schedule = await apiRequest("/supervisor/schedule");
+  calItems = [];
+  if (schedule) {
+    [...schedule.today, ...schedule.upcoming].forEach((i) => {
+      calItems.push({ date: i.date, title: i.title || RECORD_TYPES[i.recordType]?.label, type: i.recordType });
+    });
+  }
+  const meetings = await apiRequest("/supervisor/meetings");
+  if (meetings && meetings.meetings) {
+    meetings.meetings.forEach((m) => {
+      if (m.scheduledAt) calItems.push({ date: m.scheduledAt.slice(0, 10), title: m.title, type: "meeting" });
+    });
+  }
+
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  document.getElementById("calTitle").textContent = `${monthNames[calViewMonth]} ${calViewYear}`;
+
+  const header = document.getElementById("calHeader");
+  header.innerHTML = dayNames.map((d) => `<div class="cal-headcell">${d}</div>`).join("");
+
+  const body = document.getElementById("calBody");
+  body.innerHTML = "";
+
+  const firstDay = new Date(calViewYear, calViewMonth, 1).getDay();
+  const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+  const today = new Date();
+
+  for (let i = 0; i < firstDay; i++) {
+    const cell = document.createElement("div");
+    cell.className = "cal-cell empty";
+    body.appendChild(cell);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cell = document.createElement("div");
+    const isToday = day === today.getDate() && calViewMonth === today.getMonth() && calViewYear === today.getFullYear();
+    cell.className = "cal-cell" + (isToday ? " today" : "");
+
+    const dateStr = `${calViewYear}-${String(calViewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayItems = calItems.filter((it) => it.date === dateStr);
+
+    cell.innerHTML = `<div class="cal-daynum">${day}</div>` +
+      dayItems.slice(0, 3).map((it) => `<div class="cal-event ${it.type === "meeting" ? "meeting" : ""}">${escapeHtml(it.title || "")}</div>`).join("");
+
+    body.appendChild(cell);
+  }
+}
+
+document.getElementById("calPrev").addEventListener("click", () => {
+  calViewMonth--;
+  if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; }
+  renderCalendar();
+});
+document.getElementById("calNext").addEventListener("click", () => {
+  calViewMonth++;
+  if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; }
+  renderCalendar();
+});
+
+document.getElementById("settingsPhotoFile").addEventListener("change", async () => {
+  const file = document.getElementById("settingsPhotoFile").files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append("photo", file);
+  try {
+    const response = await fetch(`${API}/profile/me/photo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.error || "Upload failed");
+    }
+    const data = await response.json();
+    document.getElementById("settingsAvatarPreview").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}" alt="">`;
+    document.getElementById("supervisorInitials").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}" alt="">`;
+    showToast("Profile photo updated", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+document.getElementById("profileForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload = {
+    full_name: document.getElementById("settingsName").value.trim(),
+    email: document.getElementById("settingsEmail").value.trim(),
+    phone: document.getElementById("settingsPhone").value.trim(),
+  };
+  const result = await apiRequest("/profile/me", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  if (result) {
+    showToast("Profile updated", "success");
+    document.getElementById("supervisorName").textContent = payload.full_name || "ToT";
+  }
+});
+
+document.getElementById("passwordForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const currentPassword = document.getElementById("currentPassword").value;
+  const newPassword = document.getElementById("newPassword").value;
+  const confirmPassword = document.getElementById("confirmPassword").value;
+
+  if (newPassword !== confirmPassword) {
+    showToast("New password and confirmation don't match", "error");
+    return;
+  }
+
+  const result = await apiRequest("/auth/change-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (result) {
+    showToast("Password updated", "success");
+    document.getElementById("passwordForm").reset();
+  }
+});
+
+const NOTIF_PREFS_KEY = "reframe_supervisor_notif_prefs"; // storage key unchanged so existing saved prefs still load
+function loadNotificationPrefs() {
+  try {
+    const raw = localStorage.getItem(NOTIF_PREFS_KEY);
+    if (!raw) return;
+    const prefs = JSON.parse(raw);
+    if (typeof prefs.messages === "boolean") document.getElementById("notifMessages").checked = prefs.messages;
+    if (typeof prefs.assignments === "boolean") document.getElementById("notifAssignments").checked = prefs.assignments;
+    if (typeof prefs.sessions === "boolean") document.getElementById("notifSessions").checked = prefs.sessions;
+    if (typeof prefs.showPhoto === "boolean") document.getElementById("privacyShowPhoto").checked = prefs.showPhoto;
+  } catch (err) { /* ignore malformed local data */ }
+}
+function saveNotificationPrefs() {
+  const prefs = {
+    messages: document.getElementById("notifMessages").checked,
+    assignments: document.getElementById("notifAssignments").checked,
+    sessions: document.getElementById("notifSessions").checked,
+    showPhoto: document.getElementById("privacyShowPhoto").checked,
+  };
+  localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
+  showToast("Preferences saved on this device", "success");
+}
+    </script>
+</body>
+
+</html>

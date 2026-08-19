@@ -43,10 +43,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// =====================================================
-// STATIC FILES
-// =====================================================
-
+const publicPath = path.join(__dirname, "../public");
 const publicPath = path.join(__dirname, "../../public");
 const uploadsPath = path.join(__dirname, "../uploads");
 

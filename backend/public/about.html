@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-translate="page_title_about">About Us - Reframe MHS</title>
+  <meta
+    name="description"
+    data-translate-content="page_description_about"
+    content="Learn about Reframe MHS mission, vision, and our team of mental health professionals in the Middle East."
+  />
+  <link rel="stylesheet" href="styles/main.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+  />
+</head>
+<body>
+
+<!-- ================== NAVIGATION ================== -->
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="nav-logo">
+      <a href="index.html">
+        <img src="logos/logo.gif" alt="Company Logo" width="220" />
+      </a>
+    </div>
+
+    <ul class="nav-menu">
+      <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+      <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+
+      <li class="nav-dropdown">
+        <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
+          Services <i class="fa fa-chevron-down"></i>
+        </a>
+        <ul class="dropdown-menu">
+          <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+          <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+          <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+        </ul>
+      </li>
+
+      <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+    </ul>
+
+    <div class="language-switcher">
+      <button class="lang-btn active" data-lang="en" type="button">EN</button>
+      <span class="lang-separator">|</span>
+      <button class="lang-btn" data-lang="ar" type="button">AR</button>
+    </div>
+
+    <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
+
+    <button class="hamburger" aria-label="Toggle menu" aria-expanded="false" type="button">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ================== OVERLAY MENU (Mobile) ================== -->
+<div class="overlay" id="mobile-menu" aria-hidden="true">
+  <nav class="overlay-nav" aria-label="Mobile">
+    <ul>
+      <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+      <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+      <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+      <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+      <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+      <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+      <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+      <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
+    </ul>
+    <button class="close-btn" aria-label="Close menu" data-translate="close" type="button">Close</button>
+  </nav>
+</div>
+
+<!-- About Hero Section -->
+<section class="about-hero">
+  <div class="container">
+    <div class="hero-content">
+      <h1 data-translate="about_hero_title">About Reframe MHS</h1>
+      <p data-translate="about_hero_subtitle">
+        We envision a future where mental health is the foundation of every human system, and where challenges and failures are embraced as opportunities for growth and transformation.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="mission-section">
+  <div class="container">
+    <div class="mission-content">
+      <div class="mission-text">
+        <h2 data-translate="mission_title">Our Mission</h2>
+        <p data-translate="mission_description">
+          We provide evidence-based and culturally adapted mental health approaches that empower individuals, groups, and organizations to navigate challenges and reach their highest potential.
+        </p>
+      </div>
+      <div class="mission-image">
+        <img src="photos/mission.jpeg" alt="Our Mission">
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="team-section">
+  <h2 data-translate="team_title">Our Team</h2>
+
+  <div class="team-grid" id="teamGrid">
+
+    <!-- Member 1: Ali El Attar -->
+    <article class="card fade-up" tabindex="0"
+      data-key="ali"
+      data-img="team/ali.webp"
+      data-linkedin="https://www.linkedin.com/in/ali-el-attar-310746103">
+      <div class="card-inner">
+        <figure class="card-figure">
+          <img src="team/ali.webp" alt="Ali El Attar" class="lazy">
+        </figure>
+        <div class="meta">
+          <h3 data-translate="team_ali_name">Ali El Attar</h3>
+          <p class="role" data-translate="team_ali_role"></p>
+          <p class="bio" data-translate="team_ali_bio"></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- Member 2: Zeina Ballout -->
+    <article class="card fade-up" tabindex="0"
+      data-key="zeina"
+      data-img="team/eina.webp"
+      data-linkedin="https://www.linkedin.com/in/zeina-ballout-86291b175/">
+      <div class="card-inner">
+        <figure class="card-figure">
+          <img src="team/eina.webp" alt="Zeina Ballout" class="lazy">
+        </figure>
+        <div class="meta">
+          <h3 data-translate="team_zeina_name">Zeina Ballout</h3>
+          <p class="role" data-translate="team_zeina_role"></p>
+          <p class="bio" data-translate="team_zeina_bio"></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- Member 3: Bertha Missyadi -->
+    <article class="card fade-up" tabindex="0"
+      data-key="bertha"
+      data-img="team/1.webp"
+      data-linkedin="https://www.linkedin.com/in/bertha-missyadi-5b1b298b/">
+      <div class="card-inner">
+        <figure class="card-figure">
+          <img src="team/1.webp" alt="Bertha Missyadi" class="lazy">
+        </figure>
+        <div class="meta">
+          <h3 data-translate="team_bertha_name">Bertha Missyadi</h3>
+          <p class="role" data-translate="team_bertha_role"></p>
+          <p class="bio" data-translate="team_bertha_bio"></p>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- Modal (profile detail) -->
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal-dialog" role="document" aria-labelledby="modalTitle">
+    <div class="modal-img">
+      <img src="" alt="" id="modalImg">
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <h3 id="modalTitle" style="margin:0;color:#4D9794"></h3>
+          <div id="modalRole" class="muted" style="margin-top:.2rem"></div>
+        </div>
+        <div>
+          <button class="close-btn" id="modalClose" aria-label="Close profile" type="button">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <p id="modalBio" style="margin-top:1rem;color:var(--muted)"></p>
+
+      <div class="cta-row">
+        <a id="linkedinBtn" class="btn" href="#" target="_blank" rel="noopener">
+          <i class="fab fa-linkedin"></i> <span data-translate="team_linkedin_btn">LinkedIn</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="core-values">
+  <h2 data-translate="core_values_title">CORE VALUES</h2>
+  <div class="values-grid">
+
+    <div class="value-card">
+      <h3 data-translate="core_values_empathy_title">Empathy and Compassion</h3>
+      <p data-translate="core_values_empathy_desc">
+        We are dedicated to fostering understanding and compassion in all our interactions, creating a supportive and nurturing environment for everyone we engage with. Our commitment ensures that all individuals feel valued and cared for, promoting healthy relationships and growth.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_resilience_title">Resilience and Growth</h3>
+      <p data-translate="core_values_resilience_desc">
+        We help individuals and organizations embrace challenges as opportunities for development and sustainable progress.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_innovation_title">Innovation Excellence</h3>
+      <p data-translate="core_values_innovation_desc">
+        We are committed to innovative practices that enhance mental health services and improve impact.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_integrity_title">Integrity and Authenticity</h3>
+      <p data-translate="core_values_integrity_desc">
+        We act with honesty, transparency, and respect in all our endeavors, ensuring trust and authenticity in every interaction.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_evidence_title">Evidence-Based Practice</h3>
+      <p data-translate="core_values_evidence_desc">
+        We provide services and programs grounded in evidence-based approaches to ensure effectiveness and sustainability.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_inclusivity_title">Inclusivity and Diversity</h3>
+      <p data-translate="core_values_inclusivity_desc">
+        We embrace diversity and cultivate an inclusive environment that respects and values both individual uniqueness and our shared human experiences. By fostering inclusivity, we promote understanding and connection among all individuals, enhancing the overall community experience.
+      </p>
+    </div>
+
+    <div class="value-card">
+      <h3 data-translate="core_values_collaboration_title">Collaboration and Community</h3>
+      <p data-translate="core_values_collaboration_desc">
+        We believe in the power of collaboration and community, actively working with partners and clients to co-design and co-achieve shared goals. Our commitment to teamwork enhances connections and drives collective success.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+
+      <div class="footer-section">
+        <h3 data-translate="footer_brand">Reframe MHS</h3>
+        <p data-translate="footer_description">
+          Unlocking the innate potential and resilience within each person and group across the Middle East.
+        </p>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_quick_links">Quick Links</h4>
+        <ul>
+          <li><a href="about.html" data-translate="nav_about">About Us</a></li>
+          <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
+          <li><a href="training.html" data-translate="nav_training">Training</a></li>
+          <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_services">Services</h4>
+        <ul>
+          <li><a href="#" data-translate="footer_training">Training Programs</a></li>
+          <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
+          <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
+          <li><a href="#" data-translate="footer_resources">Resources</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h4 data-translate="footer_connect">Connect</h4>
+        <div class="social-links">
+          <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+          <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+          <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        </div>
+
+        <div class="subscribe-section">
+          <div class="subscribe-box">
+            <h2 data-translate="footer_subscribe_title">Stay Connected</h2>
+            <p data-translate="footer_subscribe_text">
+              Subscribe to our newsletter for updates, workshops, and events.
+            </p>
+            <form class="subscribe-form" action="#" method="post">
+              <label class="visually-hidden" for="footer-email-about" data-translate="lab_email_label">Email address</label>
+              <input id="footer-email-about" type="email" name="email" placeholder="Enter your email"
+                     data-translate-placeholder="footer_subscribe_placeholder" required>
+              <button type="submit" class="btn btn-primary" data-translate="footer_subscribe_btn">Subscribe</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      <p data-translate="footer_copyright">&copy; 2025 Reframe Mental Health Services. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+<script src="scripts/translations.js"></script>
+<script src="scripts/main.js"></script>
+
+<style>
+:root{
+  --bg-1:#071124;
+  --bg-2:#0f2b3a;
+  --card-bg:rgba(255,255,255,.05);
+  --glass:#4D9794;
+  --accent:#4D9794;
+  --accent-2:#4D9794;
+  --muted:#1E3F5A;
+  --max-width:1200px;
+  --radius:14px;
+  --glass-border:#4D9794;
+  --shadow:0 10px 30px rgba(2,8,23,.6);
+  --ease:cubic-bezier(.2,.9,.3,1);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* ========== Team Section Shell ========== */
+.team-section{
+  max-width:var(--max-width);
+  margin-inline:auto;
+  padding-block:3rem;
+  padding-inline:1rem;
+  text-align:center;
+  color:var(--muted);
+}
+.team-section h2{
+  font-weight:800;
+  font-size:clamp(2rem,3vw,2.5rem);
+  margin-block-end:2rem;
+  color:#1E3F5A;
+  letter-spacing:.02em;
+}
+
+/* ========== Horizontal Scroller ========== */
+.team-grid{
+  display:flex;
+  gap:1.25rem;
+  overflow-x:auto;
+  scroll-behavior:smooth;
+  padding-block-end:1rem;
+  scroll-snap-type: inline mandatory; /* RTL/LTR aware */
+  -webkit-overflow-scrolling:touch;
+  width:100%;
+  max-width:100%;
+  margin:0;
+  padding:0 0 1rem;
+  box-sizing:border-box;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+.team-grid > .card{ scroll-snap-align:center; }
+.team-grid::-webkit-scrollbar{ height:6px; }
+.team-grid::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.18); border-radius:99px; }
+
+/* ===== Cards: equal size ===== */
+.card {
+  flex: 0 0 240px;
+  width: 240px;
+  height: 340px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-figure {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.card-figure img {
+  width: 100%;
+  height: 220px;
+  object-fit: contain;
+  background: #f3f4f6;
+  border-radius: 12px;
+  transition: transform 0.35s ease;
+}
+
+.card-figure:hover img {
+  transform: scale(1.05);
+}
+
+.card-figure::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.35), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.card-figure:hover::after {
+  opacity: 1;
+}
+
+/* ========== Meta ========== */
+.meta{
+  padding:1rem 1rem 1.2rem;
+  color:var(--muted);
+  text-align:start; /* logical start (LTR: left, RTL: right) */
+}
+.meta h3{
+  margin:0;
+  font-size:1.06rem;
+  font-weight:800;
+  line-height:1.25;
+  word-break: break-word;
+}
+.meta p.role{
+  margin:.35rem 0 0;
+  color:var(--accent);
+  font-weight:800;
+  line-height:1.35;
+  font-size:0.85rem;
+}
+
+/* Better long-text handling for Arabic/English */
+.meta p, .modal-body{
+  hyphens:auto;
+  overflow-wrap:anywhere;
+}
+
+/* hide bio inside cards, show only in modal */
+.card .bio {
+  display: none !important;
+  visibility: hidden;
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+.modal-body .bio,
+#modalBio {
+  display: block !important;
+  visibility: visible;
+  opacity: 1;
+  height: auto;
+  overflow: visible;
+  margin: 0.5rem 0;
+}
+
+/* ========== Modal ========== */
+.modal{
+  position:fixed; inset:0;
+  display:grid; place-items:center;
+  padding:2rem;
+  background: linear-gradient(180deg, rgba(191,201,209,.55), rgba(215,218,221,.75));
+  opacity:0; pointer-events:none;
+  transition: opacity .18s linear;
+  z-index:60;
+}
+.modal.open{ opacity:1; pointer-events:auto; }
+
+.modal-dialog{
+  inline-size: min(920px, 96%);
+  max-block-size: 90vh;
+  overflow-y:auto;
+  background: linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.82));
+  border-radius:16px;
+  padding:1.25rem;
+  box-shadow:0 20px 50px rgba(0,0,0,.18);
+  border:1px solid var(--glass-border);
+  display:flex; gap:1rem; flex-direction:row;
+  transform: translateY(-32px);
+  opacity:0;
+  transition: transform .35s ease, opacity .35s ease;
+}
+.modal.open .modal-dialog{ transform: translateY(0); opacity:1; }
+
+.modal-img{
+  flex:0 0 300px;
+  border-radius:12px;
+  overflow:hidden;
+  inline-size:300px;
+  block-size:auto;
+}
+.modal-img img{
+  inline-size:100%; block-size:100%; object-fit:cover;
+}
+.modal-body{
+  flex:1; color:var(--muted);
+  text-align:start;
+}
+.close-btn{
+  background:transparent; border:0; color:var(--muted);
+  font-size:1.05rem; cursor:pointer; padding:.35rem;
+  border-radius:8px; margin-block-start:1rem;
+}
+
+.cta-row .btn {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-top:1rem;
+  padding:8px 16px;
+  border-radius:8px;
+  border:1px solid var(--accent);
+  color:var(--accent);
+  text-decoration:none;
+  font-weight:600;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.cta-row .btn:hover {
+  background-color:#4d9794;
+  color:#fff;
+}
+
+/* ========== Animations on Scroll ========== */
+.fade-up {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.visually-hidden{
+  position:absolute!important; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 980px) {
+  .modal-dialog {
+    flex-direction: column;
+    padding: 1.5rem;
+    background: linear-gradient(180deg, #f8fafa, #ffffff);
+    border-color: rgba(77, 151, 148, 0.25);
+  }
+  .modal-img {
+    inline-size: 100%;
+    block-size: 260px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .team-section {
+    background: #f3f8f9;
+    color: #2e4a5b;
+  }
+  .team-section h2 { color: #4d9794; }
+  .team-grid { gap: 1rem; padding-inline: 0.5rem; }
+  .card {
+    flex: 0 0 200px;
+    inline-size: 200px;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(77, 151, 148, 0.15);
+    border: 1px solid rgba(77, 151, 148, 0.1);
+  }
+  .card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 14px 30px rgba(77, 151, 148, 0.25);
+  }
+  .meta h3 { color: #1e3f5a; }
+  .meta p.role { color: #4d9794; }
+}
+
+@media (max-width: 520px) {
+  .team-section { padding-block: 2.5rem; background: #f4f9f9; }
+  .team-section h2 { font-size: 1.75rem; color: #4d9794; }
+  .card { min-block-size: 320px; background: #ffffff; }
+  .modal-dialog {
+    padding: 1rem;
+    background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(240,250,250,0.98));
+    border-color: rgba(77, 151, 148, 0.25);
+  }
+  .modal-img { inline-size: 100%; block-size: 240px; margin-block-end: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .modal-dialog, .fade-up { transition: none !important; }
+}
+
+/* ===== Core Values Section ===== */
+.core-values {
+  padding: 80px 20px;
+  background: #f9fafb;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+}
+.core-values h2 {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #1E3F5A;
+  margin-bottom: 50px;
+  letter-spacing: 1px;
+  position: relative;
+  display: inline-block;
+}
+.core-values h2::after {
+  content: "";
+  display: block;
+  width: 70px;
+  height: 4px;
+  background: linear-gradient(90deg, #4D9794, #1E3F5A);
+  margin: 12px auto 0;
+  border-radius: 2px;
+}
+
+.values-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  padding: 0 10px;
+}
+
+.value-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 22px;
+  text-align: start;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  border: 1px solid #e5e7eb;
+  transition: all 0.35s ease;
+  position: relative;
+  overflow: hidden;
+}
+.value-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(77,151,148,0.08), rgba(30,63,90,0.06));
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.value-card:hover::before { opacity: 1; }
+.value-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 14px 28px rgba(0,0,0,0.12);
+  border-color: #4D9794;
+}
+
+.value-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1E3F5A;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+}
+.value-card h3::before {
+  content: "✦";
+  margin-inline-end: 8px;
+  color: #4D9794;
+  font-size: 1rem;
+}
+.value-card p {
+  font-size: 0.95rem;
+  color: #475569;
+  line-height: 1.6;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .core-values { padding: 60px 15px; }
+  .core-values h2 { font-size: 2rem; margin-bottom: 40px; }
+  .value-card { padding: 20px; }
+  .value-card h3 { font-size: 1.1rem; }
+  .value-card p { font-size: 0.9rem; }
+}
+
+/* ===== Mission Section ===== */
+.mission-section {
+  padding: 100px 0;
+  background: linear-gradient(180deg, #f4f8f8 0%, #ffffff 100%);
+}
+.mission-section .container {
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+.mission-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 80px;
+}
+.mission-text {
+  flex: 1;
+  animation: fadeSlideUp 0.8s ease forwards;
+  opacity: 0;
+}
+.mission-text h2 {
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: #4D9794;
+  margin-bottom: 25px;
+  position: relative;
+}
+.mission-text h2::after {
+  content: "";
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, #4D9794, #0d3b66);
+  display: block;
+  margin-top: 12px;
+  border-radius: 4px;
+}
+.mission-text p {
+  font-size: 1.1rem;
+  line-height: 1.9;
+  letter-spacing: 0.3px;
+  color: #475569;
+  max-width: 560px;
+  transition: color 0.3s ease;
+}
+.mission-text p:hover { color: #1e293b; }
+
+.mission-image { flex: 1; display: flex; justify-content: center; }
+.mission-image img {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 20px;
+  object-fit: cover;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.08);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+.mission-image img:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 30px 65px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 992px) {
+  .mission-content { flex-direction: column; text-align: center; gap: 50px; }
+  .mission-text p { max-width: 100%; }
+  .mission-text h2 { font-size: 2.1rem; }
+}
+
+/* ===== RTL adjustments ===== */
+html[dir="rtl"] body {
+  font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
+}
+html[dir="rtl"] .dir-icon {
+  transform: scaleX(-1);
+}
+html[dir="rtl"] .value-card h3::before {
+  margin-inline-end: 0;
+  margin-inline-start: 8px;
+}
+</style>
+
+<script>
+  // Consolidated in-page translation dictionary. Kept in this file since
+  // scripts/translations.js was not part of the supplied project files.
+  // Keys shared with index.html (nav_*, footer_*, close, etc.) use the
+  // same names so both pages stay in sync if merged into one shared file.
+  const I18N = {
+    en: {
+      page_title_about: "About Us - Reframe MHS",
+      page_description_about: "Learn about Reframe MHS mission, vision, and our team of mental health professionals in the Middle East.",
+      nav_home: "Home",
+      nav_about: "About",
+      nav_services: "Services",
+      nav_mhlab: "Mental Health Lab",
+      nav_hub: "Hub",
+      nav_training: "Training",
+      nav_consultations: "Technical Consultations",
+      nav_contact: "Contact",
+      nav_login: "Login",
+      close: "Close",
+      about_hero_title: "About Reframe MHS",
+      about_hero_subtitle: "We envision a future where mental health is the foundation of every human system, and where challenges and failures are embraced as opportunities for growth and transformation.",
+      mission_title: "Our Mission",
+      mission_description: "We provide evidence-based and culturally adapted mental health approaches that empower individuals, groups, and organizations to navigate challenges and reach their highest potential.",
+      team_title: "Our Team",
+      team_linkedin_btn: "LinkedIn",
+      team_ali_name: "Ali El Attar",
+      team_ali_role: "Founder and Manager | Head of the Mental Health Lab",
+      team_ali_bio: "A distinguished clinical psychologist and psychotherapist, deeply committed to improving mental health services in the Arab world. Ali has partnered with businesses, organizations, and UN agencies to create and execute impactful mental health and psychosocial support (MHPSS) initiatives across the Middle East and Africa. In his role leading our Mental Health Lab, Ali is recognized for his innovative approach to program development and his effective management of teams, ensuring culturally sensitive and scientifically backed interventions that have a profound positive impact on communities and individuals in need.",
+      team_zeina_name: "Zeina Ballout",
+      team_zeina_role: "Co-founder & Program Coordinator",
+      team_zeina_bio: "Zeina plays a vital role in overseeing and coordinating the various programs and services provided by the company. With ten years of experience in program management, she brings a wealth of knowledge and expertise to the table, and is responsible for developing, implementing, and evaluating programs at Reframe to ensure the delivery of high-quality services.",
+      team_bertha_name: "Bertha Missyadi",
+      team_bertha_role: "Quality Control Manager",
+      team_bertha_bio: "Bertha brings more than ten years of experience in enhancing educational standards in various settings. She has effectively overseen international teams, contributing significantly to educational projects in the Middle East, and has played a key role in designing programs and upholding quality standards. She excels at creating and implementing strong monitoring and evaluation frameworks that align with global benchmarks, and has collaborated with reputable NGOs and governmental organizations to ensure adherence to policies and promote meaningful engagement with stakeholders.",
+      core_values_title: "Core Values",
+      core_values_empathy_title: "Empathy and Compassion",
+      core_values_empathy_desc: "We are dedicated to fostering understanding and compassion in all our interactions, creating a supportive and nurturing environment for everyone we engage with. Our commitment ensures that all individuals feel valued and cared for, promoting healthy relationships and growth.",
+      core_values_resilience_title: "Resilience and Growth",
+      core_values_resilience_desc: "We help individuals and organizations embrace challenges as opportunities for development and sustainable progress.",
+      core_values_innovation_title: "Innovation Excellence",
+      core_values_innovation_desc: "We are committed to innovative practices that enhance mental health services and improve impact.",
+      core_values_integrity_title: "Integrity and Authenticity",
+      core_values_integrity_desc: "We act with honesty, transparency, and respect in all our endeavors, ensuring trust and authenticity in every interaction.",
+      core_values_evidence_title: "Evidence-Based Practice",
+      core_values_evidence_desc: "We provide services and programs grounded in evidence-based approaches to ensure effectiveness and sustainability.",
+      core_values_inclusivity_title: "Inclusivity and Diversity",
+      core_values_inclusivity_desc: "We embrace diversity and cultivate an inclusive environment that respects and values both individual uniqueness and our shared human experiences. By fostering inclusivity, we promote understanding and connection among all individuals, enhancing the overall community experience.",
+      core_values_collaboration_title: "Collaboration and Community",
+      core_values_collaboration_desc: "We believe in the power of collaboration and community, actively working with partners and clients to co-design and co-achieve shared goals. Our commitment to teamwork enhances connections and drives collective success.",
+      footer_brand: "Reframe MHS",
+      footer_description: "Unlocking the innate potential and resilience within each person and group across the Middle East.",
+      footer_quick_links: "Quick Links",
+      nav_hub_reframe: "Hub Reframe",
+      footer_services: "Services",
+      footer_training: "Training Programs",
+      footer_workshops: "Workshops",
+      footer_consultation: "Consultation",
+      footer_resources: "Resources",
+      footer_connect: "Connect",
+      lab_email_label: "Email address",
+      footer_subscribe_title: "Stay Connected",
+      footer_subscribe_text: "Subscribe to our newsletter for updates, workshops, and events.",
+      footer_subscribe_btn: "Subscribe",
+      footer_subscribe_placeholder: "Enter your email",
+      footer_copyright: "© 2025 Reframe Mental Health Services. All rights reserved."
+    },
+    ar: {
+      page_title_about: "من نحن - ريفريم",
+      page_description_about: "تعرّف على رسالة ورؤية ريفريم وفريقنا من مختصي الصحة النفسية في الشرق الأوسط.",
+      nav_home: "الرئيسية",
+      nav_about: "من نحن",
+      nav_services: "خدماتنا",
+      nav_mhlab: "مختبر الصحة النفسية",
+      nav_hub: "المنصة",
+      nav_training: "التدريب",
+      nav_consultations: "الاستشارات الفنية",
+      nav_contact: "تواصل معنا",
+      nav_login: "تسجيل الدخول",
+      close: "إغلاق",
+      about_hero_title: "عن ريفريم للصحة النفسية",
+      about_hero_subtitle: "نتطلع إلى مستقبل تكون فيه الصحة النفسية أساس كل نظام إنساني، حيث تُعتبر التحديات والإخفاقات فرصاً للنمو والتحول.",
+      mission_title: "رسالتنا",
+      mission_description: "نقدّم مقاربات نفسية قائمة على الأدلة ومكيّفة ثقافياً، تمكّن الأفراد والمجموعات والمؤسسات من تجاوز التحديات وبلوغ أقصى إمكاناتهم.",
+      team_title: "فريقنا",
+      team_linkedin_btn: "لينكد إن",
+      team_ali_name: "علي العطار",
+      team_ali_role: "المؤسس والمدير | رئيس مختبر الصحة النفسية",
+      team_ali_bio: "أخصائي نفسي إكلينيكي ومعالج نفسي بارز، ملتزم بعمق بتطوير خدمات الصحة النفسية في العالم العربي. تعاون علي مع شركات ومنظمات ووكالات تابعة للأمم المتحدة لتصميم وتنفيذ مبادرات مؤثرة في مجال الصحة النفسية والدعم النفسي الاجتماعي عبر الشرق الأوسط وأفريقيا. وفي قيادته لمختبر الصحة النفسية، يُعرف علي بنهجه المبتكر في تطوير البرامج وإدارته الفعّالة للفرق، بما يضمن تدخلات حسّاسة ثقافياً ومدعومة علمياً ذات أثر إيجابي عميق على المجتمعات والأفراد المحتاجين.",
+      team_zeina_name: "زينة بلوط",
+      team_zeina_role: "شريكة مؤسسة ومنسقة برامج",
+      team_zeina_bio: "تؤدي زينة دوراً محورياً في الإشراف على البرامج والخدمات المختلفة التي تقدمها الشركة وتنسيقها. وبخبرة تمتد لعشر سنوات في إدارة البرامج، تجلب زينة معرفة وخبرة واسعة، وهي مسؤولة عن تطوير وتنفيذ وتقييم برامج ريفريم لضمان تقديم خدمات عالية الجودة.",
+      team_bertha_name: "بيرثا ميسيادي",
+      team_bertha_role: "مديرة ضبط الجودة",
+      team_bertha_bio: "تمتلك بيرثا خبرة تفوق عشر سنوات في رفع المعايير التعليمية في بيئات متنوعة. أشرفت بفعالية على فرق دولية، وساهمت بشكل كبير في مشاريع تعليمية في الشرق الأوسط، وأدت دوراً رئيسياً في تصميم البرامج والحفاظ على معايير الجودة. تتميز بيرثا في بناء وتنفيذ أطر قوية للرصد والتقييم تتماشى مع المعايير العالمية، وتعاونت مع منظمات غير حكومية وحكومية مرموقة لضمان الالتزام بالسياسات وتعزيز التفاعل الهادف مع أصحاب المصلحة.",
+      core_values_title: "قيمنا الأساسية",
+      core_values_empathy_title: "التعاطف والرحمة",
+      core_values_empathy_desc: "نحرص على تعزيز التفهم والتعاطف في جميع تعاملاتنا، لخلق بيئة داعمة ومحتضنة لكل من نتفاعل معهم. يضمن التزامنا شعور كل فرد بالتقدير والاهتمام، بما يعزز العلاقات الصحية والنمو.",
+      core_values_resilience_title: "المرونة والنمو",
+      core_values_resilience_desc: "نساعد الأفراد والمؤسسات على تبني التحديات كفرص للتطور والتقدم المستدام.",
+      core_values_innovation_title: "التميز والابتكار",
+      core_values_innovation_desc: "نلتزم بالممارسات المبتكرة التي تعزز خدمات الصحة النفسية وتحسّن الأثر.",
+      core_values_integrity_title: "النزاهة والأصالة",
+      core_values_integrity_desc: "نعمل بصدق وشفافية واحترام في جميع مساعينا، بما يضمن الثقة والأصالة في كل تفاعل.",
+      core_values_evidence_title: "الممارسة القائمة على الأدلة",
+      core_values_evidence_desc: "نقدّم خدمات وبرامج مبنية على مقاربات قائمة على الأدلة لضمان الفعالية والاستدامة.",
+      core_values_inclusivity_title: "الشمولية والتنوع",
+      core_values_inclusivity_desc: "نحتضن التنوع ونرسّخ بيئة شاملة تحترم وتقدّر خصوصية الأفراد وتجاربنا الإنسانية المشتركة. ومن خلال تعزيز الشمولية، نرسّخ التفاهم والتواصل بين جميع الأفراد، بما يثري تجربة المجتمع ككل.",
+      core_values_collaboration_title: "التعاون والمجتمع",
+      core_values_collaboration_desc: "نؤمن بقوة التعاون والمجتمع، ونعمل بفعالية مع الشركاء والعملاء لتصميم وتحقيق أهداف مشتركة. يعزز التزامنا بروح الفريق الواحد الروابط ويدفع نحو النجاح الجماعي.",
+      footer_brand: "ريفريم",
+      footer_description: "إطلاق الإمكانات الكامنة والمرونة لدى كل فرد ومجموعة في أنحاء الشرق الأوسط.",
+      footer_quick_links: "روابط سريعة",
+      nav_hub_reframe: "منصة ريفريم",
+      footer_services: "خدماتنا",
+      footer_training: "برامج تدريبية",
+      footer_workshops: "ورش عمل",
+      footer_consultation: "استشارات",
+      footer_resources: "موارد",
+      footer_connect: "تواصل معنا",
+      lab_email_label: "البريد الإلكتروني",
+      footer_subscribe_title: "ابقَ على تواصل",
+      footer_subscribe_text: "اشترك في نشرتنا الإخبارية للاطلاع على آخر التحديثات وورش العمل والفعاليات.",
+      footer_subscribe_btn: "اشترك",
+      footer_subscribe_placeholder: "أدخل بريدك الإلكتروني",
+      footer_copyright: "© 2025 خدمات ريفريم للصحة النفسية. جميع الحقوق محفوظة."
+    }
+  };
+
+  function applyTranslations(lang) {
+    const dict = I18N[lang] || I18N.en;
+
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+
+    document.querySelectorAll("[data-translate]").forEach(el => {
+      const key = el.getAttribute("data-translate");
+      if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+
+    document.querySelectorAll("[data-translate-placeholder]").forEach(el => {
+      const key = el.getAttribute("data-translate-placeholder");
+      if (dict[key] !== undefined) el.setAttribute("placeholder", dict[key]);
+    });
+
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc && dict.page_description_about) {
+      metaDesc.setAttribute("content", dict.page_description_about);
+    }
+    if (dict.page_title_about) document.title = dict.page_title_about;
+
+    document.querySelectorAll(".lang-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.lang === lang);
+    });
+
+    localStorage.setItem("lang", lang);
+  }
+
+  function switchLanguage(lang) {
+    applyTranslations(lang);
+  }
+
+  document.querySelectorAll(".lang-btn").forEach(btn => {
+    btn.addEventListener("click", () => switchLanguage(btn.dataset.lang));
+  });
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // -----------------------------
+  // Lazy load images
+  // -----------------------------
+  const lazyImgs = document.querySelectorAll("img.lazy");
+  const observer = new IntersectionObserver((entries, obs) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        const src = img.getAttribute("data-src");
+        if (src) {
+          img.style.filter = "blur(8px)";
+          img.src = src + "&auto=format&fit=crop&w=1200&q=70";
+          img.onload = () => img.style.filter = "none";
+        }
+        obs.unobserve(img);
+      }
+    });
+  }, { rootMargin: "120px" });
+  lazyImgs.forEach(img => observer.observe(img));
+
+  // -----------------------------
+  // Fade-up animation
+  // -----------------------------
+  const fadeEls = document.querySelectorAll(".fade-up");
+  const fadeObs = new IntersectionObserver(entries => {
+    entries.forEach((ent, i) => {
+      if (ent.isIntersecting) {
+        ent.target.classList.add("in-view");
+        ent.target.style.transitionDelay = `${i * 80}ms`;
+        fadeObs.unobserve(ent.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  fadeEls.forEach(el => fadeObs.observe(el));
+
+  // -----------------------------
+  // Card tilt
+  // -----------------------------
+  document.querySelectorAll(".card").forEach(card => {
+    card.addEventListener("mousemove", e => {
+      const rect = card.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = (e.clientX - cx) / (rect.width / 2);
+      const dy = (e.clientY - cy) / (rect.height / 2);
+      card.style.transform = `perspective(900px) rotateX(${dy * 6}deg) rotateY(${-dx * 6}deg) scale(1.02)`;
+      card.style.boxShadow = "0 20px 50px rgba(2,8,23,.6)";
+    });
+    card.addEventListener("mouseleave", () => {
+      card.style.transform = "none";
+      card.style.boxShadow = "";
+    });
+  });
+
+  // -----------------------------
+  // Modal logic — reads the currently *rendered* (translated) text
+  // from each card, so the modal always matches the active language.
+  // -----------------------------
+  const modal = document.getElementById("modal");
+  const modalImg = document.getElementById("modalImg");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalRole = document.getElementById("modalRole");
+  const modalBio = document.getElementById("modalBio");
+  const modalClose = document.getElementById("modalClose");
+  const linkedinBtn = document.getElementById("linkedinBtn");
+  let lastFocused = null;
+
+  function openModal(card) {
+    lastFocused = document.activeElement;
+
+    const name = card.querySelector(".meta h3")?.textContent || "";
+    const role = card.querySelector(".meta .role")?.textContent || "";
+    const bio = card.querySelector(".meta .bio")?.textContent || "";
+    const img = card.dataset.img || card.querySelector("img")?.src;
+    const linkedin = card.dataset.linkedin;
+
+    modalImg.src = img;
+    modalImg.alt = name;
+    modalTitle.textContent = name;
+    modalRole.textContent = role;
+    modalBio.textContent = bio;
+
+    linkedinBtn.href = (linkedin && linkedin.trim()) || "https://www.linkedin.com/company/reframe-mhs/";
+    linkedinBtn.target = "_blank";
+    linkedinBtn.rel = "noopener noreferrer";
+
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    modal.style.display = "flex";
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal() {
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+    modal.style.display = "none";
+    document.body.style.overflow = "";
+    if (lastFocused) lastFocused.focus();
+  }
+
+  document.querySelectorAll(".card").forEach(card => {
+    card.addEventListener("click", () => openModal(card));
+    card.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openModal(card);
+      }
+    });
+  });
+
+  modalClose.addEventListener("click", closeModal);
+  modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+});
+</script>
+
+<script>
+// --- Dropdown menu (Services) ---
+document.addEventListener("DOMContentLoaded", () => {
+  const dropdowns = document.querySelectorAll(".nav-dropdown");
+
+  dropdowns.forEach(dropdown => {
+    const toggle = dropdown.querySelector(".dropdown-toggle");
+    const menu = dropdown.querySelector(".dropdown-menu");
+
+    menu.style.display = "none";
+    menu.style.opacity = "0";
+    menu.style.transform = "translateY(-6px)";
+    menu.style.transition = "all 0.25s ease";
+
+    toggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const isOpen = menu.classList.contains("open");
+
+      document.querySelectorAll(".dropdown-menu.open").forEach(m => {
+        m.classList.remove("open");
+        m.style.opacity = "0";
+        m.style.transform = "translateY(-6px)";
+        setTimeout(() => (m.style.display = "none"), 200);
+      });
+
+      if (!isOpen) {
+        menu.style.display = "flex";
+        setTimeout(() => {
+          menu.classList.add("open");
+          menu.style.opacity = "1";
+          menu.style.transform = "translateY(0)";
+        }, 20);
+      } else {
+        menu.classList.remove("open");
+        menu.style.opacity = "0";
+        menu.style.transform = "translateY(-6px)";
+        setTimeout(() => (menu.style.display = "none"), 200);
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!dropdown.contains(e.target)) {
+        menu.classList.remove("open");
+        menu.style.opacity = "0";
+        menu.style.transform = "translateY(-6px)";
+        setTimeout(() => (menu.style.display = "none"), 200);
+      }
+    });
+  });
+});
+
+// --- Hamburger menu ---
+document.addEventListener("DOMContentLoaded", () => {
+  const hamburger = document.querySelector(".hamburger");
+  const overlay = document.getElementById("mobile-menu");
+  const closeBtn = overlay ? overlay.querySelector(".close-btn") : null;
+
+  function openMenu() {
+    overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden", "false");
+    hamburger.setAttribute("aria-expanded", "true");
+  }
+  function closeMenu() {
+    overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    hamburger.setAttribute("aria-expanded", "false");
+  }
+
+  if (hamburger && overlay) {
+    hamburger.addEventListener("click", () => {
+      overlay.classList.contains("open") ? closeMenu() : openMenu();
+    });
+  }
+  if (closeBtn) closeBtn.addEventListener("click", closeMenu);
+  if (overlay) overlay.querySelectorAll("a").forEach(a => a.addEventListener("click", closeMenu));
+});
+
+// --- Initial language load ---
+document.addEventListener("DOMContentLoaded", () => {
+  const savedLang = localStorage.getItem("lang") || "en";
+  switchLanguage(savedLang);
+});
+</script>
+
+</body>
+</html>
