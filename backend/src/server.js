@@ -1,7 +1,7 @@
 ﻿const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const config = require("./config");
+const config = require("../config");
 
 const app = express();
 
@@ -20,6 +20,7 @@ app.use(
 app.use(express.json());
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use(express.static(path.join(__dirname, "../../public")));
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/admin", require("./routes/admin"));
@@ -27,6 +28,7 @@ app.use("/api/profile", require("./routes/profile"));
 app.use("/api/supervisor", require("./routes/supervisor"));
 app.use("/api/designer", require("./routes/designer"));
 app.use("/api/events", require("./routes/events"));
+app.use("/api/admin", require("./routes/group"));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
@@ -39,3 +41,4 @@ app.use((err, req, res, next) => {
 app.listen(config.port, () => {
     console.log(`API listening on :${config.port}`);
 });
+console.log("Serving static files from:", path.join(__dirname, "../../public"));
