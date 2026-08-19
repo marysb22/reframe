@@ -1,5 +1,5 @@
-﻿const jwt = require("jsonwebtoken");
-const config = require("../config");
+const jwt = require("jsonwebtoken");
+const config = require("../../config");
 const { pool, getRequestClient, commitAndRelease, rollbackAndRelease } = require("../db");
 
 /**
@@ -9,41 +9,40 @@ const { pool, getRequestClient, commitAndRelease, rollbackAndRelease } = require
  * until it expires.
  */
 async function requireAuth(req, res, next) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (!token) return res.status(401).json({ error: "Not authenticated" });
+    const header = req.headers.authorization || "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+    if (!token) return res.status(401).json({ error: "Not authenticated" });
 
-  let payload;
-  try {
-    payload = jwt.verify(token, config.jwtSecret);
-  } catch (err) {
-    return res.status(401).json({ error: "Invalid or expired session" });
-  }
-
-  try {
-    const { rows } = await pool.query(
-      "SELECT id, role, status, must_change_password, member_code FROM user_credentials WHERE id = $1",
-      [payload.id]
-    );
-    const user = rows[0];
-    if (!user) return res.status(401).json({ error: "Account no longer exists" });
-    if (user.status !== "active") {
-      return res.status(403).json({ error: "This account has been suspended. Contact your administrator." });
+    let payload;
+    try {
+        payload = jwt.verify(token, config.jwtSecret);
+    } catch (err) {
+        return res.status(401).json({ error: "Invalid or expired session" });
     }
-    req.user = user;
-    next();
-  } catch (err) {
-    next(err);
-  }
+
+    try {
+        const { rows } = await pool.query(
+            "SELECT id, role, status, must_change_password, member_code FROM user_credentials WHERE id = $1", [payload.id]
+        );
+        const user = rows[0];
+        if (!user) return res.status(401).json({ error: "Account no longer exists" });
+        if (user.status !== "active") {
+            return res.status(403).json({ error: "This account has been suspended. Contact your administrator." });
+        }
+        req.user = user;
+        next();
+    } catch (err) {
+        next(err);
+    }
 }
 
 function requireRole(...roles) {
-  return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ error: "You don't have permission to do that" });
-    }
-    next();
-  };
+    return (req, res, next) => {
+        if (!req.user || !roles.includes(req.user.role)) {
+            return res.status(403).json({ error: "You don't have permission to do that" });
+        }
+        next();
+    };
 }
 
 const requireAdmin = requireRole("admin");
@@ -60,17 +59,34 @@ const requireSupervisor = requireRole("supervisor");
  * directly inside route handlers so RLS context is always correct.
  */
 function asyncRoute(handler) {
-  return async (req, res, next) => {
-    let client;
-    try {
-      client = await getRequestClient(req.user);
-      await handler(req, res, client);
-      await commitAndRelease(client);
-    } catch (err) {
-      if (client) await rollbackAndRelease(client);
-      next(err);
-    }
-  };
+    return async(req, res, next) => {
+        let client;
+        try {
+            client = await getRequestClient(req.user);
+            await handler(req, res, client);
+            await commitAndRelease(client);
+        } catch (err) {
+            if (client) await rollbackAndRelease(client);
+            next(err);
+        }
+    };
 }
 
-module.exports = { requireAuth, requireAdmin, requireSupervisor, requireRole, asyncRoute };
+function requireDesigner(req, res, next) {
+    if (!req.user || req.user.role !== "Designer") {
+        return res.status(403).json({ error: "Designer access required" });
+    }
+
+    next();
+}
+
+
+function requireDesigner(req, res, next) {
+  if (!req.user || req.user.role !== "Designer") {
+    return res.status(403).json({ error: "Designer access required" });
+  }
+
+  next();
+}
+module.exports = { requireAuth, requireAdmin, requireSupervisor, requireRole, requireDesigner, asyncRoute };
+

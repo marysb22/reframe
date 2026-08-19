@@ -1,6 +1,6 @@
-﻿const express = require("express");
+const express = require("express");
 const jwt = require("jsonwebtoken");
-const config = require("../config");
+const config = require("../../config");
 const { pool } = require("../db");
 const { requireAuth, asyncRoute } = require("../middleware/auth");
 const { verifyPassword, hashPassword } = require("../utils/authUtils");
