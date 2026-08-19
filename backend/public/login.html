@@ -251,7 +251,7 @@
         // Make sure the backend server is running (node src/server.js)
         // before testing this page.
         // ---------------------------------------------------------------
-        const API_BASE = 'http://localhost:3000';
+        const API_BASE = window.location.origin;
 
         function showMessage(text, type) {
             const box = document.getElementById('loginMessage');
