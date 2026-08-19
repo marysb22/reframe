@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
@@ -44,7 +44,7 @@ app.use((req, res, next) => {
 });
 
 const publicPath = path.join(__dirname, "../public");
-const publicPath = path.join(__dirname, "../../public");
+
 const uploadsPath = path.join(__dirname, "../uploads");
 
 console.log("Serving static files from:", publicPath);
