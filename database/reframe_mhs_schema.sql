@@ -769,7 +769,7 @@ INSERT INTO id_counters (prefix, last_number) VALUES
 
 -- Admin
 INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
-VALUES (1, 'ADM001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'admin', 'active', TRUE);
+VALUES (1, 'ADM001', '$2a$10$zS7yqUKB9w4w9Jn7IlBJ9ucnh9UKQQ9112.EkN3adi1922KxiXtZq', 'admin', 'active', TRUE);
 INSERT INTO admin_users (id, full_name, email)
 VALUES (1, 'System Administrator', 'admin@reframe-mhs.org');
 

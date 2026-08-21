@@ -8,15 +8,14 @@ async function hashPassword(plain) {
 }
 
 async function verifyPassword(plain, hash) {
-  return bcrypt.compare(plain, hash);
+  if (!hash) return false;
+  try {
+    return await bcrypt.compare(plain, hash);
+  } catch {
+    return false;
+  }
 }
 
-/**
- * Generates a random temporary password that's easy to read aloud/type
- * (no ambiguous characters like 0/O or 1/l/I), always 10 characters,
- * always includes at least one digit -- meets the >=8 character minimum
- * enforced elsewhere with room to spare.
- */
 function generateTempPassword() {
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   const bytes = crypto.randomBytes(10);
