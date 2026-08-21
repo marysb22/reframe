@@ -9,7 +9,7 @@
 <style>
 /* =========================================================
    Same design system as the Supervisor Dashboard, so the
-   Student portal feels like the same product rather than a
+   Trainee portal feels like the same product rather than a
    different app. Read-only where the spec requires it.
 ========================================================= */
 :root{
@@ -265,7 +265,7 @@ table{display:block;overflow-x:auto;white-space:nowrap;}
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
 <aside class="sidebar" id="sidebar">
-<div class="system-logo"><div class="mark">RM</div><div><h2>Reframe MHS</h2><p>Student console</p></div></div>
+<div class="system-logo"><div class="mark">RM</div><div><h2>Reframe MHS</h2><p>Trainee console</p></div></div>
 <nav>
 <div class="nav-label">Workspace</div>
 <ul>
@@ -292,18 +292,18 @@ table{display:block;overflow-x:auto;white-space:nowrap;}
 <li><a data-section="settings" href="#settings"><i class="fa fa-gear"></i>Settings</a></li>
 </ul>
 </nav>
-<div class="system-version">System<strong>2026.1 &middot; Student</strong></div>
+<div class="system-version">System<strong>2026.1 &middot; Trainee</strong></div>
 </aside>
 
 <main class="main-content">
 <header class="topbar">
 <div class="topbar-left">
 <button class="mobile-toggle" id="mobileToggle" aria-label="Open menu"><i class="fa fa-bars"></i></button>
-<div><div class="eyebrow" id="sectionEyebrow">Student console</div><h1 id="sectionTitle">Welcome back</h1></div>
+<div><div class="eyebrow" id="sectionEyebrow">Trainee console</div><h1 id="sectionTitle">Welcome back</h1></div>
 </div>
 <div class="top-right">
 <button class="bell-btn"><i class="fa fa-bell"></i><span class="dot" id="notifDot" style="display:none;"></span></button>
-<div class="profile-mini"><div class="avatar-circle" id="topbarAvatar">&mdash;</div><div><strong id="topbarName">Loading...</strong><span id="topbarSub">Student</span></div></div>
+<div class="profile-mini"><div class="avatar-circle" id="topbarAvatar">&mdash;</div><div><strong id="topbarName">Loading...</strong><span id="topbarSub">Trainee</span></div></div>
 <button class="logout-btn" onclick="logout()">Log out</button>
 </div>
 </header>
@@ -311,7 +311,7 @@ table{display:block;overflow-x:auto;white-space:nowrap;}
 <!-- ============================================================= -->
 <!-- DASHBOARD                                                      -->
 <!-- ============================================================= -->
-<section class="dash-section active-section" id="section-dashboard" data-title="Welcome back" data-eyebrow="Student console">
+<section class="dash-section active-section" id="section-dashboard" data-title="Welcome back" data-eyebrow="Trainee console">
 
 <section class="kpi-grid">
 <div class="kpi-card"><div class="kpi-top"><div class="kpi-icon"><i class="fa fa-stopwatch"></i></div></div><label>Clinical hours</label><h2 id="kpiHours">&mdash;</h2></div>
@@ -740,7 +740,7 @@ function showSection(name) {
   const activeEl = document.getElementById("section-" + name);
   if (activeEl) {
     document.getElementById("sectionTitle").textContent = activeEl.dataset.title || "Dashboard";
-    document.getElementById("sectionEyebrow").textContent = activeEl.dataset.eyebrow || "Student console";
+    document.getElementById("sectionEyebrow").textContent = activeEl.dataset.eyebrow || "Trainee console";
   }
 
   if (window.location.hash.slice(1) !== name) history.replaceState(null, "", "#" + name);
@@ -799,7 +799,7 @@ async function loadProfile() {
   }
 
   setText("topbarName", data.full_name);
-  document.getElementById("topbarSub").textContent = data.memberCode || "Student";
+  document.getElementById("topbarSub").textContent = data.memberCode || "Trainee";
   setText("profileFullName", data.full_name);
   document.getElementById("profileSubline").textContent =
     `${data.memberCode || ""} \u00b7 ${data.cohort || "No cohort"} \u00b7 ${data.currentYear ? "Year " + data.currentYear : "No year set"}`;

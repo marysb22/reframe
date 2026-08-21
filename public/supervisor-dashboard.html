@@ -1042,7 +1042,7 @@ function renderStudents() {
     <tr>
       <td><strong>${escapeHtml(s.full_name)}</strong></td>
       <td>${escapeHtml(s.memberCode)}</td>
-      <td>${escapeHtml(s.cohort || "&mdash;")}</td>
+      <td>${s.cohort ? escapeHtml(s.cohort) : "&mdash;"}</td>
       <td>${s.currentYear ? "Year " + s.currentYear : "&mdash;"}</td>
       <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td>
       <td>

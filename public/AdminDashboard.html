@@ -1027,7 +1027,7 @@ function renderSpList() {
     <tr>
       <td><strong>${escapeHtml(u.full_name)}</strong></td>
       <td>${escapeHtml(u.memberCode)}</td>
-      <td>${escapeHtml(u.cohort || "&mdash;")}</td>
+      <td>${u.cohort ? escapeHtml(u.cohort) : "&mdash;"}</td>
       <td>${u.currentYear ? "Year " + u.currentYear : "&mdash;"}</td>
       <td><span class="pill ${u.status}">${escapeHtml(u.status)}</span></td>
       <td><button class="icon-btn" title="Open profile" onclick="openStudentProfile(${u.id})"><i class="fa fa-eye"></i></button></td>
@@ -1175,10 +1175,10 @@ function renderStudentProfile(data) {
         return `
         <tr>
           <td><span class="pill trainee">${escapeHtml(r.recordType.replace(/_/g, " "))}</span></td>
-          <td>${escapeHtml(r.title || "&mdash;")}</td>
+          <td>${r.title ? escapeHtml(r.title) : "&mdash;"}</td>
           <td>${r.date ? new Date(r.date).toLocaleDateString() : "&mdash;"}</td>
-          <td>${escapeHtml(bits.join(", ") || "&mdash;")}</td>
-          <td>${escapeHtml(r.supervisorName || "&mdash;")}</td>
+          <td>${bits.length ? escapeHtml(bits.join(", ")) : "&mdash;"}</td>
+          <td>${r.supervisorName ? escapeHtml(r.supervisorName) : "&mdash;"}</td>
         </tr>`;
       })
       .join("");
@@ -1207,9 +1207,9 @@ function renderStudentProfile(data) {
       <tr>
         <td>${escapeHtml(t.date)}</td>
         <td>${formatMoney(t.amount)}</td>
-        <td>${escapeHtml(t.method || "&mdash;")}</td>
-        <td>${escapeHtml(t.addedByName || "&mdash;")}</td>
-        <td>${escapeHtml(t.notes || "&mdash;")}</td>
+        <td>${t.method ? escapeHtml(t.method) : "&mdash;"}</td>
+        <td>${t.addedByName ? escapeHtml(t.addedByName) : "&mdash;"}</td>
+        <td>${t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
       </tr>`
       )
       .join("");
@@ -1227,7 +1227,7 @@ function renderSpDocuments(documents) {
       (d) => `
     <tr>
       <td><a href="${API_BASE}/uploads/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a></td>
-      <td>${escapeHtml(d.uploadedByName || "&mdash;")}</td>
+      <td>${d.uploadedByName ? escapeHtml(d.uploadedByName) : "&mdash;"}</td>
       <td>${new Date(d.createdAt).toLocaleDateString()}</td>
       <td><button class="icon-btn danger" title="Delete document" onclick="confirmDeleteDocument(${d.id})"><i class="fa fa-trash"></i></button></td>
     </tr>`
@@ -1466,13 +1466,13 @@ function renderPaymentDetail(data) {
       .map(
         (t) => `
       <tr>
-        <td>${escapeHtml(t.id ?? "&mdash;")}</td>
+        <td>${t.id != null ? escapeHtml(t.id) : "&mdash;"}</td>
         <td>${escapeHtml(s.memberCode)}</td>
         <td>${escapeHtml(t.date)}</td>
         <td>${formatMoney(t.amount)}</td>
-        <td>${escapeHtml(t.method || "&mdash;")}</td>
+        <td>${t.method ? escapeHtml(t.method) : "&mdash;"}</td>
         <td>${escapeHtml(t.addedByName)}</td>
-        <td>${escapeHtml(t.notes || "&mdash;")}</td>
+        <td>${t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
       </tr>
     `
       )
