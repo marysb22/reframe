@@ -6,6 +6,15 @@
  * these read.
  */
 
+/** Event forms send either a real array or newline-separated bullet text -- normalize to an array either way. Shared by admin.js and designer.js, both of which manage the `events` table. */
+function toArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    return value.split("\n").map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 function toPublicUser(row) {
   return {
     id: row.id,
@@ -222,33 +231,36 @@ function toStudentSummary(row) {
  * row and reducing in JS like the old flexible-table version did.
  */
 async function computeProgressSummary(db, studentId) {
+  // MySQL has no FILTER (WHERE ...) clause (Postgres-only) -- every
+  // COUNT(*) FILTER (WHERE cond) below becomes COUNT(CASE WHEN cond THEN 1 END),
+  // which only counts rows where cond is true, same result.
   const [hoursRes, attendanceRes, sessionsRes, assignmentsRes, evalRes] = await Promise.all([
     db.query(
       `SELECT
-         COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id = $1), 0) AS training,
-         COALESCE((SELECT SUM(hours) FROM supervision_hours WHERE student_id = $1), 0) AS supervision`,
-      [studentId]
+         COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id = ?), 0) AS training,
+         COALESCE((SELECT SUM(hours) FROM supervision_hours WHERE student_id = ?), 0) AS supervision`,
+      [studentId, studentId]
     ),
     db.query(
       `SELECT
-         COUNT(*) FILTER (WHERE status = 'present') AS present,
+         COUNT(CASE WHEN status = 'present' THEN 1 END) AS present,
          COUNT(*) AS total
-       FROM attendance WHERE student_id = $1`,
+       FROM attendance WHERE student_id = ?`,
       [studentId]
     ),
     db.query(
       `SELECT
-         COUNT(*) FILTER (WHERE session_type = 'training') AS training_sessions,
-         COUNT(*) FILTER (WHERE session_type = 'supervision') AS supervision_sessions
-       FROM sessions WHERE student_id = $1`,
+         COUNT(CASE WHEN session_type = 'training' THEN 1 END) AS training_sessions,
+         COUNT(CASE WHEN session_type = 'supervision' THEN 1 END) AS supervision_sessions
+       FROM sessions WHERE student_id = ?`,
       [studentId]
     ),
     db.query(
-      `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'completed') AS completed
-       FROM assignments WHERE student_id = $1`,
+      `SELECT COUNT(*) AS total, COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed
+       FROM assignments WHERE student_id = ?`,
       [studentId]
     ),
-    db.query(`SELECT AVG(score) AS avg_score FROM evaluations WHERE student_id = $1 AND score IS NOT NULL`, [
+    db.query(`SELECT AVG(score) AS avg_score FROM evaluations WHERE student_id = ? AND score IS NOT NULL`, [
       studentId,
     ]),
   ]);
@@ -271,6 +283,7 @@ async function computeProgressSummary(db, studentId) {
 }
 
 module.exports = {
+  toArray,
   toPublicUser,
   toProfileResponse,
   toPublicEvent,

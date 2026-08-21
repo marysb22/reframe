@@ -636,8 +636,10 @@ tr:hover td{background:var(--surface-2);}
   </div>
 </div>
 
+<script src="scripts/api-config.js"></script>
 <script>
-const API = "http://localhost:3000/api";
+const API_BASE = window.API_BASE;
+const API = API_BASE + "/api";
 const token = localStorage.getItem("token") || localStorage.getItem("reframe_token");
 if (!token) window.location.href = "login.html";
 
@@ -780,7 +782,10 @@ async function guardAdmin() {
   if (me.role !== "admin") {
     showToast("Admin access required. Redirecting to your dashboard.", "error");
     setTimeout(() => {
-      window.location.href = me.role === "supervisor" ? "supervisor-dashboard.html" : "PersonalProfile.html";
+      window.location.href =
+        me.role === "supervisor" ? "supervisor-dashboard.html" :
+        me.role === "designer" ? "DesignerDashboard.html" :
+        "PersonalProfile.html";
     }, 800);
     return null;
   }
@@ -1133,7 +1138,7 @@ function renderStudentProfile(data) {
   document.getElementById("spMeta").textContent = `${p.memberCode} · ${p.cohort || "No cohort"} · Registered ${new Date(p.created_at).toLocaleDateString()}`;
   const initials = (p.full_name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("");
   document.getElementById("spPhoto").innerHTML = p.photo
-    ? `<img src="http://localhost:3000/uploads/photos/${p.photo}" style="width:100%;height:100%;object-fit:cover;">`
+    ? `<img src="${API_BASE}/uploads/photos/${p.photo}" style="width:100%;height:100%;object-fit:cover;">`
     : initials;
 
   // Personal
@@ -1221,7 +1226,7 @@ function renderSpDocuments(documents) {
     .map(
       (d) => `
     <tr>
-      <td><a href="http://localhost:3000/uploads/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a></td>
+      <td><a href="${API_BASE}/uploads/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a></td>
       <td>${escapeHtml(d.uploadedByName || "&mdash;")}</td>
       <td>${new Date(d.createdAt).toLocaleDateString()}</td>
       <td><button class="icon-btn danger" title="Delete document" onclick="confirmDeleteDocument(${d.id})"><i class="fa fa-trash"></i></button></td>
@@ -1578,7 +1583,7 @@ async function uploadEventImage() {
     }
     const data = await response.json();
     document.getElementById("evImage").value = data.url;
-    document.getElementById("evImagePreview").src = "http://localhost:3000" + data.url;
+    document.getElementById("evImagePreview").src = API_BASE + data.url;
     statusEl.textContent = "Uploaded";
     saveEventDraft();
   } catch (err) {
@@ -1637,7 +1642,7 @@ function restoreEventDraftIfAny() {
     if (draft.evImage) {
       document.getElementById("evImagePreview").src = draft.evImage.startsWith("http")
         ? draft.evImage
-        : "http://localhost:3000" + draft.evImage;
+        : API_BASE + draft.evImage;
       document.getElementById("evImagePreviewWrap").style.display = "block";
     }
     document.getElementById("eventFormWrap").style.display = "block";
@@ -1659,7 +1664,7 @@ function editEvent(id) {
   document.getElementById("evStatus").value = ev.status;
   document.getElementById("evImage").value = ev.image || "";
   if (ev.image) {
-    document.getElementById("evImagePreview").src = ev.image.startsWith("http") ? ev.image : "http://localhost:3000" + ev.image;
+    document.getElementById("evImagePreview").src = ev.image.startsWith("http") ? ev.image : API_BASE + ev.image;
     document.getElementById("evImageStatus").textContent = "Current image";
     document.getElementById("evImagePreviewWrap").style.display = "block";
   } else {

@@ -25,37 +25,43 @@ const STUDENT_PROFILE_SELECT = `
   FROM user_credentials uc
   JOIN students st ON st.id = uc.id
   LEFT JOIN cohorts c ON c.id = st.cohort_id
-  WHERE uc.id = $1
+  WHERE uc.id = ?
 `;
+
+/** Builds a `col IN (?,?,...)` fragment + matching params for a dynamic id list. */
+function inClause(ids) {
+  return { sql: ids.map(() => "?").join(","), params: ids };
+}
 
 /** Confirms studentId is currently assigned to the calling supervisor and returns their row, or writes a 403/404 and returns null. */
 async function loadAssignedStudent(db, supervisorId, studentId, res) {
   const { rows: assignRows } = await db.query(
-    "SELECT 1 FROM supervisor_students WHERE supervisor_id = $1 AND student_id = $2",
+    "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
     [supervisorId, studentId]
   );
   if (!assignRows.length) {
-    res.status(403).json({ error: "You are not assigned to this student" });
+    res.status(403).json({ error: "You are not assigned to this trainee" });
     return null;
   }
   const { rows } = await db.query(STUDENT_PROFILE_SELECT, [studentId]);
   if (!rows.length) {
-    res.status(404).json({ error: "Student not found" });
+    res.status(404).json({ error: "Trainee not found" });
     return null;
   }
   return rows[0];
 }
 
 async function attachSupervisorNames(db, rows) {
-  const supIds = [...new Set(rows.map((r) => r.supervisor_id))];
+  const supIds = [...new Set(rows.map((r) => r.supervisor_id).filter((x) => x != null))];
   if (!supIds.length) return rows;
-  const { rows: supRows } = await db.query("SELECT id, full_name FROM supervisors WHERE id = ANY($1)", [supIds]);
+  const { sql, params } = inClause(supIds);
+  const { rows: supRows } = await db.query(`SELECT id, full_name FROM supervisors WHERE id IN (${sql})`, params);
   const names = {};
   supRows.forEach((r) => (names[r.id] = r.full_name));
   return rows.map((r) => ({ ...r, supervisor_name: names[r.supervisor_id] }));
 }
 
-// ---- Students -----------------------------------------------------------
+// ---- Trainees -------------------------------------------------------------
 
 // GET /api/supervisor/students
 router.get(
@@ -67,7 +73,7 @@ router.get(
        JOIN user_credentials uc ON uc.id = ss.student_id
        JOIN students st ON st.id = ss.student_id
        LEFT JOIN cohorts c ON c.id = st.cohort_id
-       WHERE ss.supervisor_id = $1
+       WHERE ss.supervisor_id = ?
        ORDER BY st.full_name`,
       [req.user.id]
     );
@@ -81,26 +87,27 @@ router.post(
   asyncRoute(async (req, res, db) => {
     const { studentCode } = req.body || {};
     if (!studentCode || !String(studentCode).trim()) {
-      return res.status(400).json({ error: "Student ID is required" });
+      return res.status(400).json({ error: "Trainee ID is required" });
     }
 
     const { rows: studentRows } = await db.query(
       `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.current_year, c.name AS cohort_name
        FROM user_credentials uc JOIN students st ON st.id = uc.id LEFT JOIN cohorts c ON c.id = st.cohort_id
-       WHERE uc.member_code = $1`,
+       WHERE uc.member_code = ?`,
       [String(studentCode).trim().toUpperCase()]
     );
     if (!studentRows.length) {
-      return res.status(404).json({ error: "This Student ID does not exist. Please contact the Administrator." });
+      return res.status(404).json({ error: "This Trainee ID does not exist. Please contact the Administrator." });
     }
     const student = studentRows[0];
 
     await db.query(
-      "INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES ($1, $2, $1) ON CONFLICT DO NOTHING",
-      [req.user.id, student.id]
+      `INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE assigned_at = assigned_at`,
+      [req.user.id, student.id, req.user.id]
     );
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'supervisor_assigned', 'supervisor_students', $2)",
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'supervisor_assigned', 'supervisor_students', ?)",
       [req.user.id, student.id]
     );
 
@@ -116,12 +123,12 @@ router.delete(
     const student = await loadAssignedStudent(db, req.user.id, studentId, res);
     if (!student) return;
 
-    await db.query("DELETE FROM supervisor_students WHERE supervisor_id = $1 AND student_id = $2", [
+    await db.query("DELETE FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?", [
       req.user.id,
       studentId,
     ]);
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'supervisor_unassigned', 'supervisor_students', $2)",
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'supervisor_unassigned', 'supervisor_students', ?)",
       [req.user.id, studentId]
     );
     res.json({ success: true });
@@ -136,14 +143,15 @@ router.get(
     const student = await loadAssignedStudent(db, req.user.id, studentId, res);
     if (!student) return;
 
-    const { rows: recordRows } = await db.query(buildRecordsQuery(null), [studentId]);
+    const rq = buildRecordsQuery(studentId, null);
+    const { rows: recordRows } = await db.query(rq.sql, rq.params);
     const records = await attachSupervisorNames(db, recordRows);
 
     const { rows: documents } = await db.query(
       `SELECT d.*, COALESCE(a.full_name, sup.full_name) AS uploaded_by_name FROM documents d
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE d.student_id = $1 ORDER BY d.created_at DESC`,
+       WHERE d.student_id = ? ORDER BY d.created_at DESC`,
       [studentId]
     );
 
@@ -178,67 +186,67 @@ router.post(
       case "training_session":
       case "supervision_session": {
         const sessionType = recordType === "training_session" ? "training" : "supervision";
-        const { rows } = await db.query(
+        const insert = await db.query(
           `INSERT INTO sessions (student_id, supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+           VALUES (?,?,?,?,?,?,?,?)`,
           [studentId, req.user.id, sessionType, title || null, date || null, time || null, durationMinutes || null, content || null]
         );
-        insertedId = rows[0].id;
+        insertedId = insert.insertId;
         break;
       }
       case "attendance": {
         if (!["present", "absent", "excused"].includes(status)) {
           return res.status(400).json({ error: "attendance requires status: present, absent, or excused" });
         }
-        const { rows } = await db.query(
+        const insert = await db.query(
           `INSERT INTO attendance (student_id, supervisor_id, attendance_date, status, notes, recorded_by)
-           VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+           VALUES (?,?,?,?,?,?)`,
           [studentId, req.user.id, date || null, status, content || null, req.user.id]
         );
-        insertedId = rows[0].id;
+        insertedId = insert.insertId;
         break;
       }
       case "training_hours":
       case "supervision_hours": {
         const table = recordType;
         const hours = durationMinutes ? Number(durationMinutes) / 60 : 0;
-        const { rows } = await db.query(
-          `INSERT INTO ${table} (student_id, supervisor_id, hours, hour_date, description) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        const insert = await db.query(
+          `INSERT INTO ${table} (student_id, supervisor_id, hours, hour_date, description) VALUES (?,?,?,?,?)`,
           [studentId, req.user.id, hours, date || null, content || null]
         );
-        insertedId = rows[0].id;
+        insertedId = insert.insertId;
         break;
       }
       case "assignment": {
-        const { rows } = await db.query(
+        const insert = await db.query(
           `INSERT INTO assignments (student_id, supervisor_id, title, description, due_date, status)
-           VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+           VALUES (?,?,?,?,?,?)`,
           [studentId, req.user.id, title || "Untitled assignment", content || null, date || null, status || "pending"]
         );
-        insertedId = rows[0].id;
+        insertedId = insert.insertId;
         break;
       }
       case "note": {
-        const { rows } = await db.query(
-          `INSERT INTO supervisor_notes (student_id, supervisor_id, note_date, content) VALUES ($1,$2,$3,$4) RETURNING id`,
+        const insert = await db.query(
+          `INSERT INTO supervisor_notes (student_id, supervisor_id, note_date, content) VALUES (?,?,?,?)`,
           [studentId, req.user.id, date || null, content || ""]
         );
-        insertedId = rows[0].id;
+        insertedId = insert.insertId;
         break;
       }
       case "evaluation": {
-        const { rows } = await db.query(
+        const insert = await db.query(
           `INSERT INTO evaluations (student_id, supervisor_id, evaluation_date, title, score, content)
-           VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+           VALUES (?,?,?,?,?,?)`,
           [studentId, req.user.id, date || null, title || null, score ?? null, content || null]
         );
-        insertedId = rows[0].id;
+        insertedId = insert.insertId;
         break;
       }
     }
 
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES ($1, $2, $3, $4, $5)",
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, ?, ?, ?, ?)",
       [
         req.user.id,
         `${recordType.replace(/_/g, " ")} added`,
@@ -248,7 +256,8 @@ router.post(
       ]
     );
 
-    const { rows: freshRows } = await db.query(buildRecordsQuery(recordType), [studentId, recordType]);
+    const freshRq = buildRecordsQuery(studentId, recordType);
+    const { rows: freshRows } = await db.query(freshRq.sql, freshRq.params);
     const [withName] = await attachSupervisorNames(db, freshRows.filter((r) => r.id === insertedId));
     res.status(201).json(toRecord(withName || freshRows.find((r) => r.id === insertedId)));
   })
@@ -262,56 +271,57 @@ router.put(
     const meta = RECORD_TYPE_TABLES[recordType];
     if (!meta) return res.status(400).json({ error: "Unknown record type" });
 
-    const { rows: existingRows } = await db.query(`SELECT * FROM ${meta.table} WHERE id = $1`, [recordId]);
+    const { rows: existingRows } = await db.query(`SELECT * FROM ${meta.table} WHERE id = ?`, [recordId]);
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ error: "Record not found" });
 
     const { rows: assignRows } = await db.query(
-      "SELECT 1 FROM supervisor_students WHERE supervisor_id = $1 AND student_id = $2",
+      "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
       [req.user.id, existing.student_id]
     );
-    if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this student" });
+    if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
 
     const { date, time, durationMinutes, status, title, content, score } = req.body || {};
 
     if (recordType === "training_session" || recordType === "supervision_session") {
       await db.query(
         `UPDATE sessions SET
-          session_date = COALESCE($1, session_date), session_time = COALESCE($2, session_time),
-          duration_minutes = COALESCE($3, duration_minutes), title = COALESCE($4, title),
-          notes = COALESCE($5, notes), updated_at = now()
-         WHERE id = $6`,
+          session_date = COALESCE(?, session_date), session_time = COALESCE(?, session_time),
+          duration_minutes = COALESCE(?, duration_minutes), title = COALESCE(?, title),
+          notes = COALESCE(?, notes), updated_at = NOW()
+         WHERE id = ?`,
         [date ?? null, time ?? null, durationMinutes ?? null, title ?? null, content ?? null, recordId]
       );
     } else if (recordType === "attendance") {
       await db.query(
-        `UPDATE attendance SET attendance_date = COALESCE($1, attendance_date), status = COALESCE($2, status), notes = COALESCE($3, notes) WHERE id = $4`,
+        `UPDATE attendance SET attendance_date = COALESCE(?, attendance_date), status = COALESCE(?, status), notes = COALESCE(?, notes) WHERE id = ?`,
         [date ?? null, status ?? null, content ?? null, recordId]
       );
     } else if (recordType === "training_hours" || recordType === "supervision_hours") {
       const hours = durationMinutes != null ? Number(durationMinutes) / 60 : null;
       await db.query(
-        `UPDATE ${meta.table} SET hour_date = COALESCE($1, hour_date), hours = COALESCE($2, hours), description = COALESCE($3, description) WHERE id = $4`,
+        `UPDATE ${meta.table} SET hour_date = COALESCE(?, hour_date), hours = COALESCE(?, hours), description = COALESCE(?, description) WHERE id = ?`,
         [date ?? null, hours, content ?? null, recordId]
       );
     } else if (recordType === "assignment") {
       await db.query(
-        `UPDATE assignments SET due_date = COALESCE($1, due_date), status = COALESCE($2, status), title = COALESCE($3, title), description = COALESCE($4, description), updated_at = now() WHERE id = $5`,
+        `UPDATE assignments SET due_date = COALESCE(?, due_date), status = COALESCE(?, status), title = COALESCE(?, title), description = COALESCE(?, description), updated_at = NOW() WHERE id = ?`,
         [date ?? null, status ?? null, title ?? null, content ?? null, recordId]
       );
     } else if (recordType === "note") {
       await db.query(
-        `UPDATE supervisor_notes SET note_date = COALESCE($1, note_date), content = COALESCE($2, content), updated_at = now() WHERE id = $3`,
+        `UPDATE supervisor_notes SET note_date = COALESCE(?, note_date), content = COALESCE(?, content), updated_at = NOW() WHERE id = ?`,
         [date ?? null, content ?? null, recordId]
       );
     } else if (recordType === "evaluation") {
       await db.query(
-        `UPDATE evaluations SET evaluation_date = COALESCE($1, evaluation_date), title = COALESCE($2, title), score = COALESCE($3, score), content = COALESCE($4, content), updated_at = now() WHERE id = $5`,
+        `UPDATE evaluations SET evaluation_date = COALESCE(?, evaluation_date), title = COALESCE(?, title), score = COALESCE(?, score), content = COALESCE(?, content), updated_at = NOW() WHERE id = ?`,
         [date ?? null, title ?? null, score ?? null, content ?? null, recordId]
       );
     }
 
-    const { rows: freshRows } = await db.query(buildRecordsQuery(recordType), [existing.student_id, recordType]);
+    const freshRq = buildRecordsQuery(existing.student_id, recordType);
+    const { rows: freshRows } = await db.query(freshRq.sql, freshRq.params);
     const [withName] = await attachSupervisorNames(db, freshRows.filter((r) => String(r.id) === String(recordId)));
     res.json(toRecord(withName));
   })
@@ -325,16 +335,16 @@ router.delete(
     const meta = RECORD_TYPE_TABLES[recordType];
     if (!meta) return res.status(400).json({ error: "Unknown record type" });
 
-    const { rows: existingRows } = await db.query(`SELECT student_id FROM ${meta.table} WHERE id = $1`, [recordId]);
+    const { rows: existingRows } = await db.query(`SELECT student_id FROM ${meta.table} WHERE id = ?`, [recordId]);
     if (!existingRows.length) return res.status(404).json({ error: "Record not found" });
 
     const { rows: assignRows } = await db.query(
-      "SELECT 1 FROM supervisor_students WHERE supervisor_id = $1 AND student_id = $2",
+      "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
       [req.user.id, existingRows[0].student_id]
     );
-    if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this student" });
+    if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
 
-    await db.query(`DELETE FROM ${meta.table} WHERE id = $1`, [recordId]);
+    await db.query(`DELETE FROM ${meta.table} WHERE id = ?`, [recordId]);
     res.json({ success: true });
   })
 );
@@ -349,16 +359,16 @@ router.post("/students/:studentId/documents", (req, res) => {
     const { pool } = require("../db");
     const studentId = Number(req.params.studentId);
     const assigned = await pool.query(
-      "SELECT 1 FROM supervisor_students WHERE supervisor_id = $1 AND student_id = $2",
+      "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
       [req.user.id, studentId]
     );
-    if (!assigned.rows.length) return res.status(403).json({ error: "You are not assigned to this student" });
+    if (!assigned.rows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
 
-    const { rows } = await pool.query(
-      `INSERT INTO documents (student_id, uploaded_by, filename, original_name) VALUES ($1,$2,$3,$4)
-       RETURNING *`,
+    const insert = await pool.query(
+      `INSERT INTO documents (student_id, uploaded_by, filename, original_name) VALUES (?,?,?,?)`,
       [studentId, req.user.id, req.file.filename, req.file.originalname]
     );
+    const { rows } = await pool.query("SELECT * FROM documents WHERE id = ?", [insert.insertId]);
 
     res.status(201).json(toDocument({ ...rows[0], uploaded_by_name: req.user.member_code }));
   });
@@ -367,16 +377,16 @@ router.post("/students/:studentId/documents", (req, res) => {
 // ---- Messages --------------------------------------------------------
 
 async function getOrCreateChat(db, supervisorId, studentId) {
-  const { rows } = await db.query("SELECT id FROM chats WHERE supervisor_id = $1 AND student_id = $2", [
+  const { rows } = await db.query("SELECT id FROM chats WHERE supervisor_id = ? AND student_id = ?", [
     supervisorId,
     studentId,
   ]);
   if (rows.length) return rows[0].id;
-  const created = await db.query("INSERT INTO chats (supervisor_id, student_id) VALUES ($1, $2) RETURNING id", [
+  const created = await db.query("INSERT INTO chats (supervisor_id, student_id) VALUES (?, ?)", [
     supervisorId,
     studentId,
   ]);
-  return created.rows[0].id;
+  return created.insertId;
 }
 
 router.get(
@@ -391,7 +401,7 @@ router.get(
       `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM messages m
        LEFT JOIN supervisors sup ON sup.id = m.sender_id
        LEFT JOIN students st ON st.id = m.sender_id
-       WHERE m.chat_id = $1 ORDER BY m.created_at ASC`,
+       WHERE m.chat_id = ? ORDER BY m.created_at ASC`,
       [chatId]
     );
     res.json({ messages: rows.map((r) => toMessage(r, req.user.id)) });
@@ -411,12 +421,13 @@ router.post(
     }
 
     const chatId = await getOrCreateChat(db, req.user.id, studentId);
-    const { rows } = await db.query(
-      "INSERT INTO messages (chat_id, sender_id, content) VALUES ($1, $2, $3) RETURNING *",
+    const insert = await db.query(
+      "INSERT INTO messages (chat_id, sender_id, content) VALUES (?, ?, ?)",
       [chatId, req.user.id, content.trim()]
     );
-    await db.query("UPDATE chats SET last_message_at = now() WHERE id = $1", [chatId]);
+    await db.query("UPDATE chats SET last_message_at = NOW() WHERE id = ?", [chatId]);
 
+    const { rows } = await db.query("SELECT * FROM messages WHERE id = ?", [insert.insertId]);
     res.status(201).json(toMessage({ ...rows[0], sender_name: req.user.member_code }, req.user.id));
   })
 );
@@ -427,7 +438,7 @@ router.get(
   "/materials",
   asyncRoute(async (req, res, db) => {
     const { rows } = await db.query(
-      "SELECT * FROM learning_materials WHERE supervisor_id = $1 ORDER BY created_at DESC",
+      "SELECT * FROM learning_materials WHERE supervisor_id = ? ORDER BY created_at DESC",
       [req.user.id]
     );
     res.json({ materials: rows.map((r) => toMaterial({ ...r, supervisor_name: req.user.member_code })) });
@@ -445,11 +456,12 @@ router.post("/materials", (req, res) => {
       if (!title || !materialType) return res.status(400).json({ error: "title and materialType are required" });
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-      const { rows } = await pool.query(
+      const insert = await pool.query(
         `INSERT INTO learning_materials (supervisor_id, student_id, title, description, material_type, filename, original_name)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+         VALUES (?,?,?,?,?,?,?)`,
         [req.user.id, studentId || null, title, description || null, materialType, req.file.filename, req.file.originalname]
       );
+      const { rows } = await pool.query("SELECT * FROM learning_materials WHERE id = ?", [insert.insertId]);
       res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
     });
     return;
@@ -460,11 +472,12 @@ router.post("/materials", (req, res) => {
     if (!title || materialType !== "link" || !externalUrl) {
       return res.status(400).json({ error: "For non-file materials, materialType must be 'link' and externalUrl is required" });
     }
-    const { rows } = await pool.query(
+    const insert = await pool.query(
       `INSERT INTO learning_materials (supervisor_id, student_id, title, description, material_type, external_url)
-       VALUES ($1,$2,$3,$4,'link',$5) RETURNING *`,
+       VALUES (?,?,?,?,'link',?)`,
       [req.user.id, studentId || null, title, description || null, externalUrl]
     );
+    const { rows } = await pool.query("SELECT * FROM learning_materials WHERE id = ?", [insert.insertId]);
     res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
   })().catch((err) => res.status(500).json({ error: "Internal server error" }));
 });
@@ -472,11 +485,11 @@ router.post("/materials", (req, res) => {
 router.delete(
   "/materials/:materialId",
   asyncRoute(async (req, res, db) => {
-    const { rowCount } = await db.query("DELETE FROM learning_materials WHERE id = $1 AND supervisor_id = $2", [
+    const { affectedRows } = await db.query("DELETE FROM learning_materials WHERE id = ? AND supervisor_id = ?", [
       req.params.materialId,
       req.user.id,
     ]);
-    if (!rowCount) return res.status(404).json({ error: "Material not found" });
+    if (!affectedRows) return res.status(404).json({ error: "Material not found" });
     res.json({ success: true });
   })
 );
@@ -487,7 +500,7 @@ router.get(
   "/announcements",
   asyncRoute(async (req, res, db) => {
     const { rows } = await db.query(
-      "SELECT * FROM announcements WHERE supervisor_id = $1 ORDER BY created_at DESC",
+      "SELECT * FROM announcements WHERE supervisor_id = ? ORDER BY created_at DESC",
       [req.user.id]
     );
     res.json({ announcements: rows.map((r) => toAnnouncement({ ...r, supervisor_name: req.user.member_code })) });
@@ -500,10 +513,11 @@ router.post(
     const { title, content } = req.body || {};
     if (!title || !content) return res.status(400).json({ error: "title and content are required" });
 
-    const { rows } = await db.query(
-      "INSERT INTO announcements (supervisor_id, title, content) VALUES ($1, $2, $3) RETURNING *",
+    const insert = await db.query(
+      "INSERT INTO announcements (supervisor_id, title, content) VALUES (?, ?, ?)",
       [req.user.id, title, content]
     );
+    const { rows } = await db.query("SELECT * FROM announcements WHERE id = ?", [insert.insertId]);
     res.status(201).json(toAnnouncement({ ...rows[0], supervisor_name: req.user.member_code }));
   })
 );
@@ -511,11 +525,11 @@ router.post(
 router.delete(
   "/announcements/:announcementId",
   asyncRoute(async (req, res, db) => {
-    const { rowCount } = await db.query("DELETE FROM announcements WHERE id = $1 AND supervisor_id = $2", [
+    const { affectedRows } = await db.query("DELETE FROM announcements WHERE id = ? AND supervisor_id = ?", [
       req.params.announcementId,
       req.user.id,
     ]);
-    if (!rowCount) return res.status(404).json({ error: "Announcement not found" });
+    if (!affectedRows) return res.status(404).json({ error: "Announcement not found" });
     res.json({ success: true });
   })
 );
@@ -530,8 +544,8 @@ router.get(
        FROM sessions s
        JOIN students st ON st.id = s.student_id
        JOIN user_credentials uc ON uc.id = s.student_id
-       WHERE s.supervisor_id = $1 AND s.session_date >= CURRENT_DATE
-       ORDER BY s.session_date ASC, s.session_time ASC NULLS LAST`,
+       WHERE s.supervisor_id = ? AND s.session_date >= CURRENT_DATE
+       ORDER BY s.session_date ASC, (s.session_time IS NULL), s.session_time ASC`,
       [req.user.id]
     );
 
@@ -564,7 +578,7 @@ router.get(
       `SELECT al.action, al.created_at, st.full_name AS student_name
        FROM audit_logs al
        JOIN students st ON st.id = al.entity_id
-       WHERE al.actor_id = $1 AND al.entity_type IN (
+       WHERE al.actor_id = ? AND al.entity_type IN (
          'attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation'
        )
        ORDER BY al.created_at DESC LIMIT 15`,
@@ -599,8 +613,8 @@ router.get(
     const { rows } = await db.query(
       `SELECT m.*, st.full_name AS student_name FROM meetings m
        LEFT JOIN students st ON st.id = m.student_id
-       WHERE m.supervisor_id = $1
-       ORDER BY m.scheduled_at ASC NULLS LAST`,
+       WHERE m.supervisor_id = ?
+       ORDER BY (m.scheduled_at IS NULL), m.scheduled_at ASC`,
       [req.user.id]
     );
     res.json({ meetings: rows.map(toMeeting) });
@@ -619,17 +633,18 @@ router.post(
 
     if (studentId) {
       const { rows: assignRows } = await db.query(
-        "SELECT 1 FROM supervisor_students WHERE supervisor_id = $1 AND student_id = $2",
+        "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
         [req.user.id, studentId]
       );
-      if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this student" });
+      if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
     }
 
-    const { rows } = await db.query(
+    const insert = await db.query(
       `INSERT INTO meetings (supervisor_id, student_id, title, platform, meeting_url, scheduled_at, duration_minutes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+       VALUES (?,?,?,?,?,?,?)`,
       [req.user.id, studentId || null, title, platform, meetingUrl, scheduledAt || null, durationMinutes || null]
     );
+    const { rows } = await db.query("SELECT * FROM meetings WHERE id = ?", [insert.insertId]);
     res.status(201).json(toMeeting(rows[0]));
   })
 );
@@ -639,19 +654,19 @@ router.put(
   "/meetings/:id",
   asyncRoute(async (req, res, db) => {
     const meetingId = req.params.id;
-    const { rows: existingRows } = await db.query("SELECT * FROM meetings WHERE id = $1 AND supervisor_id = $2", [
+    const { rows: existingRows } = await db.query("SELECT * FROM meetings WHERE id = ? AND supervisor_id = ?", [
       meetingId,
       req.user.id,
     ]);
     if (!existingRows.length) return res.status(404).json({ error: "Meeting not found" });
 
     const { title, studentId, platform, meetingUrl, scheduledAt, durationMinutes } = req.body || {};
-    const { rows } = await db.query(
+    await db.query(
       `UPDATE meetings SET
-        title = COALESCE($1, title), student_id = $2, platform = COALESCE($3, platform),
-        meeting_url = COALESCE($4, meeting_url), scheduled_at = COALESCE($5, scheduled_at),
-        duration_minutes = COALESCE($6, duration_minutes), updated_at = now()
-       WHERE id = $7 RETURNING *`,
+        title = COALESCE(?, title), student_id = ?, platform = COALESCE(?, platform),
+        meeting_url = COALESCE(?, meeting_url), scheduled_at = COALESCE(?, scheduled_at),
+        duration_minutes = COALESCE(?, duration_minutes), updated_at = NOW()
+       WHERE id = ?`,
       [
         title ?? null,
         studentId !== undefined ? studentId || null : existingRows[0].student_id,
@@ -662,6 +677,7 @@ router.put(
         meetingId,
       ]
     );
+    const { rows } = await db.query("SELECT * FROM meetings WHERE id = ?", [meetingId]);
     res.json(toMeeting(rows[0]));
   })
 );
@@ -670,11 +686,11 @@ router.put(
 router.delete(
   "/meetings/:id",
   asyncRoute(async (req, res, db) => {
-    const { rowCount } = await db.query("DELETE FROM meetings WHERE id = $1 AND supervisor_id = $2", [
+    const { affectedRows } = await db.query("DELETE FROM meetings WHERE id = ? AND supervisor_id = ?", [
       req.params.id,
       req.user.id,
     ]);
-    if (!rowCount) return res.status(404).json({ error: "Meeting not found" });
+    if (!affectedRows) return res.status(404).json({ error: "Meeting not found" });
     res.json({ success: true });
   })
 );
@@ -707,13 +723,13 @@ router.get(
     let dateFilter = "";
     if (start && end) {
       params.push(start, end);
-      dateFilter = `AND ce.event_date BETWEEN $2 AND $3`;
+      dateFilter = `AND ce.event_date BETWEEN ? AND ?`;
     }
     const { rows } = await db.query(
       `SELECT ce.*, st.full_name AS student_name FROM calendar_events ce
        LEFT JOIN students st ON st.id = ce.student_id
-       WHERE ce.owner_id = $1 ${dateFilter}
-       ORDER BY ce.event_date ASC, ce.event_time ASC NULLS LAST`,
+       WHERE ce.owner_id = ? ${dateFilter}
+       ORDER BY ce.event_date ASC, (ce.event_time IS NULL), ce.event_time ASC`,
       params
     );
     res.json({ events: rows.map(toCalendarEvent) });
@@ -733,17 +749,18 @@ router.post(
 
     if (studentId) {
       const { rows: assignRows } = await db.query(
-        "SELECT 1 FROM supervisor_students WHERE supervisor_id = $1 AND student_id = $2",
+        "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
         [req.user.id, studentId]
       );
-      if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this student" });
+      if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
     }
 
-    const { rows } = await db.query(
+    const insert = await db.query(
       `INSERT INTO calendar_events (owner_id, student_id, event_type, title, description, event_date, event_time)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+       VALUES (?,?,?,?,?,?,?)`,
       [req.user.id, studentId || null, type, title, description || null, date, time || null]
     );
+    const { rows } = await db.query("SELECT * FROM calendar_events WHERE id = ?", [insert.insertId]);
     res.status(201).json(toCalendarEvent(rows[0]));
   })
 );
@@ -754,19 +771,20 @@ router.put(
   asyncRoute(async (req, res, db) => {
     const eventId = req.params.id;
     const { rows: existingRows } = await db.query(
-      "SELECT * FROM calendar_events WHERE id = $1 AND owner_id = $2",
+      "SELECT * FROM calendar_events WHERE id = ? AND owner_id = ?",
       [eventId, req.user.id]
     );
     if (!existingRows.length) return res.status(404).json({ error: "Event not found" });
 
     const { title, description, date, time } = req.body || {};
-    const { rows } = await db.query(
+    await db.query(
       `UPDATE calendar_events SET
-        title = COALESCE($1, title), description = COALESCE($2, description),
-        event_date = COALESCE($3, event_date), event_time = COALESCE($4, event_time)
-       WHERE id = $5 RETURNING *`,
+        title = COALESCE(?, title), description = COALESCE(?, description),
+        event_date = COALESCE(?, event_date), event_time = COALESCE(?, event_time)
+       WHERE id = ?`,
       [title ?? null, description ?? null, date ?? null, time ?? null, eventId]
     );
+    const { rows } = await db.query("SELECT * FROM calendar_events WHERE id = ?", [eventId]);
     res.json(toCalendarEvent(rows[0]));
   })
 );
@@ -775,11 +793,11 @@ router.put(
 router.delete(
   "/calendar-events/:id",
   asyncRoute(async (req, res, db) => {
-    const { rowCount } = await db.query("DELETE FROM calendar_events WHERE id = $1 AND owner_id = $2", [
+    const { affectedRows } = await db.query("DELETE FROM calendar_events WHERE id = ? AND owner_id = ?", [
       req.params.id,
       req.user.id,
     ]);
-    if (!rowCount) return res.status(404).json({ error: "Event not found" });
+    if (!affectedRows) return res.status(404).json({ error: "Event not found" });
     res.json({ success: true });
   })
 );

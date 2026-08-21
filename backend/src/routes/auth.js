@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const jwt = require("jsonwebtoken");
 const config = require("../config");
 const { pool } = require("../db");
@@ -17,7 +17,7 @@ router.post("/login", async (req, res, next) => {
     }
 
     const { rows } = await pool.query(
-      "SELECT id, member_code, password_hash, role, status, must_change_password FROM user_credentials WHERE member_code = $1",
+      "SELECT id, member_code, password_hash, role, status, must_change_password FROM user_credentials WHERE member_code = ?",
       [String(memberCode).trim().toUpperCase()]
     );
     const user = rows[0];
@@ -31,10 +31,10 @@ router.post("/login", async (req, res, next) => {
       return res.status(403).json({ error: "This account has been suspended. Contact your administrator." });
     }
 
-    await pool.query("UPDATE user_credentials SET last_login_at = now() WHERE id = $1", [user.id]);
+    await pool.query("UPDATE user_credentials SET last_login_at = NOW() WHERE id = ?", [user.id]);
     await pool.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'login', 'user_credentials', $1)",
-      [user.id]
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'login', 'user_credentials', ?)",
+      [user.id, user.id]
     );
 
     const token = jwt.sign({ id: user.id, role: user.role }, config.jwtSecret, {
@@ -68,7 +68,7 @@ router.post(
       return res.status(400).json({ error: "New password must be at least 8 characters" });
     }
 
-    const { rows } = await db.query("SELECT password_hash FROM user_credentials WHERE id = $1", [req.user.id]);
+    const { rows } = await db.query("SELECT password_hash FROM user_credentials WHERE id = ?", [req.user.id]);
     const valid = await verifyPassword(currentPassword || "", rows[0].password_hash);
     if (!valid) {
       return res.status(401).json({ error: "Current password is incorrect" });
@@ -76,12 +76,12 @@ router.post(
 
     const newHash = await hashPassword(newPassword);
     await db.query(
-      "UPDATE user_credentials SET password_hash = $1, must_change_password = FALSE, updated_at = now() WHERE id = $2",
+      "UPDATE user_credentials SET password_hash = ?, must_change_password = FALSE, updated_at = NOW() WHERE id = ?",
       [newHash, req.user.id]
     );
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'password_changed', 'user_credentials', $1)",
-      [req.user.id]
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'password_changed', 'user_credentials', ?)",
+      [req.user.id, req.user.id]
     );
 
     res.json({ success: true });

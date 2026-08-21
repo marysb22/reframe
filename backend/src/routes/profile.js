@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const { requireAuth, asyncRoute } = require("../middleware/auth");
 const {
   toProfileResponse,
@@ -19,18 +19,18 @@ const router = express.Router();
 
 router.use(requireAuth);
 
-// Works for any role -- admin, supervisor, and student dashboards all
-// call GET/PUT /profile/me, so this is intentionally generic rather than
-// three separate role-specific endpoints (see routes/admin.js -- an
+// Works for any role -- admin, supervisor, trainee, and designer dashboards
+// all call GET/PUT /profile/me, so this is intentionally generic rather
+// than four separate role-specific endpoints (see routes/admin.js -- an
 // earlier /admin/me duplicated this; removed in favor of this one).
 const PROFILE_SELECT = `
   SELECT
     uc.id, uc.member_code, uc.role, uc.status, uc.must_change_password,
     uc.created_at, uc.updated_at,
-    COALESCE(a.full_name, sup.full_name, st.full_name) AS full_name,
-    COALESCE(a.email, sup.email, st.email) AS email,
-    COALESCE(a.phone, sup.phone, st.phone) AS phone,
-    COALESCE(a.photo, sup.photo, st.photo) AS photo,
+    COALESCE(a.full_name, sup.full_name, st.full_name, d.full_name) AS full_name,
+    COALESCE(a.email, sup.email, st.email, d.email) AS email,
+    COALESCE(a.phone, sup.phone, st.phone, d.phone) AS phone,
+    COALESCE(a.photo, sup.photo, st.photo, d.photo) AS photo,
     st.gender, st.date_of_birth, st.marital_status, st.address,
     st.highest_degree, st.institution, st.certifications, st.cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year,
@@ -39,15 +39,29 @@ const PROFILE_SELECT = `
   LEFT JOIN admin_users a ON a.id = uc.id
   LEFT JOIN supervisors sup ON sup.id = uc.id
   LEFT JOIN students st ON st.id = uc.id
+  LEFT JOIN designers d ON d.id = uc.id
   LEFT JOIN cohorts c ON c.id = st.cohort_id
-  WHERE uc.id = $1
+  WHERE uc.id = ?
 `;
 
 function requireStudent(req, res, next) {
   if (req.user.role !== "trainee") {
-    return res.status(403).json({ error: "This endpoint is only available to student accounts" });
+    return res.status(403).json({ error: "This endpoint is only available to trainee accounts" });
   }
   next();
+}
+
+/** Maps a role to its 1:1 profile-extension table. */
+function profileTableForRole(role) {
+  if (role === "trainee") return "students";
+  if (role === "supervisor") return "supervisors";
+  if (role === "designer") return "designers";
+  return "admin_users";
+}
+
+/** Builds a `col IN (?,?,...)` fragment + matching params for a dynamic id list. */
+function inClause(ids) {
+  return { sql: ids.map(() => "?").join(","), params: ids };
 }
 
 // GET /api/profile/me
@@ -63,7 +77,7 @@ router.get(
       const { rows: supRows } = await db.query(
         `SELECT sup.id, sup.full_name FROM supervisor_students ss
          JOIN supervisors sup ON sup.id = ss.supervisor_id
-         WHERE ss.student_id = $1 ORDER BY sup.full_name`,
+         WHERE ss.student_id = ? ORDER BY sup.full_name`,
         [req.user.id]
       );
       profile.supervisors = supRows.map((r) => ({ id: r.id, full_name: r.full_name }));
@@ -96,10 +110,10 @@ router.put(
       return res.status(400).json({ error: "Full name is required" });
     }
 
-    const table = req.user.role === "trainee" ? "students" : req.user.role === "supervisor" ? "supervisors" : "admin_users";
+    const table = profileTableForRole(req.user.role);
 
     if (email) {
-      const { rows: existing } = await db.query(`SELECT id FROM ${table} WHERE email = $1 AND id != $2`, [
+      const { rows: existing } = await db.query(`SELECT id FROM ${table} WHERE email = ? AND id != ?`, [
         email,
         req.user.id,
       ]);
@@ -109,10 +123,10 @@ router.put(
     if (table === "students") {
       await db.query(
         `UPDATE students SET
-          full_name = $1, email = $2, gender = $3, date_of_birth = $4, marital_status = $5,
-          phone = $6, address = $7, highest_degree = $8, institution = $9, certifications = $10,
-          updated_at = now()
-         WHERE id = $11`,
+          full_name = ?, email = ?, gender = ?, date_of_birth = ?, marital_status = ?,
+          phone = ?, address = ?, highest_degree = ?, institution = ?, certifications = ?,
+          updated_at = NOW()
+         WHERE id = ?`,
         [
           full_name.trim(),
           email || null,
@@ -129,11 +143,16 @@ router.put(
       );
     } else if (table === "supervisors") {
       await db.query(
-        `UPDATE supervisors SET full_name = $1, email = $2, phone = $3, updated_at = now() WHERE id = $4`,
+        `UPDATE supervisors SET full_name = ?, email = ?, phone = ?, updated_at = NOW() WHERE id = ?`,
+        [full_name.trim(), email || null, phone || null, req.user.id]
+      );
+    } else if (table === "designers") {
+      await db.query(
+        `UPDATE designers SET full_name = ?, email = ?, phone = ?, updated_at = NOW() WHERE id = ?`,
         [full_name.trim(), email || null, phone || null, req.user.id]
       );
     } else {
-      await db.query(`UPDATE admin_users SET full_name = $1, email = $2, phone = $3, updated_at = now() WHERE id = $4`, [
+      await db.query(`UPDATE admin_users SET full_name = ?, email = ?, phone = ?, updated_at = NOW() WHERE id = ?`, [
         full_name.trim(),
         email || null,
         phone || null,
@@ -142,8 +161,8 @@ router.put(
     }
 
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'profile_updated', $2, $1)",
-      [req.user.id, table]
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'profile_updated', ?, ?)",
+      [req.user.id, table, req.user.id]
     );
 
     const { rows } = await db.query(PROFILE_SELECT, [req.user.id]);
@@ -165,19 +184,19 @@ router.post(
       return res.status(400).json({ error: "New password must be at least 8 characters" });
     }
 
-    const { rows } = await db.query("SELECT password_hash FROM user_credentials WHERE id = $1", [req.user.id]);
+    const { rows } = await db.query("SELECT password_hash FROM user_credentials WHERE id = ?", [req.user.id]);
     if (!(await verifyPassword(currentPassword, rows[0].password_hash))) {
       return res.status(401).json({ error: "Current password is incorrect" });
     }
 
     const newHash = await hashPassword(newPassword);
     await db.query(
-      "UPDATE user_credentials SET password_hash = $1, must_change_password = FALSE, updated_at = now() WHERE id = $2",
+      "UPDATE user_credentials SET password_hash = ?, must_change_password = FALSE, updated_at = NOW() WHERE id = ?",
       [newHash, req.user.id]
     );
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'password_changed', 'user_credentials', $1)",
-      [req.user.id]
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'password_changed', 'user_credentials', ?)",
+      [req.user.id, req.user.id]
     );
 
     res.json({ success: true, message: "Password updated successfully" });
@@ -190,9 +209,9 @@ router.post("/photo", requireAuth, (req, res) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No photo uploaded" });
 
-    const table = req.user.role === "trainee" ? "students" : req.user.role === "supervisor" ? "supervisors" : "admin_users";
+    const table = profileTableForRole(req.user.role);
     const { pool } = require("../db");
-    await pool.query(`UPDATE ${table} SET photo = $1, updated_at = now() WHERE id = $2`, [
+    await pool.query(`UPDATE ${table} SET photo = ?, updated_at = NOW() WHERE id = ?`, [
       req.file.filename,
       req.user.id,
     ]);
@@ -201,14 +220,14 @@ router.post("/photo", requireAuth, (req, res) => {
   });
 });
 
-// POST /api/profile/cv  (multipart, field "cv") -- students only
+// POST /api/profile/cv  (multipart, field "cv") -- trainees only
 router.post("/cv", requireStudent, (req, res) => {
   cvUpload.single("cv")(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No CV uploaded" });
 
     const { pool } = require("../db");
-    await pool.query("UPDATE students SET cv_file = $1, updated_at = now() WHERE id = $2", [
+    await pool.query("UPDATE students SET cv_file = ?, updated_at = NOW() WHERE id = ?", [
       req.file.filename,
       req.user.id,
     ]);
@@ -217,10 +236,10 @@ router.post("/cv", requireStudent, (req, res) => {
   });
 });
 
-// ---- Student Sub-resources -------------------------------------------
+// ---- Trainee Sub-resources -------------------------------------------
 
 // POST /api/profile/records/:id/submission  (multipart, field "submission")
-// The one previously-missing piece: a student submitting a file back for
+// The one previously-missing piece: a trainee submitting a file back for
 // an assignment. :id is the assignment's real id in the `assignments`
 // table (matches what /profile/records already returns for recordType
 // === 'assignment'). Also flips the assignment's own status to
@@ -235,7 +254,7 @@ router.post("/records/:id/submission", requireStudent, (req, res) => {
 
     try {
       const { rows: assignmentRows } = await pool.query(
-        "SELECT id, student_id FROM assignments WHERE id = $1",
+        "SELECT id, student_id FROM assignments WHERE id = ?",
         [assignmentId]
       );
       if (!assignmentRows.length) {
@@ -245,20 +264,22 @@ router.post("/records/:id/submission", requireStudent, (req, res) => {
         return res.status(403).json({ error: "This assignment doesn't belong to you" });
       }
 
-      const { rows } = await pool.query(
+      const insert = await pool.query(
         `INSERT INTO assignment_submissions (assignment_id, student_id, filename, original_name, notes)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+         VALUES (?, ?, ?, ?, ?)`,
         [assignmentId, req.user.id, req.file.filename, req.file.originalname, req.body?.notes || null]
       );
 
-      await pool.query("UPDATE assignments SET status = 'submitted', updated_at = now() WHERE id = $1", [
+      await pool.query("UPDATE assignments SET status = 'submitted', updated_at = NOW() WHERE id = ?", [
         assignmentId,
       ]);
 
       await pool.query(
-        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'assignment_submitted', 'assignment_submissions', $2)",
-        [req.user.id, rows[0].id]
+        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'assignment_submitted', 'assignment_submissions', ?)",
+        [req.user.id, insert.insertId]
       );
+
+      const { rows } = await pool.query("SELECT * FROM assignment_submissions WHERE id = ?", [insert.insertId]);
 
       res.status(201).json({
         success: true,
@@ -282,27 +303,26 @@ router.get(
   requireStudent,
   asyncRoute(async (req, res, db) => {
     const { type, supervisorId } = req.query;
-    const params = type ? [req.user.id, type] : [req.user.id];
-    let query = buildRecordsQuery(type);
+    const rq = buildRecordsQuery(req.user.id, type);
+    let { sql, params } = rq;
     if (supervisorId) {
       // Wrap the UNION query and filter by supervisor -- keeps
       // buildRecordsQuery() itself untouched for the other callers
       // (supervisor.js) that don't need this filter. Re-apply ORDER BY
       // on the outer query since ordering inside a subquery isn't
-      // guaranteed to survive without it.
-      query = `SELECT * FROM (${query}) AS filtered WHERE supervisor_id = $${params.length + 1} ORDER BY record_date DESC NULLS LAST`;
-      params.push(supervisorId);
+      // guaranteed to survive without it. MySQL's default DESC already
+      // sorts NULL record_date last, same as Postgres's DESC NULLS LAST.
+      sql = `SELECT * FROM (${sql}) AS filtered WHERE supervisor_id = ? ORDER BY record_date DESC`;
+      params = [...params, supervisorId];
     }
-    const { rows } = await db.query(query, params);
+    const { rows } = await db.query(sql, params);
 
     // Attach supervisor names (the UNION query only carries supervisor_id)
-    const supIds = [...new Set(rows.map((r) => r.supervisor_id))];
+    const supIds = [...new Set(rows.map((r) => r.supervisor_id).filter((x) => x != null))];
     const names = {};
     if (supIds.length) {
-      const { rows: supRows } = await db.query(
-        `SELECT id, full_name FROM supervisors WHERE id = ANY($1)`,
-        [supIds]
-      );
+      const { sql: idSql, params: idParams } = inClause(supIds);
+      const { rows: supRows } = await db.query(`SELECT id, full_name FROM supervisors WHERE id IN (${idSql})`, idParams);
       supRows.forEach((r) => (names[r.id] = r.full_name));
     }
 
@@ -329,7 +349,7 @@ router.get(
     let filter = "";
     if (supervisorId) {
       params.push(supervisorId);
-      filter = `AND d.uploaded_by = $2`;
+      filter = `AND d.uploaded_by = ?`;
     }
     const { rows } = await db.query(
       `SELECT d.*, COALESCE(a.full_name, sup.full_name) AS uploaded_by_name
@@ -337,7 +357,7 @@ router.get(
        JOIN user_credentials uc ON uc.id = d.uploaded_by
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE d.student_id = $1 ${filter} ORDER BY d.created_at DESC`,
+       WHERE d.student_id = ? ${filter} ORDER BY d.created_at DESC`,
       params
     );
     res.json({ documents: rows.map(toDocument) });
@@ -348,15 +368,15 @@ router.get(
 
 async function getOrCreateChat(db, supervisorId, studentId) {
   const { rows } = await db.query(
-    "SELECT id FROM chats WHERE supervisor_id = $1 AND student_id = $2",
+    "SELECT id FROM chats WHERE supervisor_id = ? AND student_id = ?",
     [supervisorId, studentId]
   );
   if (rows.length) return rows[0].id;
   const created = await db.query(
-    "INSERT INTO chats (supervisor_id, student_id) VALUES ($1, $2) RETURNING id",
+    "INSERT INTO chats (supervisor_id, student_id) VALUES (?, ?)",
     [supervisorId, studentId]
   );
-  return created.rows[0].id;
+  return created.insertId;
 }
 
 // GET /api/profile/messages/:supervisorId
@@ -370,7 +390,7 @@ router.get(
       `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM messages m
        LEFT JOIN supervisors sup ON sup.id = m.sender_id
        LEFT JOIN students st ON st.id = m.sender_id
-       WHERE m.chat_id = $1 ORDER BY m.created_at ASC`,
+       WHERE m.chat_id = ? ORDER BY m.created_at ASC`,
       [chatId]
     );
     res.json({ messages: rows.map((r) => toMessage(r, req.user.id)) });
@@ -388,16 +408,17 @@ router.post(
       return res.status(400).json({ error: "Message content is required" });
     }
 
-    const { rows: supRows } = await db.query("SELECT id FROM supervisors WHERE id = $1", [supervisorId]);
+    const { rows: supRows } = await db.query("SELECT id FROM supervisors WHERE id = ?", [supervisorId]);
     if (!supRows.length) return res.status(404).json({ error: "Supervisor not found" });
 
     const chatId = await getOrCreateChat(db, supervisorId, req.user.id);
-    const { rows } = await db.query(
-      "INSERT INTO messages (chat_id, sender_id, content) VALUES ($1, $2, $3) RETURNING *",
+    const insert = await db.query(
+      "INSERT INTO messages (chat_id, sender_id, content) VALUES (?, ?, ?)",
       [chatId, req.user.id, content.trim()]
     );
-    await db.query("UPDATE chats SET last_message_at = now() WHERE id = $1", [chatId]);
+    await db.query("UPDATE chats SET last_message_at = NOW() WHERE id = ?", [chatId]);
 
+    const { rows } = await db.query("SELECT * FROM messages WHERE id = ?", [insert.insertId]);
     res.status(201).json(toMessage({ ...rows[0], sender_name: req.user.member_code }, req.user.id));
   })
 );
@@ -408,17 +429,17 @@ router.get(
   requireStudent,
   asyncRoute(async (req, res, db) => {
     const { supervisorId } = req.query;
-    const params = [req.user.id];
+    const params = [req.user.id, req.user.id];
     let filter = "";
     if (supervisorId) {
       params.push(supervisorId);
-      filter = "AND lm.supervisor_id = $2";
+      filter = "AND lm.supervisor_id = ?";
     }
     const { rows } = await db.query(
       `SELECT lm.*, sup.full_name AS supervisor_name FROM learning_materials lm
        JOIN supervisors sup ON sup.id = lm.supervisor_id
-       WHERE lm.supervisor_id IN (SELECT supervisor_id FROM supervisor_students WHERE student_id = $1)
-         AND (lm.student_id IS NULL OR lm.student_id = $1)
+       WHERE lm.supervisor_id IN (SELECT supervisor_id FROM supervisor_students WHERE student_id = ?)
+         AND (lm.student_id IS NULL OR lm.student_id = ?)
          ${filter}
        ORDER BY lm.created_at DESC`,
       params
@@ -433,17 +454,17 @@ router.get(
   requireStudent,
   asyncRoute(async (req, res, db) => {
     const { supervisorId } = req.query;
-    const params = [req.user.id];
+    const params = [req.user.id, req.user.id];
     let filter = "";
     if (supervisorId) {
       params.push(supervisorId);
-      filter = "AND a.supervisor_id = $2";
+      filter = "AND a.supervisor_id = ?";
     }
     const { rows } = await db.query(
       `SELECT a.*, sup.full_name AS supervisor_name FROM announcements a
        JOIN supervisors sup ON sup.id = a.supervisor_id
-       WHERE a.supervisor_id IN (SELECT supervisor_id FROM supervisor_students WHERE student_id = $1)
-         AND (a.cohort_id IS NULL OR a.cohort_id = (SELECT cohort_id FROM students WHERE id = $1))
+       WHERE a.supervisor_id IN (SELECT supervisor_id FROM supervisor_students WHERE student_id = ?)
+         AND (a.cohort_id IS NULL OR a.cohort_id = (SELECT cohort_id FROM students WHERE id = ?))
          ${filter}
        ORDER BY a.created_at DESC`,
       params
@@ -453,19 +474,18 @@ router.get(
 );
 
 // GET /api/profile/payments — my own summary + history, read-only.
-// Runs through the RLS-context-setting transactional client, same as
-// the Admin payments routes -- the "student_id = current_user_id" policy
-// is what actually restricts this to the caller's own row.
+// Restricted to the caller's own student_id by the WHERE clause itself
+// (there is no Row-Level Security in MySQL to lean on for this).
 router.get(
   "/payments",
   requireStudent,
   asyncRoute(async (req, res, db) => {
-    const { rows: paymentsRows } = await db.query("SELECT * FROM payments WHERE student_id = $1", [req.user.id]);
+    const { rows: paymentsRows } = await db.query("SELECT * FROM payments WHERE student_id = ?", [req.user.id]);
     const { rows: transactions } = await db.query(
       `SELECT pt.*, COALESCE(a.full_name, sup.full_name) AS added_by_name FROM payment_transactions pt
        LEFT JOIN admin_users a ON a.id = pt.added_by
        LEFT JOIN supervisors sup ON sup.id = pt.added_by
-       WHERE pt.student_id = $1 ORDER BY pt.payment_date DESC, pt.created_at DESC`,
+       WHERE pt.student_id = ? ORDER BY pt.payment_date DESC, pt.created_at DESC`,
       [req.user.id]
     );
 
@@ -481,7 +501,7 @@ router.get(
   "/activity",
   asyncRoute(async (req, res, db) => {
     const { rows } = await db.query(
-      "SELECT action, created_at FROM audit_logs WHERE actor_id = $1 ORDER BY created_at DESC LIMIT 20",
+      "SELECT action, created_at FROM audit_logs WHERE actor_id = ? ORDER BY created_at DESC LIMIT 20",
       [req.user.id]
     );
     res.json(rows);
@@ -496,18 +516,18 @@ router.get(
   requireStudent,
   asyncRoute(async (req, res, db) => {
     const { supervisorId } = req.query;
-    const params = [req.user.id];
+    const params = [req.user.id, req.user.id];
     let filter = "";
     if (supervisorId) {
       params.push(supervisorId);
-      filter = "AND m.supervisor_id = $2";
+      filter = "AND m.supervisor_id = ?";
     }
     const { rows } = await db.query(
       `SELECT m.* FROM meetings m
-       WHERE m.supervisor_id IN (SELECT supervisor_id FROM supervisor_students WHERE student_id = $1)
-         AND (m.student_id IS NULL OR m.student_id = $1)
+       WHERE m.supervisor_id IN (SELECT supervisor_id FROM supervisor_students WHERE student_id = ?)
+         AND (m.student_id IS NULL OR m.student_id = ?)
          ${filter}
-       ORDER BY m.scheduled_at ASC NULLS LAST`,
+       ORDER BY (m.scheduled_at IS NULL), m.scheduled_at ASC`,
       params
     );
     res.json({
