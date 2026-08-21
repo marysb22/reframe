@@ -19,19 +19,20 @@
  */
 async function generateNextId(client, prefix) {
   const { rows } = await client.query(
-    "SELECT last_number FROM id_counters WHERE prefix = $1 FOR UPDATE",
+    "SELECT last_number FROM id_counters WHERE prefix = ? FOR UPDATE",
     [prefix]
   );
 
   if (!rows.length) {
     // First ID ever issued for this prefix -- seed the counter row.
-    await client.query("INSERT INTO id_counters (prefix, last_number) VALUES ($1, 0)", [prefix]);
+    await client.query("INSERT INTO id_counters (prefix, last_number) VALUES (?, 0)", [prefix]);
   }
 
-  const { rows: updated } = await client.query(
-    "UPDATE id_counters SET last_number = last_number + 1 WHERE prefix = $1 RETURNING last_number",
-    [prefix]
-  );
+  // MySQL has no RETURNING clause -- UPDATE, then SELECT the row back.
+  // Still race-safe: the FOR UPDATE above already holds this row's lock
+  // for the rest of the transaction.
+  await client.query("UPDATE id_counters SET last_number = last_number + 1 WHERE prefix = ?", [prefix]);
+  const { rows: updated } = await client.query("SELECT last_number FROM id_counters WHERE prefix = ?", [prefix]);
 
   const number = updated[0].last_number;
   return `${prefix}${String(number).padStart(3, "0")}`;

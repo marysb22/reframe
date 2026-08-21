@@ -1,127 +1,69 @@
-const express = require("express");
+﻿const express = require("express");
 const cors = require("cors");
 const path = require("path");
-
-const config = require("../config");
+const config = require("./config");
 
 const app = express();
 
-// =====================================================
-// BASIC CONFIG
-// =====================================================
-
-const PORT = Number(process.env.PORT) || Number(config.port) || 3000;
-
-// =====================================================
-// MIDDLEWARE
-// =====================================================
-
+// Without this, every browser-based page (login.html, the dashboards,
+// anything served from a different origin than the API itself -- e.g.
+// a Live Server on 127.0.0.1:5500 calling an API on localhost:3000)
+// gets silently blocked by the browser before the request even leaves,
+// surfacing as a generic "could not reach the server" error. Tools like
+// curl/Invoke-RestMethod/node-fetch aren't subject to CORS at all, which
+// is why this gap didn't show up until an actual browser hit the API.
+// Bearer-token auth (no cookies) means an open origin policy carries the
+// usual CORS risk profile, not a cookie-CSRF one -- still, tighten
+// `origin` to your real frontend's exact URL before deploying anywhere
+// public.
 app.use(
-    cors({
-        origin: true,
-        credentials: true,
-    })
+  cors({
+    origin: true,
+    credentials: true,
+  })
 );
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Request logger
+// Temporary debug logging -- prints every incoming request to the
+// terminal so it's obvious whether the browser's request is even
+// reaching the server at all, vs. being blocked client-side (CORS, a
+// JS error before the fetch call, wrong URL, etc.). Safe to remove
+// later once things are confirmed working.
 app.use((req, res, next) => {
-    const start = Date.now();
-
+  const start = Date.now();
+  console.log(`[${new Date().toISOString()}] --> ${req.method} ${req.originalUrl}`);
+  res.on("finish", () => {
     console.log(
-        `[${new Date().toISOString()}] --> ${req.method} ${req.originalUrl}`
+      `[${new Date().toISOString()}] <-- ${req.method} ${req.originalUrl} : ${res.statusCode} (${Date.now() - start}ms)`
     );
-
-    res.on("finish", () => {
-        console.log(
-            `[${new Date().toISOString()}] <-- ${req.method} ${req.originalUrl} : ${res.statusCode} (${Date.now() - start}ms)`
-        );
-    });
-
-    next();
+  });
+  next();
 });
 
-const publicPath = path.join(__dirname, "../public");
-
-const uploadsPath = path.join(__dirname, "../uploads");
-
-console.log("Serving static files from:", publicPath);
-
-// Uploaded files
-app.use("/uploads", express.static(uploadsPath));
-
-// Frontend
-app.use(express.static(publicPath));
-
-// =====================================================
-// API ROUTES
-// =====================================================
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/profile", require("./routes/profile"));
 app.use("/api/supervisor", require("./routes/supervisor"));
 app.use("/api/designer", require("./routes/designer"));
-app.use("/api/events", require("./routes/events"));
-app.use("/api/admin", require("./routes/group"));
+app.use("/api", require("./routes/public"));
 
-// =====================================================
-// HEALTH CHECK
-// =====================================================
+app.get("/api/health", (req, res) => res.json({ ok: true }));
 
-app.get("/api/health", (req, res) => {
-    res.status(200).json({
-        ok: true,
-        environment: process.env.NODE_ENV || "development",
-        port: PORT,
-    });
-});
-
-// =====================================================
-// ROOT ROUTE
-// =====================================================
-
-// Explicitly serve index.html
-app.get("/", (req, res) => {
-    res.sendFile(path.join(publicPath, "index.html"));
-});
-
-// =====================================================
-// 404 API HANDLER
-// =====================================================
-
-app.use("/api", (req, res) => {
-    res.status(404).json({
-        error: "API endpoint not found",
-        method: req.method,
-        path: req.originalUrl,
-    });
-});
-
-// =====================================================
-// ERROR HANDLER
-// =====================================================
-
+// Centralized error handler -- every asyncRoute() failure lands here.
+// Full error detail (including raw DB errors) is logged server-side only;
+// the client gets a generic message. Returning err.message to the client
+// is a real information-disclosure risk (DB structure, internal paths,
+// query text can leak through driver error messages) and was only ever
+// meant to be a temporary local-debugging aid -- removed before this is
+// anywhere near a real deployment.
 app.use((err, req, res, next) => {
-    console.error("SERVER ERROR:", err);
-
-    res.status(500).json({
-        error: "Internal server error",
-        message: err && err.message ? err.message : String(err),
-    });
+  console.error(err);
+  res.status(500).json({ error: "Internal server error" });
 });
 
-// =====================================================
-// START SERVER
-// =====================================================
-
-app.listen(PORT, "0.0.0.0", () => {
-    console.log("========================================");
-    console.log("Reframe MHS server started");
-    console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-    console.log(`Port: ${PORT}`);
-    console.log(`Public directory: ${publicPath}`);
-    console.log("========================================");
+app.listen(config.port, () => {
+  console.log(`API listening on :${config.port}`);
 });

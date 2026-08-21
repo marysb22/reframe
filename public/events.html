@@ -684,14 +684,15 @@
   <!-- ================= SCRIPTS ================= -->
   <script src="scripts/translations.js"></script>
   <script src="scripts/main.js"></script>
+  <script src="scripts/api-config.js"></script>
 
   <script>
     // ---------------------------------------------------------------
     // Events + Calendar data now come from the real backend instead of
     // the old static content/events.json file.
     // ---------------------------------------------------------------
-    const EVENTS_API = "http://localhost:3000/api/events";
-    const BACKEND_ORIGIN = "http://localhost:3000";
+    const EVENTS_API = window.API_BASE + "/api/events";
+    const BACKEND_ORIGIN = window.API_BASE;
 
     // Uploaded event images come back as "/uploads/events/xxx.png" and
     // need the backend host prefixed. Manually-set paths like

@@ -1,43 +1,55 @@
 -- =============================================================================
--- Reframe MHS System -- PostgreSQL Database Schema
+-- Reframe MHS System -- MySQL 8.0 Database Schema
 -- =============================================================================
--- Target: PostgreSQL 14+
+-- Target: MySQL 8.0+ (Hostinger / phpMyAdmin compatible). No PostgreSQL
+-- dependencies of any kind -- no extensions, no Row-Level Security, no
+-- Postgres-only types or functions.
 -- Scope: SQL ONLY. No routes, controllers, or application logic.
--- Run against an empty database, top to bottom.
+-- Import against an empty database, top to bottom, e.g.:
+--   mysql -u <user> -p <database> < reframe_mhs_schema.sql
+-- or via Hostinger's phpMyAdmin "Import" tab.
 --
 -- DESIGN NOTES (read before altering):
 --
 -- 1. IDENTITY MODEL
 --    `user_credentials` is the single authentication table for every human
---    in the system (admin, supervisor, student). Login always starts here.
---    `admin_users`, `supervisors`, and `students` each 1:1-extend a
---    credential row and SHARE ITS PRIMARY KEY (students.id IS
---    user_credentials.id for that person, not a separate surrogate key).
---    This means:
+--    in the system (admin, master trainer / trainer-in-training, trainee,
+--    designer). Login always starts here. `admin_users`, `supervisors`,
+--    `students`, and `designers` each 1:1-extend a credential row and
+--    SHARE ITS PRIMARY KEY (students.id IS user_credentials.id for that
+--    person, not a separate surrogate key). This means:
 --      - Any "who did this" column (message sender, payment recorder,
 --        document uploader, audit actor) can be a single FK to
 --        user_credentials(id), regardless of that person's role.
 --      - Any "whose training data is this" column (sessions, assignments,
 --        attendance) is a FK to the specific role table (students.id),
---        since only students have training records.
+--        since only trainees have training records.
 --    INVARIANT (enforced by convention, not a DB constraint): a
 --    user_credentials row with role = 'trainee' must have exactly one
 --    matching row in `students` with the same id, created in the same
 --    transaction. Same for 'supervisor' -> supervisors, 'admin' ->
---    admin_users. A cross-table CHECK isn't expressible in vanilla SQL;
---    enforce this at the application's account-creation transaction.
+--    admin_users, 'designer' -> designers. A cross-table CHECK isn't
+--    expressible in vanilla SQL; enforce this at the application's
+--    account-creation transaction.
 --
 -- 2. MONEY
 --    All monetary columns are integer *_cents to avoid floating-point
 --    rounding, matching the convention already used in this system's
---    existing application code. Divide by 100 only when displaying.
+--    application code. Divide by 100 only when displaying.
 --
 -- 3. IDS
---    Internal primary keys are BIGSERIAL/SERIAL integers. The human-facing
+--    Internal primary keys are AUTO_INCREMENT integers. The human-facing
 --    login ID (e.g. "TTR001", "SUP004", "ADM001") lives in
 --    user_credentials.member_code and is generated via id_counters.
 --
--- 4. CALENDAR
+-- 4. NAMING: `groups` is a RESERVED WORD in MySQL 8 (added for window-frame
+--    syntax) -- an unquoted `CREATE TABLE groups (...)` fails outright.
+--    Renamed to `trainer_groups` throughout the schema and application
+--    rather than backtick-quoting every reference, which is easy to miss
+--    in application code. A "Group" is still 1 Master Trainer + 2 Trainers
+--    (ToT) + their Trainees, created together as one unit by Admin.
+--
+-- 5. CALENDAR
 --    `calendar_events` is a real, queryable table (not a view) so a single
 --    date-range query can drive a month calendar without UNIONing
 --    sessions + meetings + assignment deadlines at query time. Populating
@@ -45,23 +57,34 @@
 --    responsibility (or add triggers later) -- deliberately not built
 --    here to keep this script pure schema, not business logic.
 --
--- 5. ROW-LEVEL SECURITY
---    RLS policies are included at the bottom for payment and health-info
---    tables (requirement: payments = Admin only, Student = read-only,
---    Supervisor = no access; health info = restricted). These are inert
---    until the application sets `app.current_user_id` and `app.user_role`
---    per session/transaction -- see the RLS section for the exact calls
---    required. The schema is fully correct and usable without RLS enabled;
---    it's an additional defense-in-depth layer, not a replacement for
---    application-level authorization checks.
+-- 6. AUTHORIZATION (no Row-Level Security)
+--    MySQL has no RLS equivalent, and Hostinger's shared MySQL doesn't
+--    support one anyway. Every route that touches payments/health-info/
+--    account-management tables is gated at the Express layer instead
+--    (requireAuth + requireAdmin/requireSupervisor middleware, plus
+--    explicit `WHERE student_id = ...` / caseload-membership checks in
+--    the query itself for a Master Trainer/Trainer's own students). This
+--    was already how authorization was actually enforced even under the
+--    old Postgres+RLS design (RLS was documented there as
+--    "additional... not a replacement for application-level checks") --
+--    so nothing about the real access-control behavior changes here.
+--
+-- 7. updated_at AUTO-MAINTENANCE
+--    Every `updated_at` column uses MySQL's native
+--    `DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` instead of a
+--    trigger -- simpler than Postgres's per-table trigger function and
+--    requires no procedural SQL block.
+--
+-- 8. CHECK CONSTRAINTS
+--    MySQL enforces CHECK constraints as of 8.0.16 (Hostinger's MySQL 8.0
+--    offerings are all newer than this). If your specific host runs an
+--    older 8.0.x below .16, CHECK clauses are parsed but silently not
+--    enforced -- validate critical values (roles, statuses) at the
+--    application layer too, which this codebase already does.
 -- =============================================================================
 
-
--- =============================================================================
--- SECTION 0: EXTENSIONS
--- =============================================================================
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid() available if ever needed
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 
 
 -- =============================================================================
@@ -69,11 +92,10 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid() available if ever
 -- =============================================================================
 
 CREATE TABLE id_counters (
-  prefix       TEXT PRIMARY KEY,             -- 'TTR', 'SUP', 'ADM'
-  last_number  INTEGER NOT NULL DEFAULT 0 CHECK (last_number >= 0)
-);
-COMMENT ON TABLE id_counters IS
-  'Tracks the last number issued per member_code prefix so IDs (TTR001, TTR002, ...) never collide. Increment atomically inside the same transaction that inserts the new user_credentials row.';
+  prefix       VARCHAR(10) PRIMARY KEY,        -- 'TTR', 'SUP', 'ADM', 'DES'
+  last_number  INT NOT NULL DEFAULT 0 CHECK (last_number >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Tracks the last number issued per member_code prefix so IDs (TTR001, TTR002, ...) never collide. Increment atomically inside the same transaction that inserts the new user_credentials row.';
 
 
 -- =============================================================================
@@ -81,86 +103,136 @@ COMMENT ON TABLE id_counters IS
 -- =============================================================================
 
 CREATE TABLE user_credentials (
-  id                     BIGSERIAL PRIMARY KEY,
-  member_code            TEXT NOT NULL UNIQUE,
-  password_hash          TEXT NOT NULL,
-  role                   TEXT NOT NULL CHECK (role IN ('trainee', 'supervisor', 'admin')),
-  status                 TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended')),
+  id                     BIGINT AUTO_INCREMENT PRIMARY KEY,
+  member_code            VARCHAR(20) NOT NULL UNIQUE,
+  password_hash          VARCHAR(255) NOT NULL,
+  role                   VARCHAR(20) NOT NULL CHECK (role IN ('trainee', 'supervisor', 'admin', 'designer')),
+  status                 VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended')),
   must_change_password   BOOLEAN NOT NULL DEFAULT TRUE,
-  last_login_at          TIMESTAMPTZ,
-  created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE user_credentials IS
-  'Single auth table for every role. Login always starts here; role determines which profile table (admin_users/supervisors/students) to join.';
+  last_login_at          DATETIME,
+  created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Single auth table for every role. Login always starts here; role determines which profile table (admin_users/supervisors/students/designers) to join.';
 
 CREATE TABLE cohorts (
-  id            SERIAL PRIMARY KEY,
-  name          TEXT NOT NULL UNIQUE,
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  name          VARCHAR(255) NOT NULL UNIQUE,
   start_date    DATE,
   end_date      DATE,
   description   TEXT,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE admin_users (
-  id            BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
-  full_name     TEXT NOT NULL,
-  email         TEXT UNIQUE,
-  phone         TEXT,
-  photo         TEXT,                        -- stored filename in uploads/photos
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE admin_users IS
-  'Profile extension of user_credentials for role = admin. One static/seeded admin account per requirement #5; more can be added later, still Admin-only creatable.';
+  id            BIGINT PRIMARY KEY,
+  full_name     VARCHAR(255) NOT NULL,
+  email         VARCHAR(255) UNIQUE,
+  phone         VARCHAR(50),
+  photo         VARCHAR(255),                  -- stored filename in uploads/photos
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_admin_users_credentials FOREIGN KEY (id) REFERENCES user_credentials(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Profile extension of user_credentials for role = admin. One static/seeded admin account per requirement #5; more can be added later, still Admin-only creatable.';
+
+CREATE TABLE designers (
+  id            BIGINT PRIMARY KEY,
+  full_name     VARCHAR(255) NOT NULL,
+  email         VARCHAR(255) UNIQUE,
+  phone         VARCHAR(50),
+  photo         VARCHAR(255),
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_designers_credentials FOREIGN KEY (id) REFERENCES user_credentials(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Profile extension of user_credentials for role = designer. Owns the public-site events they create (see events.created_by). Not created by Admin through the Groups flow -- a separate, self-contained account with its own login and password change, no access to trainee/finance/account-management features.';
+
+-- supervisor_type / primary_supervisor_id encode the required hierarchy
+-- (the "supervisor" role is displayed everywhere in the UI as either
+-- Master Trainer or Trainer (ToT) -- the word "Supervisor" itself is
+-- internal-only, never user-facing):
+--   Admin
+--     -> Master Trainer     (supervisor_type = 'primary', primary_supervisor_id IS NULL)
+--          -> Trainer 1 (ToT)  (supervisor_type = 'in_training', primary_supervisor_id = the Master Trainer's id)
+--          -> Trainer 2 (ToT)  (supervisor_type = 'in_training', primary_supervisor_id = the Master Trainer's id)
+-- Both Trainers (ToT) point directly at the same Master Trainer row --
+-- never at each other -- so there is no way to represent one reporting to
+-- the other. A trainer_group is the unit Admin actually creates: 1 Master
+-- Trainer + 2 Trainers (ToT) + their Trainees, all in one operation, all
+-- sharing this group_id.
+CREATE TABLE trainer_groups (
+  id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name          VARCHAR(255) NOT NULL UNIQUE,
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='A Group = 1 Master Trainer + 2 Trainers (ToT) + their Trainees, created together as one unit by Admin. See supervisors.group_id / students.group_id. Named trainer_groups, not groups, because GROUPS is a reserved word in MySQL 8.';
 
 CREATE TABLE supervisors (
-  id                BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
-  full_name         TEXT NOT NULL,
-  email             TEXT UNIQUE,
-  phone             TEXT,
-  photo             TEXT,
-  bio               TEXT,
-  specialization    TEXT,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE supervisors IS
-  'Profile extension of user_credentials for role = supervisor. Only Admin creates these rows.';
+  id                     BIGINT PRIMARY KEY,
+  full_name              VARCHAR(255) NOT NULL,
+  email                  VARCHAR(255) UNIQUE,
+  phone                  VARCHAR(50),
+  photo                  VARCHAR(255),
+  bio                    TEXT,
+  specialization         VARCHAR(255),
+  supervisor_type        VARCHAR(20) NOT NULL DEFAULT 'primary' CHECK (supervisor_type IN ('primary', 'in_training')),
+  -- RESTRICT, not SET NULL: setting this NULL on delete would violate the
+  -- CHECK below for an 'in_training' row. A Master Trainer with Trainers
+  -- (ToT) assigned must be reassigned (or the Trainers deleted/reassigned
+  -- first) before they can be deleted -- suspend instead.
+  primary_supervisor_id  BIGINT,
+  group_id               BIGINT,
+  created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_supervisors_credentials FOREIGN KEY (id) REFERENCES user_credentials(id) ON DELETE CASCADE,
+  CONSTRAINT fk_supervisors_primary FOREIGN KEY (primary_supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_supervisors_group FOREIGN KEY (group_id) REFERENCES trainer_groups(id) ON DELETE SET NULL,
+  CONSTRAINT chk_supervisor_hierarchy CHECK (
+    (supervisor_type = 'primary' AND primary_supervisor_id IS NULL) OR
+    (supervisor_type = 'in_training' AND primary_supervisor_id IS NOT NULL)
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Profile extension of user_credentials for role = supervisor (displayed as Master Trainer / Trainer (ToT) in the Admin UI). Only Admin creates these rows, as part of creating a Group. supervisor_type/primary_supervisor_id encode the Master Trainer + 2 Trainers-in-Training hierarchy; group_id ties them to their Group.';
 
 CREATE TABLE students (
-  id                  BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
-  full_name           TEXT NOT NULL,
-  email               TEXT UNIQUE,
-  gender              TEXT,
+  id                  BIGINT PRIMARY KEY,
+  full_name           VARCHAR(255) NOT NULL,
+  email               VARCHAR(255) UNIQUE,
+  gender              VARCHAR(20),
   date_of_birth       DATE,
-  marital_status      TEXT,
-  phone               TEXT,
+  marital_status      VARCHAR(30),
+  phone               VARCHAR(50),
   address             TEXT,
-  highest_degree      TEXT,
-  institution         TEXT,
+  highest_degree      VARCHAR(255),
+  institution         VARCHAR(255),
   certifications      TEXT,
-  cohort_id           INTEGER REFERENCES cohorts(id) ON DELETE SET NULL,
-  current_year        INTEGER CHECK (current_year IS NULL OR current_year BETWEEN 1 AND 10),
-  cv_file             TEXT,                  -- stored filename in uploads/cv
-  photo               TEXT,                  -- stored filename in uploads/photos
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE students IS
-  'Profile extension of user_credentials for role = trainee. Only Admin creates these rows; Supervisors may only assign existing students, never create new ones.';
+  cohort_id           INT,
+  current_year        INT CHECK (current_year IS NULL OR current_year BETWEEN 1 AND 10),
+  cv_file             VARCHAR(255),             -- stored filename in uploads/cv
+  photo               VARCHAR(255),             -- stored filename in uploads/photos
+  group_id            BIGINT,
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_students_credentials FOREIGN KEY (id) REFERENCES user_credentials(id) ON DELETE CASCADE,
+  CONSTRAINT fk_students_cohort FOREIGN KEY (cohort_id) REFERENCES cohorts(id) ON DELETE SET NULL,
+  CONSTRAINT fk_students_group FOREIGN KEY (group_id) REFERENCES trainer_groups(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Profile extension of user_credentials for role = trainee (displayed as Trainee in the Admin UI). Only Admin creates these rows, as part of creating a Group; group_id ties a trainee to their Group.';
 
 CREATE TABLE supervisor_students (
-  supervisor_id   BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  student_id      BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  assigned_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  assigned_by     BIGINT REFERENCES user_credentials(id) ON DELETE SET NULL,  -- who performed the assignment (supervisor or admin)
-  PRIMARY KEY (supervisor_id, student_id)
-);
-COMMENT ON TABLE supervisor_students IS
-  'Many-to-many caseload assignment. A supervisor can only read/manage students present in this table for them.';
+  supervisor_id   BIGINT NOT NULL,
+  student_id      BIGINT NOT NULL,
+  assigned_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  assigned_by     BIGINT,                       -- who performed the assignment (supervisor or admin)
+  PRIMARY KEY (supervisor_id, student_id),
+  CONSTRAINT fk_supstu_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_supstu_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_supstu_assigned_by FOREIGN KEY (assigned_by) REFERENCES user_credentials(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Many-to-many caseload assignment. A supervisor can only read/manage students present in this table for them.';
 
 
 -- =============================================================================
@@ -168,41 +240,42 @@ COMMENT ON TABLE supervisor_students IS
 -- =============================================================================
 
 CREATE TABLE settings (
-  user_id               BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
-  language              TEXT NOT NULL DEFAULT 'en' CHECK (language IN ('en', 'ar')),
-  theme                 TEXT NOT NULL DEFAULT 'light' CHECK (theme IN ('light', 'dark')),
-  timezone              TEXT DEFAULT 'Asia/Beirut',
+  user_id               BIGINT PRIMARY KEY,
+  language              VARCHAR(5) NOT NULL DEFAULT 'en' CHECK (language IN ('en', 'ar')),
+  theme                 VARCHAR(10) NOT NULL DEFAULT 'light' CHECK (theme IN ('light', 'dark')),
+  timezone              VARCHAR(50) DEFAULT 'Asia/Beirut',
   notify_messages       BOOLEAN NOT NULL DEFAULT TRUE,
   notify_assignments    BOOLEAN NOT NULL DEFAULT TRUE,
   notify_sessions       BOOLEAN NOT NULL DEFAULT TRUE,
   notify_payments       BOOLEAN NOT NULL DEFAULT TRUE,
   notify_announcements  BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE settings IS
-  'One row per account. Replaces the localStorage-only notification-preference stopgap used before this table existed.';
+  created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_settings_credentials FOREIGN KEY (user_id) REFERENCES user_credentials(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='One row per account. Replaces the localStorage-only notification-preference stopgap used before this table existed.';
 
 CREATE TABLE privacy_preferences (
-  user_id                       BIGINT PRIMARY KEY REFERENCES user_credentials(id) ON DELETE CASCADE,
+  user_id                       BIGINT PRIMARY KEY,
   show_photo_to_others          BOOLEAN NOT NULL DEFAULT TRUE,
   share_progress_with_cohort    BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at                    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at                    TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  created_at                    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_privacy_credentials FOREIGN KEY (user_id) REFERENCES user_credentials(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE student_health_info (
-  student_id                      BIGINT PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
+  student_id                      BIGINT PRIMARY KEY,
   medical_conditions              TEXT,
-  emergency_contact_name          TEXT,
-  emergency_contact_relationship  TEXT,
-  emergency_contact_phone         TEXT,
+  emergency_contact_name          VARCHAR(255),
+  emergency_contact_relationship  VARCHAR(100),
+  emergency_contact_phone         VARCHAR(50),
   consent_given                   BOOLEAN NOT NULL DEFAULT FALSE,
-  consent_given_at                TIMESTAMPTZ,
-  updated_at                      TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE student_health_info IS
-  'Restricted medical/emergency data (requirement #6). Only authorized staff should read this -- see RLS policy at the bottom of this script. Not in the originally enumerated table list but required by "Restricted medical/privacy information" in the requirements doc.';
+  consent_given_at                DATETIME,
+  updated_at                      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_health_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Restricted medical/emergency data. Only Admin (full access), the trainee themself, and their assigned Master Trainer/Trainers (read-only) may access this -- enforced at the Express route layer (see backend/src/routes), not by the database, since MySQL has no Row-Level Security.';
 
 
 -- =============================================================================
@@ -210,56 +283,68 @@ COMMENT ON TABLE student_health_info IS
 -- =============================================================================
 
 CREATE TABLE sessions (
-  id                 BIGSERIAL PRIMARY KEY,
-  student_id         BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  supervisor_id      BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  session_type       TEXT NOT NULL CHECK (session_type IN ('training', 'supervision')),
-  title              TEXT,
+  id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id         BIGINT NOT NULL,
+  supervisor_id      BIGINT NOT NULL,
+  session_type       VARCHAR(20) NOT NULL CHECK (session_type IN ('training', 'supervision')),
+  title              VARCHAR(255),
   session_date       DATE NOT NULL,
   session_time       TIME,
-  duration_minutes   INTEGER CHECK (duration_minutes IS NULL OR duration_minutes >= 0),
-  location           TEXT,
+  duration_minutes   INT CHECK (duration_minutes IS NULL OR duration_minutes >= 0),
+  location           VARCHAR(255),
   notes              TEXT,
-  status             TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
-  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  status             VARCHAR(20) NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+  created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_sessions_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_sessions_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE attendance (
-  id             BIGSERIAL PRIMARY KEY,
-  student_id     BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  supervisor_id  BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  session_id     BIGINT REFERENCES sessions(id) ON DELETE SET NULL,  -- optional link to a specific session
+  id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id      BIGINT NOT NULL,
+  supervisor_id   BIGINT NOT NULL,
+  session_id      BIGINT,                       -- optional link to a specific session
   attendance_date DATE NOT NULL,
-  status         TEXT NOT NULL CHECK (status IN ('present', 'absent', 'excused')),
-  notes          TEXT,
-  recorded_by    BIGINT NOT NULL REFERENCES user_credentials(id),
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  status          VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'excused')),
+  notes           TEXT,
+  recorded_by     BIGINT NOT NULL,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_attendance_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_attendance_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_attendance_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL,
+  CONSTRAINT fk_attendance_recorded_by FOREIGN KEY (recorded_by) REFERENCES user_credentials(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE training_hours (
-  id             BIGSERIAL PRIMARY KEY,
-  student_id     BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  supervisor_id  BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  session_id     BIGINT REFERENCES sessions(id) ON DELETE SET NULL,
-  hours          NUMERIC(6,2) NOT NULL CHECK (hours >= 0),
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id     BIGINT NOT NULL,
+  supervisor_id  BIGINT NOT NULL,
+  session_id     BIGINT,
+  hours          DECIMAL(6,2) NOT NULL CHECK (hours >= 0),
   hour_date      DATE NOT NULL,
   description    TEXT,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_trghours_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_trghours_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_trghours_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Kept separate from supervision_hours because clinical training programs typically report these to accreditation bodies as distinct totals.';
 
 CREATE TABLE supervision_hours (
-  id             BIGSERIAL PRIMARY KEY,
-  student_id     BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  supervisor_id  BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  session_id     BIGINT REFERENCES sessions(id) ON DELETE SET NULL,
-  hours          NUMERIC(6,2) NOT NULL CHECK (hours >= 0),
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id     BIGINT NOT NULL,
+  supervisor_id  BIGINT NOT NULL,
+  session_id     BIGINT,
+  hours          DECIMAL(6,2) NOT NULL CHECK (hours >= 0),
   hour_date      DATE NOT NULL,
-  hour_type      TEXT CHECK (hour_type IN ('individual', 'group')),
+  hour_type      VARCHAR(20) CHECK (hour_type IN ('individual', 'group')),
   description    TEXT,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE training_hours IS 'Kept separate from supervision_hours because clinical training programs typically report these to accreditation bodies as distinct totals.';
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_svhours_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_svhours_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_svhours_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =============================================================================
@@ -267,35 +352,39 @@ COMMENT ON TABLE training_hours IS 'Kept separate from supervision_hours because
 -- =============================================================================
 
 CREATE TABLE assignments (
-  id                  BIGSERIAL PRIMARY KEY,
-  student_id          BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  supervisor_id       BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  title               TEXT NOT NULL,
+  id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id          BIGINT NOT NULL,
+  supervisor_id       BIGINT NOT NULL,
+  title               VARCHAR(255) NOT NULL,
   description         TEXT,
-  attachment_filename TEXT,                  -- optional file the supervisor attaches (instructions, template)
+  attachment_filename VARCHAR(255),             -- optional file the supervisor attaches (instructions, template)
   due_date            DATE,
-  status              TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'submitted', 'completed', 'overdue')),
-  max_score           NUMERIC(5,2),
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  status              VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'submitted', 'completed', 'overdue')),
+  max_score           DECIMAL(5,2),
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_assignments_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_assignments_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE assignment_submissions (
-  id              BIGSERIAL PRIMARY KEY,
-  assignment_id   BIGINT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
-  student_id      BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  filename        TEXT NOT NULL,
-  original_name   TEXT NOT NULL,
+  id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+  assignment_id   BIGINT NOT NULL,
+  student_id      BIGINT NOT NULL,
+  filename        VARCHAR(255) NOT NULL,
+  original_name   VARCHAR(255) NOT NULL,
   notes           TEXT,
-  submitted_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  score           NUMERIC(5,2),
+  submitted_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  score           DECIMAL(5,2),
   feedback        TEXT,
-  graded_by       BIGINT REFERENCES supervisors(id),
-  graded_at       TIMESTAMPTZ,
-  status          TEXT NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted', 'graded', 'returned'))
-);
-COMMENT ON TABLE assignment_submissions IS
-  'Fills the "students can submit assignments" gap -- previously unmodeled, flagged in earlier dashboard builds.';
+  graded_by       BIGINT,
+  graded_at       DATETIME,
+  status          VARCHAR(20) NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted', 'graded', 'returned')),
+  CONSTRAINT fk_asub_assignment FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE,
+  CONSTRAINT fk_asub_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_asub_graded_by FOREIGN KEY (graded_by) REFERENCES supervisors(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Fills the "students can submit assignments" gap -- previously unmodeled, flagged in earlier dashboard builds.';
 
 
 -- =============================================================================
@@ -303,48 +392,54 @@ COMMENT ON TABLE assignment_submissions IS
 -- =============================================================================
 
 CREATE TABLE learning_materials (
-  id             BIGSERIAL PRIMARY KEY,
-  supervisor_id  BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  student_id     BIGINT REFERENCES students(id) ON DELETE CASCADE,  -- NULL = shared with whole caseload
-  title          TEXT NOT NULL,
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  supervisor_id  BIGINT NOT NULL,
+  student_id     BIGINT,                        -- NULL = shared with whole caseload
+  title          VARCHAR(255) NOT NULL,
   description    TEXT,
-  material_type  TEXT NOT NULL CHECK (material_type IN (
+  material_type  VARCHAR(20) NOT NULL CHECK (material_type IN (
                      'document', 'image', 'video', 'audio', 'link',
                      'assignment', 'worksheet', 'reading'
                    )),
-  filename       TEXT,
-  original_name  TEXT,
-  external_url   TEXT,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CHECK (filename IS NOT NULL OR external_url IS NOT NULL)
-);
+  filename       VARCHAR(255),
+  original_name  VARCHAR(255),
+  external_url   VARCHAR(2048),
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_material_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_material_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT chk_material_has_file CHECK (filename IS NOT NULL OR external_url IS NOT NULL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE videos (
-  id                 BIGSERIAL PRIMARY KEY,
-  supervisor_id      BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  student_id         BIGINT REFERENCES students(id) ON DELETE CASCADE,  -- NULL = whole caseload
-  session_id         BIGINT REFERENCES sessions(id) ON DELETE SET NULL, -- e.g. a recorded session
-  title              TEXT NOT NULL,
+  id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+  supervisor_id      BIGINT NOT NULL,
+  student_id         BIGINT,                     -- NULL = whole caseload
+  session_id         BIGINT,                     -- e.g. a recorded session
+  title              VARCHAR(255) NOT NULL,
   description        TEXT,
-  filename           TEXT,
-  external_url       TEXT,          -- e.g. YouTube/Vimeo embed
-  thumbnail_filename TEXT,
-  duration_seconds   INTEGER CHECK (duration_seconds IS NULL OR duration_seconds >= 0),
-  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CHECK (filename IS NOT NULL OR external_url IS NOT NULL)
-);
-COMMENT ON TABLE videos IS
-  'Distinct from learning_materials: purpose-built for session recordings and lecture video, with duration/thumbnail metadata a generic file share does not need.';
+  filename           VARCHAR(255),
+  external_url       VARCHAR(2048),               -- e.g. YouTube/Vimeo embed
+  thumbnail_filename VARCHAR(255),
+  duration_seconds   INT CHECK (duration_seconds IS NULL OR duration_seconds >= 0),
+  created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_video_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_video_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_video_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL,
+  CONSTRAINT chk_video_has_file CHECK (filename IS NOT NULL OR external_url IS NOT NULL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Distinct from learning_materials: purpose-built for session recordings and lecture video, with duration/thumbnail metadata a generic file share does not need.';
 
 CREATE TABLE documents (
-  id             BIGSERIAL PRIMARY KEY,
-  student_id     BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  uploaded_by    BIGINT NOT NULL REFERENCES user_credentials(id),
-  document_type  TEXT NOT NULL DEFAULT 'general' CHECK (document_type IN ('general', 'cv', 'certificate', 'assignment')),
-  filename       TEXT NOT NULL,
-  original_name  TEXT NOT NULL,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id     BIGINT NOT NULL,
+  uploaded_by    BIGINT NOT NULL,
+  document_type  VARCHAR(20) NOT NULL DEFAULT 'general' CHECK (document_type IN ('general', 'cv', 'certificate', 'assignment')),
+  filename       VARCHAR(255) NOT NULL,
+  original_name  VARCHAR(255) NOT NULL,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_documents_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_documents_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES user_credentials(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =============================================================================
@@ -352,117 +447,123 @@ CREATE TABLE documents (
 -- =============================================================================
 
 CREATE TABLE announcements (
-  id             BIGSERIAL PRIMARY KEY,
-  supervisor_id  BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  cohort_id      INTEGER REFERENCES cohorts(id) ON DELETE SET NULL,  -- NULL = entire caseload
-  title          TEXT NOT NULL,
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  supervisor_id  BIGINT NOT NULL,
+  cohort_id      INT,                           -- NULL = entire caseload
+  title          VARCHAR(255) NOT NULL,
   content        TEXT NOT NULL,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_announce_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_announce_cohort FOREIGN KEY (cohort_id) REFERENCES cohorts(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE chats (
-  id             BIGSERIAL PRIMARY KEY,
-  supervisor_id  BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  student_id     BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  last_message_at TIMESTAMPTZ,
-  UNIQUE (supervisor_id, student_id)
-);
-COMMENT ON TABLE chats IS 'One persistent thread per supervisor-student pair.';
+  id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+  supervisor_id    BIGINT NOT NULL,
+  student_id       BIGINT NOT NULL,
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_message_at  DATETIME,
+  UNIQUE KEY uq_chats_supervisor_student (supervisor_id, student_id),
+  CONSTRAINT fk_chats_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_chats_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='One persistent thread per supervisor-student pair.';
 
 CREATE TABLE messages (
-  id           BIGSERIAL PRIMARY KEY,
-  chat_id      BIGINT NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
-  sender_id    BIGINT NOT NULL REFERENCES user_credentials(id),  -- either party in the chat
+  id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+  chat_id      BIGINT NOT NULL,
+  sender_id    BIGINT NOT NULL,                 -- either party in the chat
   content      TEXT NOT NULL,
   is_read      BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_messages_chat FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE,
+  CONSTRAINT fk_messages_sender FOREIGN KEY (sender_id) REFERENCES user_credentials(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE meetings (
-  id                BIGSERIAL PRIMARY KEY,
-  supervisor_id     BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  student_id        BIGINT REFERENCES students(id) ON DELETE CASCADE,  -- NULL = whole caseload
-  title             TEXT NOT NULL,
-  platform          TEXT NOT NULL CHECK (platform IN ('zoom', 'teams', 'meet', 'other')),
-  meeting_url       TEXT NOT NULL,
-  scheduled_at      TIMESTAMPTZ,
-  duration_minutes  INTEGER CHECK (duration_minutes IS NULL OR duration_minutes >= 0),
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE meetings IS
-  'Fills the "no meetings table exists" gap flagged in earlier Supervisor/Student dashboard builds.';
+  id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+  supervisor_id     BIGINT NOT NULL,
+  student_id        BIGINT,                      -- NULL = whole caseload
+  title             VARCHAR(255) NOT NULL,
+  platform          VARCHAR(20) NOT NULL CHECK (platform IN ('zoom', 'teams', 'meet', 'other')),
+  meeting_url       VARCHAR(2048) NOT NULL,
+  scheduled_at      DATETIME,
+  duration_minutes  INT CHECK (duration_minutes IS NULL OR duration_minutes >= 0),
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_meetings_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_meetings_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Fills the "no meetings table exists" gap flagged in earlier Supervisor/Student dashboard builds.';
 
 
 -- =============================================================================
--- SECTION 8: CALENDAR
+-- SECTION 8: EVALUATIONS & FREEFORM NOTES
 -- =============================================================================
-
--- =============================================================================
--- SECTION 4b: EVALUATIONS & FREEFORM NOTES
--- =============================================================================
--- Gap found while building the Profile/Supervisor routes: the old schema's
--- flexible student_records table supported 'note' and 'evaluation' as
--- record types, and the already-built Supervisor/Student dashboards both
--- have UI tabs for them, but no table for either was carried into this
--- normalized schema (they weren't on the originally requested table list).
--- Adding them now rather than silently dropping the feature.
 
 CREATE TABLE evaluations (
-  id             BIGSERIAL PRIMARY KEY,
-  student_id     BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  supervisor_id  BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
-  session_id     BIGINT REFERENCES sessions(id) ON DELETE SET NULL,
+  id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id      BIGINT NOT NULL,
+  supervisor_id   BIGINT NOT NULL,
+  session_id      BIGINT,
   evaluation_date DATE,
-  title          TEXT,
-  score          NUMERIC(5,2) CHECK (score IS NULL OR (score >= 0 AND score <= 100)),
-  content        TEXT,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  title           VARCHAR(255),
+  score           DECIMAL(5,2) CHECK (score IS NULL OR (score >= 0 AND score <= 100)),
+  content         TEXT,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_evaluations_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_evaluations_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_evaluations_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE supervisor_notes (
-  id             BIGSERIAL PRIMARY KEY,
-  student_id     BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  supervisor_id  BIGINT NOT NULL REFERENCES supervisors(id) ON DELETE RESTRICT,
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id     BIGINT NOT NULL,
+  supervisor_id  BIGINT NOT NULL,
   note_date      DATE,
   content        TEXT NOT NULL,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE supervisor_notes IS
-  'Freeform notes about a student not tied to a specific session, assignment, or evaluation -- e.g. general observations. Visible to the supervisor who wrote them and the student the note is about, same access pattern as everything else supervisor-authored.';
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_svnotes_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_svnotes_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Freeform notes about a student not tied to a specific session, assignment, or evaluation. Visible to the supervisor who wrote them and the student the note is about.';
 
 CREATE TABLE admin_notes (
-  id          BIGSERIAL PRIMARY KEY,
-  student_id  BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  admin_id    BIGINT NOT NULL REFERENCES admin_users(id) ON DELETE RESTRICT,
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id  BIGINT NOT NULL,
+  admin_id    BIGINT NOT NULL,
   content     TEXT NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE admin_notes IS
-  'Internal administrative notes about a student -- distinct from supervisor_notes, which are clinical/training observations visible to the student. These are Admin-only: not shown to the supervisor or the student, matching how the "Notes" field was described in the Admin Dashboard requirements (an internal admin annotation, not a shared training record).';
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_adminnotes_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_adminnotes_admin FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Internal administrative notes about a student -- distinct from supervisor_notes. Admin-only: not shown to the supervisor or the student.';
 
 CREATE TABLE calendar_events (
-  id                    BIGSERIAL PRIMARY KEY,
-  owner_id              BIGINT NOT NULL REFERENCES user_credentials(id),  -- who created/owns this entry
-  student_id            BIGINT REFERENCES students(id) ON DELETE CASCADE, -- target audience, NULL = broader
-  event_type            TEXT NOT NULL CHECK (event_type IN (
+  id                    BIGINT AUTO_INCREMENT PRIMARY KEY,
+  owner_id              BIGINT NOT NULL,        -- who created/owns this entry
+  student_id            BIGINT,                 -- target audience, NULL = broader
+  event_type            VARCHAR(30) NOT NULL CHECK (event_type IN (
                             'session', 'meeting', 'assignment_deadline', 'custom', 'holiday'
                           )),
-  title                 TEXT NOT NULL,
+  title                 VARCHAR(255) NOT NULL,
   description           TEXT,
   event_date            DATE NOT NULL,
   event_time            TIME,
-  related_session_id    BIGINT REFERENCES sessions(id) ON DELETE CASCADE,
-  related_meeting_id    BIGINT REFERENCES meetings(id) ON DELETE CASCADE,
-  related_assignment_id BIGINT REFERENCES assignments(id) ON DELETE CASCADE,
-  created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE calendar_events IS
-  'Denormalized, queryable calendar. Populate on insert of sessions/meetings/assignment due dates at the application layer (or add triggers later) so month-range calendar queries stay a single indexed SELECT instead of a UNION across source tables.';
+  related_session_id    BIGINT,
+  related_meeting_id    BIGINT,
+  related_assignment_id BIGINT,
+  created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_calevents_owner FOREIGN KEY (owner_id) REFERENCES user_credentials(id),
+  CONSTRAINT fk_calevents_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_calevents_session FOREIGN KEY (related_session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+  CONSTRAINT fk_calevents_meeting FOREIGN KEY (related_meeting_id) REFERENCES meetings(id) ON DELETE CASCADE,
+  CONSTRAINT fk_calevents_assignment FOREIGN KEY (related_assignment_id) REFERENCES assignments(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Denormalized, queryable calendar. Populate on insert of sessions/meetings/assignment due dates at the application layer.';
 
 
 -- =============================================================================
@@ -470,46 +571,49 @@ COMMENT ON TABLE calendar_events IS
 -- =============================================================================
 
 CREATE TABLE payments (
-  id               BIGSERIAL PRIMARY KEY,
-  student_id       BIGINT NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
-  total_fee_cents  INTEGER NOT NULL DEFAULT 0 CHECK (total_fee_cents >= 0),
-  discount_cents   INTEGER NOT NULL DEFAULT 0 CHECK (discount_cents >= 0),
-  payment_plan     TEXT CHECK (payment_plan IN ('full', 'installment', 'custom')),
+  id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id       BIGINT NOT NULL UNIQUE,
+  total_fee_cents  INT NOT NULL DEFAULT 0 CHECK (total_fee_cents >= 0),
+  discount_cents   INT NOT NULL DEFAULT 0 CHECK (discount_cents >= 0),
+  payment_plan     VARCHAR(20) CHECK (payment_plan IN ('full', 'installment', 'custom')),
   next_due_date    DATE,
-  status           TEXT NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'partial', 'paid')),
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE payments IS
-  'One fee agreement per student. `status` and remaining balance should be recomputed by the application whenever payment_transactions changes for this student (SUM(amount_cents) vs total_fee_cents - discount_cents). Includes next_due_date, which was previously a documented gap.';
+  status           VARCHAR(20) NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'partial', 'paid')),
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_payments_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='One fee agreement per student. status and remaining balance are recomputed by the application whenever payment_transactions changes for this student (SUM(amount_cents) vs total_fee_cents - discount_cents).';
 
 CREATE TABLE invoices (
-  id              BIGSERIAL PRIMARY KEY,
-  student_id      BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  invoice_number  TEXT NOT NULL UNIQUE,
-  amount_cents    INTEGER NOT NULL CHECK (amount_cents >= 0),
-  issue_date      DATE NOT NULL DEFAULT CURRENT_DATE,
+  id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id      BIGINT NOT NULL,
+  invoice_number  VARCHAR(50) NOT NULL UNIQUE,
+  amount_cents    INT NOT NULL CHECK (amount_cents >= 0),
+  issue_date      DATE NOT NULL DEFAULT (CURRENT_DATE),
   due_date        DATE,
-  status          TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'paid', 'overdue', 'cancelled')),
+  status          VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'paid', 'overdue', 'cancelled')),
   notes           TEXT,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_invoices_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE payment_transactions (
-  id                BIGSERIAL PRIMARY KEY,
-  student_id        BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  invoice_id        BIGINT REFERENCES invoices(id) ON DELETE SET NULL,
-  amount_cents      INTEGER NOT NULL,  -- negative = refund/adjustment, per append-only ledger convention
-  transaction_type  TEXT NOT NULL DEFAULT 'payment' CHECK (transaction_type IN ('payment', 'refund', 'adjustment')),
+  id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id        BIGINT NOT NULL,
+  invoice_id        BIGINT,
+  amount_cents      INT NOT NULL,               -- negative = refund/adjustment, per append-only ledger convention
+  transaction_type  VARCHAR(20) NOT NULL DEFAULT 'payment' CHECK (transaction_type IN ('payment', 'refund', 'adjustment')),
   payment_date      DATE NOT NULL,
-  method            TEXT,
-  added_by          BIGINT NOT NULL REFERENCES user_credentials(id),  -- Admin only, enforced at app layer + RLS below
+  method            VARCHAR(50),
+  added_by          BIGINT NOT NULL,            -- Admin only, enforced at the Express route layer
   notes             TEXT,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE payment_transactions IS
-  'Append-only ledger -- never UPDATE or DELETE a transaction. Corrections are new rows with transaction_type = refund/adjustment and an explanatory note, preserving full financial history permanently per requirement #8.';
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_paytx_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_paytx_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE SET NULL,
+  CONSTRAINT fk_paytx_added_by FOREIGN KEY (added_by) REFERENCES user_credentials(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Append-only ledger -- never UPDATE or DELETE a transaction. Corrections are new rows with transaction_type = refund/adjustment and an explanatory note, preserving full financial history permanently.';
 
 
 -- =============================================================================
@@ -517,19 +621,20 @@ COMMENT ON TABLE payment_transactions IS
 -- =============================================================================
 
 CREATE TABLE notifications (
-  id                  BIGSERIAL PRIMARY KEY,
-  recipient_id        BIGINT NOT NULL REFERENCES user_credentials(id) ON DELETE CASCADE,
-  notification_type   TEXT NOT NULL CHECK (notification_type IN (
-                          'message', 'assignment', 'session', 'meeting',
-                          'payment', 'announcement', 'document', 'system'
-                        )),
-  title               TEXT NOT NULL,
-  body                TEXT,
-  related_entity_type TEXT,   -- e.g. 'assignment', 'chat', 'payment_transaction'
-  related_entity_id   BIGINT,
-  is_read             BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+  id                   BIGINT AUTO_INCREMENT PRIMARY KEY,
+  recipient_id         BIGINT NOT NULL,
+  notification_type    VARCHAR(20) NOT NULL CHECK (notification_type IN (
+                           'message', 'assignment', 'session', 'meeting',
+                           'payment', 'announcement', 'document', 'system'
+                         )),
+  title                VARCHAR(255) NOT NULL,
+  body                 TEXT,
+  related_entity_type  VARCHAR(50),             -- e.g. 'assignment', 'chat', 'payment_transaction'
+  related_entity_id    BIGINT,
+  is_read              BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_notifications_recipient FOREIGN KEY (recipient_id) REFERENCES user_credentials(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =============================================================================
@@ -537,49 +642,51 @@ CREATE TABLE notifications (
 -- =============================================================================
 
 CREATE TABLE events (
-  id                  BIGSERIAL PRIMARY KEY,
-  created_by          BIGINT REFERENCES admin_users(id) ON DELETE SET NULL,
-  event_date          TIMESTAMPTZ NOT NULL,
-  image               TEXT,
-  status              TEXT NOT NULL DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'concluded')),
-  fee                 TEXT,
-  register_url        TEXT,
+  id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+  created_by          BIGINT,                   -- the owning Designer (or Admin for legacy rows)
+  event_date          DATETIME NOT NULL,
+  image               VARCHAR(255),
+  status              VARCHAR(20) NOT NULL DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'concluded')),
+  fee                 VARCHAR(50),
+  register_url        VARCHAR(2048),
 
-  title_en            TEXT,
-  format_en           TEXT,
-  facilitator_en      TEXT,
+  title_en            VARCHAR(255),
+  format_en           VARCHAR(255),
+  facilitator_en      VARCHAR(255),
   about_en            TEXT,
-  learn_en            JSONB,
-  who_en              JSONB,
-  outcomes_en         JSONB,
+  learn_en            JSON,
+  who_en              JSON,
+  outcomes_en         JSON,
   facilitator_bio_en  TEXT,
 
-  title_ar            TEXT,
-  format_ar           TEXT,
-  facilitator_ar      TEXT,
+  title_ar            VARCHAR(255),
+  format_ar           VARCHAR(255),
+  facilitator_ar      VARCHAR(255),
   about_ar            TEXT,
-  learn_ar            JSONB,
-  who_ar              JSONB,
-  outcomes_ar         JSONB,
+  learn_ar            JSON,
+  who_ar              JSON,
+  outcomes_ar         JSON,
   facilitator_bio_ar  TEXT,
 
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE events IS 'Public events.html page content, managed from the Admin Dashboard. learn_en/who_en/outcomes_en etc. are JSON arrays of strings (native JSONB in Postgres, vs. JSON-in-TEXT in the original SQLite version).';
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_events_created_by FOREIGN KEY (created_by) REFERENCES user_credentials(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Public events.html page content. created_by is the owning Designer (Admin-authored legacy rows have created_by pointing at the Admin account, or NULL). A Designer may only manage rows where created_by = their own id -- enforced at the Express route layer. learn_en/who_en/outcomes_en etc. are JSON arrays of strings.';
 
 CREATE TABLE audit_logs (
-  id           BIGSERIAL PRIMARY KEY,
-  actor_id     BIGINT REFERENCES user_credentials(id) ON DELETE SET NULL,  -- NULL = system action
-  action       TEXT NOT NULL,             -- e.g. 'user.created', 'payment.recorded', 'password_changed'
-  entity_type  TEXT,                      -- e.g. 'students', 'payment_transactions'
+  id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+  actor_id     BIGINT,                          -- NULL = system action
+  action       VARCHAR(100) NOT NULL,           -- e.g. 'user.created', 'payment.recorded', 'password_changed'
+  entity_type  VARCHAR(50),                     -- e.g. 'students', 'payment_transactions'
   entity_id    BIGINT,
-  old_values   JSONB,
-  new_values   JSONB,
-  ip_address   TEXT,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE audit_logs IS 'Generalizes the old activity_log table with structured before/after diffs for a real audit trail, per requirement #7.';
+  old_values   JSON,
+  new_values   JSON,
+  ip_address   VARCHAR(45),
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_audit_actor FOREIGN KEY (actor_id) REFERENCES user_credentials(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Structured before/after diffs for a real audit trail.';
 
 
 -- =============================================================================
@@ -589,7 +696,10 @@ COMMENT ON TABLE audit_logs IS 'Generalizes the old activity_log table with stru
 CREATE INDEX idx_user_credentials_role_status ON user_credentials(role, status);
 
 CREATE INDEX idx_students_cohort ON students(cohort_id);
+CREATE INDEX idx_students_group ON students(group_id);
 CREATE INDEX idx_supervisor_students_student ON supervisor_students(student_id);
+CREATE INDEX idx_supervisors_primary ON supervisors(primary_supervisor_id);
+CREATE INDEX idx_supervisors_group ON supervisors(group_id);
 
 CREATE INDEX idx_sessions_student_date ON sessions(student_id, session_date DESC);
 CREATE INDEX idx_sessions_supervisor_date ON sessions(supervisor_id, session_date DESC);
@@ -632,180 +742,44 @@ CREATE INDEX idx_notifications_recipient_unread ON notifications(recipient_id, i
 
 CREATE INDEX idx_events_date ON events(event_date DESC);
 CREATE INDEX idx_events_status ON events(status);
+CREATE INDEX idx_events_created_by ON events(created_by);
 
 CREATE INDEX idx_audit_logs_actor ON audit_logs(actor_id, created_at DESC);
 CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 
 
 -- =============================================================================
--- SECTION 13: updated_at AUTO-MAINTENANCE
+-- SECTION 13: SEED DATA (bootstrap Admin account only)
 -- =============================================================================
--- Small, generic trigger so every table with an updated_at column keeps it
--- current automatically -- this is schema housekeeping, not business logic.
-
-CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DO $$
-DECLARE
-  t TEXT;
-BEGIN
-  FOR t IN
-    SELECT table_name FROM information_schema.columns
-    WHERE column_name = 'updated_at' AND table_schema = 'public'
-  LOOP
-    EXECUTE format(
-      'CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION set_updated_at();',
-      t
-    );
-  END LOOP;
-END $$;
-
-
--- =============================================================================
--- SECTION 14: SEED DATA (1 Admin, 1 Supervisor, 1 Student)
--- =============================================================================
--- Passwords below are bcrypt hashes of the literal string 'password123'
--- purely as a placeholder -- replace with real hashes generated by your
--- application before using this in any real environment. Every seeded
--- account has must_change_password = TRUE, so first login forces a reset
--- regardless.
+-- Only the one real account needed to bootstrap the system: nobody can log
+-- in and create Groups/Trainers/Trainees/Designer accounts through the app
+-- until an Admin account exists. No demo Group, Trainer, Trainee, or
+-- Designer rows are seeded here -- those are created for real through the
+-- app's own account-creation flows, not hard-coded into the schema.
+--
+-- The password hash below is a placeholder, NOT a valid bcrypt hash --
+-- replace it with a real hash before deploying (e.g. run
+-- backend/seed-password.js against this database, or hash a real password
+-- and UPDATE this row directly) before anyone can log in as ADM001.
+-- must_change_password is TRUE so the very first login forces a real
+-- password to be set.
 
 INSERT INTO id_counters (prefix, last_number) VALUES
-  ('ADM', 1), ('SUP', 1), ('TTR', 1);
-
-INSERT INTO cohorts (id, name, start_date, description) VALUES
-  (1, 'Cohort 2026-A', '2026-01-01', 'Inaugural systemic psychotherapy training cohort');
+  ('ADM', 1), ('SUP', 0), ('TTR', 0), ('DES', 0);
 
 -- Admin
 INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
-VALUES (1, 'ADM001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'admin', 'active', TRUE);
+VALUES (1, 'ADM001', '$2a$10$zS7yqUKB9w4w9Jn7IlBJ9ucnh9UKQQ9112.EkN3adi1922KxiXtZq', 'admin', 'active', TRUE);
 INSERT INTO admin_users (id, full_name, email)
 VALUES (1, 'System Administrator', 'admin@reframe-mhs.org');
 
--- Supervisor
-INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
-VALUES (2, 'SUP001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'supervisor', 'active', TRUE);
-INSERT INTO supervisors (id, full_name, email, specialization)
-VALUES (2, 'Dr. Layla Haddad', 'l.haddad@reframe-mhs.org', 'Systemic Psychotherapy');
+-- Keep the AUTO_INCREMENT counter in sync with the manually-specified id above
+ALTER TABLE user_credentials AUTO_INCREMENT = 2;
 
--- Student
-INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password)
-VALUES (3, 'TTR001', '$2b$10$CHANGE_ME_PLACEHOLDER_HASH_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'trainee', 'active', TRUE);
-INSERT INTO students (id, full_name, email, cohort_id, current_year)
-VALUES (3, 'Mary Sbeity', 'mary.sbeity@example.com', 1, 1);
+INSERT INTO settings (user_id) VALUES (1);
+INSERT INTO privacy_preferences (user_id) VALUES (1);
 
--- Keep the sequences in sync with the manually-specified ids above
-SELECT setval('user_credentials_id_seq', 3, true);
-SELECT setval('cohorts_id_seq', 1, true);
-
--- Assign the seeded student to the seeded supervisor
-INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by)
-VALUES (2, 3, 1);
-
--- Baseline settings/privacy rows for all three seeded accounts
-INSERT INTO settings (user_id) VALUES (1), (2), (3);
-INSERT INTO privacy_preferences (user_id) VALUES (1), (2), (3);
-
--- Empty fee agreement for the seeded student so the Payments page has
--- something to display rather than a missing row
-INSERT INTO payments (student_id, total_fee_cents, status)
-VALUES (3, 150000, 'unpaid');  -- $1,500.00 total fee, nothing paid yet
-
-
--- =============================================================================
--- SECTION 15 (OPTIONAL): ROW-LEVEL SECURITY
--- =============================================================================
--- Defense-in-depth for the two most sensitive data categories: payments and
--- health info. This is ADDITIONAL to application-level authorization checks,
--- not a replacement for them.
---
--- REQUIRED APP INTEGRATION: your API layer must run, per request/transaction,
--- before touching these tables:
---   SET LOCAL app.current_user_id = '<the logged-in user_credentials.id>';
---   SET LOCAL app.user_role    = '<admin|supervisor|trainee>';
--- and connect as a Postgres role that is NOT a superuser / does not have
--- BYPASSRLS (superusers bypass RLS entirely regardless of policy).
---
--- If you're not ready to wire this up yet, these statements are safe to
--- skip -- the tables function normally without RLS enabled.
--- =============================================================================
-
-ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE student_health_info ENABLE ROW LEVEL SECURITY;
-
--- Payments: Admin full access; Student read-only on their own record; Supervisor no access.
-CREATE POLICY payments_admin_all ON payments
-  FOR ALL
-  USING (current_setting('app.user_role', true) = 'admin')
-  WITH CHECK (current_setting('app.user_role', true) = 'admin');
-
-CREATE POLICY payments_student_read_own ON payments
-  FOR SELECT
-  USING (
-    current_setting('app.user_role', true) = 'trainee'
-    AND student_id = current_setting('app.current_user_id', true)::BIGINT
-  );
-
-CREATE POLICY payment_tx_admin_all ON payment_transactions
-  FOR ALL
-  USING (current_setting('app.user_role', true) = 'admin')
-  WITH CHECK (current_setting('app.user_role', true) = 'admin');
-
-CREATE POLICY payment_tx_student_read_own ON payment_transactions
-  FOR SELECT
-  USING (
-    current_setting('app.user_role', true) = 'trainee'
-    AND student_id = current_setting('app.current_user_id', true)::BIGINT
-  );
-
-CREATE POLICY invoices_admin_all ON invoices
-  FOR ALL
-  USING (current_setting('app.user_role', true) = 'admin')
-  WITH CHECK (current_setting('app.user_role', true) = 'admin');
-
-CREATE POLICY invoices_student_read_own ON invoices
-  FOR SELECT
-  USING (
-    current_setting('app.user_role', true) = 'trainee'
-    AND student_id = current_setting('app.current_user_id', true)::BIGINT
-  );
-
--- Health info: Admin full access; Supervisor read-only for their assigned
--- students only; Student can read/update their own record.
-CREATE POLICY health_admin_all ON student_health_info
-  FOR ALL
-  USING (current_setting('app.user_role', true) = 'admin')
-  WITH CHECK (current_setting('app.user_role', true) = 'admin');
-
-CREATE POLICY health_supervisor_read_assigned ON student_health_info
-  FOR SELECT
-  USING (
-    current_setting('app.user_role', true) = 'supervisor'
-    AND EXISTS (
-      SELECT 1 FROM supervisor_students ss
-      WHERE ss.student_id = student_health_info.student_id
-        AND ss.supervisor_id = current_setting('app.current_user_id', true)::BIGINT
-    )
-  );
-
-CREATE POLICY health_student_own ON student_health_info
-  FOR ALL
-  USING (
-    current_setting('app.user_role', true) = 'trainee'
-    AND student_id = current_setting('app.current_user_id', true)::BIGINT
-  )
-  WITH CHECK (
-    current_setting('app.user_role', true) = 'trainee'
-    AND student_id = current_setting('app.current_user_id', true)::BIGINT
-  );
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================
 -- END OF SCRIPT

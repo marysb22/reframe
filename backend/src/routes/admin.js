@@ -5,6 +5,7 @@ const { requireAuth, requireAdmin, asyncRoute } = require("../middleware/auth");
 const { generateNextId } = require("../utils/idGenerator");
 const { hashPassword, generateTempPassword } = require("../utils/authUtils");
 const {
+  toArray,
   toPublicUser,
   toProfileResponse,
   toPublicEvent,
@@ -24,6 +25,8 @@ router.use(requireAuth, requireAdmin);
 // Every account-management query joins the three profile tables and their
 // cohort, so a single row shape covers both a student and a supervisor
 // (the columns that don't apply to that role just come back NULL).
+// The `supervisors` JSON list is built via an ordered derived table because
+// MySQL's JSON_ARRAYAGG (unlike Postgres's json_agg) has no inline ORDER BY.
 const USER_SELECT = `
   SELECT
     uc.id, uc.member_code, uc.role, uc.status, uc.must_change_password,
@@ -32,14 +35,17 @@ const USER_SELECT = `
     COALESCE(sup.email, st.email) AS email,
     COALESCE(sup.phone, st.phone) AS phone,
     COALESCE(sup.photo, st.photo) AS photo,
-    sup.specialization, sup.bio,
+    sup.specialization, sup.bio, sup.supervisor_type,
     st.gender, st.date_of_birth, st.marital_status, st.address, st.certifications, st.cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year, st.highest_degree, st.institution,
     COALESCE(
-      (SELECT json_agg(json_build_object('id', sup2.id, 'full_name', sup2.full_name) ORDER BY sup2.full_name)
-       FROM supervisor_students ss JOIN supervisors sup2 ON sup2.id = ss.supervisor_id
-       WHERE ss.student_id = uc.id),
-      '[]'
+      (SELECT JSON_ARRAYAGG(obj) FROM (
+         SELECT JSON_OBJECT('id', sup2.id, 'full_name', sup2.full_name) AS obj
+         FROM supervisor_students ss JOIN supervisors sup2 ON sup2.id = ss.supervisor_id
+         WHERE ss.student_id = uc.id
+         ORDER BY sup2.full_name
+       ) t),
+      JSON_ARRAY()
     ) AS supervisors
   FROM user_credentials uc
   LEFT JOIN supervisors sup ON sup.id = uc.id
@@ -56,18 +62,19 @@ function parseIdParam(raw) {
 async function resolveCohortId(db, cohortName) {
   if (!cohortName || !String(cohortName).trim()) return null;
   const name = String(cohortName).trim();
-  const existing = await db.query("SELECT id FROM cohorts WHERE name = $1", [name]);
+  const existing = await db.query("SELECT id FROM cohorts WHERE name = ?", [name]);
   if (existing.rows.length) return existing.rows[0].id;
-  const created = await db.query("INSERT INTO cohorts (name) VALUES ($1) RETURNING id", [name]);
-  return created.rows[0].id;
+  const created = await db.query("INSERT INTO cohorts (name) VALUES (?)", [name]);
+  return created.insertId;
 }
 
-// ---- Accounts (Students + Supervisors) ---------------------------------
+// ---- Accounts (Trainees + Master Trainers/Trainers) ---------------------
 
 // POST /api/admin/users
-// Creates a Student or Supervisor account. Admin accounts are never
-// created through this route -- there is exactly one, seeded directly in
-// the database, per the "one static Admin account" requirement.
+// Creates a Trainee or Supervisor (Master Trainer/Trainer) account. Admin
+// accounts are never created through this route -- there is exactly one,
+// seeded directly in the database, per the "one static Admin account"
+// requirement.
 router.post(
   "/users",
   asyncRoute(async (req, res, db) => {
@@ -86,23 +93,23 @@ router.post(
     }
 
     const allowedRoles = ["trainee", "supervisor"];
-    if (role === "admin") {
+    if (role === "admin" || role === "designer") {
       return res.status(400).json({
-        error: "Admin accounts can't be created here. The admin account is fixed and seeded separately.",
+        error: "Admin and Designer accounts can't be created here.",
       });
     }
     const finalRole = allowedRoles.includes(role) ? role : "trainee";
 
     if (email) {
       const emailCol = finalRole === "trainee" ? "students" : "supervisors";
-      const existing = await db.query(`SELECT id FROM ${emailCol} WHERE email = $1`, [email]);
+      const existing = await db.query(`SELECT id FROM ${emailCol} WHERE email = ?`, [email]);
       if (existing.rows.length) return res.status(409).json({ error: "That email is already in use" });
     }
 
     let memberCode;
     if (manualCode && String(manualCode).trim()) {
       memberCode = String(manualCode).trim().toUpperCase();
-      const taken = await db.query("SELECT id FROM user_credentials WHERE member_code = $1", [memberCode]);
+      const taken = await db.query("SELECT id FROM user_credentials WHERE member_code = ?", [memberCode]);
       if (taken.rows.length) return res.status(409).json({ error: `ID "${memberCode}" is already in use` });
     } else {
       const prefix = finalRole === "trainee" ? "TTR" : "SUP";
@@ -115,20 +122,20 @@ router.post(
 
     const credInsert = await db.query(
       `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password)
-       VALUES ($1, $2, $3, TRUE) RETURNING id`,
+       VALUES (?, ?, ?, TRUE)`,
       [memberCode, passwordHash, finalRole]
     );
-    const newId = credInsert.rows[0].id;
+    const newId = credInsert.insertId;
 
     if (finalRole === "trainee") {
       const cohortId = await resolveCohortId(db, cohort);
       await db.query(
         `INSERT INTO students (id, full_name, email, cohort_id, current_year)
-         VALUES ($1, $2, $3, $4, $5)`,
+         VALUES (?, ?, ?, ?, ?)`,
         [newId, full_name.trim(), email || null, cohortId, currentYear || null]
       );
     } else {
-      await db.query(`INSERT INTO supervisors (id, full_name, email) VALUES ($1, $2, $3)`, [
+      await db.query(`INSERT INTO supervisors (id, full_name, email) VALUES (?, ?, ?)`, [
         newId,
         full_name.trim(),
         email || null,
@@ -137,18 +144,18 @@ router.post(
 
     // Every account gets baseline settings/privacy rows so those pages
     // never have to special-case "row doesn't exist yet."
-    await db.query("INSERT INTO settings (user_id) VALUES ($1)", [newId]);
-    await db.query("INSERT INTO privacy_preferences (user_id) VALUES ($1)", [newId]);
+    await db.query("INSERT INTO settings (user_id) VALUES (?)", [newId]);
+    await db.query("INSERT INTO privacy_preferences (user_id) VALUES (?)", [newId]);
     if (finalRole === "trainee") {
-      await db.query("INSERT INTO payments (student_id, total_fee_cents) VALUES ($1, 0)", [newId]);
+      await db.query("INSERT INTO payments (student_id, total_fee_cents) VALUES (?, 0)", [newId]);
     }
 
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'account_created', 'user_credentials', $2)",
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'account_created', 'user_credentials', ?)",
       [req.user.id, newId]
     );
 
-    const { rows } = await db.query(`${USER_SELECT} WHERE uc.id = $1`, [newId]);
+    const { rows } = await db.query(`${USER_SELECT} WHERE uc.id = ?`, [newId]);
 
     // The temp password is only ever returned here, once, at creation
     // time. It is not retrievable later -- use POST /users/:id/reset-password.
@@ -166,41 +173,37 @@ router.get(
   asyncRoute(async (req, res, db) => {
     const { search = "", role, status, page = 1, pageSize = 25 } = req.query;
 
-    const clauses = ["uc.role != 'admin'"]; // this list is Students + Supervisors only
+    const clauses = ["uc.role != 'admin'"]; // this list is Trainees + Supervisors only
     const params = [];
 
     if (search) {
-      params.push(`%${search}%`);
-      clauses.push(
-        `(COALESCE(sup.full_name, st.full_name) ILIKE $${params.length} OR uc.member_code ILIKE $${params.length})`
-      );
+      params.push(`%${search}%`, `%${search}%`);
+      clauses.push(`(COALESCE(sup.full_name, st.full_name) LIKE ? OR uc.member_code LIKE ?)`);
     }
     if (role && ["trainee", "supervisor"].includes(role)) {
       params.push(role);
-      clauses.push(`uc.role = $${params.length}`);
+      clauses.push(`uc.role = ?`);
     }
     if (status && ["active", "suspended"].includes(status)) {
       params.push(status);
-      clauses.push(`uc.status = $${params.length}`);
+      clauses.push(`uc.status = ?`);
     }
 
     const where = `WHERE ${clauses.join(" AND ")}`;
     const limit = Math.min(Number(pageSize) || 25, 100);
     const offset = (Math.max(Number(page) || 1, 1) - 1) * limit;
 
-    params.push(limit, offset);
     const { rows } = await db.query(
-      `${USER_SELECT} ${where} ORDER BY uc.id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
-      params
+      `${USER_SELECT} ${where} ORDER BY uc.id DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
     );
 
-    const countParams = params.slice(0, params.length - 2);
     const { rows: countRows } = await db.query(
       `SELECT COUNT(*) AS total FROM user_credentials uc
        LEFT JOIN supervisors sup ON sup.id = uc.id
        LEFT JOIN students st ON st.id = uc.id
        ${where}`,
-      countParams
+      params
     );
 
     res.json({
@@ -219,7 +222,7 @@ router.get(
     const id = parseIdParam(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid account id" });
 
-    const { rows } = await db.query(`${USER_SELECT} WHERE uc.id = $1`, [id]);
+    const { rows } = await db.query(`${USER_SELECT} WHERE uc.id = ?`, [id]);
     if (!rows.length) return res.status(404).json({ error: "Account not found" });
     res.json(toProfileResponse(rows[0]));
   })
@@ -233,7 +236,7 @@ router.put(
     if (!id) return res.status(400).json({ error: "Invalid account id" });
 
     const { rows: existingRows } = await db.query(
-      "SELECT id, role, status FROM user_credentials WHERE id = $1",
+      "SELECT id, role, status FROM user_credentials WHERE id = ?",
       [id]
     );
     const existing = existingRows[0];
@@ -246,7 +249,7 @@ router.put(
       return res.status(400).json({ error: "Status must be 'active' or 'suspended'" });
     }
     if (status !== undefined) {
-      await db.query("UPDATE user_credentials SET status = $1, updated_at = now() WHERE id = $2", [status, id]);
+      await db.query("UPDATE user_credentials SET status = ?, updated_at = NOW() WHERE id = ?", [status, id]);
     }
 
     const profileTable = existing.role === "trainee" ? "students" : "supervisors";
@@ -254,49 +257,50 @@ router.put(
     const profileParams = [];
     if (fullName !== undefined) {
       profileParams.push(fullName);
-      profileUpdates.push(`full_name = $${profileParams.length}`);
+      profileUpdates.push(`full_name = ?`);
     }
     if (email !== undefined) {
       profileParams.push(email || null);
-      profileUpdates.push(`email = $${profileParams.length}`);
+      profileUpdates.push(`email = ?`);
     }
     if (phone !== undefined) {
       profileParams.push(phone || null);
-      profileUpdates.push(`phone = $${profileParams.length}`);
+      profileUpdates.push(`phone = ?`);
     }
     if (existing.role === "trainee" && currentYear !== undefined) {
       profileParams.push(currentYear || null);
-      profileUpdates.push(`current_year = $${profileParams.length}`);
+      profileUpdates.push(`current_year = ?`);
     }
     if (existing.role === "trainee" && cohort !== undefined) {
       const cohortId = await resolveCohortId(db, cohort);
       profileParams.push(cohortId);
-      profileUpdates.push(`cohort_id = $${profileParams.length}`);
+      profileUpdates.push(`cohort_id = ?`);
     }
     if (profileUpdates.length) {
       profileParams.push(id);
       await db.query(
-        `UPDATE ${profileTable} SET ${profileUpdates.join(", ")}, updated_at = now() WHERE id = $${profileParams.length}`,
+        `UPDATE ${profileTable} SET ${profileUpdates.join(", ")}, updated_at = NOW() WHERE id = ?`,
         profileParams
       );
     }
 
     if (existing.role === "trainee" && Array.isArray(supervisorIds)) {
-      await db.query("DELETE FROM supervisor_students WHERE student_id = $1", [id]);
+      await db.query("DELETE FROM supervisor_students WHERE student_id = ?", [id]);
       for (const supId of supervisorIds) {
         await db.query(
-          "INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+          `INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE assigned_at = assigned_at`,
           [supId, id, req.user.id]
         );
       }
     }
 
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'account_updated', 'user_credentials', $2)",
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'account_updated', 'user_credentials', ?)",
       [req.user.id, id]
     );
 
-    const { rows } = await db.query(`${USER_SELECT} WHERE uc.id = $1`, [id]);
+    const { rows } = await db.query(`${USER_SELECT} WHERE uc.id = ?`, [id]);
     res.json(toProfileResponse(rows[0]));
   })
 );
@@ -313,14 +317,14 @@ router.patch(
       return res.status(400).json({ error: "Status must be 'active' or 'suspended'" });
     }
 
-    const { rowCount } = await db.query(
-      "UPDATE user_credentials SET status = $1, updated_at = now() WHERE id = $2",
+    const { affectedRows } = await db.query(
+      "UPDATE user_credentials SET status = ?, updated_at = NOW() WHERE id = ?",
       [status, id]
     );
-    if (!rowCount) return res.status(404).json({ error: "Account not found" });
+    if (!affectedRows) return res.status(404).json({ error: "Account not found" });
 
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, $2, 'user_credentials', $3)",
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, ?, 'user_credentials', ?)",
       [req.user.id, status === "suspended" ? "account_suspended" : "account_activated", id]
     );
 
@@ -335,18 +339,18 @@ router.post(
     const id = parseIdParam(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid account id" });
 
-    const { rows } = await db.query("SELECT member_code FROM user_credentials WHERE id = $1", [id]);
+    const { rows } = await db.query("SELECT member_code FROM user_credentials WHERE id = ?", [id]);
     if (!rows.length) return res.status(404).json({ error: "Account not found" });
 
     const tempPassword = generateTempPassword();
     const passwordHash = await hashPassword(tempPassword);
 
     await db.query(
-      "UPDATE user_credentials SET password_hash = $1, must_change_password = TRUE, updated_at = now() WHERE id = $2",
+      "UPDATE user_credentials SET password_hash = ?, must_change_password = TRUE, updated_at = NOW() WHERE id = ?",
       [passwordHash, id]
     );
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'password_reset_by_admin', 'user_credentials', $2)",
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'password_reset_by_admin', 'user_credentials', ?)",
       [req.user.id, id]
     );
 
@@ -356,12 +360,13 @@ router.post(
 
 // DELETE /api/admin/users/:id
 // Attempts a REAL delete (not a cosmetic status flip). The schema blocks
-// this with a foreign key violation (Postgres error 23503) if the account
-// has any history that must be preserved permanently -- sessions, hours,
-// payments recorded, etc. When that happens, this returns a clear 409
-// telling the admin to suspend instead. An account with zero history
-// (e.g. created by mistake) deletes cleanly. This was reproduced and
-// verified live while validating the schema.
+// this with a foreign key violation (MySQL error 1451,
+// ER_ROW_IS_REFERENCED_2) if the account has any history that must be
+// preserved permanently -- sessions, hours, payments recorded, etc. When
+// that happens, this returns a clear 409 telling the admin to suspend
+// instead. An account with zero history (e.g. created by mistake) deletes
+// cleanly. This was reproduced and verified live while validating the
+// MySQL schema.
 router.delete(
   "/users/:id",
   asyncRoute(async (req, res, db) => {
@@ -369,7 +374,7 @@ router.delete(
     if (!id) return res.status(400).json({ error: "Invalid account id" });
     const force = req.query.force === "true";
 
-    const { rows } = await db.query("SELECT id, role FROM user_credentials WHERE id = $1", [id]);
+    const { rows } = await db.query("SELECT id, role FROM user_credentials WHERE id = ?", [id]);
     if (!rows.length) return res.status(404).json({ error: "Account not found" });
     const targetRole = rows[0].role;
 
@@ -377,7 +382,7 @@ router.delete(
     // force-deletable, for anyone, regardless of role -- this is a hard
     // boundary, not a preference.
     const { rows: paymentRows } = await db.query(
-      "SELECT 1 FROM payment_transactions WHERE added_by = $1 LIMIT 1",
+      "SELECT 1 FROM payment_transactions WHERE added_by = ? LIMIT 1",
       [id]
     );
     if (paymentRows.length) {
@@ -390,41 +395,41 @@ router.delete(
       // A supervisor's (or admin's) authored records -- attendance they
       // logged, documents they uploaded, sessions they ran -- belong to
       // OTHER people's compliance history, not just this account. Force-
-      // deleting them would silently destroy other students' real
+      // deleting them would silently destroy other trainees' real
       // training records, which is exactly the data-loss bug this
       // schema's RESTRICT constraints exist to prevent. Force delete is
-      // therefore only offered for students, whose own history is
+      // therefore only offered for trainees, whose own history is
       // self-contained to their own account.
       return res.status(409).json({
-        error: "Force delete isn't available for supervisor or admin accounts with recorded history -- their records belong to other people's training history too. Suspend the account instead.",
+        error: "Force delete isn't available for supervisor or admin accounts with recorded history -- their records belong to other trainees' training history too. Suspend the account instead.",
       });
     }
 
     if (force && targetRole === "trainee") {
-      // Students can send chat messages (messages.sender_id has no
-      // cascade), which is the one realistic blocker for a student
-      // account. Everything else about a student (sessions, attendance,
+      // Trainees can send chat messages (messages.sender_id has no
+      // cascade), which is the one realistic blocker for a trainee
+      // account. Everything else about a trainee (sessions, attendance,
       // hours, assignments, documents, payments, evaluations, notes) is
       // already ON DELETE CASCADE via student_id and will be removed
       // automatically by the DELETE below.
-      await db.query("DELETE FROM messages WHERE sender_id = $1", [id]);
+      await db.query("DELETE FROM messages WHERE sender_id = ?", [id]);
     }
 
     try {
-      await db.query("DELETE FROM user_credentials WHERE id = $1", [id]);
+      await db.query("DELETE FROM user_credentials WHERE id = ?", [id]);
     } catch (err) {
-      if (err.code === "23503") {
+      if (err.code === "ER_ROW_IS_REFERENCED_2" || err.errno === 1451) {
         return res.status(409).json({
           error: force
             ? "This account still has protected history that can't be force-deleted. Suspend it instead."
-            : "This account has recorded history (sessions, hours, payments, or messages) and can't be deleted. Suspend it instead, or use permanent delete if you specifically need to erase this student's data.",
+            : "This account has recorded history (sessions, hours, payments, or messages) and can't be deleted. Suspend it instead, or use permanent delete if you specifically need to erase this trainee's data.",
         });
       }
       throw err;
     }
 
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES ($1, $2, 'user_credentials', $3, $4)",
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, ?, 'user_credentials', ?, ?)",
       [
         req.user.id,
         force ? "account_permanently_deleted" : "account_deleted",
@@ -440,12 +445,238 @@ router.delete(
 // NOTE: an earlier version had GET/PUT /admin/me here for the admin's own
 // profile. Removed -- it duplicated routes/profile.js's generic GET/PUT
 // /profile/me, which already works for any role (admin included) and is
-// what the Admin/Supervisor/Student dashboards all already call. Two
+// what the Admin/Supervisor/Trainee dashboards all already call. Two
 // endpoints doing the same thing is a maintenance trap waiting to diverge.
 
-// ---- Student Profiles (full detail view, admin-only) --------------------
+// ---- Groups (Admin's only account-creation action) ----------------------
+// A Group is 1 Master Trainer (supervisors.supervisor_type = 'primary') +
+// 2 Trainers/ToT (supervisor_type = 'in_training', primary_supervisor_id
+// pointing at the Master Trainer) + N Trainees, all created together and
+// tied to one trainer_groups row. See database/reframe_mhs_schema.sql's
+// design notes on `supervisors` and `trainer_groups` for the full
+// hierarchy rationale, including why the table isn't named `groups`
+// (reserved word in MySQL 8).
+
+// MySQL's TINYINT(1) columns (our BOOLEANs) come back as real JS booleans
+// at the top level thanks to db.js's typeCast hook -- but that hook only
+// sees raw wire-protocol field values, not values already serialized
+// *inside* a JSON_OBJECT()/JSON_ARRAYAGG() blob. Left alone,
+// must_change_password would come back as the JSON number 0/1 wherever
+// it's nested in one of these Group queries. This IF/CAST wraps it as a
+// real JSON true/false at the point the object is built instead.
+const MUST_CHANGE_PW_JSON = "IF(cred.must_change_password, CAST('true' AS JSON), CAST('false' AS JSON))";
+
+/** Builds the ordered-derived-table JSON_ARRAYAGG snippet for a set of group members. */
+function memberListSql(fromTable, extraFields) {
+  return `
+    COALESCE((
+      SELECT JSON_ARRAYAGG(obj) FROM (
+        SELECT JSON_OBJECT(
+          'id', member.id, 'full_name', member.full_name, 'member_code', cred.member_code,
+          'status', cred.status, 'must_change_password', ${MUST_CHANGE_PW_JSON}
+          ${extraFields ? `, ${extraFields}` : ""}
+        ) AS obj
+        FROM ${fromTable} member JOIN user_credentials cred ON cred.id = member.id
+        WHERE member.group_id = g.id ${fromTable === "supervisors" ? "AND member.supervisor_type = ?" : ""}
+        ORDER BY member.full_name
+      ) t
+    ), JSON_ARRAY())
+  `;
+}
+
+// GET /api/admin/groups
+router.get(
+  "/groups",
+  asyncRoute(async (req, res, db) => {
+    const supervisorExtraFields =
+      "'email', member.email, 'phone', member.phone, 'specialization', member.specialization, 'bio', member.bio";
+
+    const { rows } = await db.query(
+      `
+      SELECT
+        g.id, g.name, g.created_at,
+        (
+          SELECT JSON_OBJECT(
+            'id', member.id, 'full_name', member.full_name, 'member_code', cred.member_code,
+            'status', cred.status, 'must_change_password', ${MUST_CHANGE_PW_JSON},
+            'email', member.email, 'phone', member.phone,
+            'specialization', member.specialization, 'bio', member.bio
+          )
+          FROM supervisors member JOIN user_credentials cred ON cred.id = member.id
+          WHERE member.group_id = g.id AND member.supervisor_type = 'primary'
+          LIMIT 1
+        ) AS master_trainer,
+        ${memberListSql("supervisors", supervisorExtraFields)} AS trainers,
+        ${memberListSql("students", null)} AS trainees
+      FROM trainer_groups g
+      ORDER BY g.created_at DESC
+      `,
+      ["in_training"]
+    );
+
+    res.json({
+      groups: rows.map((g) => ({
+        id: g.id,
+        name: g.name,
+        createdAt: g.created_at,
+        masterTrainer: g.master_trainer,
+        trainers: g.trainers,
+        trainees: g.trainees,
+      })),
+    });
+  })
+);
+
+// POST /api/admin/groups
+// { name, masterTrainer: {fullName, memberCode?}, trainers: [{fullName, memberCode?} x2],
+//   trainees: [{fullName, memberCode?}, ...], trainerPassword?, traineePassword? }
+router.post(
+  "/groups",
+  asyncRoute(async (req, res, db) => {
+    const body = req.body || {};
+    const name = String(body.name || "").trim();
+    const masterTrainerIn = body.masterTrainer || {};
+    const trainersIn = Array.isArray(body.trainers) ? body.trainers : [];
+    const traineesIn = Array.isArray(body.trainees) ? body.trainees : [];
+
+    if (!name) return res.status(400).json({ error: "Group name is required" });
+    if (!masterTrainerIn.fullName || !String(masterTrainerIn.fullName).trim()) {
+      return res.status(400).json({ error: "Master Trainer full name is required" });
+    }
+    if (trainersIn.length !== 2 || trainersIn.some((t) => !t?.fullName || !String(t.fullName).trim())) {
+      return res.status(400).json({ error: "Both Trainer (ToT) full names are required" });
+    }
+    if (!traineesIn.length || traineesIn.some((t) => !t?.fullName || !String(t.fullName).trim())) {
+      return res.status(400).json({ error: "At least one trainee full name is required" });
+    }
+
+    const { rows: nameRows } = await db.query("SELECT id FROM trainer_groups WHERE name = ?", [name]);
+    if (nameRows.length) return res.status(409).json({ error: `A group named "${name}" already exists` });
+
+    // Resolve every member code up front (before creating anyone) so a
+    // conflict on, say, the second trainee doesn't leave the master
+    // trainer/trainers already created -- asyncRoute rolls back the whole
+    // transaction on any thrown error, but an early `return` here commits
+    // whatever ran so far, so nothing gets inserted until all codes check out.
+    async function resolveCode(manualCode, prefix) {
+      if (manualCode && String(manualCode).trim()) {
+        const code = String(manualCode).trim().toUpperCase();
+        const { rows } = await db.query("SELECT id FROM user_credentials WHERE member_code = ?", [code]);
+        if (rows.length) return { conflict: `ID "${code}" is already in use` };
+        return { code };
+      }
+      return { code: await generateNextId(db, prefix) };
+    }
+
+    const masterCode = await resolveCode(masterTrainerIn.memberCode, "SUP");
+    if (masterCode.conflict) return res.status(409).json({ error: masterCode.conflict });
+
+    const trainerCodes = [];
+    for (const t of trainersIn) {
+      const resolved = await resolveCode(t.memberCode, "SUP");
+      if (resolved.conflict) return res.status(409).json({ error: resolved.conflict });
+      trainerCodes.push(resolved.code);
+    }
+
+    const traineeCodes = [];
+    for (const t of traineesIn) {
+      const resolved = await resolveCode(t.memberCode, "TTR");
+      if (resolved.conflict) return res.status(409).json({ error: resolved.conflict });
+      traineeCodes.push(resolved.code);
+    }
+
+    const trainerPlainPassword =
+      body.trainerPassword && String(body.trainerPassword).length >= 8
+        ? String(body.trainerPassword)
+        : generateTempPassword();
+    const traineePlainPassword =
+      body.traineePassword && String(body.traineePassword).length >= 8
+        ? String(body.traineePassword)
+        : generateTempPassword();
+    const trainerHash = await hashPassword(trainerPlainPassword);
+    const traineeHash = await hashPassword(traineePlainPassword);
+
+    const groupInsert = await db.query("INSERT INTO trainer_groups (name) VALUES (?)", [name]);
+    const group = { id: groupInsert.insertId, name };
+
+    async function insertSupervisor(fullName, memberCode, supervisorType, primarySupervisorId) {
+      const cred = await db.query(
+        `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password)
+         VALUES (?, ?, 'supervisor', TRUE)`,
+        [memberCode, trainerHash]
+      );
+      const id = cred.insertId;
+      await db.query(
+        `INSERT INTO supervisors (id, full_name, supervisor_type, primary_supervisor_id, group_id)
+         VALUES (?, ?, ?, ?, ?)`,
+        [id, fullName.trim(), supervisorType, primarySupervisorId, group.id]
+      );
+      await db.query("INSERT INTO settings (user_id) VALUES (?)", [id]);
+      await db.query("INSERT INTO privacy_preferences (user_id) VALUES (?)", [id]);
+      return { id, fullName: fullName.trim(), memberCode };
+    }
+
+    const masterTrainer = await insertSupervisor(masterTrainerIn.fullName, masterCode.code, "primary", null);
+
+    const trainers = [];
+    for (let i = 0; i < trainersIn.length; i++) {
+      trainers.push(
+        await insertSupervisor(trainersIn[i].fullName, trainerCodes[i], "in_training", masterTrainer.id)
+      );
+    }
+
+    const trainerRoleIds = [masterTrainer.id, ...trainers.map((t) => t.id)];
+    const trainees = [];
+    for (let i = 0; i < traineesIn.length; i++) {
+      const memberCode = traineeCodes[i];
+      const cred = await db.query(
+        `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password)
+         VALUES (?, ?, 'trainee', TRUE)`,
+        [memberCode, traineeHash]
+      );
+      const id = cred.insertId;
+      await db.query(`INSERT INTO students (id, full_name, group_id) VALUES (?, ?, ?)`, [
+        id,
+        traineesIn[i].fullName.trim(),
+        group.id,
+      ]);
+      await db.query("INSERT INTO settings (user_id) VALUES (?)", [id]);
+      await db.query("INSERT INTO privacy_preferences (user_id) VALUES (?)", [id]);
+      await db.query("INSERT INTO payments (student_id, total_fee_cents) VALUES (?, 0)", [id]);
+
+      // Assign this trainee to all three trainer-role accounts in the
+      // group (Master Trainer + both Trainers/ToT) so messaging,
+      // materials, and assignments work from all three, not just one.
+      for (const trainerId of trainerRoleIds) {
+        await db.query(
+          `INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE assigned_at = assigned_at`,
+          [trainerId, id, req.user.id]
+        );
+      }
+
+      trainees.push({ id, fullName: traineesIn[i].fullName.trim(), memberCode });
+    }
+
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'group_created', 'trainer_groups', ?)",
+      [req.user.id, group.id]
+    );
+
+    res.status(201).json({
+      group: { id: group.id, name: group.name },
+      masterTrainer,
+      trainers,
+      trainerPassword: trainerPlainPassword,
+      trainees,
+      traineePassword: traineePlainPassword,
+    });
+  })
+);
+
+// ---- Trainee Profiles (full detail view, admin-only) ---------------------
 // Unlike routes/supervisor.js's GET /students/:id, this has NO
-// supervisor_students assignment check -- Admin can view ANY student's
+// supervisor_students assignment check -- Admin can view ANY trainee's
 // complete profile, not just ones they're personally assigned to.
 
 // GET /api/admin/students/:id/profile
@@ -455,15 +686,20 @@ router.get(
     const id = parseIdParam(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid student id" });
 
-    const { rows: userRows } = await db.query(`${USER_SELECT} WHERE uc.id = $1 AND uc.role = 'trainee'`, [id]);
-    if (!userRows.length) return res.status(404).json({ error: "Student not found" });
+    const { rows: userRows } = await db.query(`${USER_SELECT} WHERE uc.id = ? AND uc.role = 'trainee'`, [id]);
+    if (!userRows.length) return res.status(404).json({ error: "Trainee not found" });
     const profile = toProfileResponse(userRows[0]);
 
-    const { rows: recordRows } = await db.query(buildRecordsQuery(null), [id]);
-    const supIds = [...new Set(recordRows.map((r) => r.supervisor_id))];
+    const rq = buildRecordsQuery(id, null);
+    const { rows: recordRows } = await db.query(rq.sql, rq.params);
+    const supIds = [...new Set(recordRows.map((r) => r.supervisor_id).filter((x) => x != null))];
     let supNames = {};
     if (supIds.length) {
-      const { rows: supRows } = await db.query("SELECT id, full_name FROM supervisors WHERE id = ANY($1)", [supIds]);
+      const placeholders = supIds.map(() => "?").join(",");
+      const { rows: supRows } = await db.query(
+        `SELECT id, full_name FROM supervisors WHERE id IN (${placeholders})`,
+        supIds
+      );
       supRows.forEach((r) => (supNames[r.id] = r.full_name));
     }
     const records = recordRows.map((r) => toRecord({ ...r, supervisor_name: supNames[r.supervisor_id] }));
@@ -472,7 +708,7 @@ router.get(
       `SELECT d.*, COALESCE(a.full_name, sup.full_name) AS uploaded_by_name FROM documents d
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE d.student_id = $1 ORDER BY d.created_at DESC`,
+       WHERE d.student_id = ? ORDER BY d.created_at DESC`,
       [id]
     );
     const documents = documentRows.map(toDocument);
@@ -487,6 +723,8 @@ router.get(
       transactions
     );
 
+    const { masterTrainer, totTrainers, trainingHours } = await getTrainersAndHours(db, id, profile.full_name);
+
     res.json({
       profile,
       records,
@@ -494,23 +732,88 @@ router.get(
       progress,
       payment,
       paymentTransactions: transactions.map(toPaymentTransaction),
+      masterTrainer,
+      totTrainers,
+      trainingHours,
     });
   })
 );
 
+// Looks up this trainee's assigned Master Trainer + Trainer(s)/ToT (via
+// supervisor_students, the caseload assignment table -- see its schema
+// comment) along with the supervision hours each of them has logged for
+// this specific trainee, plus the trainee's own logged training hours.
+// Reuses training_hours/supervision_hours as-is; no new tables.
+async function getTrainersAndHours(db, studentId, studentFullName) {
+  const { rows: supervisorRows } = await db.query(
+    `SELECT sup.id, sup.full_name, sup.email, sup.phone, sup.specialization, sup.bio,
+            sup.supervisor_type, uc.member_code, uc.status
+     FROM supervisor_students ss
+     JOIN supervisors sup ON sup.id = ss.supervisor_id
+     JOIN user_credentials uc ON uc.id = sup.id
+     WHERE ss.student_id = ?
+     ORDER BY sup.supervisor_type, sup.full_name`,
+    [studentId]
+  );
+
+  const { rows: hoursRows } = await db.query(
+    `SELECT supervisor_id, COALESCE(SUM(hours), 0) AS hours
+     FROM supervision_hours WHERE student_id = ? GROUP BY supervisor_id`,
+    [studentId]
+  );
+  const hoursBySupervisor = {};
+  hoursRows.forEach((r) => (hoursBySupervisor[r.supervisor_id] = Number(r.hours)));
+
+  const { rows: traineeHoursRows } = await db.query(
+    "SELECT COALESCE(SUM(hours), 0) AS hours FROM training_hours WHERE student_id = ?",
+    [studentId]
+  );
+  const traineeHours = Number(traineeHoursRows[0].hours);
+
+  function toTrainerInfo(row) {
+    return {
+      id: row.id,
+      fullName: row.full_name,
+      memberCode: row.member_code,
+      status: row.status,
+      email: row.email,
+      phone: row.phone,
+      specialization: row.specialization,
+      bio: row.bio,
+      hours: hoursBySupervisor[row.id] || 0,
+    };
+  }
+
+  const masterTrainerRow = supervisorRows.find((s) => s.supervisor_type === "primary");
+  const totTrainerRows = supervisorRows.filter((s) => s.supervisor_type === "in_training");
+
+  const masterTrainer = masterTrainerRow ? toTrainerInfo(masterTrainerRow) : null;
+  const totTrainers = totTrainerRows.map(toTrainerInfo);
+
+  return {
+    masterTrainer,
+    totTrainers,
+    trainingHours: {
+      trainee: { fullName: studentFullName, hours: traineeHours },
+      masterTrainer: masterTrainer ? { fullName: masterTrainer.fullName, hours: masterTrainer.hours } : null,
+      totTrainers: totTrainers.map((t) => ({ fullName: t.fullName, hours: t.hours })),
+    },
+  };
+}
+
 // DELETE /api/admin/documents/:id
-// Removes a student document -- both the DB row AND the file on disk.
-// Works for any student's document, no assignment restriction (Admin-wide).
+// Removes a trainee document -- both the DB row AND the file on disk.
+// Works for any trainee's document, no assignment restriction (Admin-wide).
 router.delete(
   "/documents/:id",
   asyncRoute(async (req, res, db) => {
     const id = parseIdParam(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid document id" });
 
-    const { rows } = await db.query("SELECT filename FROM documents WHERE id = $1", [id]);
+    const { rows } = await db.query("SELECT filename FROM documents WHERE id = ?", [id]);
     if (!rows.length) return res.status(404).json({ error: "Document not found" });
 
-    await db.query("DELETE FROM documents WHERE id = $1", [id]);
+    await db.query("DELETE FROM documents WHERE id = ?", [id]);
 
     const filePath = path.join(__dirname, "../../uploads/documents", rows[0].filename);
     fs.unlink(filePath, (err) => {
@@ -521,7 +824,7 @@ router.delete(
     });
 
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES ($1, 'document_deleted', 'documents', $2)",
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'document_deleted', 'documents', ?)",
       [req.user.id, id]
     );
 
@@ -539,15 +842,6 @@ router.post("/events/upload-image", (req, res) => {
   });
 });
 
-/** Admin forms send either a real array or newline-separated bullet text -- normalize to an array either way. */
-function toArray(value) {
-  if (Array.isArray(value)) return value;
-  if (typeof value === "string") {
-    return value.split("\n").map((s) => s.trim()).filter(Boolean);
-  }
-  return [];
-}
-
 router.get(
   "/events",
   asyncRoute(async (req, res, db) => {
@@ -562,13 +856,12 @@ router.post(
     const b = req.body || {};
     if (!b.date) return res.status(400).json({ error: "date is required" });
 
-    const { rows } = await db.query(
+    const insert = await db.query(
       `INSERT INTO events (
         created_by, event_date, image, status, fee, register_url,
         title_en, format_en, facilitator_en, about_en, learn_en, who_en, outcomes_en, facilitator_bio_en,
         title_ar, format_ar, facilitator_ar, about_ar, learn_ar, who_ar, outcomes_ar, facilitator_bio_ar
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
-      RETURNING *`,
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         req.user.id,
         b.date,
@@ -595,6 +888,7 @@ router.post(
       ]
     );
 
+    const { rows } = await db.query("SELECT * FROM events WHERE id = ?", [insert.insertId]);
     res.status(201).json(toPublicEvent(rows[0]));
   })
 );
@@ -605,20 +899,20 @@ router.put(
     const id = parseIdParam(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid event id" });
 
-    const { rows: existingRows } = await db.query("SELECT * FROM events WHERE id = $1", [id]);
+    const { rows: existingRows } = await db.query("SELECT * FROM events WHERE id = ?", [id]);
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ error: "Event not found" });
 
     const b = req.body || {};
-    const { rows } = await db.query(
+    await db.query(
       `UPDATE events SET
-        event_date = $1, image = $2, status = $3, fee = $4, register_url = $5,
-        title_en = $6, format_en = $7, facilitator_en = $8, about_en = $9,
-        learn_en = $10, who_en = $11, outcomes_en = $12, facilitator_bio_en = $13,
-        title_ar = $14, format_ar = $15, facilitator_ar = $16, about_ar = $17,
-        learn_ar = $18, who_ar = $19, outcomes_ar = $20, facilitator_bio_ar = $21,
-        updated_at = now()
-       WHERE id = $22 RETURNING *`,
+        event_date = ?, image = ?, status = ?, fee = ?, register_url = ?,
+        title_en = ?, format_en = ?, facilitator_en = ?, about_en = ?,
+        learn_en = ?, who_en = ?, outcomes_en = ?, facilitator_bio_en = ?,
+        title_ar = ?, format_ar = ?, facilitator_ar = ?, about_ar = ?,
+        learn_ar = ?, who_ar = ?, outcomes_ar = ?, facilitator_bio_ar = ?,
+        updated_at = NOW()
+       WHERE id = ?`,
       [
         b.date ?? existing.event_date,
         b.image ?? existing.image,
@@ -649,6 +943,7 @@ router.put(
       ]
     );
 
+    const { rows } = await db.query("SELECT * FROM events WHERE id = ?", [id]);
     res.json(toPublicEvent(rows[0]));
   })
 );
@@ -659,21 +954,21 @@ router.delete(
     const id = parseIdParam(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid event id" });
 
-    const { rowCount } = await db.query("DELETE FROM events WHERE id = $1", [id]);
-    if (!rowCount) return res.status(404).json({ error: "Event not found" });
+    const { affectedRows } = await db.query("DELETE FROM events WHERE id = ?", [id]);
+    if (!affectedRows) return res.status(404).json({ error: "Event not found" });
     res.json({ success: true });
   })
 );
 
 // ---- Payments (financial ledger, admin-managed) -------------------------
-// Every query below runs inside asyncRoute's transactional client, which
-// has already run `SET LOCAL app.user_role = 'admin'` for this request --
-// required for these tables' Row-Level Security policies to grant access
-// at all. Verified live: without that session variable set, these queries
-// silently return zero rows instead of erroring.
+// Authorization for these tables is enforced entirely at the Express
+// layer: this whole router requires requireAdmin (see `router.use` above)
+// -- there is no Row-Level Security in MySQL to lean on the way the
+// previous Postgres schema's (defense-in-depth, not the actual
+// enforcement point) RLS policies did.
 
 async function getPaymentsRow(db, studentId) {
-  const { rows } = await db.query("SELECT * FROM payments WHERE student_id = $1", [studentId]);
+  const { rows } = await db.query("SELECT * FROM payments WHERE student_id = ?", [studentId]);
   return rows[0] || null;
 }
 async function getTransactions(db, studentId) {
@@ -683,7 +978,7 @@ async function getTransactions(db, studentId) {
      JOIN user_credentials uc ON uc.id = pt.added_by
      LEFT JOIN admin_users a ON a.id = pt.added_by
      LEFT JOIN supervisors sup ON sup.id = pt.added_by
-     WHERE pt.student_id = $1
+     WHERE pt.student_id = ?
      ORDER BY pt.payment_date DESC, pt.created_at DESC`,
     [studentId]
   );
@@ -697,7 +992,7 @@ async function recomputeStoredStatus(db, studentId) {
   const netFeeCents = Math.max((paymentsRow?.total_fee_cents || 0) - (paymentsRow?.discount_cents || 0), 0);
   const remaining = netFeeCents - paidCents;
   const status = paidCents > 0 && remaining <= 0 ? "paid" : paidCents > 0 ? "partial" : "unpaid";
-  await db.query("UPDATE payments SET status = $1, updated_at = now() WHERE student_id = $2", [status, studentId]);
+  await db.query("UPDATE payments SET status = ?, updated_at = NOW() WHERE student_id = ?", [status, studentId]);
   return { paymentsRow: { ...paymentsRow, status }, transactions };
 }
 
@@ -709,8 +1004,8 @@ router.get(
     const params = [];
     let where = "";
     if (search) {
-      params.push(`%${search}%`);
-      where = `WHERE st.full_name ILIKE $1 OR uc.member_code ILIKE $1`;
+      params.push(`%${search}%`, `%${search}%`);
+      where = `WHERE st.full_name LIKE ? OR uc.member_code LIKE ?`;
     }
 
     const { rows: studentRows } = await db.query(
@@ -741,10 +1036,10 @@ router.get(
     if (!studentId) return res.status(400).json({ error: "Invalid student id" });
 
     const { rows } = await db.query(
-      "SELECT uc.id, uc.member_code, st.full_name FROM user_credentials uc JOIN students st ON st.id = uc.id WHERE uc.id = $1",
+      "SELECT uc.id, uc.member_code, st.full_name FROM user_credentials uc JOIN students st ON st.id = uc.id WHERE uc.id = ?",
       [studentId]
     );
-    if (!rows.length) return res.status(404).json({ error: "Student not found" });
+    if (!rows.length) return res.status(404).json({ error: "Trainee not found" });
 
     const paymentsRow = await getPaymentsRow(db, studentId);
     const transactions = await getTransactions(db, studentId);
@@ -763,8 +1058,8 @@ router.put(
     const studentId = parseIdParam(req.params.studentId);
     if (!studentId) return res.status(400).json({ error: "Invalid student id" });
 
-    const { rows: studentRows } = await db.query("SELECT id FROM students WHERE id = $1", [studentId]);
-    if (!studentRows.length) return res.status(404).json({ error: "Student not found" });
+    const { rows: studentRows } = await db.query("SELECT id FROM students WHERE id = ?", [studentId]);
+    if (!studentRows.length) return res.status(404).json({ error: "Trainee not found" });
 
     const totalFee = Number(req.body?.totalFee);
     if (!Number.isFinite(totalFee) || totalFee < 0) {
@@ -780,21 +1075,21 @@ router.put(
     const existing = await getPaymentsRow(db, studentId);
     if (existing) {
       await db.query(
-        `UPDATE payments SET total_fee_cents = $1, discount_cents = $2, payment_plan = $3, next_due_date = $4, updated_at = now()
-         WHERE student_id = $5`,
+        `UPDATE payments SET total_fee_cents = ?, discount_cents = ?, payment_plan = ?, next_due_date = ?, updated_at = NOW()
+         WHERE student_id = ?`,
         [totalFeeCents, discountCents, paymentPlan, nextDueDate, studentId]
       );
     } else {
       await db.query(
         `INSERT INTO payments (student_id, total_fee_cents, discount_cents, payment_plan, next_due_date)
-         VALUES ($1, $2, $3, $4, $5)`,
+         VALUES (?, ?, ?, ?, ?)`,
         [studentId, totalFeeCents, discountCents, paymentPlan, nextDueDate]
       );
     }
 
     const { paymentsRow, transactions } = await recomputeStoredStatus(db, studentId);
     const { rows: nameRows } = await db.query(
-      "SELECT uc.member_code, st.full_name FROM user_credentials uc JOIN students st ON st.id = uc.id WHERE uc.id = $1",
+      "SELECT uc.member_code, st.full_name FROM user_credentials uc JOIN students st ON st.id = uc.id WHERE uc.id = ?",
       [studentId]
     );
 
@@ -816,8 +1111,8 @@ router.post(
     const studentId = parseIdParam(req.params.studentId);
     if (!studentId) return res.status(400).json({ error: "Invalid student id" });
 
-    const { rows: studentRows } = await db.query("SELECT id FROM students WHERE id = $1", [studentId]);
-    if (!studentRows.length) return res.status(404).json({ error: "Student not found" });
+    const { rows: studentRows } = await db.query("SELECT id FROM students WHERE id = ?", [studentId]);
+    if (!studentRows.length) return res.status(404).json({ error: "Trainee not found" });
 
     const { amount, date, method, notes } = req.body || {};
     const numericAmount = Number(amount);
@@ -832,8 +1127,8 @@ router.post(
     // blocking legitimate repeat payments made later.
     const { rows: dupeRows } = await db.query(
       `SELECT id FROM payment_transactions
-       WHERE student_id = $1 AND amount_cents = $2 AND payment_date = $3 AND COALESCE(method,'') = COALESCE($4,'')
-         AND created_at >= now() - interval '10 seconds'`,
+       WHERE student_id = ? AND amount_cents = ? AND payment_date = ? AND COALESCE(method,'') = COALESCE(?,'')
+         AND created_at >= NOW() - INTERVAL 10 SECOND`,
       [studentId, amountCents, date, method || null]
     );
     if (dupeRows.length) {
@@ -844,17 +1139,17 @@ router.post(
 
     await db.query(
       `INSERT INTO payment_transactions (student_id, amount_cents, transaction_type, payment_date, method, added_by, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [studentId, amountCents, amountCents < 0 ? "refund" : "payment", date, method || null, req.user.id, notes || null]
     );
     await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES ($1, 'payment_recorded', 'payment_transactions', $2, $3)",
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'payment_recorded', 'payment_transactions', ?, ?)",
       [req.user.id, studentId, JSON.stringify({ amountCents, date, method })]
     );
 
     const { paymentsRow, transactions } = await recomputeStoredStatus(db, studentId);
     const { rows: nameRows } = await db.query(
-      "SELECT uc.member_code, st.full_name FROM user_credentials uc JOIN students st ON st.id = uc.id WHERE uc.id = $1",
+      "SELECT uc.member_code, st.full_name FROM user_credentials uc JOIN students st ON st.id = uc.id WHERE uc.id = ?",
       [studentId]
     );
 

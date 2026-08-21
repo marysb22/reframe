@@ -245,13 +245,15 @@
 
     <script src="scripts/translations.js"></script>
 <script src="scripts/main.js"></script>
+<script src="scripts/api-config.js"></script>
     <script>
         // ---------------------------------------------------------------
-        // REAL login wiring — calls the backend at http://localhost:3000
-        // Make sure the backend server is running (node src/server.js)
-        // before testing this page.
+        // REAL login wiring — calls the backend API. Local dev talks to
+        // localhost:3000 (make sure the backend server is running --
+        // node src/server.js); a deployed site talks to the same origin
+        // as this page (see scripts/api-config.js).
         // ---------------------------------------------------------------
-        const API_BASE = 'http://localhost:3000';
+        const API_BASE = window.API_BASE;
 
         function showMessage(text, type) {
             const box = document.getElementById('loginMessage');
@@ -307,6 +309,7 @@
                 const destination =
                     role === 'admin' ? 'AdminDashboard.html' :
                     role === 'supervisor' ? 'supervisor-dashboard.html' :
+                    role === 'designer' ? 'DesignerDashboard.html' :
                     'PersonalProfile.html';
 
                 setTimeout(() => { window.location.href = destination; }, 800);
@@ -316,7 +319,6 @@
                 showMessage('Could not reach the server. Make sure the backend is running.', 'error');
             } finally {
                 submitButton.textContent = originalText;
-              \
                 submitButton.disabled = false;
             }
         });

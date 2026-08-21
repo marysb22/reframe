@@ -7,7 +7,6 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lexend:wght@600;700&display=swap" rel="stylesheet">
 <style>
-<style>
 :root{
 --primary:#2E7D78;
 --primary-light:#4D9794;
@@ -166,7 +165,6 @@ tr:hover td{background:var(--surface-2);}
   .mobile-toggle{display:flex;}
 }
 </style>
-</style>
 </head>
 <body>
 <div class="system-layout">
@@ -179,25 +177,24 @@ tr:hover td{background:var(--surface-2);}
   <nav>
     <div class="nav-label">Overview</div>
     <ul>
-      <li><a href="dashboard.html#dashboard"><i class="fa fa-gauge"></i>Dashboard</a></li>
+      <li><a href="AdminDashboard.html#dashboard"><i class="fa fa-gauge"></i>Dashboard</a></li>
     </ul>
 
     <div class="nav-label">Accounts</div>
     <ul>
-      <li><a href="dashboard.html#students"><i class="fa fa-user-graduate"></i>Students</a></li>
-      <li><a href="dashboard.html#supervisors"><i class="fa fa-user-doctor"></i>Supervisors</a></li>
-      <li><a href="dashboard.html#studentProfiles"><i class="fa fa-address-card"></i>Student Profiles</a></li>
+      <li><a href="AdminDashboard.html#groups"><i class="fa fa-people-group"></i>Groups</a></li>
+      <li><a href="AdminDashboard.html#studentProfiles"><i class="fa fa-address-card"></i>Trainee Profiles</a></li>
     </ul>
 
     <div class="nav-label">Content &amp; Finance</div>
     <ul>
       <li><a href="admin-events.html" class="active"><i class="fa fa-calendar-days"></i>Events</a></li>
-      <li><a href="dashboard.html#payments"><i class="fa fa-money-bill"></i>Payments</a></li>
+      <li><a href="AdminDashboard.html#payments"><i class="fa fa-money-bill"></i>Payments</a></li>
     </ul>
 
     <div class="nav-label">System</div>
     <ul>
-      <li><a href="dashboard.html#settings"><i class="fa fa-gear"></i>Settings</a></li>
+      <li><a href="AdminDashboard.html#settings"><i class="fa fa-gear"></i>Settings</a></li>
     </ul>
   </nav>
 
@@ -302,6 +299,7 @@ tr:hover td{background:var(--surface-2);}
   </div>
 </div>
 
+<script src="scripts/api-config.js"></script>
 <script>
 // =========================================================================
 // This page is intentionally self-contained: it reuses the exact same
@@ -312,7 +310,8 @@ tr:hover td{background:var(--surface-2);}
 // SQL `events` table. No new backend code, no schema changes.
 // =========================================================================
 
-const API = "http://localhost:3000/api";
+const API_BASE = window.API_BASE;
+const API = API_BASE + "/api";
 const token = localStorage.getItem("token") || localStorage.getItem("reframe_token");
 if (!token) window.location.href = "login.html";
 
@@ -402,7 +401,10 @@ async function guardAdmin() {
   if (me.role !== "admin") {
     showToast("Admin access required. Redirecting to your dashboard.", "error");
     setTimeout(() => {
-      window.location.href = me.role === "supervisor" ? "supervisor-dashboard.html" : "PersonalProfile.html";
+      window.location.href =
+        me.role === "supervisor" ? "supervisor-dashboard.html" :
+        me.role === "designer" ? "DesignerDashboard.html" :
+        "PersonalProfile.html";
     }, 800);
     return null;
   }
@@ -484,7 +486,7 @@ async function uploadEventImage() {
     }
     const data = await response.json();
     document.getElementById("evImage").value = data.url;
-    document.getElementById("evImagePreview").src = "http://localhost:3000" + data.url;
+    document.getElementById("evImagePreview").src = API_BASE + data.url;
     statusEl.textContent = "Uploaded";
     saveEventDraft();
   } catch (err) {
@@ -543,7 +545,7 @@ function restoreEventDraftIfAny() {
     if (draft.evImage) {
       document.getElementById("evImagePreview").src = draft.evImage.startsWith("http")
         ? draft.evImage
-        : "http://localhost:3000" + draft.evImage;
+        : API_BASE + draft.evImage;
       document.getElementById("evImagePreviewWrap").style.display = "block";
     }
     document.getElementById("eventFormWrap").style.display = "block";
@@ -564,7 +566,7 @@ function editEvent(id) {
   document.getElementById("evStatus").value = ev.status;
   document.getElementById("evImage").value = ev.image || "";
   if (ev.image) {
-    document.getElementById("evImagePreview").src = ev.image.startsWith("http") ? ev.image : "http://localhost:3000" + ev.image;
+    document.getElementById("evImagePreview").src = ev.image.startsWith("http") ? ev.image : API_BASE + ev.image;
     document.getElementById("evImageStatus").textContent = "Current image";
     document.getElementById("evImagePreviewWrap").style.display = "block";
   } else {
