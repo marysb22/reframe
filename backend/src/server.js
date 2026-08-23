@@ -42,6 +42,7 @@ app.use((req, res, next) => {
 });
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use(express.static(path.join(__dirname, "../public")));
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/admin", require("./routes/admin"));
