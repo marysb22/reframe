@@ -53,6 +53,62 @@ app.use("/api", require("./routes/public"));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
+// TEMPORARY -- one-off setup endpoint to create/fix the DES001 designer
+// test account directly through the app's own DB connection, since
+// phpMyAdmin access wasn't working out. Guarded by a secret query param
+// so it isn't trivially discoverable. REMOVE after use.
+app.post("/api/_tmp_setup_designer", async (req, res) => {
+  if (req.query.key !== "reframe-tmp-2026-setup") {
+    return res.status(404).json({ error: "Not found" });
+  }
+  try {
+    const { pool } = require("./db");
+    const bcrypt = require("bcryptjs");
+    const memberCode = "DES001";
+    const password = "Designer2026Temp";
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const { rows: existing } = await pool.query(
+      "SELECT id FROM user_credentials WHERE member_code = ?",
+      [memberCode]
+    );
+
+    let userId;
+    if (existing.length > 0) {
+      userId = existing[0].id;
+      await pool.query(
+        "UPDATE user_credentials SET password_hash = ?, role = 'designer', status = 'active', must_change_password = TRUE WHERE id = ?",
+        [passwordHash, userId]
+      );
+    } else {
+      const { rows: maxRows } = await pool.query(
+        "SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM user_credentials"
+      );
+      userId = maxRows[0].next_id;
+      await pool.query(
+        "INSERT INTO user_credentials (id, member_code, password_hash, role, status, must_change_password) VALUES (?, ?, ?, 'designer', 'active', TRUE)",
+        [userId, memberCode, passwordHash]
+      );
+    }
+
+    const { rows: designerRow } = await pool.query(
+      "SELECT id FROM designers WHERE id = ?",
+      [userId]
+    );
+    if (designerRow.length === 0) {
+      await pool.query(
+        "INSERT INTO designers (id, full_name, email) VALUES (?, 'Test Designer', 'designer@reframe-mhs.org')",
+        [userId]
+      );
+    }
+
+    res.json({ ok: true, userId, memberCode, password, note: "Log in with these credentials, then remove this endpoint." });
+  } catch (err) {
+    console.error("tmp_setup_designer failed:", err);
+    res.status(500).json({ error: err.message, code: err.code });
+  }
+});
+
 // Centralized error handler -- every asyncRoute() failure lands here.
 // Full error detail (including raw DB errors) is logged server-side only;
 // the client gets a generic message. Returning err.message to the client
