@@ -57,7 +57,7 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 // test account directly through the app's own DB connection, since
 // phpMyAdmin access wasn't working out. Guarded by a secret query param
 // so it isn't trivially discoverable. REMOVE after use.
-app.post("/api/_tmp_setup_designer", async (req, res) => {
+app.get("/api/_tmp_setup_designer", async (req, res) => {
   if (req.query.key !== "reframe-tmp-2026-setup") {
     return res.status(404).json({ error: "Not found" });
   }
