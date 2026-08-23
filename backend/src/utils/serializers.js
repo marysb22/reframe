@@ -72,6 +72,7 @@ function toProfileResponse(row) {
 function toPublicEvent(row) {
   return {
     id: row.id,
+    slug: row.slug,
     date: row.event_date,
     image: row.image,
     status: row.status,
@@ -97,6 +98,32 @@ function toPublicEvent(row) {
       outcomes: row.outcomes_ar || [],
       facilitatorBio: row.facilitator_bio_ar,
     },
+  };
+}
+
+/**
+ * Full single-event shape for the authenticated designer/admin editor --
+ * unlike toPublicEvent, always includes every child collection (speakers/
+ * agenda/sponsors/gallery) regardless of the show_* toggles, so switching a
+ * section back on in the editor never loses previously-entered data. The
+ * public single-event route (GET /api/events/:slug) starts from this same
+ * shape and then deletes whichever child keys correspond to an OFF toggle --
+ * see routes/public.js.
+ */
+function toEventDetail(row, children) {
+  return {
+    ...toPublicEvent(row),
+    toggles: {
+      speakers: !!row.show_speakers,
+      agenda: !!row.show_agenda,
+      sponsors: !!row.show_sponsors,
+      gallery: !!row.show_gallery,
+      registration: !!row.show_registration,
+    },
+    speakers: children.speakers,
+    agenda: children.agenda,
+    sponsors: children.sponsors,
+    gallery: children.gallery,
   };
 }
 
@@ -287,6 +314,7 @@ module.exports = {
   toPublicUser,
   toProfileResponse,
   toPublicEvent,
+  toEventDetail,
   toPaymentSummary,
   toPaymentTransaction,
   toRecord,

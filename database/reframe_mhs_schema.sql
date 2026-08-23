@@ -649,6 +649,12 @@ CREATE TABLE events (
   status              VARCHAR(20) NOT NULL DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'concluded')),
   fee                 VARCHAR(50),
   register_url        VARCHAR(2048),
+  slug                VARCHAR(255) NOT NULL UNIQUE,  -- shareable /events/{slug} URL, see utils/eventChildren.js generateUniqueSlug
+  show_speakers       BOOLEAN NOT NULL DEFAULT FALSE,
+  show_agenda         BOOLEAN NOT NULL DEFAULT FALSE,
+  show_sponsors       BOOLEAN NOT NULL DEFAULT FALSE,
+  show_gallery        BOOLEAN NOT NULL DEFAULT FALSE,
+  show_registration   BOOLEAN NOT NULL DEFAULT TRUE,
 
   title_en            VARCHAR(255),
   format_en           VARCHAR(255),
@@ -673,6 +679,73 @@ CREATE TABLE events (
   CONSTRAINT fk_events_created_by FOREIGN KEY (created_by) REFERENCES user_credentials(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Public events.html page content. created_by is the owning Designer (Admin-authored legacy rows have created_by pointing at the Admin account, or NULL). A Designer may only manage rows where created_by = their own id -- enforced at the Express route layer. learn_en/who_en/outcomes_en etc. are JSON arrays of strings.';
+
+-- Optional content sections for an event, each only rendered on the public
+-- event-detail page when the matching events.show_* column is TRUE (enforced
+-- server-side in routes/public.js, not just hidden client-side). All four are
+-- replace-all on every designer/admin save (see utils/eventChildren.js) --
+-- row ids are not stable across edits, so nothing else should reference them
+-- long-term except within the same save request (see event_agenda_items.speaker_id).
+CREATE TABLE event_speakers (
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  event_id    BIGINT NOT NULL,
+  name_en     VARCHAR(255),
+  name_ar     VARCHAR(255),
+  title_en    VARCHAR(255),
+  title_ar    VARCHAR(255),
+  bio_en      TEXT,
+  bio_ar      TEXT,
+  photo       VARCHAR(255),
+  sort_order  INT NOT NULL DEFAULT 0,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_event_speakers_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE event_sponsors (
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  event_id    BIGINT NOT NULL,
+  name        VARCHAR(255),
+  logo        VARCHAR(255),
+  url         VARCHAR(2048),
+  sort_order  INT NOT NULL DEFAULT 0,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_event_sponsors_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE event_gallery (
+  id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+  event_id     BIGINT NOT NULL,
+  image        VARCHAR(255) NOT NULL,
+  caption_en   VARCHAR(255),
+  caption_ar   VARCHAR(255),
+  sort_order   INT NOT NULL DEFAULT 0,
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_event_gallery_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Structured with real date/time columns (not a JSON blob) so a future
+-- site-wide Agenda page could query across events by date without a
+-- redesign -- that page doesn't exist yet and isn't built by this schema.
+CREATE TABLE event_agenda_items (
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  event_id       BIGINT NOT NULL,
+  item_date      DATE,
+  start_time     TIME,
+  end_time       TIME,
+  title_en       VARCHAR(255),
+  title_ar       VARCHAR(255),
+  description_en TEXT,
+  description_ar TEXT,
+  speaker_id     BIGINT,
+  sort_order     INT NOT NULL DEFAULT 0,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_event_agenda_event   FOREIGN KEY (event_id)   REFERENCES events(id) ON DELETE CASCADE,
+  CONSTRAINT fk_event_agenda_speaker FOREIGN KEY (speaker_id) REFERENCES event_speakers(id) ON DELETE SET NULL,
+  INDEX ix_event_agenda_date (item_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE audit_logs (
   id           BIGINT AUTO_INCREMENT PRIMARY KEY,

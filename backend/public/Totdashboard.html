@@ -793,11 +793,13 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(10, 20, 19, .55);
+            background: rgba(10, 20, 30, 0.7);
+            /* your actual value */
             z-index: 1000;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            -webkit-backdrop-filter: blur(2px);
             backdrop-filter: blur(2px);
         }
         
@@ -1615,17 +1617,18 @@
                     </div>
                 </div>
                 <div class="top-right">
-                    <button class="bell-btn"><i class="fa fa-bell"></i><span class="dot" id="notifDot" style="display:none;"></span></button>
+                    <button class="bell-btn" type="button" aria-label="Notifications">
+  <i class="fa fa-bell"></i>
+  <span class="dot" id="notifDot" style="display:none;"></span>
+</button>
                     <div class="profile-mini">
                         <div class="avatar-circle" id="supervisorInitials">&mdash;</div>
                         <div><strong id="supervisorName">Loading...</strong><span>ToT</span></div>
                     </div>
-                    <button class="logout-btn" onclick="logout()">Log out</button>
+                    <button class="logout-btn" type="button" onclick="logout()">Log out</button>
                 </div>
             </header>
 
-            <!-- ============================================================= -->
-            <!-- DASHBOARD                                                      -->
             <!-- ============================================================= -->
             <section class="dash-section active-section" id="section-dashboard" data-title="Good to see you" data-eyebrow="ToT console">
 

@@ -9,6 +9,7 @@ const {
   toPublicUser,
   toProfileResponse,
   toPublicEvent,
+  toEventDetail,
   toPaymentSummary,
   toPaymentTransaction,
   toRecord,
@@ -16,6 +17,7 @@ const {
   computeProgressSummary,
 } = require("../utils/serializers");
 const { eventImageUpload } = require("../utils/uploads");
+const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
 
 const router = express.Router();
@@ -850,18 +852,39 @@ router.get(
   })
 );
 
+// GET /events/:id -- single event, ANY designer's, full child data
+// regardless of show_* toggle state (see toEventDetail). No ownership
+// check, matching every other admin event route.
+router.get(
+  "/events/:id",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid event id" });
+
+    const { rows } = await db.query("SELECT * FROM events WHERE id = ?", [id]);
+    const event = rows[0];
+    if (!event) return res.status(404).json({ error: "Event not found" });
+
+    const children = await fetchEventChildren(db, id);
+    res.json(toEventDetail(event, children));
+  })
+);
+
 router.post(
   "/events",
   asyncRoute(async (req, res, db) => {
     const b = req.body || {};
     if (!b.date) return res.status(400).json({ error: "date is required" });
 
+    const slug = b.slug || (await generateUniqueSlug(db, b.englishTitle, b.arabicTitle));
+
     const insert = await db.query(
       `INSERT INTO events (
-        created_by, event_date, image, status, fee, register_url,
+        created_by, event_date, image, status, fee, register_url, slug,
+        show_speakers, show_agenda, show_sponsors, show_gallery, show_registration,
         title_en, format_en, facilitator_en, about_en, learn_en, who_en, outcomes_en, facilitator_bio_en,
         title_ar, format_ar, facilitator_ar, about_ar, learn_ar, who_ar, outcomes_ar, facilitator_bio_ar
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         req.user.id,
         b.date,
@@ -869,6 +892,12 @@ router.post(
         ["upcoming", "concluded"].includes(b.status) ? b.status : "upcoming",
         b.fee || null,
         b.register || null,
+        slug,
+        !!b.showSpeakers,
+        !!b.showAgenda,
+        !!b.showSponsors,
+        !!b.showGallery,
+        b.showRegistration === undefined ? true : !!b.showRegistration,
         b.englishTitle || null,
         b.englishFormat || null,
         b.englishFacilitator || null,
@@ -888,8 +917,11 @@ router.post(
       ]
     );
 
+    await writeEventChildren(db, insert.insertId, b);
+
     const { rows } = await db.query("SELECT * FROM events WHERE id = ?", [insert.insertId]);
-    res.status(201).json(toPublicEvent(rows[0]));
+    const children = await fetchEventChildren(db, insert.insertId);
+    res.status(201).json(toEventDetail(rows[0], children));
   })
 );
 
@@ -906,7 +938,8 @@ router.put(
     const b = req.body || {};
     await db.query(
       `UPDATE events SET
-        event_date = ?, image = ?, status = ?, fee = ?, register_url = ?,
+        event_date = ?, image = ?, status = ?, fee = ?, register_url = ?, slug = ?,
+        show_speakers = ?, show_agenda = ?, show_sponsors = ?, show_gallery = ?, show_registration = ?,
         title_en = ?, format_en = ?, facilitator_en = ?, about_en = ?,
         learn_en = ?, who_en = ?, outcomes_en = ?, facilitator_bio_en = ?,
         title_ar = ?, format_ar = ?, facilitator_ar = ?, about_ar = ?,
@@ -919,6 +952,12 @@ router.put(
         ["upcoming", "concluded"].includes(b.status) ? b.status : existing.status,
         b.fee ?? existing.fee,
         b.register ?? existing.register_url,
+        b.slug ?? existing.slug,
+        b.showSpeakers ?? existing.show_speakers,
+        b.showAgenda ?? existing.show_agenda,
+        b.showSponsors ?? existing.show_sponsors,
+        b.showGallery ?? existing.show_gallery,
+        b.showRegistration ?? existing.show_registration,
         b.englishTitle ?? existing.title_en,
         b.englishFormat ?? existing.format_en,
         b.englishFacilitator ?? existing.facilitator_en,
@@ -943,8 +982,11 @@ router.put(
       ]
     );
 
+    await writeEventChildren(db, id, b);
+
     const { rows } = await db.query("SELECT * FROM events WHERE id = ?", [id]);
-    res.json(toPublicEvent(rows[0]));
+    const children = await fetchEventChildren(db, id);
+    res.json(toEventDetail(rows[0], children));
   })
 );
 
