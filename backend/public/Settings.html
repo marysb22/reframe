@@ -385,7 +385,7 @@
                         const data = await res.json().catch(() => null);
 
                         if (!res.ok) {
-                            showMsg(data ?.error || "Could not change password.", "error");
+                            showMsg((data && data.error) || "Could not change password.", "error");
                         } else {
                             showMsg("Password updated.", "success");
                             document.getElementById("changeForm").reset();

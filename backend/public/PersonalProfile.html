@@ -1961,7 +1961,7 @@
                     return null;
                 }
                 const body = await response.json().catch(() => null);
-                if (!response.ok) throw new Error(body ?.error || "Request failed");
+                if (!response.ok) throw new Error((body && body.error) || "Request failed");
                 return body;
             } catch (err) {
                 showToast(err.message || "Connection error", "error");
@@ -1977,22 +1977,31 @@
             setTimeout(() => box.remove(), 3000);
         }
 
+        // Written without ?./?? on purpose -- a broken formatter in this project's
+        // local editor setup keeps mangling those two operators into `? .`/`? ?`
+        // (invalid syntax that silently kills the whole script) every time these
+        // files get saved. Using && guards and this nc() helper instead of the
+        // native operators means there is nothing left for it to corrupt.
+        function nc(value, fallback) {
+            return (value === null || value === undefined) ? fallback : value;
+        }
+
         function escapeHtml(str) {
-            return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return String(nc(str, "")).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
         function initials(name) {
-            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?.toUpperCase() || "").join("");
+            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => (w[0] && w[0].toUpperCase()) || "").join("");
         }
 
         function setValue(id, value) {
             const el = document.getElementById(id);
-            if (el) el.value = value ?? "";
+            if (el) el.value = nc(value, "");
         }
 
         function setText(id, value) {
             const el = document.getElementById(id);
-            if (el) el.textContent = value ?? "\u2014";
+            if (el) el.textContent = nc(value, "\u2014");
         }
 
         function formatMoney(amount) {
@@ -2150,10 +2159,10 @@
         async function loadDashboardProgress() {
             const p = await apiRequest("/profile/progress");
             if (!p) return;
-            document.getElementById("kpiHours").textContent = p.clinicalHours ?? "\u2014";
+            document.getElementById("kpiHours").textContent = nc(p.clinicalHours, "\u2014");
             document.getElementById("kpiAttendance").textContent = p.attendanceRate != null ? p.attendanceRate + "%" : "\u2014";
-            document.getElementById("kpiAssignments").textContent = `${p.assignmentsCompleted ?? 0}/${p.assignmentsTotal ?? 0}`;
-            document.getElementById("kpiEval").textContent = p.averageEvaluationScore ?? "\u2014";
+            document.getElementById("kpiAssignments").textContent = `${nc(p.assignmentsCompleted, 0)}/${nc(p.assignmentsTotal, 0)}`;
+            document.getElementById("kpiEval").textContent = nc(p.averageEvaluationScore, "\u2014");
         }
 
         async function loadDashboardActivity() {
@@ -2238,7 +2247,7 @@
                 });
                 if (!response.ok) {
                     const body = await response.json().catch(() => null);
-                    throw new Error(body ?.error || "Upload failed");
+                    throw new Error((body && body.error) || "Upload failed");
                 }
                 const data = await response.json();
                 showToast("Photo updated", "success");
@@ -2278,7 +2287,7 @@
                 });
                 if (!response.ok) {
                     const body = await response.json().catch(() => null);
-                    throw new Error(body ?.error || "Upload failed");
+                    throw new Error((body && body.error) || "Upload failed");
                 }
                 const data = await response.json();
                 showToast("CV uploaded", "success");
@@ -2414,7 +2423,7 @@ async function loadAssignments() {
 // in the Assignments section for the schema gap.
 async function submitAssignment(recordId) {
   const input = document.getElementById(`submitFile-${recordId}`);
-  const file = input?.files[0];
+  const file = input && input.files[0];
   if (!file) return showToast("Choose a file first", "error");
   const form = new FormData();
   form.append("submission", file);
@@ -2426,7 +2435,7 @@ async function submitAssignment(recordId) {
     });
     if (!response.ok) {
       const body = await response.json().catch(() => null);
-      throw new Error(body?.error || "Submission failed");
+      throw new Error((body && body.error) || "Submission failed");
     }
     showToast("Assignment submitted", "success");
     loadAssignments();
@@ -2600,7 +2609,7 @@ async function loadPayments() {
   body.innerHTML = transactions
     .map((t) => `
       <tr>
-        <td>${escapeHtml(t.id ?? "\u2014")}</td>
+        <td>${escapeHtml(nc(t.id, "\u2014"))}</td>
         <td>${escapeHtml(t.date)}</td>
         <td>${formatMoney(t.amount)}</td>
         <td>${escapeHtml(t.method || "\u2014")}</td>

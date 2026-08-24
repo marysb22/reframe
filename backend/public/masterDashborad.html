@@ -1753,7 +1753,7 @@
                 }
                 const body = await response.json().catch(() => null);
                 if (!response.ok) {
-                    const err = new Error(body ?.error || "Request failed");
+                    const err = new Error((body && body.error) || "Request failed");
                     err.status = response.status;
                     throw err;
                 }
@@ -1789,12 +1789,21 @@
             setTimeout(() => box.remove(), 3000);
         }
 
+        // Written without ?./?? on purpose -- a broken formatter in this project's
+        // local editor setup keeps mangling those two operators into `? .`/`? ?`
+        // (invalid syntax that silently kills the whole script) every time these
+        // files get saved. Using && guards and this nc() helper instead of the
+        // native operators means there is nothing left for it to corrupt.
+        function nc(value, fallback) {
+            return (value === null || value === undefined) ? fallback : value;
+        }
+
         function escapeHtml(str) {
-            return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return String(nc(str, "")).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
         function initials(name) {
-            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?.toUpperCase() || "").join("");
+            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => (w[0] && w[0].toUpperCase()) || "").join("");
         }
 
         function openModal(id) {
@@ -1900,8 +1909,8 @@
             document.getElementById("groupNameHeading").textContent = me.groupLabel || "My Group";
             document.getElementById("groupScopeBadge").innerHTML = `<i class="fa fa-shield-halved"></i> ${escapeHtml(me.groupLabel || "My Group")}`;
 
-            document.getElementById("kpiTots").textContent = me.totCount ?? 0;
-            document.getElementById("kpiTrainees").textContent = me.traineeCount ?? 0;
+            document.getElementById("kpiTots").textContent = nc(me.totCount, 0);
+            document.getElementById("kpiTrainees").textContent = nc(me.traineeCount, 0);
         }
 
         async function loadDashboardHours() {
@@ -2004,7 +2013,8 @@
         }
 
         function renderTots() {
-            const search = (document.getElementById("totSearch") ?.value || "").toLowerCase();
+            const totSearchEl = document.getElementById("totSearch");
+            const search = ((totSearchEl && totSearchEl.value) || "").toLowerCase();
             const filtered = allTots.filter((t) => t.full_name.toLowerCase().includes(search) || t.member_code.toLowerCase().includes(search));
             const body = document.getElementById("totsBody");
             if (!allTots.length) {
@@ -2150,7 +2160,8 @@
         }
 
         function renderTrainees() {
-            const search = (document.getElementById("traineeSearch")?.value || "").toLowerCase();
+            const traineeSearchEl = document.getElementById("traineeSearch");
+            const search = ((traineeSearchEl && traineeSearchEl.value) || "").toLowerCase();
             const filtered = allTrainees.filter((s) => s.full_name.toLowerCase().includes(search) || s.member_code.toLowerCase().includes(search));
             const body = document.getElementById("traineesBody");
             if (!allTrainees.length) {

@@ -2268,7 +2268,7 @@
                     return null;
                 }
                 const body = await response.json().catch(() => null);
-                if (!response.ok) throw new Error(body ?.error || "Request failed");
+                if (!response.ok) throw new Error((body && body.error) || "Request failed");
                 return body;
             } catch (err) {
                 showToast(err.message || "Connection error", "error");
@@ -2284,12 +2284,21 @@
             setTimeout(() => box.remove(), 3000);
         }
 
+        // Written without ?./?? on purpose -- a broken formatter in this project's
+        // local editor setup keeps mangling those two operators into `? .`/`? ?`
+        // (invalid syntax that silently kills the whole script) every time these
+        // files get saved. Using && guards and this nc() helper instead of the
+        // native operators means there is nothing left for it to corrupt.
+        function nc(value, fallback) {
+            return (value === null || value === undefined) ? fallback : value;
+        }
+
         function escapeHtml(str) {
-            return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return String(nc(str, "")).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
         function initials(name) {
-            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?.toUpperCase() || "").join("");
+            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => (w[0] && w[0].toUpperCase()) || "").join("");
         }
 
         function openModal(id) {
@@ -2609,7 +2618,7 @@
                 ["Training sessions", p.trainingSessions],
                 ["Supervision sessions", p.supervisionSessions],
                 ["Assignments", `${p.assignmentsCompleted}/${p.assignmentsTotal}`],
-                ["Avg. evaluation", p.averageEvaluationScore ?? "&mdash;"],
+                ["Avg. evaluation", nc(p.averageEvaluationScore, "&mdash;")],
             ];
             document.getElementById("sdProgress").innerHTML = cells
                 .map(([label, value]) => `<div class="progress-cell"><label>${label}</label><strong>${value}</strong></div>`)
@@ -2623,7 +2632,7 @@
                 messages: "Messages"
             };
             document.getElementById("sdTabs").innerHTML = TAB_ORDER.map((t) => {
-                const label = RECORD_TYPES[t] ?.label || labels[t];
+                const label = (RECORD_TYPES[t] && RECORD_TYPES[t].label) || labels[t];
                 return `<button class="tab-btn ${t === activeTab ? "active" : ""}" onclick="switchTab('${t}')">${label}</button>`;
             }).join("");
         }
@@ -2657,7 +2666,7 @@
         }
 
         function fieldInput(type, field, value) {
-            value = value ?? "";
+            value = nc(value, "");
             if (field === "date") return `<div><label>Date</label><input type="date" id="rf_date" value="${escapeHtml(value)}"></div>`;
             if (field === "time") return `<div><label>Time</label><input type="time" id="rf_time" value="${escapeHtml(value)}"></div>`;
             if (field === "duration") return `<div><label>Duration (minutes)</label><input type="number" min="0" id="rf_duration" value="${escapeHtml(value)}"></div>`;
@@ -2699,9 +2708,9 @@ function renderRecordPanel(container, type) {
 function mapEditValue(record, field) {
   if (field === "date") return record.date || "";
   if (field === "time") return record.time || "";
-  if (field === "duration") return record.durationMinutes ?? "";
+  if (field === "duration") return nc(record.durationMinutes, "");
   if (field === "title") return record.title || "";
-  if (field === "score") return record.score ?? "";
+  if (field === "score") return nc(record.score, "");
   if (field === "status") return record.status || "";
   if (field === "content") return record.content || "";
   return "";
@@ -2741,7 +2750,7 @@ function cancelEditRecord() {
 async function submitRecordForm(e, type) {
   e.preventDefault();
   const payload = { recordType: type };
-  const get = (id) => document.getElementById(id)?.value;
+  const get = (id) => { const el = document.getElementById(id); return el && el.value; };
   if (get("rf_date")) payload.date = get("rf_date");
   if (get("rf_time")) payload.time = get("rf_time");
   if (get("rf_duration")) payload.durationMinutes = Number(get("rf_duration"));
@@ -2831,7 +2840,7 @@ function renderDocumentsPanel(container) {
       });
       if (!response.ok) {
         const body = await response.json().catch(() => null);
-        throw new Error(body?.error || "Upload failed");
+        throw new Error((body && body.error) || "Upload failed");
       }
       showToast("Document uploaded", "success");
       await refreshCurrentStudent();
@@ -2965,7 +2974,7 @@ document.getElementById("materialForm").addEventListener("submit", async (e) => 
       });
       if (!response.ok) {
         const body = await response.json().catch(() => null);
-        throw new Error(body?.error || "Upload failed");
+        throw new Error((body && body.error) || "Upload failed");
       }
       result = await response.json();
     } catch (err) {
@@ -3465,7 +3474,7 @@ async function loadCalendar() {
   calItems = [];
   if (schedule) {
     [...schedule.today, ...schedule.upcoming].forEach((i) => {
-      calItems.push({ date: i.date, title: i.title || RECORD_TYPES[i.recordType]?.label, type: i.recordType });
+      calItems.push({ date: i.date, title: i.title || (RECORD_TYPES[i.recordType] && RECORD_TYPES[i.recordType].label), type: i.recordType });
     });
   }
   const meetings = await apiRequest("/supervisor/meetings");
@@ -3539,7 +3548,7 @@ document.getElementById("settingsPhotoFile").addEventListener("change", async ()
     });
     if (!response.ok) {
       const body = await response.json().catch(() => null);
-      throw new Error(body?.error || "Upload failed");
+      throw new Error((body && body.error) || "Upload failed");
     }
     const data = await response.json();
     document.getElementById("settingsAvatarPreview").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}" alt="">`;
