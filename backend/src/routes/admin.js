@@ -27,8 +27,16 @@ router.use(requireAuth, requireAdmin);
 // Every account-management query joins the three profile tables and their
 // cohort, so a single row shape covers both a student and a supervisor
 // (the columns that don't apply to that role just come back NULL).
-// The `supervisors` JSON list is built via an ordered derived table because
-// MySQL's JSON_ARRAYAGG (unlike Postgres's json_agg) has no inline ORDER BY.
+//
+// The `supervisors` JSON list is a plain correlated subquery, not a derived
+// table -- an earlier version wrapped it as `(SELECT JSON_ARRAYAGG(obj)
+// FROM (SELECT ... WHERE ss.student_id = uc.id ORDER BY ...) t)` to get an
+// alphabetized array (JSON_ARRAYAGG has no inline ORDER BY), but production
+// runs MariaDB, and MariaDB's optimizer loses the outer `uc.id` correlation
+// once that inner SELECT gets materialized as a derived table -- it fails
+// at runtime with "Unknown column 'uc.id' in 'WHERE'", even though the
+// identical query runs fine on real MySQL. Removing the derived table
+// fixes that; sorting is done in JS instead (see parseJsonArray below).
 const USER_SELECT = `
   SELECT
     uc.id, uc.member_code, uc.role, uc.status, uc.must_change_password,
@@ -41,12 +49,9 @@ const USER_SELECT = `
     st.gender, st.date_of_birth, st.marital_status, st.address, st.certifications, st.cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year, st.highest_degree, st.institution,
     COALESCE(
-      (SELECT JSON_ARRAYAGG(obj) FROM (
-         SELECT JSON_OBJECT('id', sup2.id, 'full_name', sup2.full_name) AS obj
+      (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', sup2.id, 'full_name', sup2.full_name))
          FROM supervisor_students ss JOIN supervisors sup2 ON sup2.id = ss.supervisor_id
-         WHERE ss.student_id = uc.id
-         ORDER BY sup2.full_name
-       ) t),
+         WHERE ss.student_id = uc.id),
       JSON_ARRAY()
     ) AS supervisors
   FROM user_credentials uc
@@ -54,6 +59,35 @@ const USER_SELECT = `
   LEFT JOIN students st ON st.id = uc.id
   LEFT JOIN cohorts c ON c.id = st.cohort_id
 `;
+
+// MariaDB's JSON type is really just LONGTEXT with a CHECK constraint, so
+// (unlike a real MySQL JSON column) mysql2 doesn't auto-parse a
+// JSON_ARRAYAGG()/JSON_OBJECT() result column into a JS value the way it
+// does for MySQL -- it can come back as a plain string that still needs
+// JSON.parse(). Handles both so the same code works against either engine.
+function parseJsonValue(value, fallback) {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+function parseJsonArray(value) {
+  const arr = parseJsonValue(value, []);
+  return Array.isArray(arr) ? arr : [];
+}
+function sortByFullName(arr) {
+  return [...arr].sort((a, b) => String(a.full_name || "").localeCompare(String(b.full_name || "")));
+}
+// must_change_password is included in these nested JSON blobs as the raw
+// 0/1 from cred.must_change_password (see the note where this used to be
+// CAST(... AS JSON) further down) -- normalize it to a real boolean here,
+// in JS, instead.
+function toBool(v) {
+  return v === 1 || v === true || v === "1";
+}
 
 function parseIdParam(raw) {
   const id = Number(raw);
@@ -459,31 +493,44 @@ router.delete(
 // hierarchy rationale, including why the table isn't named `groups`
 // (reserved word in MySQL 8).
 
-// MySQL's TINYINT(1) columns (our BOOLEANs) come back as real JS booleans
-// at the top level thanks to db.js's typeCast hook -- but that hook only
-// sees raw wire-protocol field values, not values already serialized
-// *inside* a JSON_OBJECT()/JSON_ARRAYAGG() blob. Left alone,
-// must_change_password would come back as the JSON number 0/1 wherever
-// it's nested in one of these Group queries. This IF/CAST wraps it as a
-// real JSON true/false at the point the object is built instead.
-const MUST_CHANGE_PW_JSON = "IF(cred.must_change_password, CAST('true' AS JSON), CAST('false' AS JSON))";
-
-/** Builds the ordered-derived-table JSON_ARRAYAGG snippet for a set of group members. */
+// Two things here used to be Postgres/MySQL-only and broke on MariaDB
+// (what production actually runs), even though the schema notes above
+// already flagged the `groups` reserved-word issue as MariaDB-specific:
+//
+// 1. must_change_password was wrapped as
+//    `IF(cred.must_change_password, CAST('true' AS JSON), CAST('false' AS JSON))`
+//    to get a real JSON true/false instead of a bare 0/1 inside the nested
+//    blob (db.js's typeCast hook only sees top-level column values, not
+//    values already serialized inside a JSON_OBJECT()). MariaDB has no
+//    CAST(... AS JSON) target type at all -- "You have an error in your
+//    SQL syntax" at exactly this point. Dropped; the raw 0/1 comes through
+//    instead, and toBool() below normalizes it in JS.
+// 2. The member list was built as `(SELECT JSON_ARRAYAGG(obj) FROM
+//    (SELECT ... WHERE member.group_id = g.id ORDER BY ...) t)` -- a
+//    derived table so the list could be alphabetized (JSON_ARRAYAGG has no
+//    inline ORDER BY). MariaDB's optimizer loses the outer `g.id`
+//    correlation once that inner SELECT gets materialized as a derived
+//    table, and fails at runtime with "Unknown column 'g.id' in 'WHERE'"
+//    -- identical to the `uc.id` failure fixed above for USER_SELECT, same
+//    root cause. Flattened to a single-level correlated subquery; sorting
+//    moved to sortByFullName() in JS instead.
 function memberListSql(fromTable, extraFields) {
   return `
     COALESCE((
-      SELECT JSON_ARRAYAGG(obj) FROM (
-        SELECT JSON_OBJECT(
-          'id', member.id, 'full_name', member.full_name, 'member_code', cred.member_code,
-          'status', cred.status, 'must_change_password', ${MUST_CHANGE_PW_JSON}
-          ${extraFields ? `, ${extraFields}` : ""}
-        ) AS obj
-        FROM ${fromTable} member JOIN user_credentials cred ON cred.id = member.id
-        WHERE member.group_id = g.id ${fromTable === "supervisors" ? "AND member.supervisor_type = ?" : ""}
-        ORDER BY member.full_name
-      ) t
+      SELECT JSON_ARRAYAGG(JSON_OBJECT(
+        'id', member.id, 'full_name', member.full_name, 'member_code', cred.member_code,
+        'status', cred.status, 'must_change_password', cred.must_change_password
+        ${extraFields ? `, ${extraFields}` : ""}
+      ))
+      FROM ${fromTable} member JOIN user_credentials cred ON cred.id = member.id
+      WHERE member.group_id = g.id ${fromTable === "supervisors" ? "AND member.supervisor_type = ?" : ""}
     ), JSON_ARRAY())
   `;
+}
+
+function normalizeMember(m) {
+  if (!m) return m;
+  return { ...m, must_change_password: toBool(m.must_change_password) };
 }
 
 // GET /api/admin/groups
@@ -500,7 +547,7 @@ router.get(
         (
           SELECT JSON_OBJECT(
             'id', member.id, 'full_name', member.full_name, 'member_code', cred.member_code,
-            'status', cred.status, 'must_change_password', ${MUST_CHANGE_PW_JSON},
+            'status', cred.status, 'must_change_password', cred.must_change_password,
             'email', member.email, 'phone', member.phone,
             'specialization', member.specialization, 'bio', member.bio
           )
@@ -521,9 +568,9 @@ router.get(
         id: g.id,
         name: g.name,
         createdAt: g.created_at,
-        masterTrainer: g.master_trainer,
-        trainers: g.trainers,
-        trainees: g.trainees,
+        masterTrainer: normalizeMember(parseJsonValue(g.master_trainer, null)),
+        trainers: sortByFullName(parseJsonArray(g.trainers).map(normalizeMember)),
+        trainees: sortByFullName(parseJsonArray(g.trainees).map(normalizeMember)),
       })),
     });
   })

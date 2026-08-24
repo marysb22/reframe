@@ -15,6 +15,25 @@ function toArray(value) {
   return [];
 }
 
+// USER_SELECT's `supervisors` column is a JSON_ARRAYAGG(JSON_OBJECT(...))
+// result. On real MySQL that comes back already parsed into a JS array;
+// on MariaDB (what production runs) the JSON type is really just LONGTEXT,
+// so mysql2 hands it back as a raw JSON string that still needs parsing.
+// Handles both, and sorts alphabetically here since neither engine
+// supports an inline ORDER BY on JSON_ARRAYAGG.
+function parseSupervisorsField(value) {
+  let arr = value;
+  if (typeof arr === "string") {
+    try {
+      arr = JSON.parse(arr);
+    } catch {
+      arr = [];
+    }
+  }
+  if (!Array.isArray(arr)) arr = [];
+  return [...arr].sort((a, b) => String(a.full_name || "").localeCompare(String(b.full_name || "")));
+}
+
 function toPublicUser(row) {
   return {
     id: row.id,
@@ -31,7 +50,7 @@ function toPublicUser(row) {
     email: row.email,
     must_change_password: row.must_change_password,
     created_at: row.created_at,
-    supervisors: row.supervisors || [], // [] for supervisors/admins, real list for trainees
+    supervisors: parseSupervisorsField(row.supervisors), // [] for supervisors/admins, real list for trainees
     supervisorType: row.supervisor_type, // 'primary' (Master Trainer) | 'in_training' (Trainer/ToT); null for trainees/admins
   };
 }
