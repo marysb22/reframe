@@ -607,7 +607,34 @@ accreditation_cta_title: "Are you ready to reserve your spot?",
 accreditation_cta_text: "Contact us today and make your next event a success in every sense.",
 accreditation_cta_button: "Book Now",
 "events_title": "Upcoming Training Sessions",
-  calendar_title: "Upcoming Events"
+  calendar_title: "Upcoming Events",
+
+  // ===== Merged from page-local translation objects that duplicated this
+  // file (about.html, contact.html, index.html each had their own full
+  // copy) -- these are the keys those local copies had that this global
+  // file didn't, moved here so there is one source of truth. =====
+  team_title: "Our Team",
+  team_linkedin_btn: "LinkedIn",
+  lab_email_label: "Email address",
+  lab_email_placeholder: "you@example.com",
+  form_subject_placeholder: "Select a subject",
+  contact_address_text: "Traboulsi street, Calot center, 8th floor, Badaro, Beirut, Lebanon",
+  location_title: "Find Us",
+  page_title_home: "Reframe MHS - Mental Health Services",
+  day_sun: "Sun",
+  day_mon: "Mon",
+  day_tue: "Tue",
+  day_wed: "Wed",
+  day_thu: "Thu",
+  day_fri: "Fri",
+  day_sat: "Sat",
+  footer_rights: "All rights reserved.",
+  footer_credit: "Website designed & developed by",
+  page_description_home: "Professional mental health services and training programs across the Middle East. Unlocking potential and resilience.",
+  page_title_hub: "Hub - Reframe MHS",
+  page_description_hub: "Professional resources, tools, and community hub for mental health practitioners in the Middle East.",
+  page_title_projects: "Projects - Reframe MHS",
+  page_description_projects: "Explore our research projects and initiatives advancing mental health services across the Middle East."
 
   },
 
@@ -1082,6 +1109,34 @@ milestone3_title: "+500 مهني/ـة",
 milestone3_desc: "تلقوا تدريبًا في عدة دول",
 milestone4_title: "6 دول",
 milestone4_desc: "حضور إقليمي وتعاونات متعددة",
+
+  // ===== Merged from page-local translation objects that duplicated this
+  // file (about.html, contact.html, index.html each had their own full
+  // copy) -- these are the keys those local copies had that this global
+  // file didn't, moved here so there is one source of truth. =====
+  team_title: "فريقنا",
+  team_linkedin_btn: "لينكد إن",
+  core_values_inclusivity_desc: "نحتضن التنوع ونرسّخ بيئة شاملة تحترم وتقدّر خصوصية الأفراد وتجاربنا الإنسانية المشتركة. ومن خلال تعزيز الشمولية، نرسّخ التفاهم والتواصل بين جميع الأفراد، بما يثري تجربة المجتمع ككل.",
+  lab_email_label: "البريد الإلكتروني",
+  lab_email_placeholder: "example@email.com",
+  form_subject_placeholder: "اختر موضوعاً",
+  contact_address_text: "شارع طرابلسي، مركز كالوت، الطابق الثامن، بدارو، بيروت، لبنان",
+  location_title: "موقعنا",
+  page_title_home: "ريفريم - خدمات الصحة النفسية",
+  day_sun: "أحد",
+  day_mon: "اثنين",
+  day_tue: "ثلاثاء",
+  day_wed: "أربعاء",
+  day_thu: "خميس",
+  day_fri: "جمعة",
+  day_sat: "سبت",
+  footer_rights: "جميع الحقوق محفوظة.",
+  footer_credit: "تصميم وتطوير الموقع بواسطة",
+  page_description_home: "خدمات وبرامج تدريبية احترافية في الصحة النفسية عبر الشرق الأوسط. إطلاق الإمكانات وتعزيز المرونة.",
+  page_title_hub: "المحور - ريفريم",
+  page_description_hub: "موارد وأدوات احترافية ومجتمع مهني لممارسي الصحة النفسية في الشرق الأوسط.",
+  page_title_projects: "المشاريع - ريفريم",
+  page_description_projects: "استكشف مشاريعنا البحثية ومبادراتنا التي تعزز خدمات الصحة النفسية في جميع أنحاء الشرق الأوسط."
 
     
 

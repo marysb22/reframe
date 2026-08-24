@@ -68,6 +68,15 @@ function switchLanguage(lang) {
       element.textContent = translations[lang][key];
     }
   });
+
+  // For elements like <meta name="description"> where the translatable
+  // text lives in the content attribute, not the element's own text.
+  document.querySelectorAll("[data-translate-content]").forEach((element) => {
+    const key = element.getAttribute("data-translate-content");
+    if (translations[lang] && translations[lang][key] !== undefined) {
+      element.setAttribute("content", translations[lang][key]);
+    }
+  });
 }
 
 function applyDirectionSettings(lang) {
