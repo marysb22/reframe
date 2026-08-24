@@ -1750,12 +1750,33 @@
                     return null;
                 }
                 const body = await response.json().catch(() => null);
-                if (!response.ok) throw new Error(body ? .error || "Request failed");
+                if (!response.ok) {
+                    const err = new Error(body ?.error || "Request failed");
+                    err.status = response.status;
+                    throw err;
+                }
                 return body;
             } catch (err) {
                 showToast(err.message || "Connection error", "error");
+                if (err.status === 403) window.__mtAccessDenied = true;
                 return null;
             }
+        }
+
+        /** Called once, right after the first failed request that came back 403 --
+         *  swaps every "Loading..." placeholder for a clear explanation instead of
+         *  leaving them spinning forever (this account exists and is logged in,
+         *  it's just not a Master Trainer -- supervisor_type isn't 'primary'). */
+        function showAccessDenied() {
+            const msg = "You don't have Master Trainer access on this account.";
+            const mtName = document.getElementById("mtName");
+            if (mtName) mtName.textContent = "Access denied";
+            const eyebrow = document.getElementById("sectionEyebrow");
+            if (eyebrow) eyebrow.textContent = msg;
+            const scheduleList = document.getElementById("scheduleList");
+            if (scheduleList) scheduleList.innerHTML = `<li class="empty-state">${msg}</li>`;
+            const activityFeed = document.getElementById("activityFeed");
+            if (activityFeed) activityFeed.innerHTML = `<li class="empty-state">${msg}</li>`;
         }
 
         function showToast(text, type) {
@@ -1767,11 +1788,11 @@
         }
 
         function escapeHtml(str) {
-            return String(str ? ? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
         function initials(name) {
-            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] ? .toUpperCase() || "").join("");
+            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?.toUpperCase() || "").join("");
         }
 
         function openModal(id) {
@@ -1877,8 +1898,8 @@
             document.getElementById("groupNameHeading").textContent = me.groupLabel || "My Group";
             document.getElementById("groupScopeBadge").innerHTML = `<i class="fa fa-shield-halved"></i> ${escapeHtml(me.groupLabel || "My Group")}`;
 
-            document.getElementById("kpiTots").textContent = me.totCount ? ? 0;
-            document.getElementById("kpiTrainees").textContent = me.traineeCount ? ? 0;
+            document.getElementById("kpiTots").textContent = me.totCount ?? 0;
+            document.getElementById("kpiTrainees").textContent = me.traineeCount ?? 0;
         }
 
         async function loadDashboardHours() {
@@ -1981,7 +2002,7 @@
         }
 
         function renderTots() {
-            const search = (document.getElementById("totSearch") ? .value || "").toLowerCase();
+            const search = (document.getElementById("totSearch") ?.value || "").toLowerCase();
             const filtered = allTots.filter((t) => t.full_name.toLowerCase().includes(search) || t.member_code.toLowerCase().includes(search));
             const body = document.getElementById("totsBody");
             if (!allTots.length) {

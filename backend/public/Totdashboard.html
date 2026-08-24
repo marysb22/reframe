@@ -2268,7 +2268,7 @@
                     return null;
                 }
                 const body = await response.json().catch(() => null);
-                if (!response.ok) throw new Error(body ? .error || "Request failed");
+                if (!response.ok) throw new Error(body ?.error || "Request failed");
                 return body;
             } catch (err) {
                 showToast(err.message || "Connection error", "error");
@@ -2285,11 +2285,11 @@
         }
 
         function escapeHtml(str) {
-            return String(str ? ? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
         function initials(name) {
-            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] ? .toUpperCase() || "").join("");
+            return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?.toUpperCase() || "").join("");
         }
 
         function openModal(id) {
@@ -2609,7 +2609,7 @@
                 ["Training sessions", p.trainingSessions],
                 ["Supervision sessions", p.supervisionSessions],
                 ["Assignments", `${p.assignmentsCompleted}/${p.assignmentsTotal}`],
-                ["Avg. evaluation", p.averageEvaluationScore ? ? "&mdash;"],
+                ["Avg. evaluation", p.averageEvaluationScore ?? "&mdash;"],
             ];
             document.getElementById("sdProgress").innerHTML = cells
                 .map(([label, value]) => `<div class="progress-cell"><label>${label}</label><strong>${value}</strong></div>`)
@@ -2623,7 +2623,7 @@
                 messages: "Messages"
             };
             document.getElementById("sdTabs").innerHTML = TAB_ORDER.map((t) => {
-                const label = RECORD_TYPES[t] ? .label || labels[t];
+                const label = RECORD_TYPES[t] ?.label || labels[t];
                 return `<button class="tab-btn ${t === activeTab ? "active" : ""}" onclick="switchTab('${t}')">${label}</button>`;
             }).join("");
         }
@@ -2657,7 +2657,7 @@
         }
 
         function fieldInput(type, field, value) {
-            value = value ? ? "";
+            value = value ?? "";
             if (field === "date") return `<div><label>Date</label><input type="date" id="rf_date" value="${escapeHtml(value)}"></div>`;
             if (field === "time") return `<div><label>Time</label><input type="time" id="rf_time" value="${escapeHtml(value)}"></div>`;
             if (field === "duration") return `<div><label>Duration (minutes)</label><input type="number" min="0" id="rf_duration" value="${escapeHtml(value)}"></div>`;
