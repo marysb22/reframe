@@ -699,19 +699,23 @@ function showLoading(button, isLoading) {
 }
 
 function showMessage(message, type = "info") {
+  const isRtl = document.documentElement.dir === "rtl";
+  const slideIn = isRtl ? "slideInLeft" : "slideInRight";
+  const slideOut = isRtl ? "slideOutLeft" : "slideOutRight";
+
   const messageDiv = document.createElement("div");
   messageDiv.className = `message message-${type}`;
   messageDiv.textContent = message;
   messageDiv.style.cssText = `
     position: fixed;
     top: 20px;
-    right: 20px;
+    inset-inline-end: 20px;
     padding: 15px 20px;
     border-radius: 5px;
     color: white;
     font-weight: 500;
     z-index: 10000;
-    animation: slideInRight 0.3s ease;
+    animation: ${slideIn} 0.3s ease;
     max-width: 300px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   `;
@@ -727,7 +731,7 @@ function showMessage(message, type = "info") {
   document.body.appendChild(messageDiv);
 
   setTimeout(() => {
-    messageDiv.style.animation = "slideOutRight 0.3s ease";
+    messageDiv.style.animation = `${slideOut} 0.3s ease`;
     setTimeout(() => {
       if (messageDiv.parentNode) {
         messageDiv.remove();
@@ -736,7 +740,7 @@ function showMessage(message, type = "info") {
   }, 5000);
 
   messageDiv.addEventListener("click", function () {
-    this.style.animation = "slideOutRight 0.3s ease";
+    this.style.animation = `${slideOut} 0.3s ease`;
     setTimeout(() => {
       if (this.parentNode) {
         this.remove();
@@ -794,6 +798,18 @@ style.textContent = `
   @keyframes slideOutRight {
     from { transform: translateX(0); opacity: 1; }
     to { transform: translateX(100%); opacity: 0; }
+  }
+
+  /* RTL mirror: the toast sits at inset-inline-end (the left edge in
+     RTL), so it should slide in from the left, not cross the whole
+     screen from the right. */
+  @keyframes slideInLeft {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes slideOutLeft {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-100%); opacity: 0; }
   }
 
   .language-switching {

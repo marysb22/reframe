@@ -16,8 +16,17 @@ router.post("/login", async (req, res, next) => {
       return res.status(400).json({ error: "Member ID and password are required" });
     }
 
+    // LEFT JOIN supervisors so a role='supervisor' login also gets back
+    // supervisor_type ('primary' = Master Trainer, 'in_training' = ToT) --
+    // the frontend needs this to send the two supervisor sub-roles to
+    // their own dashboards (masterDashborad.html vs Totdashboard.html)
+    // instead of lumping them together. NULL for every other role.
     const { rows } = await pool.query(
-      "SELECT id, member_code, password_hash, role, status, must_change_password FROM user_credentials WHERE member_code = ?",
+      `SELECT uc.id, uc.member_code, uc.password_hash, uc.role, uc.status, uc.must_change_password,
+              sup.supervisor_type
+         FROM user_credentials uc
+         LEFT JOIN supervisors sup ON sup.id = uc.id
+        WHERE uc.member_code = ?`,
       [String(memberCode).trim().toUpperCase()]
     );
     const user = rows[0];
@@ -48,6 +57,7 @@ router.post("/login", async (req, res, next) => {
         memberCode: user.member_code,
         role: user.role,
         mustChangePassword: user.must_change_password,
+        supervisorType: user.supervisor_type,
       },
     });
   } catch (err) {

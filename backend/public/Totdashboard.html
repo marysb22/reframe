@@ -2187,9 +2187,10 @@
         </div>
     </div>
 
+    <script src="scripts/api-config.js"></script>
     <script>
-        const API = "http://localhost:3000/api";
-        const UPLOADS = "http://localhost:3000/uploads";
+        const API = window.API_BASE + "/api";
+        const UPLOADS = window.API_BASE + "/uploads";
 
         const token = localStorage.getItem("token") || localStorage.getItem("reframe_token");
         if (!token) window.location.href = "login.html";

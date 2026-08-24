@@ -5,6 +5,15 @@ const { toRecord, toDocument, toMaterial } = require("../utils/serializers");
 const router = express.Router();
 
 /* =========================================================================
+   This router was originally written against Postgres syntax ($1/$2
+   placeholders, ::int casts, NULLS LAST, json_agg/json_build_object) but
+   the app runs on MySQL (see db.js) which uses `?` positional placeholders,
+   has no ::int cast operator, sorts NULLs first for ASC / last for DESC by
+   default (the opposite of what a couple of these queries needed), and
+   aggregates JSON with JSON_ARRAYAGG/JSON_OBJECT instead of
+   json_agg/json_build_object. Converted throughout to match how
+   routes/supervisor.js and routes/admin.js already talk to MySQL.
+
    ASSUMPTIONS — please verify against your real files and adjust if wrong.
    I only had dashboard.html + routes/supervisor.js to work from, so this
    file infers the following instead of guessing blindly:
@@ -23,8 +32,8 @@ const router = express.Router();
       routes/supervisor.js, which already reads exactly these columns.
 
    3. `students` has a `group_id` column directly (confirmed by the
-      existing `SELECT COUNT(*)::int AS count FROM students WHERE
-      group_id = $1` in routes/supervisor.js's /group route).
+      existing `SELECT COUNT(*) AS count FROM students WHERE
+      group_id = ?` in routes/supervisor.js's /group route).
 
    4. Tables `sessions`, `attendance`, `training_hours`,
       `supervision_hours`, `assignments`, `supervisor_notes`,
@@ -48,23 +57,18 @@ const router = express.Router();
       separate addition — flag it and I'll add explicit write endpoints
       rather than silently expanding scope here.
 
-   INTEGRATION STEPS (things I could not do without the actual files):
-   - Mount this router in your server.js / app.js, e.g.:
-       app.use("/api/master-trainer", require("./routes/masterTrainer"));
-   - Update your Admin "manage group" flow (routes/admin.js — not shown
-     to me) so assigning a Master Trainer to a Group does:
+   INTEGRATION STEPS:
+   - Mounted in server.js as app.use("/api/master-trainer", require("./routes/Mastertrainer")).
+   - Admin's "manage group" flow (routes/admin.js) should, when assigning a
+     Master Trainer to a Group, do:
        UPDATE supervisors
-       SET supervisor_type = 'primary', group_id = $1, primary_supervisor_id = NULL
-       WHERE id = $2;
-     and keep enforcing "exactly 1 primary per group" the same way you
-     already enforce "exactly 2 in_training per group" (comment already
-     in dashboard.html's loadMe()).
-   - Update your login/auth response (or add a GET /api/auth/me) to
-     include `supervisorType` for role='supervisor' users, and on the
-     frontend redirect 'primary' -> master-trainer-dashboard.html and
-     'in_training' -> dashboard.html (mirrors loadMe()'s existing
-     me.supervisorType usage in dashboard.html, so the field name is
-     already established — I'm reusing it, not inventing it).
+       SET supervisor_type = 'primary', group_id = ?, primary_supervisor_id = NULL
+       WHERE id = ?;
+     and keep enforcing "exactly 1 primary per group" the same way it
+     already enforces "exactly 2 in_training per group".
+   - login.html now reads supervisorType off the login response (added to
+     routes/auth.js's login query/response) and redirects 'primary' ->
+     masterDashborad.html, 'in_training' -> Totdashboard.html.
    ========================================================================= */
 
 router.use(requireAuth, requireMasterTrainer);
@@ -77,7 +81,7 @@ async function requireMasterTrainer(req, res, next) {
         const { rows } = await db.query(
             `SELECT sup.id, sup.full_name, sup.group_id, sup.supervisor_type
        FROM supervisors sup
-       WHERE sup.id = $1`, [req.user.id]
+       WHERE sup.id = ?`, [req.user.id]
         );
         if (!rows.length || rows[0].supervisor_type !== "primary") {
             return res.status(403).json({ error: "Master Trainer access only" });
@@ -106,7 +110,7 @@ async function loadGroupTot(db, groupId, totId, res) {
             sup.full_name, sup.email, sup.phone, sup.photo, sup.group_id, sup.supervisor_type
      FROM user_credentials uc
      JOIN supervisors sup ON sup.id = uc.id
-     WHERE uc.id = $1 AND sup.supervisor_type = 'in_training'`, [totId]
+     WHERE uc.id = ? AND sup.supervisor_type = 'in_training'`, [totId]
     );
     if (!rows.length) {
         res.status(404).json({ error: "Trainer not found" });
@@ -128,7 +132,7 @@ async function loadGroupStudent(db, groupId, studentId, res) {
      FROM user_credentials uc
      JOIN students st ON st.id = uc.id
      LEFT JOIN cohorts c ON c.id = st.cohort_id
-     WHERE uc.id = $1`, [studentId]
+     WHERE uc.id = ?`, [studentId]
     );
     if (!rows.length) {
         res.status(404).json({ error: "Trainee not found" });
@@ -154,8 +158,8 @@ router.get(
               sup.full_name, sup.email, sup.phone, sup.photo, sup.group_id, g.name AS group_name
        FROM user_credentials uc
        JOIN supervisors sup ON sup.id = uc.id
-       LEFT JOIN groups g ON g.id = sup.group_id
-       WHERE uc.id = $1`, [req.user.id]
+       LEFT JOIN trainer_groups g ON g.id = sup.group_id
+       WHERE uc.id = ?`, [req.user.id]
         );
         const self = selfRows[0];
 
@@ -165,8 +169,8 @@ router.get(
 
         const { rows: countRows } = await db.query(
             `SELECT
-        (SELECT COUNT(*)::int FROM supervisors WHERE group_id = $1 AND supervisor_type = 'in_training') AS tot_count,
-        (SELECT COUNT(*)::int FROM students WHERE group_id = $1) AS trainee_count`, [groupId]
+        (SELECT COUNT(*) FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training') AS tot_count,
+        (SELECT COUNT(*) FROM students WHERE group_id = ?) AS trainee_count`, [groupId, groupId]
         );
 
         res.json({
@@ -187,17 +191,17 @@ router.get(
         const { groupId } = req.masterTrainer;
         if (!groupId) return noGroupResponse(res, { groupLabel: "No Group assigned", tots: [], traineeCount: 0 });
 
-        const { rows: groupRows } = await db.query("SELECT name FROM groups WHERE id = $1", [groupId]);
+        const { rows: groupRows } = await db.query("SELECT name FROM trainer_groups WHERE id = ?", [groupId]);
         const { rows: tots } = await db.query(
             `SELECT uc.id, uc.member_code, uc.status, sup.full_name, sup.email, sup.phone, sup.photo
        FROM supervisors sup
        JOIN user_credentials uc ON uc.id = sup.id
-       WHERE sup.group_id = $1 AND sup.supervisor_type = 'in_training'
+       WHERE sup.group_id = ? AND sup.supervisor_type = 'in_training'
        ORDER BY sup.full_name`, [groupId]
         );
-        const { rows: countRows } = await db.query("SELECT COUNT(*)::int AS count FROM students WHERE group_id = $1", [groupId]);
+        const { rows: countRows } = await db.query("SELECT COUNT(*) AS count FROM students WHERE group_id = ?", [groupId]);
 
-        res.json({ groupLabel: groupRows[0] ? .name || "My Group", tots, traineeCount: countRows[0].count });
+        res.json({ groupLabel: groupRows[0]?.name || "My Group", tots, traineeCount: countRows[0].count });
     })
 );
 
@@ -213,10 +217,10 @@ router.get(
         const { rows } = await db.query(
             `SELECT uc.id, uc.member_code, uc.status, uc.created_at,
               sup.full_name, sup.email, sup.phone, sup.photo,
-              (SELECT COUNT(*)::int FROM supervisor_students ss WHERE ss.supervisor_id = sup.id) AS trainee_count,
-              (SELECT COUNT(*)::int FROM sessions s WHERE s.supervisor_id = sup.id) AS session_count,
-              (SELECT COUNT(*)::int FROM meetings m WHERE m.supervisor_id = sup.id) AS meeting_count,
-              (SELECT COUNT(*)::int FROM documents d
+              (SELECT COUNT(*) FROM supervisor_students ss WHERE ss.supervisor_id = sup.id) AS trainee_count,
+              (SELECT COUNT(*) FROM sessions s WHERE s.supervisor_id = sup.id) AS session_count,
+              (SELECT COUNT(*) FROM meetings m WHERE m.supervisor_id = sup.id) AS meeting_count,
+              (SELECT COUNT(*) FROM documents d
                  JOIN supervisor_students ss2 ON ss2.student_id = d.student_id
                  WHERE ss2.supervisor_id = sup.id) AS document_count,
               (SELECT COALESCE(SUM(th.hours), 0) FROM training_hours th WHERE th.supervisor_id = sup.id) AS training_hours,
@@ -224,7 +228,7 @@ router.get(
               (SELECT MAX(al.created_at) FROM audit_logs al WHERE al.actor_id = sup.id) AS last_activity_at
        FROM supervisors sup
        JOIN user_credentials uc ON uc.id = sup.id
-       WHERE sup.group_id = $1 AND sup.supervisor_type = 'in_training'
+       WHERE sup.group_id = ? AND sup.supervisor_type = 'in_training'
        ORDER BY sup.full_name`, [groupId]
         );
 
@@ -247,21 +251,22 @@ router.get(
        JOIN user_credentials uc ON uc.id = ss.student_id
        JOIN students st ON st.id = ss.student_id
        LEFT JOIN cohorts c ON c.id = st.cohort_id
-       WHERE ss.supervisor_id = $1
+       WHERE ss.supervisor_id = ?
        ORDER BY st.full_name`, [totId]
         );
 
         const { rows: statRows } = await db.query(
             `SELECT
-        (SELECT COUNT(*)::int FROM sessions WHERE supervisor_id = $1 AND session_type = 'training') AS training_sessions,
-        (SELECT COUNT(*)::int FROM sessions WHERE supervisor_id = $1 AND session_type = 'supervision') AS supervision_sessions,
-        (SELECT COALESCE(SUM(hours), 0) FROM training_hours WHERE supervisor_id = $1) AS training_hours,
-        (SELECT COALESCE(SUM(hours), 0) FROM supervision_hours WHERE supervisor_id = $1) AS supervision_hours,
-        (SELECT COUNT(*)::int FROM assignments WHERE supervisor_id = $1) AS assignments_total,
-        (SELECT COUNT(*)::int FROM assignments WHERE supervisor_id = $1 AND status = 'completed') AS assignments_completed,
-        (SELECT COUNT(*)::int FROM evaluations WHERE supervisor_id = $1) AS evaluation_count,
-        (SELECT COUNT(*)::int FROM meetings WHERE supervisor_id = $1) AS meeting_count,
-        (SELECT COUNT(*)::int FROM learning_materials WHERE supervisor_id = $1) AS material_count`, [totId]
+        (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND session_type = 'training') AS training_sessions,
+        (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND session_type = 'supervision') AS supervision_sessions,
+        (SELECT COALESCE(SUM(hours), 0) FROM training_hours WHERE supervisor_id = ?) AS training_hours,
+        (SELECT COALESCE(SUM(hours), 0) FROM supervision_hours WHERE supervisor_id = ?) AS supervision_hours,
+        (SELECT COUNT(*) FROM assignments WHERE supervisor_id = ?) AS assignments_total,
+        (SELECT COUNT(*) FROM assignments WHERE supervisor_id = ? AND status = 'completed') AS assignments_completed,
+        (SELECT COUNT(*) FROM evaluations WHERE supervisor_id = ?) AS evaluation_count,
+        (SELECT COUNT(*) FROM meetings WHERE supervisor_id = ?) AS meeting_count,
+        (SELECT COUNT(*) FROM learning_materials WHERE supervisor_id = ?) AS material_count`,
+            Array(9).fill(totId)
         );
 
         const recentRecords = await recentRecordsForSupervisor(db, totId, 20);
@@ -298,7 +303,7 @@ router.get(
        JOIN user_credentials uc ON uc.id = ss.student_id
        JOIN students st ON st.id = ss.student_id
        LEFT JOIN cohorts c ON c.id = st.cohort_id
-       WHERE ss.supervisor_id = $1
+       WHERE ss.supervisor_id = ?
        ORDER BY st.full_name`, [totId]
         );
         res.json({ students: rows });
@@ -317,16 +322,16 @@ router.get(
         const { rows } = await db.query(
             `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.current_year, c.name AS cohort_name,
               COALESCE(
-                (SELECT json_agg(json_build_object('id', sup.id, 'fullName', sup.full_name))
+                (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', sup.id, 'fullName', sup.full_name))
                  FROM supervisor_students ss
                  JOIN supervisors sup ON sup.id = ss.supervisor_id
                  WHERE ss.student_id = st.id),
-                '[]'
+                JSON_ARRAY()
               ) AS tots
        FROM students st
        JOIN user_credentials uc ON uc.id = st.id
        LEFT JOIN cohorts c ON c.id = st.cohort_id
-       WHERE st.group_id = $1
+       WHERE st.group_id = ?
        ORDER BY st.full_name`, [groupId]
         );
         res.json({ trainees: rows });
@@ -346,33 +351,33 @@ router.get(
             `SELECT sup.id, sup.full_name, sup.email, sup.phone
        FROM supervisor_students ss
        JOIN supervisors sup ON sup.id = ss.supervisor_id
-       WHERE ss.student_id = $1`, [studentId]
+       WHERE ss.student_id = ?`, [studentId]
         );
 
         const { rows: recordRows } = await db.query(
             `SELECT id, 'training_session' AS record_type, student_id, supervisor_id, title, session_date AS date, session_time AS time, duration_minutes, notes AS content
-         FROM sessions WHERE student_id = $1 AND session_type = 'training'
+         FROM sessions WHERE student_id = ? AND session_type = 'training'
        UNION ALL
        SELECT id, 'supervision_session', student_id, supervisor_id, title, session_date, session_time, duration_minutes, notes
-         FROM sessions WHERE student_id = $1 AND session_type = 'supervision'
+         FROM sessions WHERE student_id = ? AND session_type = 'supervision'
        UNION ALL
        SELECT id, 'attendance', student_id, supervisor_id, NULL, attendance_date, NULL, NULL, notes
-         FROM attendance WHERE student_id = $1
+         FROM attendance WHERE student_id = ?
        UNION ALL
        SELECT id, 'assignment', student_id, supervisor_id, title, due_date, NULL, NULL, description
-         FROM assignments WHERE student_id = $1
+         FROM assignments WHERE student_id = ?
        UNION ALL
        SELECT id, 'evaluation', student_id, supervisor_id, title, evaluation_date, NULL, NULL, content
-         FROM evaluations WHERE student_id = $1
-       ORDER BY date DESC NULLS LAST
-       LIMIT 30`, [studentId]
+         FROM evaluations WHERE student_id = ?
+       ORDER BY date DESC
+       LIMIT 30`, Array(5).fill(studentId)
         );
 
         const { rows: documents } = await db.query(
             `SELECT d.*, COALESCE(a.full_name, sup.full_name) AS uploaded_by_name FROM documents d
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE d.student_id = $1 ORDER BY d.created_at DESC`, [studentId]
+       WHERE d.student_id = ? ORDER BY d.created_at DESC`, [studentId]
         );
 
         res.json({
@@ -399,8 +404,8 @@ router.get(
        FROM sessions s
        JOIN students st ON st.id = s.student_id
        JOIN supervisors sup ON sup.id = s.supervisor_id
-       WHERE sup.group_id = $1 AND s.session_date >= CURRENT_DATE
-       ORDER BY s.session_date ASC, s.session_time ASC NULLS LAST
+       WHERE sup.group_id = ? AND s.session_date >= CURRENT_DATE
+       ORDER BY s.session_date ASC, (s.session_time IS NULL), s.session_time ASC
        LIMIT 100`, [groupId]
         );
 
@@ -435,8 +440,8 @@ router.get(
             `SELECT m.*, st.full_name AS student_name, sup.full_name AS trainer_name FROM meetings m
        JOIN supervisors sup ON sup.id = m.supervisor_id
        LEFT JOIN students st ON st.id = m.student_id
-       WHERE sup.group_id = $1
-       ORDER BY m.scheduled_at ASC NULLS LAST
+       WHERE sup.group_id = ?
+       ORDER BY (m.scheduled_at IS NULL), m.scheduled_at ASC
        LIMIT 100`, [groupId]
         );
         res.json({ meetings: rows });
@@ -453,7 +458,7 @@ router.get(
         const { rows } = await db.query(
             `SELECT lm.*, sup.full_name AS supervisor_name FROM learning_materials lm
        JOIN supervisors sup ON sup.id = lm.supervisor_id
-       WHERE sup.group_id = $1
+       WHERE sup.group_id = ?
        ORDER BY lm.created_at DESC
        LIMIT 100`, [groupId]
         );
@@ -476,7 +481,7 @@ router.get(
        JOIN user_credentials uc ON uc.id = st.id
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE st.group_id = $1
+       WHERE st.group_id = ?
        ORDER BY d.created_at DESC
        LIMIT 200`, [groupId]
         );
@@ -497,7 +502,7 @@ router.get(
        JOIN supervisors sup ON sup.id = al.actor_id
        LEFT JOIN students st ON st.id = al.entity_id
          AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')
-       WHERE sup.group_id = $1
+       WHERE sup.group_id = ?
        ORDER BY al.created_at DESC
        LIMIT 40`, [groupId]
         );
@@ -524,15 +529,15 @@ router.get(
         let dateFilter = "";
         if (start && end) {
             params.push(start, end);
-            dateFilter = "AND ce.event_date BETWEEN $2 AND $3";
+            dateFilter = "AND ce.event_date BETWEEN ? AND ?";
         }
         const { rows } = await db.query(
             `SELECT ce.*, sup.full_name AS trainer_name, st.full_name AS student_name
        FROM calendar_events ce
        JOIN supervisors sup ON sup.id = ce.owner_id
        LEFT JOIN students st ON st.id = ce.student_id
-       WHERE sup.group_id = $1 ${dateFilter}
-       ORDER BY ce.event_date ASC, ce.event_time ASC NULLS LAST`,
+       WHERE sup.group_id = ? ${dateFilter}
+       ORDER BY ce.event_date ASC, (ce.event_time IS NULL), ce.event_time ASC`,
             params
         );
         res.json({ events: rows });
@@ -544,24 +549,24 @@ router.get(
 async function recentRecordsForSupervisor(db, supervisorId, limit) {
     const { rows } = await db.query(
         `SELECT id, 'training_session' AS record_type, student_id, supervisor_id, title, session_date AS date, session_time AS time, duration_minutes, notes AS content
-       FROM sessions WHERE supervisor_id = $1 AND session_type = 'training'
+       FROM sessions WHERE supervisor_id = ? AND session_type = 'training'
      UNION ALL
      SELECT id, 'supervision_session', student_id, supervisor_id, title, session_date, session_time, duration_minutes, notes
-       FROM sessions WHERE supervisor_id = $1 AND session_type = 'supervision'
+       FROM sessions WHERE supervisor_id = ? AND session_type = 'supervision'
      UNION ALL
      SELECT id, 'attendance', student_id, supervisor_id, NULL, attendance_date, NULL, NULL, notes
-       FROM attendance WHERE supervisor_id = $1
+       FROM attendance WHERE supervisor_id = ?
      UNION ALL
      SELECT id, 'assignment', student_id, supervisor_id, title, due_date, NULL, NULL, description
-       FROM assignments WHERE supervisor_id = $1
+       FROM assignments WHERE supervisor_id = ?
      UNION ALL
      SELECT id, 'evaluation', student_id, supervisor_id, title, evaluation_date, NULL, NULL, content
-       FROM evaluations WHERE supervisor_id = $1
+       FROM evaluations WHERE supervisor_id = ?
      UNION ALL
      SELECT id, 'note', student_id, supervisor_id, NULL, note_date, NULL, NULL, content
-       FROM supervisor_notes WHERE supervisor_id = $1
-     ORDER BY date DESC NULLS LAST
-     LIMIT $2`, [supervisorId, limit]
+       FROM supervisor_notes WHERE supervisor_id = ?
+     ORDER BY date DESC
+     LIMIT ?`, [...Array(6).fill(supervisorId), limit]
     );
     const supNames = await attachSupervisorNamesLocal(db, rows);
     return supNames;
@@ -570,7 +575,7 @@ async function recentRecordsForSupervisor(db, supervisorId, limit) {
 async function attachSupervisorNamesLocal(db, rows) {
     const supIds = [...new Set(rows.map((r) => r.supervisor_id))];
     if (!supIds.length) return rows;
-    const { rows: supRows } = await db.query("SELECT id, full_name FROM supervisors WHERE id = ANY($1)", [supIds]);
+    const { rows: supRows } = await db.query("SELECT id, full_name FROM supervisors WHERE id IN (?)", [supIds]);
     const names = {};
     supRows.forEach((r) => (names[r.id] = r.full_name));
     return rows.map((r) => ({...r, supervisor_name: names[r.supervisor_id] }));
@@ -581,9 +586,9 @@ async function recentActivityForActor(db, actorId, limit) {
         `SELECT al.action, al.created_at, st.full_name AS student_name
      FROM audit_logs al
      LEFT JOIN students st ON st.id = al.entity_id
-     WHERE al.actor_id = $1
+     WHERE al.actor_id = ?
      ORDER BY al.created_at DESC
-     LIMIT $2`, [actorId, limit]
+     LIMIT ?`, [actorId, limit]
     );
     return rows.map((r) => ({ action: r.action, studentName: r.student_name, createdAt: r.created_at }));
 }
@@ -592,16 +597,16 @@ async function recentDocumentsForSupervisor(db, supervisorId, limit) {
     const { rows } = await db.query(
         `SELECT d.* FROM documents d
      JOIN supervisor_students ss ON ss.student_id = d.student_id
-     WHERE ss.supervisor_id = $1
+     WHERE ss.supervisor_id = ?
      ORDER BY d.created_at DESC
-     LIMIT $2`, [supervisorId, limit]
+     LIMIT ?`, [supervisorId, limit]
     );
     return rows;
 }
 
 async function materialsForSupervisor(db, supervisorId) {
     const { rows } = await db.query(
-        "SELECT * FROM learning_materials WHERE supervisor_id = $1 ORDER BY created_at DESC", [supervisorId]
+        "SELECT * FROM learning_materials WHERE supervisor_id = ? ORDER BY created_at DESC", [supervisorId]
     );
     return rows;
 }
@@ -610,8 +615,8 @@ async function meetingsForSupervisor(db, supervisorId) {
     const { rows } = await db.query(
         `SELECT m.*, st.full_name AS student_name FROM meetings m
      LEFT JOIN students st ON st.id = m.student_id
-     WHERE m.supervisor_id = $1
-     ORDER BY m.scheduled_at ASC NULLS LAST`, [supervisorId]
+     WHERE m.supervisor_id = ?
+     ORDER BY (m.scheduled_at IS NULL), m.scheduled_at ASC`, [supervisorId]
     );
     return rows;
 }

@@ -46,7 +46,7 @@
           Services <i class="fa fa-chevron-down"></i>
         </a>
         <ul class="dropdown-menu">
-          <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+          <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
           <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
           <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
           <li><a href="t.html" class="nav-link" data-translate="nav_consultations">TechnicalConsultations</a></li>
@@ -85,7 +85,7 @@
       <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
 
       <!-- Services inline on mobile -->
-      <li><a href="Projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+      <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
       <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
       <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
       <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
@@ -184,7 +184,7 @@
         <ul>
           <li><a href="about.html" data-translate="nav_about">About Us</a></li>
           <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
-          <li><a href="training.html" data-translate="nav_training">Training</a></li>
+          <li><a href="Training-Modules.html" data-translate="nav_training">Training</a></li>
           <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
         </ul>
       </div>
@@ -305,11 +305,19 @@
 
                 showMessage('Login successful. Redirecting...', 'success');
 
-                // Send each role to its own dashboard.
+                // Send each role to its own dashboard. Supervisors split further by
+                // supervisor_type: 'primary' is the Master Trainer, 'in_training' is
+                // the Trainer-in-Training (ToT) -- each has its own purpose-built
+                // dashboard rather than sharing the generic supervisor-dashboard.html.
                 const role = data.user.role;
+                const supervisorType = data.user.supervisorType;
                 const destination =
                     role === 'admin' ? 'AdminDashboard.html' :
-                    role === 'supervisor' ? 'supervisor-dashboard.html' :
+                    role === 'supervisor' ? (
+                        supervisorType === 'primary' ? 'masterDashborad.html' :
+                        supervisorType === 'in_training' ? 'Totdashboard.html' :
+                        'supervisor-dashboard.html'
+                    ) :
                     role === 'designer' ? 'DesignerDashboard.html' :
                     'PersonalProfile.html';
 
