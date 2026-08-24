@@ -1,13 +1,6 @@
-{
-  "extends": [
-    "development"
-  ],
-  "hints": {
-    "axe/text-alternatives": [
-      "default",
-      {
-        "image-alt": "off"
-      }
-    ]
+﻿{
+  "extends": ["@microsoft/edge-tools"],
+  "rules": {
+    "no-inline-styles": "off"
   }
 }
