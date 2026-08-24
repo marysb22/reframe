@@ -15,6 +15,9 @@
 
 const translations = {
   en: {
+    // ===== a11y =====
+    "a11y_skip_link": "Skip to main content",
+
     // ===== about =====
     "about_hero_subtitle": "We envision a future where mental health is the foundation of every human system, and where challenges and failures are embraced as opportunities for growth and transformation.",
     "about_hero_title": "About Reframe MHS",
@@ -340,6 +343,20 @@ const translations = {
     // ===== month =====
     "month_jul": "Jul",
 
+    // ===== msg =====
+    "msg_contact_success": "Thank you for your message! We'll get back to you soon.",
+    "msg_event_details_placeholder": "Event details would appear here in a full implementation.",
+    "msg_formspree_success": "Message sent successfully! 😊",
+    "msg_generic_error": "Something went wrong. Try again.",
+    "msg_invalid_email": "Please enter a valid email address.",
+    "msg_invalid_email_short": "Please enter a valid email.",
+    "msg_loading": "Loading...",
+    "msg_newsletter_success": "Thank you for subscribing! We'll keep you updated.",
+    "msg_required_fields": "Please fill in all required fields.",
+    "msg_send_error": "Oops! There was a problem sending your message.",
+    "msg_subscribe_confirm": "Thanks! Check your inbox to confirm.",
+    "msg_video_placeholder": "Video player would open here in a full implementation.",
+
     // ===== nav =====
     "nav_about": "About",
     "nav_consultations": "Technical Consultations",
@@ -568,6 +585,9 @@ const translations = {
   },
 
   ar: {
+    // ===== a11y =====
+    "a11y_skip_link": "تخطَّ إلى المحتوى الرئيسي",
+
     // ===== about =====
     "about_hero_subtitle": "نحن نتصور مستقبلًا تكون فيه الصحة النفسية أساس كل نظام إنساني، حيث يتم اعتبار التحديات والإخفاقات فرصًا للنمو والتحول.",
     "about_hero_title": "عن ريفريم",
@@ -790,6 +810,20 @@ const translations = {
     // ===== mission =====
     "mission_description": "نقدم أساليب صحة نفسية قائمة على الأدلة وملائمة ثقافيًا لتمكين الأفراد والمجموعات والمؤسسات من مواجهة التحديات وتحقيق أعلى إمكاناتهم.",
     "mission_title": "مهمتنا",
+
+    // ===== msg =====
+    "msg_contact_success": "شكراً لرسالتك! سنتواصل معك قريباً.",
+    "msg_event_details_placeholder": "ستظهر تفاصيل الفعالية هنا عند اكتمال التطبيق.",
+    "msg_formspree_success": "تم إرسال الرسالة بنجاح! 😊",
+    "msg_generic_error": "حدث خطأ ما. حاول مرة أخرى.",
+    "msg_invalid_email": "الرجاء إدخال بريد إلكتروني صحيح.",
+    "msg_invalid_email_short": "الرجاء إدخال بريد إلكتروني صحيح.",
+    "msg_loading": "جارٍ التحميل...",
+    "msg_newsletter_success": "شكراً لاشتراكك! سنبقيك على اطلاع بآخر المستجدات.",
+    "msg_required_fields": "الرجاء تعبئة جميع الحقول المطلوبة.",
+    "msg_send_error": "عذراً! حدثت مشكلة أثناء إرسال رسالتك.",
+    "msg_subscribe_confirm": "شكراً! تفقّد بريدك الإلكتروني لتأكيد الاشتراك.",
+    "msg_video_placeholder": "سيتم فتح مشغّل الفيديو هنا عند اكتمال التطبيق.",
 
     // ===== nav =====
     "nav_about": "معلومات عنا",
