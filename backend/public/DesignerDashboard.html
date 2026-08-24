@@ -148,7 +148,8 @@ tr:hover td{background:var(--surface-2);}
 
     <div class="nav-label">Content</div>
     <ul>
-      <li><a data-section="events" href="#events"><i class="fa fa-calendar-days"></i>Events</a></li>
+      <li><a data-section="events" href="#events"><i class="fa fa-calendar-days"></i>All Events</a></li>
+      <li><a data-section="events-create" href="#events-create"><i class="fa fa-plus"></i>Create New Event</a></li>
     </ul>
 
     <div class="nav-label">System</div>
@@ -189,7 +190,7 @@ tr:hover td{background:var(--surface-2);}
 
     <div class="system-card">
       <h3><i class="fa fa-calendar-days"></i>Welcome</h3>
-      <p class="hint" style="margin:0;">Create and manage the events you own on the public Events page, in English and Arabic. Only events you created appear in your list below -- switch to the Events tab to get started.</p>
+      <p class="hint" style="margin:0;">Create and manage the events you own on the public Events page, in English and Arabic. Only events you created appear in your list below -- switch to the All Events tab to get started.</p>
     </div>
 
   </section>
@@ -197,14 +198,32 @@ tr:hover td{background:var(--surface-2);}
   <!-- ============================================================= -->
   <!-- EVENTS                                                         -->
   <!-- ============================================================= -->
-  <section class="dash-section" id="section-events" data-title="Events" data-eyebrow="Content">
+  <section class="dash-section" id="section-events" data-title="All Events" data-eyebrow="Content">
 
     <div class="system-card" style="margin-bottom:0;">
       <h3><i class="fa fa-calendar-days"></i>Your events (public site)</h3>
-      <p class="hint">Create, edit, or remove events you own. Changes appear on the public events page instantly.</p>
-      <button class="btn" style="width:auto;margin-top:0;" onclick="openEventForm()"><i class="fa fa-plus"></i> New event</button>
+      <p class="hint">View, edit, or remove events you own. Changes appear on the public events page instantly.</p>
+      <button class="btn" style="width:auto;margin-top:0;" onclick="openEventForm()"><i class="fa fa-plus"></i> Create New Event</button>
 
-      <div id="eventFormWrap" style="display:none;margin-top:20px;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:18px;">
+      <table style="margin-top:20px;">
+        <thead><tr><th>Title</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="eventsBody"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- CREATE / EDIT EVENT (separate page from All Events on purpose --
+       the list must never appear underneath the creation form) -->
+  <!-- ============================================================= -->
+  <section class="dash-section" id="section-events-create" data-title="Create New Event" data-eyebrow="Content">
+
+    <div class="system-card" style="margin-bottom:0;">
+      <h3><i class="fa fa-calendar-days"></i><span id="eventFormHeading">Create new event</span></h3>
+      <p class="hint">This information appears on the public events page, in English and Arabic.</p>
+
+      <div id="eventFormWrap" style="margin-top:20px;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:18px;">
         <form id="eventForm">
           <input type="hidden" id="evId">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
@@ -258,11 +277,6 @@ tr:hover td{background:var(--surface-2);}
           </div>
         </form>
       </div>
-
-      <table style="margin-top:20px;">
-        <thead><tr><th>Title</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody id="eventsBody"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
-      </table>
     </div>
 
   </section>
@@ -372,7 +386,7 @@ function logout() {
 
 // ---- Section switching -------------------------------------------------
 
-const SECTION_IDS = ["dashboard", "events", "settings"];
+const SECTION_IDS = ["dashboard", "events", "events-create", "settings"];
 
 function showSection(name) {
   if (!SECTION_IDS.includes(name)) name = "dashboard";
@@ -569,12 +583,13 @@ function openEventForm() {
   document.getElementById("evStatus").value = "upcoming";
   document.getElementById("evImage").value = "";
   document.getElementById("evImagePreviewWrap").style.display = "none";
-  document.getElementById("eventFormWrap").style.display = "block";
+  document.getElementById("eventFormHeading").textContent = "Create new event";
   clearEventDraft();
+  showSection("events-create");
 }
 function closeEventForm() {
-  document.getElementById("eventFormWrap").style.display = "none";
   clearEventDraft();
+  showSection("events");
 }
 
 // ---- Draft auto-save --------------------------------------------------
@@ -616,9 +631,9 @@ function restoreEventDraftIfAny() {
         : API_BASE + draft.evImage;
       document.getElementById("evImagePreviewWrap").style.display = "block";
     }
-    document.getElementById("eventFormWrap").style.display = "block";
+    document.getElementById("eventFormHeading").textContent = editingEventId ? "Edit event" : "Create new event";
     showToast("Restored your unsaved event draft", "success");
-    showSection("events");
+    showSection("events-create");
   } catch (err) {
     clearEventDraft();
   }
@@ -658,8 +673,8 @@ function editEvent(id) {
   document.getElementById("evFacilitatorAr").value = ev.arabic.facilitator || "";
   document.getElementById("evAboutAr").value = ev.arabic.about || "";
 
-  document.getElementById("eventFormWrap").style.display = "block";
-  document.getElementById("eventFormWrap").scrollIntoView({ behavior: "smooth" });
+  document.getElementById("eventFormHeading").textContent = "Edit event";
+  showSection("events-create");
 }
 
 function confirmDeleteEvent(id) {
