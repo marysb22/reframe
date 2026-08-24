@@ -1,1742 +1,2000 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-translate="page_title_home">Reframe MHS - Mental Health Services</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-translate="page_title_home">Reframe MHS - Mental Health Services</title>
 
-  <meta
-    name="description"
-    content="Professional mental health services and training programs across the Middle East. Unlocking potential and resilience."
-  />
+    <meta name="description" content="Professional mental health services and training programs across the Middle East. Unlocking potential and resilience." />
 
-  <!-- ====== STYLES ====== -->
-  <link rel="stylesheet" href="styles/main.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <!-- ====== STYLES ====== -->
+    <link rel="stylesheet" href="styles/main.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
 
 <body>
 
-  <!-- ================= NAVBAR ================= -->
-  <nav class="navbar">
-    <div class="nav-container">
+    <!-- ================= NAVBAR ================= -->
+    <nav class="navbar">
+        <div class="nav-container">
 
-      <!-- Logo -->
-      <div class="nav-logo">
-        <a href="index.html">
-          <img src="logos/logo.gif" alt="Company Logo" width="220" />
-        </a>
-      </div>
+            <!-- Logo -->
+            <div class="nav-logo">
+                <a href="index.html">
+                    <img src="logos/logo.gif" alt="Company Logo" width="220" />
+                </a>
+            </div>
 
-      <!-- Menu -->
-      <ul class="nav-menu">
-        <li>
-          <a href="index.html" class="nav-link" data-translate="nav_home">Home</a>
-        </li>
-        <li>
-          <a href="about.html" class="nav-link" data-translate="nav_about">About</a>
-        </li>
-        <li class="nav-dropdown">
-          <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
+            <!-- Menu -->
+            <ul class="nav-menu">
+                <li>
+                    <a href="index.html" class="nav-link" data-translate="nav_home">Home</a>
+                </li>
+                <li>
+                    <a href="about.html" class="nav-link" data-translate="nav_about">About</a>
+                </li>
+                <li class="nav-dropdown">
+                    <a href="#" class="nav-link dropdown-toggle" data-translate="nav_services">
             Services <i class="fa fa-chevron-down dir-icon"></i>
           </a>
-          <ul class="dropdown-menu">
-            <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
-            <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-            <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
-            <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
-          </ul>
-        </li>
-        <li>
-          <a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a>
-        </li>
-      </ul>
+                    <ul class="dropdown-menu">
+                        <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+                        <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+                        <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+                        <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a>
+                </li>
+            </ul>
 
-      <!-- Language Switcher -->
-      <div class="language-switcher">
-        <button class="lang-btn active" data-lang="en" type="button">EN</button>
-        <span class="lang-separator">|</span>
-        <button class="lang-btn" data-lang="ar" type="button">AR</button>
-      </div>
+            <!-- Language Switcher -->
+            <div class="language-switcher">
+                <button class="lang-btn active" data-lang="en" type="button">EN</button>
+                <span class="lang-separator">|</span>
+                <button class="lang-btn" data-lang="ar" type="button">AR</button>
+            </div>
 
-      <!-- Login Button -->
-      <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
+            <!-- Login Button -->
+            <a href="login.html" class="nav-link login-btn" data-translate="nav_login">Login</a>
 
-      <!-- Hamburger Button -->
-      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false" type="button">
+            <!-- Hamburger Button -->
+            <button class="hamburger" aria-label="Toggle menu" aria-expanded="false" type="button">
         <span></span><span></span><span></span>
       </button>
 
-    </div>
-  </nav>
-
-  <!-- Overlay Menu for Mobile -->
-  <div class="overlay" id="mobile-menu" aria-hidden="true">
-    <nav class="overlay-nav" aria-label="Mobile">
-      <ul>
-        <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
-        <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
-        <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
-        <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
-        <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
-        <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
-        <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
-        <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
-      </ul>
-      <button class="close-btn" aria-label="Close menu" data-translate="close" type="button">Close</button>
-    </nav>
-  </div>
-
-  <!-- ================= HERO ================= -->
-  <section class="hero">
-    <div class="bento-grid">
-      <img src="photos/pro3.jpg" alt="photo 1" class="bento-item large" />
-      <img src="photos/pro1.jpg" alt="photo 2" class="bento-item tall" />
-      <img src="photos/pro3.jpg" alt="photo 3" class="bento-item small" />
-      <img src="photos/PRO4.jpeg" alt="photo 4" class="bento-item wide" />
-    </div>
-
-    <div class="hero-overlay">
-      <div class="hero-text">
-        <h1 data-translate="hero_title">Unleashing human potential and resilience</h1>
-        <p data-translate="hero_paragraph">
-          Professional mental health services and training programs designed for the unique cultural context of the Middle East.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================= LAB + PLAN + CALENDAR ================= -->
-  <section class="calendar-lab-section">
-    <div class="container">
-      <div class="calendar-lab-grid">
-
-        <!-- LEFT COLUMN: Lab + Strategic Plan -->
-        <div class="lab-column">
-          <div class="lab-half">
-            <div class="lab-announcement">
-              <div class="lab-logo"><i class="fas fa-flask"></i></div>
-              <h2 data-translate="lab_title">Mental Health Lab</h2>
-              <p data-translate="lab_desc">
-                Join our innovative research initiatives to advance mental health care in the Middle East region.
-              </p>
-              <div class="collaboration-question">
-                <h3 data-translate="lab_collaboration_question">Would you like to collaborate with us?</h3>
-                <div class="collaboration-buttons">
-                  <form id="lab-subscribe" class="subscribe-form" action="/api/subscribe" method="POST" novalidate>
-                    <label class="visually-hidden" for="lab-email" data-translate="lab_email_label">Email address</label>
-                    <div class="input-wrap only-input">
-                      <i class="fas fa-envelope" aria-hidden="true"></i>
-                      <input
-                        id="lab-email"
-                        name="email"
-                        type="email"
-                        inputmode="email"
-                        autocomplete="email"
-                        placeholder="you@example.com"
-                        data-translate-placeholder="lab_email_placeholder"
-                        required
-                        aria-describedby="lab-help"
-                      />
-                      <span class="inline-spinner" aria-hidden="true"></span>
-                      <span class="inline-check" aria-hidden="true" title="Done"></span>
-                    </div>
-                    <div id="lab-message" class="form-message" role="status" aria-live="polite"></div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Strategic Plan card -->
-          <div class="plan-card">
-            <div class="plan-card-header">
-              <i class="fas fa-bullseye"></i>
-              <span data-translate="plan_title">Strategic Plan 2025-2030</span>
-            </div>
-            <div class="plan-card-body">
-              <p data-translate="plan_text">
-                Reframe's vision for 2025-2030 rests on three pillars: systemic therapy leadership,
-                the Work-Well Seal for mentally healthy workplaces, and culturally adapted programmes
-                based on annual needs assessments. These efforts aim to strengthen mental health
-                services across the MENA region and empower communities to thrive despite complex challenges.
-              </p>
-              <a class="view-btn" href="S.pdf" target="_blank" rel="noopener" data-translate="plan_view_btn">
-                <i class="fas fa-eye"></i> View Full Plan
-              </a>
-            </div>
-          </div>
         </div>
-        <!-- /lab-column -->
+    </nav>
 
-        <!-- RIGHT COLUMN: Calendar -->
-        <div class="calendar-half">
-          <div class="section-header">
-            <h2 data-translate="calendar_title">Upcoming Events</h2>
+    <!-- Overlay Menu for Mobile -->
+    <div class="overlay" id="mobile-menu" aria-hidden="true">
+        <nav class="overlay-nav" aria-label="Mobile">
+            <ul>
+                <li><a href="index.html" class="nav-link" data-translate="nav_home">Home</a></li>
+                <li><a href="about.html" class="nav-link" data-translate="nav_about">About</a></li>
+                <li><a href="projects.html" class="nav-link" data-translate="nav_mhlab">Mental Health Lab</a></li>
+                <li><a href="hub.html" class="nav-link" data-translate="nav_hub">Hub</a></li>
+                <li><a href="events.html" class="nav-link" data-translate="nav_training">Training</a></li>
+                <li><a href="t.html" class="nav-link" data-translate="nav_consultations">Technical Consultations</a></li>
+                <li><a href="contact.html" class="nav-link" data-translate="nav_contact">Contact</a></li>
+                <li><a href="login.html" class="nav-link" data-translate="nav_login">Login</a></li>
+            </ul>
+            <button class="close-btn" aria-label="Close menu" data-translate="close" type="button">Close</button>
+        </nav>
+    </div>
 
-            <div class="calendar-widget">
-              <div class="calendar-header">
-                <button class="prev-month" aria-label="Previous month" type="button">
+    <!-- ================= HERO ================= -->
+    <section class="hero">
+        <div class="bento-grid">
+            <img src="photos/pro3.jpg" alt="photo 1" class="bento-item large" />
+            <img src="photos/pro1.jpg" alt="photo 2" class="bento-item tall" />
+            <img src="photos/pro3.jpg" alt="photo 3" class="bento-item small" />
+            <img src="photos/PRO4.jpeg" alt="photo 4" class="bento-item wide" />
+        </div>
+
+        <div class="hero-overlay">
+            <div class="hero-text">
+                <h1 data-translate="hero_title">Unleashing human potential and resilience</h1>
+                <p data-translate="hero_paragraph">
+                    Professional mental health services and training programs designed for the unique cultural context of the Middle East.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= LAB + PLAN + CALENDAR ================= -->
+    <section class="calendar-lab-section">
+        <div class="container">
+            <div class="calendar-lab-grid">
+
+                <!-- LEFT COLUMN: Lab + Strategic Plan -->
+                <div class="lab-column">
+                    <div class="lab-half">
+                        <div class="lab-announcement">
+                            <div class="lab-logo"><i class="fas fa-flask"></i></div>
+                            <h2 data-translate="lab_title">Mental Health Lab</h2>
+                            <p data-translate="lab_desc">
+                                Join our innovative research initiatives to advance mental health care in the Middle East region.
+                            </p>
+                            <div class="collaboration-question">
+                                <h3 data-translate="lab_collaboration_question">Would you like to collaborate with us?</h3>
+                                <div class="collaboration-buttons">
+                                    <form id="lab-subscribe" class="subscribe-form" action="/api/subscribe" method="POST" novalidate>
+                                        <label class="visually-hidden" for="lab-email" data-translate="lab_email_label">Email address</label>
+                                        <div class="input-wrap only-input">
+                                            <i class="fas fa-envelope" aria-hidden="true"></i>
+                                            <input id="lab-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" data-translate-placeholder="lab_email_placeholder" required aria-describedby="lab-help" />
+                                            <span class="inline-spinner" aria-hidden="true"></span>
+                                            <span class="inline-check" aria-hidden="true" title="Done"></span>
+                                        </div>
+                                        <div id="lab-message" class="form-message" role="status" aria-live="polite"></div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Strategic Plan card -->
+                    <div class="plan-card">
+                        <div class="plan-card-header">
+                            <i class="fas fa-bullseye"></i>
+                            <span data-translate="plan_title">Strategic Plan 2025-2030</span>
+                        </div>
+                        <div class="plan-card-body">
+                            <p data-translate="plan_text">
+                                Reframe's vision for 2025-2030 rests on three pillars: systemic therapy leadership, the Work-Well Seal for mentally healthy workplaces, and culturally adapted programmes based on annual needs assessments. These efforts aim to strengthen mental health
+                                services across the MENA region and empower communities to thrive despite complex challenges.
+                            </p>
+                            <a class="view-btn" href="S.pdf" target="_blank" rel="noopener" data-translate="plan_view_btn">
+                                <i class="fas fa-eye"></i> View Full Plan
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <!-- /lab-column -->
+
+                <!-- RIGHT COLUMN: Calendar -->
+                <div class="calendar-half">
+                    <div class="section-header">
+                        <h2 data-translate="calendar_title">Upcoming Events</h2>
+
+                        <div class="calendar-widget">
+                            <div class="calendar-header">
+                                <button class="prev-month" aria-label="Previous month" type="button">
                   <i class="fas fa-chevron-left dir-icon"></i>
                 </button>
-                <h3 class="calendar-month-label"></h3>
-                <button class="next-month" aria-label="Next month" type="button">
+                                <h3 class="calendar-month-label"></h3>
+                                <button class="next-month" aria-label="Next month" type="button">
                   <i class="fas fa-chevron-right dir-icon"></i>
                 </button>
-              </div>
+                            </div>
 
-              <div class="calendar-grid">
-                <div class="calendar-days">
-                  <span data-translate="day_sun">Sun</span><span data-translate="day_mon">Mon</span><span data-translate="day_tue">Tue</span><span data-translate="day_wed">Wed</span>
-                  <span data-translate="day_thu">Thu</span><span data-translate="day_fri">Fri</span><span data-translate="day_sat">Sat</span>
-                </div>
-                <div class="calendar-dates"></div>
-              </div>
+                            <div class="calendar-grid">
+                                <div class="calendar-days">
+                                    <span data-translate="day_sun">Sun</span><span data-translate="day_mon">Mon</span><span data-translate="day_tue">Tue</span><span data-translate="day_wed">Wed</span>
+                                    <span data-translate="day_thu">Thu</span><span data-translate="day_fri">Fri</span><span data-translate="day_sat">Sat</span>
+                                </div>
+                                <div class="calendar-dates"></div>
+                            </div>
 
-              <div class="upcoming-events">
-                <div class="events-header">
-                  <a href="events.html" class="view-all-btn" data-translate="events_view_all">View All Events</a>
-                  <h4 data-translate="events_this_month">This Month's Events</h4>
+                            <div class="upcoming-events">
+                                <div class="events-header">
+                                    <a href="events.html" class="view-all-btn" data-translate="events_view_all">View All Events</a>
+                                    <h4 data-translate="events_this_month">This Month's Events</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-              </div>
+
             </div>
-          </div>
         </div>
+    </section>
 
-      </div>
-    </div>
-  </section>
+    <!-- ================= TIMELINE ================= -->
+    <section class="timeline-tabs">
+        <h2 class="section-title" data-translate="timeline_title">Our Story Timeline</h2>
 
-  <!-- ================= TIMELINE ================= -->
-  <section class="timeline-tabs">
-    <h2 class="section-title" data-translate="timeline_title">Our Story Timeline</h2>
-
-    <div class="horizontal-tabs">
-      <div class="tab-buttons">
-        <button class="tab-btn active" data-tab="2022" type="button">
+        <div class="horizontal-tabs">
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="2022" type="button">
           <span class="year-circle" data-translate="timeline_2022_circle">2022</span>
           <span class="year-label" data-translate="timeline_2022_label">Vision Emerges</span>
         </button>
-        <button class="tab-btn" data-tab="2023" type="button">
+                <button class="tab-btn" data-tab="2023" type="button">
           <span class="year-circle" data-translate="timeline_2023_circle">2023</span>
           <span class="year-label" data-translate="timeline_2023_label">Foundations Built</span>
         </button>
-        <button class="tab-btn" data-tab="2024" type="button">
+                <button class="tab-btn" data-tab="2024" type="button">
           <span class="year-circle" data-translate="timeline_2024_circle">2024</span>
           <span class="year-label" data-translate="timeline_2024_label">Key Milestones</span>
         </button>
-        <button class="tab-btn" data-tab="2025" type="button">
+                <button class="tab-btn" data-tab="2025" type="button">
           <span class="year-circle" data-translate="timeline_2025_circle">2025</span>
           <span class="year-label" data-translate="timeline_2025_label">Impact Grows</span>
         </button>
-        <button class="tab-btn" data-tab="beyond-2025" type="button">
+                <button class="tab-btn" data-tab="beyond-2025" type="button">
           <span class="year-circle" data-translate="timeline_beyond_circle">Beyond</span>
           <span class="year-label" data-translate="timeline_beyond_label">Together Forward</span>
         </button>
-      </div>
-
-      <div class="tab-contents">
-        <div class="tab-content active" id="2022">
-          <p data-translate="timeline_2022_text">
-            By the last quarter of 2022, a shared vision emerged among a group of
-            experienced therapists from across the Middle East and beyond. United
-            by a deep sense of purpose, we set out to create mental health
-            resources that are not only professionally rigorous but also
-            genuinely rooted in Arabic language and culture — addressing the real
-            realities of our communities.
-          </p>
-        </div>
-        <div class="tab-content" id="2023">
-          <p data-translate="timeline_2023_text">
-            In 2023, we focused on laying strong foundations. We listened deeply,
-            learned extensively, and sought to understand the unique and complex
-            needs of those we serve. Our commitment was clear: to move forward
-            with honesty, care, and unwavering dedication to support those who
-            need it most.
-          </p>
-        </div>
-        <div class="tab-content" id="2024">
-          <p data-translate="timeline_2024_text">
-            2024 marked the year when our efforts began to take tangible shape. We
-            launched our first professional training and international
-            collaboration, initiated a research project on panic attacks, and
-            partnered with NGOs and corporations across the Middle East.
-            Together, we fostered environments where staff well-being became a
-            priority.
-          </p>
-        </div>
-        <div class="tab-content" id="2025">
-          <p data-translate="timeline_2025_text">
-            Entering 2025, our commitment to long-term impact strengthened. We
-            advanced comprehensive training and intervention programs driven by
-            the same urgency and compassion that guided us from the start. Our
-            goal was never simply to add services — but to fundamentally reshape
-            mental health support in our region.
-          </p>
-        </div>
-        <div class="tab-content" id="beyond-2025">
-          <p data-translate="timeline_beyond_text">
-            At Reframe, we walk alongside professionals, corporate partners, and
-            researchers — providing tailored solutions that connect, uplift, and
-            empower. Together, we continue this journey hand in hand, reframing
-            mental health for a healthier, more resilient future.
-          </p>
-          <p><strong data-translate="timeline_beyond_text_bold">Join us and be part of the change.</strong></p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================= MILESTONES ================= -->
-  <section class="milestones-section" id="milestones">
-    <div class="container">
-      <div class="section-header">
-        <h2 data-translate="milestones_title">Our Milestones to Date</h2>
-        <p data-translate="milestones_subtitle">Celebrating our journey and impact in the mental health field</p>
-      </div>
-
-      <div class="milestones-grid">
-        <div class="milestone-card animate-on-scroll">
-          <div class="milestone-icon"><i class="fas fa-handshake"></i></div>
-          <div class="milestone-title" data-translate="milestone1_title">15+ Organizations</div>
-          <div class="milestone-desc" data-translate="milestone1_desc">Corporations, NGOs, and healthcare institutions</div>
-        </div>
-        <div class="milestone-card animate-on-scroll">
-          <div class="milestone-icon"><i class="fas fa-project-diagram"></i></div>
-          <div class="milestone-title" data-translate="milestone2_title">2+ Projects</div>
-          <div class="milestone-desc" data-translate="milestone2_desc">Active studies and assessment tool development</div>
-        </div>
-        <div class="milestone-card animate-on-scroll">
-          <div class="milestone-icon"><i class="fas fa-users"></i></div>
-          <div class="milestone-title" data-translate="milestone3_title">500+ Professionals</div>
-          <div class="milestone-desc" data-translate="milestone3_desc">Trained across multiple countries</div>
-        </div>
-        <div class="milestone-card animate-on-scroll">
-          <div class="milestone-icon"><i class="fas fa-globe"></i></div>
-          <div class="milestone-title" data-translate="milestone4_title">6 Countries</div>
-          <div class="milestone-desc" data-translate="milestone4_desc">Regional presence and collaborations</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================= PARTNERS ================= -->
-  <section class="partners-carousel-section">
-    <div class="container">
-      <div class="section-header">
-        <h2 data-translate="partners_title">Our Partners &amp; Collaborations</h2>
-        <p data-translate="partners_subtitle">Building stronger communities through strategic partnerships</p>
-      </div>
-
-      <div class="partners-carousel">
-        <div class="carousel-track" id="carousel-track">
-          <div class="partner-item"><img src="logos/FCDC.jpg" alt="FCDC"></div>
-          <div class="partner-item"><img src="logos/E1.png" alt="Mental Health Foundation"></div>
-          <div class="partner-item"><img src="logos/z.jpeg" alt="Regional University"></div>
-          <div class="partner-item"><img src="logos/kl.jpeg" alt="NGO Consortium"></div>
-          <div class="partner-item"><img src="logos/hr.png" alt="Corporate Wellness"></div>
-          <div class="partner-item"><img src="logos/p.png" alt="Premiere"></div>
-          <div class="partner-item"><img src="logos/forum.jpeg" alt="Forum"></div>
-          <div class="partner-item"><img src="logos/e3.jpeg" alt="Caritas Lebanon"><span>Caritas Lebanon</span></div>
-          <div class="partner-item"><img src="logos/immap.jpeg" alt="IMMAP"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================= FOOTER ================= -->
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-content">
-
-        <div class="footer-section">
-          <h3>Reframe MHS</h3>
-          <p data-translate="footer_description">
-            Unlocking the innate potential and resilience within each person and group across the Middle East.
-          </p>
-        </div>
-
-        <div class="footer-section">
-          <h4 data-translate="footer_quick_links">Quick Links</h4>
-          <ul>
-            <li><a href="about.html" data-translate="nav_about">About Us</a></li>
-            <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
-            <li><a href="events.html" data-translate="nav_training">Training</a></li>
-            <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-section">
-          <h4 data-translate="footer_services">Services</h4>
-          <ul>
-            <li><a href="#" data-translate="footer_training">Training Programs</a></li>
-            <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
-            <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
-            <li><a href="#" data-translate="footer_resources">Resources</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-section">
-          <h4 data-translate="footer_connect">Connect</h4>
-          <div class="social-links">
-            <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
-            <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-            <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-          </div>
-
-          <div class="subscribe-section">
-            <div class="subscribe-box">
-              <h3 data-translate="footer_subscribe_title">Stay Connected</h3>
-              <p data-translate="footer_subscribe_text">Subscribe to our newsletter for updates, workshops, and events.</p>
-              <form class="subscribe-form" action="#" method="post">
-                <label class="visually-hidden" for="footer-email" data-translate="lab_email_label">Email address</label>
-                <input id="footer-email" type="email" name="email" placeholder="Enter your email" data-translate-placeholder="footer_subscribe_placeholder" required>
-                <button type="submit" class="btn btn-primary" data-translate="footer_subscribe_btn">Subscribe</button>
-              </form>
             </div>
-          </div>
+
+            <div class="tab-contents">
+                <div class="tab-content active" id="2022">
+                    <p data-translate="timeline_2022_text">
+                        By the last quarter of 2022, a shared vision emerged among a group of experienced therapists from across the Middle East and beyond. United by a deep sense of purpose, we set out to create mental health resources that are not only professionally rigorous
+                        but also genuinely rooted in Arabic language and culture — addressing the real realities of our communities.
+                    </p>
+                </div>
+                <div class="tab-content" id="2023">
+                    <p data-translate="timeline_2023_text">
+                        In 2023, we focused on laying strong foundations. We listened deeply, learned extensively, and sought to understand the unique and complex needs of those we serve. Our commitment was clear: to move forward with honesty, care, and unwavering dedication
+                        to support those who need it most.
+                    </p>
+                </div>
+                <div class="tab-content" id="2024">
+                    <p data-translate="timeline_2024_text">
+                        2024 marked the year when our efforts began to take tangible shape. We launched our first professional training and international collaboration, initiated a research project on panic attacks, and partnered with NGOs and corporations across the Middle
+                        East. Together, we fostered environments where staff well-being became a priority.
+                    </p>
+                </div>
+                <div class="tab-content" id="2025">
+                    <p data-translate="timeline_2025_text">
+                        Entering 2025, our commitment to long-term impact strengthened. We advanced comprehensive training and intervention programs driven by the same urgency and compassion that guided us from the start. Our goal was never simply to add services — but to fundamentally
+                        reshape mental health support in our region.
+                    </p>
+                </div>
+                <div class="tab-content" id="beyond-2025">
+                    <p data-translate="timeline_beyond_text">
+                        At Reframe, we walk alongside professionals, corporate partners, and researchers — providing tailored solutions that connect, uplift, and empower. Together, we continue this journey hand in hand, reframing mental health for a healthier, more resilient
+                        future.
+                    </p>
+                    <p><strong data-translate="timeline_beyond_text_bold">Join us and be part of the change.</strong></p>
+                </div>
+            </div>
         </div>
+    </section>
 
-      </div>
+    <!-- ================= MILESTONES ================= -->
+    <section class="milestones-section" id="milestones">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-translate="milestones_title">Our Milestones to Date</h2>
+                <p data-translate="milestones_subtitle">Celebrating our journey and impact in the mental health field</p>
+            </div>
 
-      <div class="footer-bottom">
-        <p>
-          &copy; 2026 Reframe Mental Health Services. <span data-translate="footer_rights">All rights reserved.</span><br>
-          <span data-translate="footer_credit">Website designed &amp; developed by</span> <span>Mary Abbass Sbeity</span>
-        </p>
-      </div>
-    </div>
-  </footer>
+            <div class="milestones-grid">
+                <div class="milestone-card animate-on-scroll">
+                    <div class="milestone-icon"><i class="fas fa-handshake"></i></div>
+                    <div class="milestone-title" data-translate="milestone1_title">15+ Organizations</div>
+                    <div class="milestone-desc" data-translate="milestone1_desc">Corporations, NGOs, and healthcare institutions</div>
+                </div>
+                <div class="milestone-card animate-on-scroll">
+                    <div class="milestone-icon"><i class="fas fa-project-diagram"></i></div>
+                    <div class="milestone-title" data-translate="milestone2_title">2+ Projects</div>
+                    <div class="milestone-desc" data-translate="milestone2_desc">Active studies and assessment tool development</div>
+                </div>
+                <div class="milestone-card animate-on-scroll">
+                    <div class="milestone-icon"><i class="fas fa-users"></i></div>
+                    <div class="milestone-title" data-translate="milestone3_title">500+ Professionals</div>
+                    <div class="milestone-desc" data-translate="milestone3_desc">Trained across multiple countries</div>
+                </div>
+                <div class="milestone-card animate-on-scroll">
+                    <div class="milestone-icon"><i class="fas fa-globe"></i></div>
+                    <div class="milestone-title" data-translate="milestone4_title">6 Countries</div>
+                    <div class="milestone-desc" data-translate="milestone4_desc">Regional presence and collaborations</div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-  <script src="scripts/translations.js"></script>
-  <script src="scripts/main.js"></script>
+    <!-- ================= PARTNERS ================= -->
+    <section class="partners-carousel-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-translate="partners_title">Our Partners &amp; Collaborations</h2>
+                <p data-translate="partners_subtitle">Building stronger communities through strategic partnerships</p>
+            </div>
 
-  <!-- ================= PAGE STYLES ================= -->
-  <style>
-    /* ================= HERO SECTION ================= */
-    .hero {
-      position: relative;
-      width: 100%;
-      height: 520px;
-      margin-top: 95px;
-      padding: 0;
-      overflow: hidden;
-      font-family: 'Poppins', sans-serif;
-    }
+            <div class="partners-carousel">
+                <div class="carousel-track" id="carousel-track">
+                    <div class="partner-item"><img src="logos/FCDC.jpg" alt="FCDC"></div>
+                    <div class="partner-item"><img src="logos/E1.png" alt="Mental Health Foundation"></div>
+                    <div class="partner-item"><img src="logos/z.jpeg" alt="Regional University"></div>
+                    <div class="partner-item"><img src="logos/kl.jpeg" alt="NGO Consortium"></div>
+                    <div class="partner-item"><img src="logos/hr.png" alt="Corporate Wellness"></div>
+                    <div class="partner-item"><img src="logos/p.png" alt="Premiere"></div>
+                    <div class="partner-item"><img src="logos/forum.jpeg" alt="Forum"></div>
+                    <div class="partner-item"><img src="logos/e3.jpeg" alt="Caritas Lebanon"><span>Caritas Lebanon</span></div>
+                    <div class="partner-item"><img src="logos/immap.jpeg" alt="IMMAP"></div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    .bento-grid {
-      display: grid;
-      width: 100%;
-      height: 100%;
-      gap: 0;
-      grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(2, 1fr);
-    }
+    <!-- ================= FOOTER ================= -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
 
-    .bento-item {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      transition: transform 0.4s ease, filter 0.4s ease;
-    }
+                <div class="footer-section">
+                    <h3>Reframe MHS</h3>
+                    <p data-translate="footer_description">
+                        Unlocking the innate potential and resilience within each person and group across the Middle East.
+                    </p>
+                </div>
 
-    .bento-item:hover {
-      transform: scale(1.03);
-      filter: brightness(1.08);
-    }
+                <div class="footer-section">
+                    <h4 data-translate="footer_quick_links">Quick Links</h4>
+                    <ul>
+                        <li><a href="about.html" data-translate="nav_about">About Us</a></li>
+                        <li><a href="hub.html" data-translate="nav_hub_reframe">Hub Reframe</a></li>
+                        <li><a href="events.html" data-translate="nav_training">Training</a></li>
+                        <li><a href="t.html" data-translate="nav_consultations">Consultations</a></li>
+                    </ul>
+                </div>
 
-    .large { grid-column: 1 / 3; grid-row: 1 / 3; }
-    .tall  { grid-column: 3 / 4; grid-row: 1 / 3; }
-    .small { grid-column: 4 / 5; grid-row: 1 / 2; }
-    .wide  { grid-column: 4 / 5; grid-row: 2 / 3; }
+                <div class="footer-section">
+                    <h4 data-translate="footer_services">Services</h4>
+                    <ul>
+                        <li><a href="#" data-translate="footer_training">Training Programs</a></li>
+                        <li><a href="#" data-translate="footer_workshops">Workshops</a></li>
+                        <li><a href="#" data-translate="footer_consultation">Consultation</a></li>
+                        <li><a href="#" data-translate="footer_resources">Resources</a></li>
+                    </ul>
+                </div>
 
-    .hero-overlay {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.65), rgba(0,0,0,0.3), rgba(0,0,0,0));
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      text-align: center;
-      color: #fff;
-      padding: 40px;
-      z-index: 2;
-    }
+                <div class="footer-section">
+                    <h4 data-translate="footer_connect">Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.facebook.com/share/1EtyELttgX/" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+                        <a href="https://www.linkedin.com/company/reframe-mhs/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                        <a href="https://www.instagram.com/reframe.mhs" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    </div>
 
-    .hero-text {
-      max-width: 80%;
-      color: #fff;
-      text-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    }
+                    <div class="subscribe-section">
+                        <div class="subscribe-box">
+                            <h3 data-translate="footer_subscribe_title">Stay Connected</h3>
+                            <p data-translate="footer_subscribe_text">Subscribe to our newsletter for updates, workshops, and events.</p>
+                            <form class="subscribe-form" action="#" method="post">
+                                <label class="visually-hidden" for="footer-email" data-translate="lab_email_label">Email address</label>
+                                <input id="footer-email" type="email" name="email" placeholder="Enter your email" data-translate-placeholder="footer_subscribe_placeholder" required>
+                                <button type="submit" class="btn btn-primary" data-translate="footer_subscribe_btn">Subscribe</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
 
-    .hero-text h1 {
-      font-size: 2.3rem;
-      font-weight: 600;
-      margin-bottom: 10px;
-      color: white;
-    }
+            </div>
 
-    .hero-text p {
-      font-size: 1.2rem;
-      font-weight: 300;
-      line-height: 1.6;
-    }
+            <div class="footer-bottom">
+                <p>
+                    &copy; 2026 Reframe Mental Health Services. <span data-translate="footer_rights">All rights reserved.</span><br>
+                    <span data-translate="footer_credit">Website designed &amp; developed by</span> <span>Mary Abbass Sbeity</span>
+                </p>
+            </div>
+        </div>
+    </footer>
 
-    @media (max-width: 992px) {
-      .hero { height: 460px; }
-      .bento-grid {
-        grid-template-columns: repeat(3, 1fr);
-        grid-template-rows: repeat(2, 1fr);
-      }
-      /* .large/.tall/.small/.wide place themselves by explicit grid-column
+    <script src="scripts/translations.js"></script>
+    <script src="scripts/main.js"></script>
+
+    <!-- ================= PAGE STYLES ================= -->
+    <style>
+        /* ================= HERO SECTION ================= */
+        
+        .hero {
+            position: relative;
+            width: 100%;
+            height: 520px;
+            margin-top: 95px;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .bento-grid {
+            display: grid;
+            width: 100%;
+            height: 100%;
+            gap: 0;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+        }
+        
+        .bento-item {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.4s ease, filter 0.4s ease;
+        }
+        
+        .bento-item:hover {
+            transform: scale(1.03);
+            filter: brightness(1.08);
+        }
+        
+        .large {
+            grid-column: 1 / 3;
+            grid-row: 1 / 3;
+        }
+        
+        .tall {
+            grid-column: 3 / 4;
+            grid-row: 1 / 3;
+        }
+        
+        .small {
+            grid-column: 4 / 5;
+            grid-row: 1 / 2;
+        }
+        
+        .wide {
+            grid-column: 4 / 5;
+            grid-row: 2 / 3;
+        }
+        
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0));
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            text-align: center;
+            color: #fff;
+            padding: 40px;
+            z-index: 2;
+        }
+        
+        .hero-text {
+            max-width: 80%;
+            color: #fff;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+        }
+        
+        .hero-text h1 {
+            font-size: 2.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: white;
+        }
+        
+        .hero-text p {
+            font-size: 1.2rem;
+            font-weight: 300;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 992px) {
+            .hero {
+                height: 460px;
+            }
+            .bento-grid {
+                grid-template-columns: repeat(3, 1fr);
+                grid-template-rows: repeat(2, 1fr);
+            }
+            /* .large/.tall/.small/.wide place themselves by explicit grid-column
          lines that only exist in the 4-column desktop grid above. Left as
          is, they reach past this 3-column grid's line 4, which forces the
          browser to create an extra implicit column to satisfy them -- the
          4th photo ends up pushed into that implicit column, off the right
          edge of the screen. Resetting to auto lets all 4 photos fill the
          actual grid in source order instead. */
-      .large, .tall, .small, .wide { grid-column: auto; grid-row: auto; }
-    }
-
-    @media (max-width: 768px) {
-      .hero { height: auto; }
-      .bento-grid {
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(2, 200px);
-      }
-      .bento-item { height: 200px; }
-      .large, .tall, .small, .wide { grid-column: auto; grid-row: auto; }
-    }
-
-    .section-header h2 {
-      position: relative;
-      top: -80px;
-    }
-
-    /* ===== Variables ===== */
-    :root {
-      --primary-color: #1E3F5A;
-      --secondary-color: #4D9794;
-      --accent-color: #16a085;
-      --neutral-dark: #2c3e50;
-      --neutral-light: #f5f5f5;
-      --section-padding: 60px;
-      --section-gap: 40px;
-      --border-radius: 12px;
-      --box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-      --space-header: 48px;
-      --space-content: 24px;
-      --space-tight: 16px;
-      --space-section-md: 60px;
-      --space-section-sm: 40px;
-    }
-
-    section {
-      width: 100%;
-      padding-left: 20px;
-      padding-right: 20px;
-    }
-
-    html, body {
-      width: 100%;
-      max-width: 100%;
-      overflow-x: hidden !important;
-    }
-
-    * { box-sizing: border-box; }
-
-    .helper { margin: .5rem 0 0; font-size: .92rem; color: #5b6773; opacity: .9; }
-    .form-message { margin-top: .5rem; font-size: .95rem; }
-    .form-message.success { color: #0a8f6a; }
-    .form-message.error { color: #d33d3d; }
-
-    .inline-spinner, .inline-check {
-      position: absolute;
-      inset-inline-end: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 18px;
-      height: 18px;
-      display: none;
-    }
-    .inline-spinner {
-      border: 2px solid transparent;
-      border-top-color: #4D9794;
-      border-inline-end-color: #4D9794;
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
-    }
-    .inline-check {
-      background: conic-gradient(from 90deg at 5px 10px, transparent 0 25%, currentColor 0 35%, transparent 0);
-      color: #0a8f6a;
-    }
-    .loading .inline-spinner { display: inline-block; }
-    .success .inline-check { display: inline-block; }
-
-    .visually-hidden {
-      position: absolute !important;
-      width: 1px; height: 1px;
-      padding: 0; margin: -1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
-    @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
-
-    @media (max-width: 520px) {
-      .input-wrap { padding: 12px 42px 12px 44px; }
-    }
-
-    /* Calendar and Lab Section */
-    .calendar-lab-section { padding: 80px 0; background: white; }
-
-    .calendar-lab-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 60px;
-      align-items: start;
-    }
-
-    .calendar-widget {
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 25px;
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-    }
-
-    .calendar-days {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
-      margin-bottom: 10px;
-    }
-
-    .calendar-days span {
-      text-align: center;
-      font-weight: 600;
-      color: #666;
-      padding: 8px;
-      font-size: 0.9rem;
-    }
-
-    .calendar-dates {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
-      margin-bottom: 20px;
-    }
-
-    .calendar-dates span {
-      text-align: center;
-      padding: 10px 5px;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.25s ease;
-      position: relative;
-    }
-
-    .calendar-dates span:hover {
-      background: #4D9794;
-      color: white;
-    }
-
-    .event-date {
-      color: var(--secondary-color);
-      font-weight: 600;
-    }
-
-    .upcoming-events h4 {
-      text-align: center;
-      font-size: clamp(1.2rem, 0.9rem + 1.2vw, 1.6rem);
-      color: var(--primary-color, #1e3f5a);
-      font-weight: 900;
-      margin: 0 auto 20px;
-      letter-spacing: 0.3px;
-      display: block;
-      width: 100%;
-      position: relative;
-    }
-
-    .upcoming-events h4::after {
-      content: '';
-      display: block;
-      width: 50px;
-      height: 3px;
-      margin: 10px auto 0;
-      background: var(--secondary-color, #4D9794);
-      border-radius: 999px;
-      opacity: .9;
-    }
-
-    .events-header {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .view-all-btn {
-      align-self: flex-end;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--secondary-color);
-      text-decoration: none;
-    }
-    .view-all-btn:hover { text-decoration: underline; }
-
-    /* Lab Announcement */
-    .lab-half { display: flex; align-items: center; justify-content: center; }
-
-    .lab-announcement {
-      text-align: center;
-      background: #4D9794;
-      color: white;
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(74, 144, 164, 0.3);
-    }
-
-    .lab-logo {
-      width: 80px;
-      height: 80px;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px;
-    }
-
-    .lab-logo i { font-size: 32px; color: white; }
-
-    .lab-announcement h2 { font-size: 2rem; font-weight: 700; margin-bottom: 15px; }
-    .lab-announcement p { font-size: 1.1rem; margin-bottom: 25px; opacity: 0.9; line-height: 1.6; }
-
-    .collaboration-question h3 { font-size: 1.3rem; margin-bottom: 20px; font-weight: 600; }
-
-    .collaboration-buttons {
-      display: flex;
-      gap: 15px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .input-wrap {
-      position: relative;
-      display: flex;
-      align-items: center;
-      background: #fff;
-      border-radius: 10px;
-      padding: 12px 44px;
-      max-width: 360px;
-      margin: 0 auto;
-    }
-    .input-wrap i:first-child {
-      position: absolute;
-      inset-inline-start: 14px;
-      color: #4D9794;
-    }
-    .input-wrap input {
-      border: none;
-      outline: none;
-      width: 100%;
-      font-size: 0.95rem;
-      color: #1e3f5a;
-      background: transparent;
-    }
-
-    /* ===== Plan Card ===== */
-    .plan-card {
-      margin-top: 30px;
-      background: #ffffff;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-      overflow: hidden;
-      padding: 0;
-      width: 100%;
-      max-width: 1000px;
-      margin-left: auto;
-      margin-right: auto;
-      min-height: 320px;
-    }
-
-    .plan-card-header {
-      background: #4D9794;
-      color: #fff;
-      padding: 18px 24px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.2rem;
-      border-start-start-radius: 16px;
-      border-start-end-radius: 16px;
-    }
-
-    .plan-card-body {
-      padding: 24px 28px;
-      color: #334155;
-      font-size: 1rem;
-      line-height: 1.6;
-    }
-
-    .plan-card-body .view-btn {
-      background: #0ea5e9;
-      color: #fff;
-      padding: 10px 18px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.3s ease;
-    }
-    .plan-card-body .view-btn:hover { background: #0284c7; }
-
-    .plan-card-body p {
-      font-size: 1.05rem;
-      line-height: 1.75;
-      color: #334155;
-      margin-bottom: 18px;
-      text-align: justify;
-      text-justify: inter-word;
-      letter-spacing: 0.2px;
-      word-spacing: 1px;
-      font-family: "Inter", "Segoe UI", Arial, sans-serif;
-      background: #f9fafb;
-      padding: 16px 20px;
-      border-inline-start: 4px solid #4D9794;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-
-    @media (max-width: 768px) {
-      .calendar-lab-grid { grid-template-columns: 1fr; }
-      .calendar-widget { order: 2; }
-      .lab-half { order: 1; }
-    }
-
-    /* ========== Timeline Section ========== */
-    .timeline-tabs {
-      width: 100%;
-      padding: var(--space-section-md) 0;
-      background: var(--neutral-light, #f7fafc);
-      background-image:
-        radial-gradient(1200px 600px at 50% -200px, rgba(77,151,148,.07), transparent 60%),
-        radial-gradient(800px 400px at -10% 10%, rgba(30,63,90,.05), transparent 55%);
-      margin: 0;
-      max-width: 100vw;
-      box-sizing: border-box;
-      font-family: 'Inter', sans-serif;
-    }
-
-    .timeline-tabs .section-title {
-      text-align: center;
-      font-size: clamp(1.5rem, 1rem + 2vw, 2.3rem);
-      color: var(--primary-color, #1e3f5a);
-      font-weight: 900;
-      margin: 0 auto 50px;
-      letter-spacing: 0.3px;
-      display: block;
-      width: 100%;
-    }
-
-    .timeline-tabs .section-title::after {
-      content: '';
-      display: block;
-      width: 70px;
-      height: 3px;
-      margin: 12px auto 0;
-      background: var(--secondary-color, #4D9794);
-      border-radius: 999px;
-      opacity: .9;
-    }
-
-    .tab-buttons {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      position: relative;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-bottom: 30px;
-      overflow: hidden;
-    }
-
-    .tab-buttons::before {
-      content: "";
-      position: absolute;
-      top: 35px;
-      left: 0;
-      right: 0;
-      height: 4px;
-      max-width: 100%;
-      background: linear-gradient(90deg, #dbeafe, #4D9794, #dbeafe);
-      border-radius: 4px;
-      z-index: 0;
-    }
-
-    .tab-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      text-align: center;
-      flex: 1;
-      position: relative;
-      z-index: 1;
-      transition: all 0.3s ease;
-      outline: none;
-    }
-
-    .year-circle {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 75px;
-      height: 75px;
-      margin: 0 auto 10px;
-      border-radius: 50%;
-      border: 4px solid #4D9794;
-      background: #fff;
-      font-weight: 700;
-      font-size: 1rem;
-      color: #2e3a4e;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-      transition: all 0.35s ease;
-    }
-
-    .year-label {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #475569;
-      display: block;
-      transition: color 0.3s ease, border-bottom 0.3s ease;
-    }
-
-    .tab-btn:hover .year-circle {
-      background: linear-gradient(135deg, #4D9794, #3b7e7b);
-      color: #fff;
-      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
-    }
-    .tab-btn:hover .year-label { color: #0f172a; }
-
-    .tab-btn.active .year-circle {
-      background: linear-gradient(135deg, #2e5f5d, #4D9794);
-      border: 4px solid #fff;
-      color: #fff;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.25);
-    }
-    .tab-btn.active .year-label {
-      color: #2e5f5d;
-      border-bottom: 2px solid #2e5f5d;
-      padding-bottom: 3px;
-    }
-
-    .tab-contents { width: 100%; margin: 30px auto 0; }
-    .tab-content {
-      display: none;
-      background: linear-gradient(180deg, rgba(30,63,90,.96), rgba(30,63,90,.92));
-      color: #fff;
-      padding: 24px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.15);
-      box-shadow: 0 22px 44px rgba(0,0,0,.18);
-      opacity: 0;
-      transform: translateY(10px);
-      transition: opacity .35s ease, transform .35s ease;
-    }
-    .tab-content.active { display: block; opacity: 1; transform: translateY(0); }
-
-    /* ===================== MILESTONES ===================== */
-    .milestones-section {
-      padding-top: var(--space-section-md);
-      padding-bottom: var(--space-section-sm);
-      padding-left: 20px;
-      padding-right: 20px;
-      background: linear-gradient(135deg, #f9fafb, #eef2f6);
-      position: relative;
-      overflow: hidden;
-      font-family: 'Inter', sans-serif;
-    }
-
-    .milestones-section .section-header {
-      text-align: center;
-      margin-bottom: 100px;
-      max-width: 720px;
-      margin-inline: auto;
-    }
-
-    .milestones-section h2 {
-      font-size: clamp(1.8rem, 1.2rem + 1.6vw, 2.6rem);
-      font-weight: 900;
-      color: #1e3f5a;
-      text-transform: uppercase;
-      margin-bottom: 14px;
-      position: relative;
-    }
-
-    .milestones-section h2::after {
-      content: "";
-      display: block;
-      width: 70px;
-      height: 3px;
-      margin: 14px auto 0;
-      background: linear-gradient(90deg, #4D9794, #159e88, #4D9794);
-      border-radius: 4px;
-      background-size: 200% 100%;
-      animation: gradient-move 6s linear infinite;
-    }
-
-    .milestones-section p { color: #475569; font-size: 1.05rem; line-height: 1.6; }
-
-    .milestones-grid {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      gap: 40px;
-      position: relative;
-      flex-wrap: nowrap;
-      overflow-x: hidden;
-    }
-    .milestones-grid::before {
-      content: "";
-      position: absolute;
-      top: 58px;
-      left: 0;
-      right: 0;
-      height: 4px;
-      max-width: 100%;
-      overflow: hidden;
-      background: linear-gradient(90deg, #4D9794, #159e88, #4D9794);
-      background-size: 200% 100%;
-      border-radius: 4px;
-      animation: gradient-move 6s linear infinite;
-      z-index: 0;
-    }
-
-    .milestone-card {
-      position: relative;
-      z-index: 1;
-      flex: 0 0 260px;
-      max-width: 260px;
-      text-align: center;
-      transition: transform 0.4s ease, box-shadow 0.4s ease;
-      transform: translateY(40px);
-      opacity: 0;
-      animation: fade-up 0.9s ease forwards;
-    }
-
-    .milestone-card:nth-child(1) { animation-delay: 0.2s; }
-    .milestone-card:nth-child(2) { animation-delay: 0.4s; }
-    .milestone-card:nth-child(3) { animation-delay: 0.6s; }
-    .milestone-card:nth-child(4) { animation-delay: 0.8s; }
-
-    .milestone-icon {
-      width: 110px;
-      height: 110px;
-      margin: 0 auto 22px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #4D9794, #159e88);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-size: 2rem;
-      font-weight: 800;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.12), 0 0 15px rgba(22,158,136,0.25);
-      animation: pulse 3s infinite ease-in-out;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .milestone-card:hover .milestone-icon {
-      transform: scale(1.12);
-      box-shadow: 0 12px 28px rgba(0,0,0,0.2), 0 0 25px rgba(22,158,136,0.35);
-    }
-
-    .milestone-title { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
-    .milestone-desc { font-size: 0.95rem; color: #475569; line-height: 1.6; max-width: 220px; margin: 0 auto; }
-
-    @keyframes gradient-move { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
-    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-    @keyframes fade-up { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-    @media (max-width: 992px) {
-      .milestones-grid { gap: 40px; }
-      .milestone-icon { width: 95px; height: 95px; font-size: 1.8rem; }
-      .milestone-title { font-size: 1.1rem; }
-      .milestone-desc { font-size: 0.9rem; }
-    }
-
-    @media (max-width: 768px) {
-      .milestones-grid { flex-direction: column; align-items: center; gap: 40px; position: relative; }
-      .milestones-grid::before { display: none !important; }
-      .milestone-card {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 25px 20px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-        width: 100%;
-        max-width: 360px;
-      }
-      .milestone-icon { width: 80px; height: 80px; font-size: 1.6rem; margin-bottom: 15px; }
-      .milestone-title { font-size: 1.1rem; margin-bottom: 8px; }
-      .milestone-desc { font-size: 0.9rem; color: #475569; line-height: 1.5; max-width: 320px; }
-    }
-
-    @media (max-width: 480px) {
-      .milestones-section { padding: 70px 15px; }
-      .milestones-section h2 { font-size: 1.6rem; }
-      .milestones-grid { gap: 32px; }
-      .milestone-icon { width: 72px; height: 72px; font-size: 1.5rem; }
-      .milestone-title { font-size: 1rem; }
-      .milestone-desc { font-size: 0.85rem; max-width: 280px; }
-    }
-
-    .milestone-icon.step-glow {
-      background: #475569 !important;
-      box-shadow:
-        0 10px 22px rgba(0,0,0,0.14),
-        0 0 12px rgba(71,85,105,0.55),
-        0 0 26px rgba(71,85,105,0.45),
-        0 0 48px rgba(71,85,105,0.30) !important;
-      transform: scale(1.08);
-      animation: stepGlow 1.8s ease-in-out infinite;
-    }
-    .milestone-card:hover .milestone-icon.step-glow { transform: scale(1.12); }
-    @keyframes stepGlow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.12); } }
-
-    /* ===================== PARTNERS ===================== */
-    .partners-carousel-section {
-      padding-top: var(--space-section-sm);
-      padding-bottom: var(--space-section-md);
-      padding-left: 20px;
-      padding-right: 20px;
-      background: linear-gradient(135deg, #f9fafb, #eef2f6);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .partners-carousel-section .section-header { text-align: center; margin-bottom: 60px; }
-
-    .partners-carousel-section h2 {
-      font-size: clamp(1.8rem, 1.2rem + 1.6vw, 2.6rem);
-      font-weight: 900;
-      color: #1e3f5a;
-      margin-bottom: 12px;
-      text-transform: uppercase;
-    }
-
-    .partners-carousel-section p { color: #475569; font-size: 1.05rem; }
-
-    .partners-carousel-section .section-header h2::after {
-      content: '';
-      display: block;
-      width: 70px;
-      height: 3px;
-      margin: 12px auto 0;
-      background: var(--secondary-color, #4D9794);
-      border-radius: 999px;
-      opacity: .9;
-    }
-
-    .partners-carousel {
-      position: relative;
-      width: 100%;
-      max-width: 100%;
-      overflow: hidden;
-      padding-block: 16px;
-      -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 10%, #000 90%, transparent 100%);
-      mask-image: linear-gradient(to right, transparent 0%, #000 10%, #000 90%, transparent 100%);
-    }
-
-    .carousel-track {
-      display: flex;
-      align-items: center;
-      gap: var(--gap, 36px);
-      width: max-content;
-      max-width: none;
-      will-change: transform;
-      animation: scroll var(--duration, 24s) linear infinite;
-      transform: translate3d(0, 0, 0);
-    }
-
-    @keyframes scroll { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
-
-    .partner-item {
-      flex: 0 0 auto;
-      width: var(--item-w, 160px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      transition: transform .35s ease, filter .35s ease;
-    }
-
-    .partner-item img {
-      width: var(--img-w, 140px);
-      height: var(--img-h, 100px);
-      object-fit: contain;
-      background: #fff;
-      border-radius: 14px;
-      padding: 10px;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-      transition: transform 0.35s ease, box-shadow 0.35s ease;
-    }
-
-    .partner-item span {
-      font: 600 0.9rem/1.3 "Inter", sans-serif;
-      color: #2a2a2a;
-      text-align: center;
-      opacity: 0.9;
-    }
-
-    @media (hover: hover) {
-      .partners-carousel:hover .carousel-track { animation-play-state: paused; }
-      .partner-item:hover img { transform: scale(1.1); box-shadow: 0 12px 26px rgba(0,0,0,0.15); }
-      .partner-item:hover span { color: var(--primary-color, #1e3f5a); }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .carousel-track { animation: none; }
-    }
-
-    .footer p { color: #cccccc; }
-
-    .calendar-header {
-      display: flex;
-      background: #4D9794;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      margin-bottom: 25px;
-      border-radius: 8px;
-      padding: 10px;
-    }
-
-    .calendar-header button {
-      background: rgba(255,255,255,0.15);
-      border: none;
-      color: #fff;
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.25s ease;
-    }
-    .calendar-header button:hover { background: rgba(255,255,255,0.3); }
-
-    .calendar-month-label {
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: white;
-      letter-spacing: 0.5px;
-      min-width: 180px;
-      text-align: center;
-    }
-
-    /* ===== RTL & icon direction handling ===== */
-    html[dir="rtl"] body {
-      font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
-    }
-
-    /* Icons that visually point left/right must flip in RTL so they still
+            .large,
+            .tall,
+            .small,
+            .wide {
+                grid-column: auto;
+                grid-row: auto;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .hero {
+                height: auto;
+            }
+            .bento-grid {
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-rows: repeat(2, 200px);
+            }
+            .bento-item {
+                height: 200px;
+            }
+            .large,
+            .tall,
+            .small,
+            .wide {
+                grid-column: auto;
+                grid-row: auto;
+            }
+        }
+        
+        .section-header h2 {
+            position: relative;
+            top: -80px;
+        }
+        /* ===== Variables ===== */
+        
+         :root {
+            --primary-color: #1E3F5A;
+            --secondary-color: #4D9794;
+            --accent-color: #16a085;
+            --neutral-dark: #2c3e50;
+            --neutral-light: #f5f5f5;
+            --section-padding: 60px;
+            --section-gap: 40px;
+            --border-radius: 12px;
+            --box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+            --space-header: 48px;
+            --space-content: 24px;
+            --space-tight: 16px;
+            --space-section-md: 60px;
+            --space-section-sm: 40px;
+        }
+        
+        section {
+            width: 100%;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        
+        html,
+        body {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden !important;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        .helper {
+            margin: .5rem 0 0;
+            font-size: .92rem;
+            color: #5b6773;
+            opacity: .9;
+        }
+        
+        .form-message {
+            margin-top: .5rem;
+            font-size: .95rem;
+        }
+        
+        .form-message.success {
+            color: #0a8f6a;
+        }
+        
+        .form-message.error {
+            color: #d33d3d;
+        }
+        
+        .inline-spinner,
+        .inline-check {
+            position: absolute;
+            inset-inline-end: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            display: none;
+        }
+        
+        .inline-spinner {
+            border: 2px solid transparent;
+            border-top-color: #4D9794;
+            border-inline-end-color: #4D9794;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        
+        .inline-check {
+            background: conic-gradient(from 90deg at 5px 10px, transparent 0 25%, currentColor 0 35%, transparent 0);
+            color: #0a8f6a;
+        }
+        
+        .loading .inline-spinner {
+            display: inline-block;
+        }
+        
+        .success .inline-check {
+            display: inline-block;
+        }
+        
+        .visually-hidden {
+            position: absolute !important;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: translateY(-50%) rotate(360deg);
+            }
+        }
+        
+        @media (max-width: 520px) {
+            .input-wrap {
+                padding: 12px 42px 12px 44px;
+            }
+        }
+        /* Calendar and Lab Section */
+        
+        .calendar-lab-section {
+            padding: 80px 0;
+            background: white;
+        }
+        
+        .calendar-lab-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: start;
+        }
+        
+        .calendar-widget {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .calendar-days span {
+            text-align: center;
+            font-weight: 600;
+            color: #666;
+            padding: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .calendar-dates {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .calendar-dates span {
+            text-align: center;
+            padding: 10px 5px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+        
+        .calendar-dates span:hover {
+            background: #4D9794;
+            color: white;
+        }
+        
+        .event-date {
+            color: var(--secondary-color);
+            font-weight: 600;
+        }
+        
+        .upcoming-events h4 {
+            text-align: center;
+            font-size: clamp(1.2rem, 0.9rem + 1.2vw, 1.6rem);
+            color: var(--primary-color, #1e3f5a);
+            font-weight: 900;
+            margin: 0 auto 20px;
+            letter-spacing: 0.3px;
+            display: block;
+            width: 100%;
+            position: relative;
+        }
+        
+        .upcoming-events h4::after {
+            content: '';
+            display: block;
+            width: 50px;
+            height: 3px;
+            margin: 10px auto 0;
+            background: var(--secondary-color, #4D9794);
+            border-radius: 999px;
+            opacity: .9;
+        }
+        
+        .events-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .view-all-btn {
+            align-self: flex-end;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+            text-decoration: none;
+        }
+        
+        .view-all-btn:hover {
+            text-decoration: underline;
+        }
+        /* Lab Announcement */
+        
+        .lab-half {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .lab-announcement {
+            text-align: center;
+            background: #4D9794;
+            color: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(74, 144, 164, 0.3);
+        }
+        
+        .lab-logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        
+        .lab-logo i {
+            font-size: 32px;
+            color: white;
+        }
+        
+        .lab-announcement h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .lab-announcement p {
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .collaboration-question h3 {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .collaboration-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border-radius: 10px;
+            padding: 12px 44px;
+            max-width: 360px;
+            margin: 0 auto;
+        }
+        
+        .input-wrap i:first-child {
+            position: absolute;
+            inset-inline-start: 14px;
+            color: #4D9794;
+        }
+        
+        .input-wrap input {
+            border: none;
+            outline: none;
+            width: 100%;
+            font-size: 0.95rem;
+            color: #1e3f5a;
+            background: transparent;
+        }
+        /* ===== Plan Card ===== */
+        
+        .plan-card {
+            margin-top: 30px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            padding: 0;
+            width: 100%;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+            min-height: 320px;
+        }
+        
+        .plan-card-header {
+            background: #4D9794;
+            color: #fff;
+            padding: 18px 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2rem;
+            border-start-start-radius: 16px;
+            border-start-end-radius: 16px;
+        }
+        
+        .plan-card-body {
+            padding: 24px 28px;
+            color: #334155;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        
+        .plan-card-body .view-btn {
+            background: #0ea5e9;
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.3s ease;
+        }
+        
+        .plan-card-body .view-btn:hover {
+            background: #0284c7;
+        }
+        
+        .plan-card-body p {
+            font-size: 1.05rem;
+            line-height: 1.75;
+            color: #334155;
+            margin-bottom: 18px;
+            text-align: justify;
+            text-justify: inter-word;
+            letter-spacing: 0.2px;
+            word-spacing: 1px;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+            background: #f9fafb;
+            padding: 16px 20px;
+            border-inline-start: 4px solid #4D9794;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        
+        @media (max-width: 768px) {
+            .calendar-lab-grid {
+                grid-template-columns: 1fr;
+            }
+            .calendar-widget {
+                order: 2;
+            }
+            .lab-half {
+                order: 1;
+            }
+        }
+        /* ========== Timeline Section ========== */
+        
+        .timeline-tabs {
+            width: 100%;
+            padding: var(--space-section-md) 0;
+            background: var(--neutral-light, #f7fafc);
+            background-image: radial-gradient(1200px 600px at 50% -200px, rgba(77, 151, 148, .07), transparent 60%), radial-gradient(800px 400px at -10% 10%, rgba(30, 63, 90, .05), transparent 55%);
+            margin: 0;
+            max-width: 100vw;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .timeline-tabs .section-title {
+            text-align: center;
+            font-size: clamp(1.5rem, 1rem + 2vw, 2.3rem);
+            color: var(--primary-color, #1e3f5a);
+            font-weight: 900;
+            margin: 0 auto 50px;
+            letter-spacing: 0.3px;
+            display: block;
+            width: 100%;
+        }
+        
+        .timeline-tabs .section-title::after {
+            content: '';
+            display: block;
+            width: 70px;
+            height: 3px;
+            margin: 12px auto 0;
+            background: var(--secondary-color, #4D9794);
+            border-radius: 999px;
+            opacity: .9;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: relative;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        
+        .tab-buttons::before {
+            content: "";
+            position: absolute;
+            top: 35px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            max-width: 100%;
+            background: linear-gradient(90deg, #dbeafe, #4D9794, #dbeafe);
+            border-radius: 4px;
+            z-index: 0;
+        }
+        
+        .tab-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            flex: 1;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        
+        .year-circle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 75px;
+            height: 75px;
+            margin: 0 auto 10px;
+            border-radius: 50%;
+            border: 4px solid #4D9794;
+            background: #fff;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #2e3a4e;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.35s ease;
+        }
+        
+        .year-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #475569;
+            display: block;
+            transition: color 0.3s ease, border-bottom 0.3s ease;
+        }
+        
+        .tab-btn:hover .year-circle {
+            background: linear-gradient(135deg, #4D9794, #3b7e7b);
+            color: #fff;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .tab-btn:hover .year-label {
+            color: #0f172a;
+        }
+        
+        .tab-btn.active .year-circle {
+            background: linear-gradient(135deg, #2e5f5d, #4D9794);
+            border: 4px solid #fff;
+            color: #fff;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+        }
+        
+        .tab-btn.active .year-label {
+            color: #2e5f5d;
+            border-bottom: 2px solid #2e5f5d;
+            padding-bottom: 3px;
+        }
+        
+        .tab-contents {
+            width: 100%;
+            margin: 30px auto 0;
+        }
+        
+        .tab-content {
+            display: none;
+            background: linear-gradient(180deg, rgba(30, 63, 90, .96), rgba(30, 63, 90, .92));
+            color: #fff;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, .15);
+            box-shadow: 0 22px 44px rgba(0, 0, 0, .18);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity .35s ease, transform .35s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* ===================== MILESTONES ===================== */
+        
+        .milestones-section {
+            padding-top: var(--space-section-md);
+            padding-bottom: var(--space-section-sm);
+            padding-left: 20px;
+            padding-right: 20px;
+            background: linear-gradient(135deg, #f9fafb, #eef2f6);
+            position: relative;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .milestones-section .section-header {
+            text-align: center;
+            margin-bottom: 100px;
+            max-width: 720px;
+            margin-inline: auto;
+        }
+        
+        .milestones-section h2 {
+            font-size: clamp(1.8rem, 1.2rem + 1.6vw, 2.6rem);
+            font-weight: 900;
+            color: #1e3f5a;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            position: relative;
+        }
+        
+        .milestones-section h2::after {
+            content: "";
+            display: block;
+            width: 70px;
+            height: 3px;
+            margin: 14px auto 0;
+            background: linear-gradient(90deg, #4D9794, #159e88, #4D9794);
+            border-radius: 4px;
+            background-size: 200% 100%;
+            animation: gradient-move 6s linear infinite;
+        }
+        
+        .milestones-section p {
+            color: #475569;
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+        
+        .milestones-grid {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 40px;
+            position: relative;
+            flex-wrap: nowrap;
+            overflow-x: hidden;
+        }
+        
+        .milestones-grid::before {
+            content: "";
+            position: absolute;
+            top: 58px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            max-width: 100%;
+            overflow: hidden;
+            background: linear-gradient(90deg, #4D9794, #159e88, #4D9794);
+            background-size: 200% 100%;
+            border-radius: 4px;
+            animation: gradient-move 6s linear infinite;
+            z-index: 0;
+        }
+        
+        .milestone-card {
+            position: relative;
+            z-index: 1;
+            flex: 0 0 260px;
+            max-width: 260px;
+            text-align: center;
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+            transform: translateY(40px);
+            opacity: 0;
+            animation: fade-up 0.9s ease forwards;
+        }
+        
+        .milestone-card:nth-child(1) {
+            animation-delay: 0.2s;
+        }
+        
+        .milestone-card:nth-child(2) {
+            animation-delay: 0.4s;
+        }
+        
+        .milestone-card:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+        
+        .milestone-card:nth-child(4) {
+            animation-delay: 0.8s;
+        }
+        
+        .milestone-icon {
+            width: 110px;
+            height: 110px;
+            margin: 0 auto 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4D9794, #159e88);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 2rem;
+            font-weight: 800;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12), 0 0 15px rgba(22, 158, 136, 0.25);
+            animation: pulse 3s infinite ease-in-out;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .milestone-card:hover .milestone-icon {
+            transform: scale(1.12);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2), 0 0 25px rgba(22, 158, 136, 0.35);
+        }
+        
+        .milestone-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+        
+        .milestone-desc {
+            font-size: 0.95rem;
+            color: #475569;
+            line-height: 1.6;
+            max-width: 220px;
+            margin: 0 auto;
+        }
+        
+        @keyframes gradient-move {
+            0% {
+                background-position: 0% 50%;
+            }
+            100% {
+                background-position: 200% 50%;
+            }
+        }
+        
+        @keyframes pulse {
+            0%,
+            100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+        
+        @keyframes fade-up {
+            from {
+                transform: translateY(40px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .milestones-grid {
+                gap: 40px;
+            }
+            .milestone-icon {
+                width: 95px;
+                height: 95px;
+                font-size: 1.8rem;
+            }
+            .milestone-title {
+                font-size: 1.1rem;
+            }
+            .milestone-desc {
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .milestones-grid {
+                flex-direction: column;
+                align-items: center;
+                gap: 40px;
+                position: relative;
+            }
+            .milestones-grid::before {
+                display: none !important;
+            }
+            .milestone-card {
+                background: #ffffff;
+                border-radius: 16px;
+                padding: 25px 20px;
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+                width: 100%;
+                max-width: 360px;
+            }
+            .milestone-icon {
+                width: 80px;
+                height: 80px;
+                font-size: 1.6rem;
+                margin-bottom: 15px;
+            }
+            .milestone-title {
+                font-size: 1.1rem;
+                margin-bottom: 8px;
+            }
+            .milestone-desc {
+                font-size: 0.9rem;
+                color: #475569;
+                line-height: 1.5;
+                max-width: 320px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .milestones-section {
+                padding: 70px 15px;
+            }
+            .milestones-section h2 {
+                font-size: 1.6rem;
+            }
+            .milestones-grid {
+                gap: 32px;
+            }
+            .milestone-icon {
+                width: 72px;
+                height: 72px;
+                font-size: 1.5rem;
+            }
+            .milestone-title {
+                font-size: 1rem;
+            }
+            .milestone-desc {
+                font-size: 0.85rem;
+                max-width: 280px;
+            }
+        }
+        
+        .milestone-icon.step-glow {
+            background: #475569 !important;
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14), 0 0 12px rgba(71, 85, 105, 0.55), 0 0 26px rgba(71, 85, 105, 0.45), 0 0 48px rgba(71, 85, 105, 0.30) !important;
+            transform: scale(1.08);
+            animation: stepGlow 1.8s ease-in-out infinite;
+        }
+        
+        .milestone-card:hover .milestone-icon.step-glow {
+            transform: scale(1.12);
+        }
+        
+        @keyframes stepGlow {
+            0%,
+            100% {
+                filter: brightness(1);
+            }
+            50% {
+                filter: brightness(1.12);
+            }
+        }
+        /* ===================== PARTNERS ===================== */
+        
+        .partners-carousel-section {
+            padding-top: var(--space-section-sm);
+            padding-bottom: var(--space-section-md);
+            padding-left: 20px;
+            padding-right: 20px;
+            background: linear-gradient(135deg, #f9fafb, #eef2f6);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .partners-carousel-section .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .partners-carousel-section h2 {
+            font-size: clamp(1.8rem, 1.2rem + 1.6vw, 2.6rem);
+            font-weight: 900;
+            color: #1e3f5a;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+        
+        .partners-carousel-section p {
+            color: #475569;
+            font-size: 1.05rem;
+        }
+        
+        .partners-carousel-section .section-header h2::after {
+            content: '';
+            display: block;
+            width: 70px;
+            height: 3px;
+            margin: 12px auto 0;
+            background: var(--secondary-color, #4D9794);
+            border-radius: 999px;
+            opacity: .9;
+        }
+        
+        .partners-carousel {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+            padding-block: 16px;
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 10%, #000 90%, transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0%, #000 10%, #000 90%, transparent 100%);
+        }
+        
+        .carousel-track {
+            display: flex;
+            align-items: center;
+            gap: var(--gap, 36px);
+            width: max-content;
+            max-width: none;
+            will-change: transform;
+            animation: scroll var(--duration, 24s) linear infinite;
+            transform: translate3d(0, 0, 0);
+        }
+        
+        @keyframes scroll {
+            from {
+                transform: translate3d(0, 0, 0);
+            }
+            to {
+                transform: translate3d(-50%, 0, 0);
+            }
+        }
+        
+        .partner-item {
+            flex: 0 0 auto;
+            width: var(--item-w, 160px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            transition: transform .35s ease, filter .35s ease;
+        }
+        
+        .partner-item img {
+            width: var(--img-w, 140px);
+            height: var(--img-h, 100px);
+            object-fit: contain;
+            background: #fff;
+            border-radius: 14px;
+            padding: 10px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
+        }
+        
+        .partner-item span {
+            font: 600 0.9rem/1.3 "Inter", sans-serif;
+            color: #2a2a2a;
+            text-align: center;
+            opacity: 0.9;
+        }
+        
+        @media (hover: hover) {
+            .partners-carousel:hover .carousel-track {
+                animation-play-state: paused;
+            }
+            .partner-item:hover img {
+                transform: scale(1.1);
+                box-shadow: 0 12px 26px rgba(0, 0, 0, 0.15);
+            }
+            .partner-item:hover span {
+                color: var(--primary-color, #1e3f5a);
+            }
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            .carousel-track {
+                animation: none;
+            }
+        }
+        
+        .footer p {
+            color: #cccccc;
+        }
+        
+        .calendar-header {
+            display: flex;
+            background: #4D9794;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .calendar-header button {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: #fff;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.25s ease;
+        }
+        
+        .calendar-header button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .calendar-month-label {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.5px;
+            min-width: 180px;
+            text-align: center;
+        }
+        /* ===== RTL & icon direction handling ===== */
+        
+        html[dir="rtl"] body {
+            font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
+        }
+        /* Icons that visually point left/right must flip in RTL so they still
        point toward "next"/"previous" in the reading direction. */
-    html[dir="rtl"] .dir-icon {
-      transform: scaleX(-1);
-    }
-
-    /* Chevron/arrow icons already handled via .dir-icon; keep social &
+        
+        html[dir="rtl"] .dir-icon {
+            transform: scaleX(-1);
+        }
+        /* Chevron/arrow icons already handled via .dir-icon; keep social &
        decorative icons (flask, globe, envelope, etc.) unflipped. */
-
-    html[dir="rtl"] .plan-card-body p {
-      text-align: right;
-    }
-
-    html[dir="rtl"] .view-all-btn {
-      align-self: flex-start;
-    }
-
-    html[dir="rtl"] .tab-btn.active .year-label {
-      border-bottom: 2px solid #2e5f5d;
-    }
-  </style>
-
-  <!-- ================= TRANSLATION SYSTEM ================= -->
-  <script>
-    // Consolidated in-page translation dictionary. Kept in this file since
-    // scripts/translations.js was not part of the supplied project files;
-    // if that file exists in the live project, this object can be moved
-    // there without changing any of the markup or logic below.
-    const I18N = {
-      en: {
-        page_title_home: "Reframe MHS - Mental Health Services",
-        nav_home: "Home",
-        nav_about: "About",
-        nav_services: "Services",
-        nav_mhlab: "Mental Health Lab",
-        nav_hub: "Hub",
-        nav_training: "Training",
-        nav_consultations: "Technical Consultations",
-        nav_contact: "Contact",
-        nav_login: "Login",
-        close: "Close",
-        hero_title: "Unleashing human potential and resilience",
-        hero_paragraph: "Professional mental health services and training programs designed for the unique cultural context of the Middle East.",
-        lab_title: "Mental Health Lab",
-        lab_desc: "Join our innovative research initiatives to advance mental health care in the Middle East region.",
-        lab_collaboration_question: "Would you like to collaborate with us?",
-        lab_email_label: "Email address",
-        lab_email_placeholder: "you@example.com",
-        plan_title: "Strategic Plan 2025-2030",
-        plan_text: "Reframe's vision for 2025-2030 rests on three pillars: systemic therapy leadership, the Work-Well Seal for mentally healthy workplaces, and culturally adapted programmes based on annual needs assessments. These efforts aim to strengthen mental health services across the MENA region and empower communities to thrive despite complex challenges.",
-        plan_view_btn: "View Full Plan",
-        calendar_title: "Upcoming Events",
-        events_view_all: "View All Events",
-        events_this_month: "This Month's Events",
-        day_sun: "Sun", day_mon: "Mon", day_tue: "Tue", day_wed: "Wed", day_thu: "Thu", day_fri: "Fri", day_sat: "Sat",
-        timeline_title: "Our Story Timeline",
-        timeline_2022_circle: "2022",
-        timeline_2022_label: "Vision Emerges",
-        timeline_2023_circle: "2023",
-        timeline_2023_label: "Foundations Built",
-        timeline_2024_circle: "2024",
-        timeline_2024_label: "Key Milestones",
-        timeline_2025_circle: "2025",
-        timeline_2025_label: "Impact Grows",
-        timeline_beyond_circle: "Beyond",
-        timeline_beyond_label: "Together Forward",
-        timeline_2022_text: "By the last quarter of 2022, a shared vision emerged among a group of experienced therapists from across the Middle East and beyond. United by a deep sense of purpose, we set out to create mental health resources that are not only professionally rigorous but also genuinely rooted in Arabic language and culture — addressing the real realities of our communities.",
-        timeline_2023_text: "In 2023, we focused on laying strong foundations. We listened deeply, learned extensively, and sought to understand the unique and complex needs of those we serve. Our commitment was clear: to move forward with honesty, care, and unwavering dedication to support those who need it most.",
-        timeline_2024_text: "2024 marked the year when our efforts began to take tangible shape. We launched our first professional training and international collaboration, initiated a research project on panic attacks, and partnered with NGOs and corporations across the Middle East. Together, we fostered environments where staff well-being became a priority.",
-        timeline_2025_text: "Entering 2025, our commitment to long-term impact strengthened. We advanced comprehensive training and intervention programs driven by the same urgency and compassion that guided us from the start. Our goal was never simply to add services — but to fundamentally reshape mental health support in our region.",
-        timeline_beyond_text: "At Reframe, we walk alongside professionals, corporate partners, and researchers — providing tailored solutions that connect, uplift, and empower. Together, we continue this journey hand in hand, reframing mental health for a healthier, more resilient future.",
-        timeline_beyond_text_bold: "Join us and be part of the change.",
-        milestones_title: "Our Milestones to Date",
-        milestones_subtitle: "Celebrating our journey and impact in the mental health field",
-        milestone1_title: "15+ Organizations",
-        milestone1_desc: "Corporations, NGOs, and healthcare institutions",
-        milestone2_title: "2+ Projects",
-        milestone2_desc: "Active studies and assessment tool development",
-        milestone3_title: "500+ Professionals",
-        milestone3_desc: "Trained across multiple countries",
-        milestone4_title: "6 Countries",
-        milestone4_desc: "Regional presence and collaborations",
-        partners_title: "Our Partners & Collaborations",
-        partners_subtitle: "Building stronger communities through strategic partnerships",
-        footer_description: "Unlocking the innate potential and resilience within each person and group across the Middle East.",
-        footer_quick_links: "Quick Links",
-        nav_hub_reframe: "Hub Reframe",
-        footer_services: "Services",
-        footer_training: "Training Programs",
-        footer_workshops: "Workshops",
-        footer_consultation: "Consultation",
-        footer_resources: "Resources",
-        footer_connect: "Connect",
-        footer_subscribe_title: "Stay Connected",
-        footer_subscribe_text: "Subscribe to our newsletter for updates, workshops, and events.",
-        footer_subscribe_btn: "Subscribe",
-        footer_subscribe_placeholder: "Enter your email",
-        footer_rights: "All rights reserved.",
-        footer_credit: "Website designed & developed by"
-      },
-      ar: {
-        page_title_home: "ريفريم - خدمات الصحة النفسية",
-        nav_home: "الرئيسية",
-        nav_about: "من نحن",
-        nav_services: "خدماتنا",
-        nav_mhlab: "مختبر الصحة النفسية",
-        nav_hub: "المنصة",
-        nav_training: "التدريب",
-        nav_consultations: "الاستشارات الفنية",
-        nav_contact: "تواصل معنا",
-        nav_login: "تسجيل الدخول",
-        close: "إغلاق",
-        hero_title: "إطلاق الإمكانات البشرية والمرونة",
-        hero_paragraph: "خدمات وبرامج تدريب متخصصة في الصحة النفسية، مصممة لتناسب السياق الثقافي الفريد لمنطقة الشرق الأوسط.",
-        lab_title: "مختبر الصحة النفسية",
-        lab_desc: "انضم إلى مبادراتنا البحثية المبتكرة لتطوير الرعاية النفسية في منطقة الشرق الأوسط.",
-        lab_collaboration_question: "هل ترغب بالتعاون معنا؟",
-        lab_email_label: "البريد الإلكتروني",
-        lab_email_placeholder: "example@email.com",
-        plan_title: "الخطة الاستراتيجية 2025-2030",
-        plan_text: "تقوم رؤية ريفريم لعام 2025-2030 على ثلاث ركائز: الريادة في العلاج النفسي المنهجي، وختم بيئة العمل الصحية نفسياً، والبرامج المكيّفة ثقافياً استناداً إلى تقييمات الاحتياجات السنوية. تهدف هذه الجهود إلى تعزيز خدمات الصحة النفسية في منطقة الشرق الأوسط وشمال أفريقيا، وتمكين المجتمعات من الازدهار رغم التحديات المعقدة.",
-        plan_view_btn: "عرض الخطة الكاملة",
-        calendar_title: "الفعاليات القادمة",
-        events_view_all: "عرض جميع الفعاليات",
-        events_this_month: "فعاليات هذا الشهر",
-        day_sun: "أحد", day_mon: "اثنين", day_tue: "ثلاثاء", day_wed: "أربعاء", day_thu: "خميس", day_fri: "جمعة", day_sat: "سبت",
-        timeline_title: "قصتنا عبر الزمن",
-        timeline_2022_circle: "2022",
-        timeline_2022_label: "بداية الرؤية",
-        timeline_2023_circle: "2023",
-        timeline_2023_label: "بناء الأسس",
-        timeline_2024_circle: "2024",
-        timeline_2024_label: "محطات رئيسية",
-        timeline_2025_circle: "2025",
-        timeline_2025_label: "توسّع الأثر",
-        timeline_beyond_circle: "وما بعد",
-        timeline_beyond_label: "معاً نحو المستقبل",
-        timeline_2022_text: "بحلول الربع الأخير من عام 2022، تشكّلت رؤية مشتركة بين مجموعة من المعالجين ذوي الخبرة من الشرق الأوسط وخارجه. وبدافع من إحساس عميق بالهدف، انطلقنا لإنشاء موارد للصحة النفسية تجمع بين الدقة المهنية والانتماء الحقيقي للغة والثقافة العربية، بما يعكس واقع مجتمعاتنا.",
-        timeline_2023_text: "في عام 2023، ركّزنا على إرساء أسس متينة. أصغينا بعمق، وتعلّمنا الكثير، وسعينا لفهم الاحتياجات الفريدة والمعقّدة لمن نخدمهم. وكان التزامنا واضحاً: المضي قدماً بصدق واهتمام وتفانٍ ثابت لدعم من هم بأمسّ الحاجة.",
-        timeline_2024_text: "شهد عام 2024 بداية تبلور جهودنا بشكل ملموس. أطلقنا أول برنامج تدريبي مهني وتعاون دولي، وبدأنا مشروعاً بحثياً حول نوبات الهلع، وتشاركنا مع منظمات غير حكومية وشركات في أنحاء الشرق الأوسط، ما ساهم في تعزيز بيئات تُعنى برفاهية الموظفين.",
-        timeline_2025_text: "مع دخولنا عام 2025، تعزّز التزامنا بالأثر طويل الأمد. طوّرنا برامج تدريب وتدخل شاملة مدفوعة بنفس الإلحاح والتعاطف اللذين رافقانا منذ البداية. لم يكن هدفنا مجرد إضافة خدمات، بل إعادة تشكيل الدعم النفسي في منطقتنا من جذوره.",
-        timeline_beyond_text: "في ريفريم، نسير جنباً إلى جنب مع المختصين والشركاء المؤسسيين والباحثين، ونقدّم حلولاً مصمّمة خصيصاً تصل وترتقي وتمكّن. معاً، نواصل هذه الرحلة يداً بيد، لإعادة تشكيل الصحة النفسية نحو مستقبل أكثر صحة ومرونة.",
-        timeline_beyond_text_bold: "انضم إلينا وكن جزءاً من التغيير.",
-        milestones_title: "إنجازاتنا حتى اليوم",
-        milestones_subtitle: "نحتفل برحلتنا وأثرنا في مجال الصحة النفسية",
-        milestone1_title: "+15 مؤسسة",
-        milestone1_desc: "شركات ومنظمات غير حكومية ومؤسسات صحية",
-        milestone2_title: "+2 مشروع",
-        milestone2_desc: "دراسات نشطة وتطوير أدوات تقييم",
-        milestone3_title: "+500 مختص",
-        milestone3_desc: "تم تدريبهم في عدة دول",
-        milestone4_title: "6 دول",
-        milestone4_desc: "حضور إقليمي وشراكات",
-        partners_title: "شركاؤنا وتعاوناتنا",
-        partners_subtitle: "بناء مجتمعات أقوى من خلال شراكات استراتيجية",
-        footer_description: "إطلاق الإمكانات الكامنة والمرونة لدى كل فرد ومجموعة في أنحاء الشرق الأوسط.",
-        footer_quick_links: "روابط سريعة",
-        nav_hub_reframe: "منصة ريفريم",
-        footer_services: "خدماتنا",
-        footer_training: "برامج تدريبية",
-        footer_workshops: "ورش عمل",
-        footer_consultation: "استشارات",
-        footer_resources: "موارد",
-        footer_connect: "تواصل معنا",
-        footer_subscribe_title: "ابقَ على تواصل",
-        footer_subscribe_text: "اشترك في نشرتنا الإخبارية للاطلاع على آخر التحديثات وورش العمل والفعاليات.",
-        footer_subscribe_btn: "اشترك",
-        footer_subscribe_placeholder: "أدخل بريدك الإلكتروني",
-        footer_rights: "جميع الحقوق محفوظة.",
-        footer_credit: "تصميم وتطوير الموقع بواسطة"
-      }
-    };
-
-    function applyTranslations(lang) {
-      const dict = I18N[lang] || I18N.en;
-
-      document.documentElement.lang = lang;
-      document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
-
-      document.querySelectorAll("[data-translate]").forEach(el => {
-        const key = el.getAttribute("data-translate");
-        if (dict[key] !== undefined) {
-          el.textContent = dict[key];
+        
+        html[dir="rtl"] .plan-card-body p {
+            text-align: right;
         }
-      });
-
-      document.querySelectorAll("[data-translate-placeholder]").forEach(el => {
-        const key = el.getAttribute("data-translate-placeholder");
-        if (dict[key] !== undefined) {
-          el.setAttribute("placeholder", dict[key]);
+        
+        html[dir="rtl"] .view-all-btn {
+            align-self: flex-start;
         }
-      });
+        
+        html[dir="rtl"] .tab-btn.active .year-label {
+            border-bottom: 2px solid #2e5f5d;
+        }
+    </style>
 
-      if (dict.page_title_home) {
-        document.title = dict.page_title_home;
-      }
+    <!-- ================= TRANSLATION SYSTEM ================= -->
+    <script>
+        // Consolidated in-page translation dictionary. Kept in this file since
+        // scripts/translations.js was not part of the supplied project files;
+        // if that file exists in the live project, this object can be moved
+        // there without changing any of the markup or logic below.
+        const I18N = {
+            en: {
+                page_title_home: "Reframe MHS - Mental Health Services",
+                nav_home: "Home",
+                nav_about: "About",
+                nav_services: "Services",
+                nav_mhlab: "Mental Health Lab",
+                nav_hub: "Hub",
+                nav_training: "Training",
+                nav_consultations: "Technical Consultations",
+                nav_contact: "Contact",
+                nav_login: "Login",
+                close: "Close",
+                hero_title: "Unleashing human potential and resilience",
+                hero_paragraph: "Professional mental health services and training programs designed for the unique cultural context of the Middle East.",
+                lab_title: "Mental Health Lab",
+                lab_desc: "Join our innovative research initiatives to advance mental health care in the Middle East region.",
+                lab_collaboration_question: "Would you like to collaborate with us?",
+                lab_email_label: "Email address",
+                lab_email_placeholder: "you@example.com",
+                plan_title: "Strategic Plan 2025-2030",
+                plan_text: "Reframe's vision for 2025-2030 rests on three pillars: systemic therapy leadership, the Work-Well Seal for mentally healthy workplaces, and culturally adapted programmes based on annual needs assessments. These efforts aim to strengthen mental health services across the MENA region and empower communities to thrive despite complex challenges.",
+                plan_view_btn: "View Full Plan",
+                calendar_title: "Upcoming Events",
+                events_view_all: "View All Events",
+                events_this_month: "This Month's Events",
+                day_sun: "Sun",
+                day_mon: "Mon",
+                day_tue: "Tue",
+                day_wed: "Wed",
+                day_thu: "Thu",
+                day_fri: "Fri",
+                day_sat: "Sat",
+                timeline_title: "Our Story Timeline",
+                timeline_2022_circle: "2022",
+                timeline_2022_label: "Vision Emerges",
+                timeline_2023_circle: "2023",
+                timeline_2023_label: "Foundations Built",
+                timeline_2024_circle: "2024",
+                timeline_2024_label: "Key Milestones",
+                timeline_2025_circle: "2025",
+                timeline_2025_label: "Impact Grows",
+                timeline_beyond_circle: "Beyond",
+                timeline_beyond_label: "Together Forward",
+                timeline_2022_text: "By the last quarter of 2022, a shared vision emerged among a group of experienced therapists from across the Middle East and beyond. United by a deep sense of purpose, we set out to create mental health resources that are not only professionally rigorous but also genuinely rooted in Arabic language and culture — addressing the real realities of our communities.",
+                timeline_2023_text: "In 2023, we focused on laying strong foundations. We listened deeply, learned extensively, and sought to understand the unique and complex needs of those we serve. Our commitment was clear: to move forward with honesty, care, and unwavering dedication to support those who need it most.",
+                timeline_2024_text: "2024 marked the year when our efforts began to take tangible shape. We launched our first professional training and international collaboration, initiated a research project on panic attacks, and partnered with NGOs and corporations across the Middle East. Together, we fostered environments where staff well-being became a priority.",
+                timeline_2025_text: "Entering 2025, our commitment to long-term impact strengthened. We advanced comprehensive training and intervention programs driven by the same urgency and compassion that guided us from the start. Our goal was never simply to add services — but to fundamentally reshape mental health support in our region.",
+                timeline_beyond_text: "At Reframe, we walk alongside professionals, corporate partners, and researchers — providing tailored solutions that connect, uplift, and empower. Together, we continue this journey hand in hand, reframing mental health for a healthier, more resilient future.",
+                timeline_beyond_text_bold: "Join us and be part of the change.",
+                milestones_title: "Our Milestones to Date",
+                milestones_subtitle: "Celebrating our journey and impact in the mental health field",
+                milestone1_title: "15+ Organizations",
+                milestone1_desc: "Corporations, NGOs, and healthcare institutions",
+                milestone2_title: "2+ Projects",
+                milestone2_desc: "Active studies and assessment tool development",
+                milestone3_title: "500+ Professionals",
+                milestone3_desc: "Trained across multiple countries",
+                milestone4_title: "6 Countries",
+                milestone4_desc: "Regional presence and collaborations",
+                partners_title: "Our Partners & Collaborations",
+                partners_subtitle: "Building stronger communities through strategic partnerships",
+                footer_description: "Unlocking the innate potential and resilience within each person and group across the Middle East.",
+                footer_quick_links: "Quick Links",
+                nav_hub_reframe: "Hub Reframe",
+                footer_services: "Services",
+                footer_training: "Training Programs",
+                footer_workshops: "Workshops",
+                footer_consultation: "Consultation",
+                footer_resources: "Resources",
+                footer_connect: "Connect",
+                footer_subscribe_title: "Stay Connected",
+                footer_subscribe_text: "Subscribe to our newsletter for updates, workshops, and events.",
+                footer_subscribe_btn: "Subscribe",
+                footer_subscribe_placeholder: "Enter your email",
+                footer_rights: "All rights reserved.",
+                footer_credit: "Website designed & developed by"
+            },
+            ar: {
+                page_title_home: "ريفريم - خدمات الصحة النفسية",
+                nav_home: "الرئيسية",
+                nav_about: "من نحن",
+                nav_services: "خدماتنا",
+                nav_mhlab: "مختبر الصحة النفسية",
+                nav_hub: "المنصة",
+                nav_training: "التدريب",
+                nav_consultations: "الاستشارات الفنية",
+                nav_contact: "تواصل معنا",
+                nav_login: "تسجيل الدخول",
+                close: "إغلاق",
+                hero_title: "إطلاق الإمكانات البشرية والمرونة",
+                hero_paragraph: "خدمات وبرامج تدريب متخصصة في الصحة النفسية، مصممة لتناسب السياق الثقافي الفريد لمنطقة الشرق الأوسط.",
+                lab_title: "مختبر الصحة النفسية",
+                lab_desc: "انضم إلى مبادراتنا البحثية المبتكرة لتطوير الرعاية النفسية في منطقة الشرق الأوسط.",
+                lab_collaboration_question: "هل ترغب بالتعاون معنا؟",
+                lab_email_label: "البريد الإلكتروني",
+                lab_email_placeholder: "example@email.com",
+                plan_title: "الخطة الاستراتيجية 2025-2030",
+                plan_text: "تقوم رؤية ريفريم لعام 2025-2030 على ثلاث ركائز: الريادة في العلاج النفسي المنهجي، وختم بيئة العمل الصحية نفسياً، والبرامج المكيّفة ثقافياً استناداً إلى تقييمات الاحتياجات السنوية. تهدف هذه الجهود إلى تعزيز خدمات الصحة النفسية في منطقة الشرق الأوسط وشمال أفريقيا، وتمكين المجتمعات من الازدهار رغم التحديات المعقدة.",
+                plan_view_btn: "عرض الخطة الكاملة",
+                calendar_title: "الفعاليات القادمة",
+                events_view_all: "عرض جميع الفعاليات",
+                events_this_month: "فعاليات هذا الشهر",
+                day_sun: "أحد",
+                day_mon: "اثنين",
+                day_tue: "ثلاثاء",
+                day_wed: "أربعاء",
+                day_thu: "خميس",
+                day_fri: "جمعة",
+                day_sat: "سبت",
+                timeline_title: "قصتنا عبر الزمن",
+                timeline_2022_circle: "2022",
+                timeline_2022_label: "بداية الرؤية",
+                timeline_2023_circle: "2023",
+                timeline_2023_label: "بناء الأسس",
+                timeline_2024_circle: "2024",
+                timeline_2024_label: "محطات رئيسية",
+                timeline_2025_circle: "2025",
+                timeline_2025_label: "توسّع الأثر",
+                timeline_beyond_circle: "وما بعد",
+                timeline_beyond_label: "معاً نحو المستقبل",
+                timeline_2022_text: "بحلول الربع الأخير من عام 2022، تشكّلت رؤية مشتركة بين مجموعة من المعالجين ذوي الخبرة من الشرق الأوسط وخارجه. وبدافع من إحساس عميق بالهدف، انطلقنا لإنشاء موارد للصحة النفسية تجمع بين الدقة المهنية والانتماء الحقيقي للغة والثقافة العربية، بما يعكس واقع مجتمعاتنا.",
+                timeline_2023_text: "في عام 2023، ركّزنا على إرساء أسس متينة. أصغينا بعمق، وتعلّمنا الكثير، وسعينا لفهم الاحتياجات الفريدة والمعقّدة لمن نخدمهم. وكان التزامنا واضحاً: المضي قدماً بصدق واهتمام وتفانٍ ثابت لدعم من هم بأمسّ الحاجة.",
+                timeline_2024_text: "شهد عام 2024 بداية تبلور جهودنا بشكل ملموس. أطلقنا أول برنامج تدريبي مهني وتعاون دولي، وبدأنا مشروعاً بحثياً حول نوبات الهلع، وتشاركنا مع منظمات غير حكومية وشركات في أنحاء الشرق الأوسط، ما ساهم في تعزيز بيئات تُعنى برفاهية الموظفين.",
+                timeline_2025_text: "مع دخولنا عام 2025، تعزّز التزامنا بالأثر طويل الأمد. طوّرنا برامج تدريب وتدخل شاملة مدفوعة بنفس الإلحاح والتعاطف اللذين رافقانا منذ البداية. لم يكن هدفنا مجرد إضافة خدمات، بل إعادة تشكيل الدعم النفسي في منطقتنا من جذوره.",
+                timeline_beyond_text: "في ريفريم، نسير جنباً إلى جنب مع المختصين والشركاء المؤسسيين والباحثين، ونقدّم حلولاً مصمّمة خصيصاً تصل وترتقي وتمكّن. معاً، نواصل هذه الرحلة يداً بيد، لإعادة تشكيل الصحة النفسية نحو مستقبل أكثر صحة ومرونة.",
+                timeline_beyond_text_bold: "انضم إلينا وكن جزءاً من التغيير.",
+                milestones_title: "إنجازاتنا حتى اليوم",
+                milestones_subtitle: "نحتفل برحلتنا وأثرنا في مجال الصحة النفسية",
+                milestone1_title: "+15 مؤسسة",
+                milestone1_desc: "شركات ومنظمات غير حكومية ومؤسسات صحية",
+                milestone2_title: "+2 مشروع",
+                milestone2_desc: "دراسات نشطة وتطوير أدوات تقييم",
+                milestone3_title: "+500 مختص",
+                milestone3_desc: "تم تدريبهم في عدة دول",
+                milestone4_title: "6 دول",
+                milestone4_desc: "حضور إقليمي وشراكات",
+                partners_title: "شركاؤنا وتعاوناتنا",
+                partners_subtitle: "بناء مجتمعات أقوى من خلال شراكات استراتيجية",
+                footer_description: "إطلاق الإمكانات الكامنة والمرونة لدى كل فرد ومجموعة في أنحاء الشرق الأوسط.",
+                footer_quick_links: "روابط سريعة",
+                nav_hub_reframe: "منصة ريفريم",
+                footer_services: "خدماتنا",
+                footer_training: "برامج تدريبية",
+                footer_workshops: "ورش عمل",
+                footer_consultation: "استشارات",
+                footer_resources: "موارد",
+                footer_connect: "تواصل معنا",
+                footer_subscribe_title: "ابقَ على تواصل",
+                footer_subscribe_text: "اشترك في نشرتنا الإخبارية للاطلاع على آخر التحديثات وورش العمل والفعاليات.",
+                footer_subscribe_btn: "اشترك",
+                footer_subscribe_placeholder: "أدخل بريدك الإلكتروني",
+                footer_rights: "جميع الحقوق محفوظة.",
+                footer_credit: "تصميم وتطوير الموقع بواسطة"
+            }
+        };
 
-      document.querySelectorAll(".lang-btn").forEach(btn => {
-        btn.classList.toggle("active", btn.dataset.lang === lang);
-      });
+        function applyTranslations(lang) {
+            const dict = I18N[lang] || I18N.en;
 
-      localStorage.setItem("lang", lang);
-    }
+            document.documentElement.lang = lang;
+            document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
 
-    function switchLanguage(lang) {
-      applyTranslations(lang);
-    }
+            document.querySelectorAll("[data-translate]").forEach(el => {
+                const key = el.getAttribute("data-translate");
+                if (dict[key] !== undefined) {
+                    el.textContent = dict[key];
+                }
+            });
 
-    document.querySelectorAll(".lang-btn").forEach(btn => {
-      btn.addEventListener("click", () => switchLanguage(btn.dataset.lang));
-    });
-  </script>
+            document.querySelectorAll("[data-translate-placeholder]").forEach(el => {
+                const key = el.getAttribute("data-translate-placeholder");
+                if (dict[key] !== undefined) {
+                    el.setAttribute("placeholder", dict[key]);
+                }
+            });
 
-  <!-- ================= PAGE INTERACTIONS ================= -->
-  <script>
-    // --- Timeline tabs ---
-    const tabBtns = document.querySelectorAll(".tab-btn");
-    const tabContents = document.querySelectorAll(".tab-content");
+            if (dict.page_title_home) {
+                document.title = dict.page_title_home;
+            }
 
-    tabBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        tabBtns.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
+            document.querySelectorAll(".lang-btn").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.lang === lang);
+            });
 
-        const tab = btn.dataset.tab;
-        tabContents.forEach(content => {
-          content.classList.remove("active");
-          if (content.id === tab) content.classList.add("active");
-        });
-      });
-    });
-
-    // --- Partners carousel: seamless loop, focus-pause, tilt, touch-pause ---
-    (() => {
-      const root = document.querySelector(".partners-carousel");
-      const track = root.querySelector(".carousel-track");
-
-      const items = Array.from(track.children);
-      items.forEach(node => track.appendChild(node.cloneNode(true)));
-
-      const speedAttr = root.dataset.speed;
-      if (speedAttr && !Number.isNaN(parseFloat(speedAttr))) {
-        track.style.animationDuration = `${parseFloat(speedAttr)}s`;
-      }
-
-      root.addEventListener("focusin", () => { track.style.animationPlayState = "paused"; });
-      root.addEventListener("focusout", () => { track.style.animationPlayState = "running"; });
-
-      const mqHover = window.matchMedia("(hover:hover)");
-      if (mqHover.matches) {
-        track.addEventListener("mousemove", (e) => {
-          const el = e.target.closest(".partner-item");
-          if (!el) return;
-          const r = el.getBoundingClientRect();
-          const x = e.clientX - r.left, y = e.clientY - r.top;
-          const rx = ((y - r.height / 2) / (r.height / 2)) * 10;
-          const ry = ((x - r.width / 2) / (r.width / 2)) * 10;
-          el.style.transform = `rotateY(${ry}deg) rotateX(${-rx}deg) scale(1.12)`;
-        });
-        track.addEventListener("mouseleave", () => {
-          track.querySelectorAll(".partner-item").forEach(el => el.style.transform = "");
-        });
-      }
-
-      const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-      if (isTouch) {
-        root.addEventListener("touchstart", () => { track.style.animationPlayState = "paused"; }, { passive: true });
-        root.addEventListener("touchend", () => { track.style.animationPlayState = "running"; }, { passive: true });
-      }
-    })();
-
-    // --- Milestone icon glow cycle ---
-    document.addEventListener("DOMContentLoaded", () => {
-      const icons = document.querySelectorAll(".milestone-icon");
-      if (!icons.length) return;
-
-      let i = 0;
-      const run = () => {
-        icons.forEach(el => el.classList.remove("step-glow"));
-        icons[i].classList.add("step-glow");
-        i = (i + 1) % icons.length;
-      };
-      run();
-      setInterval(run, 1000);
-    });
-
-    // --- Dropdown menu (Services) ---
-    document.addEventListener("DOMContentLoaded", () => {
-      const dropdowns = document.querySelectorAll(".nav-dropdown");
-
-      dropdowns.forEach(dropdown => {
-        const toggle = dropdown.querySelector(".dropdown-toggle");
-        const menu = dropdown.querySelector(".dropdown-menu");
-
-        menu.style.display = "none";
-        menu.style.opacity = "0";
-        menu.style.transform = "translateY(-6px)";
-        menu.style.transition = "all 0.25s ease";
-
-        toggle.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const isOpen = menu.classList.contains("open");
-
-          document.querySelectorAll(".dropdown-menu.open").forEach(m => {
-            m.classList.remove("open");
-            m.style.opacity = "0";
-            m.style.transform = "translateY(-6px)";
-            setTimeout(() => (m.style.display = "none"), 200);
-          });
-
-          if (!isOpen) {
-            menu.style.display = "flex";
-            setTimeout(() => {
-              menu.classList.add("open");
-              menu.style.opacity = "1";
-              menu.style.transform = "translateY(0)";
-            }, 20);
-          } else {
-            menu.classList.remove("open");
-            menu.style.opacity = "0";
-            menu.style.transform = "translateY(-6px)";
-            setTimeout(() => (menu.style.display = "none"), 200);
-          }
-        });
-
-        document.addEventListener("click", (e) => {
-          if (!dropdown.contains(e.target)) {
-            menu.classList.remove("open");
-            menu.style.opacity = "0";
-            menu.style.transform = "translateY(-6px)";
-            setTimeout(() => (menu.style.display = "none"), 200);
-          }
-        });
-      });
-    });
-
-    // --- Calendar widget ---
-    document.addEventListener("DOMContentLoaded", function () {
-      const monthLabel = document.querySelector(".calendar-month-label");
-      const datesContainer = document.querySelector(".calendar-dates");
-      const prevBtn = document.querySelector(".prev-month");
-      const nextBtn = document.querySelector(".next-month");
-
-      const eventDates = [3, 30]; // event days for the current demo month
-
-      let currentDate = new Date();
-
-      const monthNamesByLang = {
-        en: ["January","February","March","April","May","June","July","August","September","October","November","December"],
-        ar: ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"]
-      };
-
-      function renderCalendar() {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const lang = document.documentElement.lang === "ar" ? "ar" : "en";
-
-        const firstDay = new Date(year, month, 1).getDay();
-        const lastDate = new Date(year, month + 1, 0).getDate();
-
-        monthLabel.textContent = `${monthNamesByLang[lang][month]} ${year}`;
-
-        datesContainer.innerHTML = "";
-
-        for (let i = 0; i < firstDay; i++) {
-          datesContainer.appendChild(document.createElement("span"));
+            localStorage.setItem("lang", lang);
         }
 
-        const today = new Date();
-
-        for (let day = 1; day <= lastDate; day++) {
-          const dayEl = document.createElement("span");
-          dayEl.textContent = day;
-
-          if (eventDates.includes(day)) {
-            dayEl.classList.add("event-date");
-          }
-
-          if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-            dayEl.style.background = "#4D9794";
-            dayEl.style.color = "white";
-            dayEl.style.fontWeight = "600";
-          }
-
-          datesContainer.appendChild(dayEl);
+        function switchLanguage(lang) {
+            applyTranslations(lang);
         }
-      }
 
-      prevBtn.addEventListener("click", () => {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        renderCalendar();
-      });
-
-      nextBtn.addEventListener("click", () => {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        renderCalendar();
-      });
-
-      renderCalendar();
-
-      // Re-render month labels when language changes
-      document.querySelectorAll(".lang-btn").forEach(btn => {
-        btn.addEventListener("click", () => setTimeout(renderCalendar, 0));
-      });
-    });
-
-    // --- Hamburger menu ---
-    document.addEventListener("DOMContentLoaded", () => {
-      const hamburger = document.querySelector(".hamburger");
-      const overlay = document.getElementById("mobile-menu");
-      const closeBtn = overlay ? overlay.querySelector(".close-btn") : null;
-
-      function openMenu() {
-        overlay.classList.add("open");
-        overlay.setAttribute("aria-hidden", "false");
-        hamburger.setAttribute("aria-expanded", "true");
-      }
-      function closeMenu() {
-        overlay.classList.remove("open");
-        overlay.setAttribute("aria-hidden", "true");
-        hamburger.setAttribute("aria-expanded", "false");
-      }
-
-      if (hamburger && overlay) {
-        hamburger.addEventListener("click", () => {
-          overlay.classList.contains("open") ? closeMenu() : openMenu();
+        document.querySelectorAll(".lang-btn").forEach(btn => {
+            btn.addEventListener("click", () => switchLanguage(btn.dataset.lang));
         });
-      }
-      if (closeBtn) closeBtn.addEventListener("click", closeMenu);
-      if (overlay) {
-        overlay.querySelectorAll("a").forEach(a => a.addEventListener("click", closeMenu));
-      }
-    });
+    </script>
 
-    // --- Newsletter subscribe (lab form) ---
-    document.addEventListener("DOMContentLoaded", () => {
-      const form = document.getElementById("lab-subscribe");
-      if (!form) return;
+    <!-- ================= PAGE INTERACTIONS ================= -->
+    <script>
+        // --- Timeline tabs ---
+        const tabBtns = document.querySelectorAll(".tab-btn");
+        const tabContents = document.querySelectorAll(".tab-content");
 
-      const wrap = form.querySelector(".input-wrap");
-      const msg = document.getElementById("lab-message");
-      const lang = () => (document.documentElement.lang === "ar" ? "ar" : "en");
+        tabBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                tabBtns.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
 
-      const messages = {
-        en: { success: "Thanks for subscribing!", error: "Something went wrong. Please try again." },
-        ar: { success: "شكراً لاشتراكك!", error: "حدث خطأ ما. حاول مرة أخرى." }
-      };
+                const tab = btn.dataset.tab;
+                tabContents.forEach(content => {
+                    content.classList.remove("active");
+                    if (content.id === tab) content.classList.add("active");
+                });
+            });
+        });
 
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        wrap.classList.add("loading");
-        msg.textContent = "";
-        msg.className = "form-message";
+        // --- Partners carousel: seamless loop, focus-pause, tilt, touch-pause ---
+        (() => {
+            const root = document.querySelector(".partners-carousel");
+            const track = root.querySelector(".carousel-track");
 
-        try {
-          const email = form.email.value;
-          const res = await fetch(form.action, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email })
-          });
+            const items = Array.from(track.children);
+            items.forEach(node => track.appendChild(node.cloneNode(true)));
 
-          wrap.classList.remove("loading");
+            const speedAttr = root.dataset.speed;
+            if (speedAttr && !Number.isNaN(parseFloat(speedAttr))) {
+                track.style.animationDuration = `${parseFloat(speedAttr)}s`;
+            }
 
-          if (res.ok) {
-            wrap.classList.add("success");
-            msg.textContent = messages[lang()].success;
-            msg.classList.add("success");
-            form.reset();
-          } else {
-            msg.textContent = messages[lang()].error;
-            msg.classList.add("error");
-          }
-        } catch (err) {
-          wrap.classList.remove("loading");
-          msg.textContent = messages[lang()].error;
-          msg.classList.add("error");
-        }
-      });
-    });
+            root.addEventListener("focusin", () => {
+                track.style.animationPlayState = "paused";
+            });
+            root.addEventListener("focusout", () => {
+                track.style.animationPlayState = "running";
+            });
 
-    // --- Initial language load ---
-    document.addEventListener("DOMContentLoaded", () => {
-      const savedLang = localStorage.getItem("lang") || "en";
-      switchLanguage(savedLang);
-    });
-  </script>
+            const mqHover = window.matchMedia("(hover:hover)");
+            if (mqHover.matches) {
+                track.addEventListener("mousemove", (e) => {
+                    const el = e.target.closest(".partner-item");
+                    if (!el) return;
+                    const r = el.getBoundingClientRect();
+                    const x = e.clientX - r.left,
+                        y = e.clientY - r.top;
+                    const rx = ((y - r.height / 2) / (r.height / 2)) * 10;
+                    const ry = ((x - r.width / 2) / (r.width / 2)) * 10;
+                    el.style.transform = `rotateY(${ry}deg) rotateX(${-rx}deg) scale(1.12)`;
+                });
+                track.addEventListener("mouseleave", () => {
+                    track.querySelectorAll(".partner-item").forEach(el => el.style.transform = "");
+                });
+            }
+
+            const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+            if (isTouch) {
+                root.addEventListener("touchstart", () => {
+                    track.style.animationPlayState = "paused";
+                }, {
+                    passive: true
+                });
+                root.addEventListener("touchend", () => {
+                    track.style.animationPlayState = "running";
+                }, {
+                    passive: true
+                });
+            }
+        })();
+
+        // --- Milestone icon glow cycle ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const icons = document.querySelectorAll(".milestone-icon");
+            if (!icons.length) return;
+
+            let i = 0;
+            const run = () => {
+                icons.forEach(el => el.classList.remove("step-glow"));
+                icons[i].classList.add("step-glow");
+                i = (i + 1) % icons.length;
+            };
+            run();
+            setInterval(run, 1000);
+        });
+
+        // --- Dropdown menu (Services) ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const dropdowns = document.querySelectorAll(".nav-dropdown");
+
+            dropdowns.forEach(dropdown => {
+                const toggle = dropdown.querySelector(".dropdown-toggle");
+                const menu = dropdown.querySelector(".dropdown-menu");
+
+                menu.style.display = "none";
+                menu.style.opacity = "0";
+                menu.style.transform = "translateY(-6px)";
+                menu.style.transition = "all 0.25s ease";
+
+                toggle.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const isOpen = menu.classList.contains("open");
+
+                    document.querySelectorAll(".dropdown-menu.open").forEach(m => {
+                        m.classList.remove("open");
+                        m.style.opacity = "0";
+                        m.style.transform = "translateY(-6px)";
+                        setTimeout(() => (m.style.display = "none"), 200);
+                    });
+
+                    if (!isOpen) {
+                        menu.style.display = "flex";
+                        setTimeout(() => {
+                            menu.classList.add("open");
+                            menu.style.opacity = "1";
+                            menu.style.transform = "translateY(0)";
+                        }, 20);
+                    } else {
+                        menu.classList.remove("open");
+                        menu.style.opacity = "0";
+                        menu.style.transform = "translateY(-6px)";
+                        setTimeout(() => (menu.style.display = "none"), 200);
+                    }
+                });
+
+                document.addEventListener("click", (e) => {
+                    if (!dropdown.contains(e.target)) {
+                        menu.classList.remove("open");
+                        menu.style.opacity = "0";
+                        menu.style.transform = "translateY(-6px)";
+                        setTimeout(() => (menu.style.display = "none"), 200);
+                    }
+                });
+            });
+        });
+
+        // --- Calendar widget ---
+        document.addEventListener("DOMContentLoaded", function() {
+            const monthLabel = document.querySelector(".calendar-month-label");
+            const datesContainer = document.querySelector(".calendar-dates");
+            const prevBtn = document.querySelector(".prev-month");
+            const nextBtn = document.querySelector(".next-month");
+
+            const eventDates = [3, 30]; // event days for the current demo month
+
+            let currentDate = new Date();
+
+            const monthNamesByLang = {
+                en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+                ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
+            };
+
+            function renderCalendar() {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const lang = document.documentElement.lang === "ar" ? "ar" : "en";
+
+                const firstDay = new Date(year, month, 1).getDay();
+                const lastDate = new Date(year, month + 1, 0).getDate();
+
+                monthLabel.textContent = `${monthNamesByLang[lang][month]} ${year}`;
+
+                datesContainer.innerHTML = "";
+
+                for (let i = 0; i < firstDay; i++) {
+                    datesContainer.appendChild(document.createElement("span"));
+                }
+
+                const today = new Date();
+
+                for (let day = 1; day <= lastDate; day++) {
+                    const dayEl = document.createElement("span");
+                    dayEl.textContent = day;
+
+                    if (eventDates.includes(day)) {
+                        dayEl.classList.add("event-date");
+                    }
+
+                    if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                        dayEl.style.background = "#4D9794";
+                        dayEl.style.color = "white";
+                        dayEl.style.fontWeight = "600";
+                    }
+
+                    datesContainer.appendChild(dayEl);
+                }
+            }
+
+            prevBtn.addEventListener("click", () => {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+                renderCalendar();
+            });
+
+            nextBtn.addEventListener("click", () => {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                renderCalendar();
+            });
+
+            renderCalendar();
+
+            // Re-render month labels when language changes
+            document.querySelectorAll(".lang-btn").forEach(btn => {
+                btn.addEventListener("click", () => setTimeout(renderCalendar, 0));
+            });
+        });
+
+        // --- Hamburger menu ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const hamburger = document.querySelector(".hamburger");
+            const overlay = document.getElementById("mobile-menu");
+            const closeBtn = overlay ? overlay.querySelector(".close-btn") : null;
+
+            function openMenu() {
+                overlay.classList.add("open");
+                overlay.setAttribute("aria-hidden", "false");
+                hamburger.setAttribute("aria-expanded", "true");
+            }
+
+            function closeMenu() {
+                overlay.classList.remove("open");
+                overlay.setAttribute("aria-hidden", "true");
+                hamburger.setAttribute("aria-expanded", "false");
+            }
+
+            if (hamburger && overlay) {
+                hamburger.addEventListener("click", () => {
+                    overlay.classList.contains("open") ? closeMenu() : openMenu();
+                });
+            }
+            if (closeBtn) closeBtn.addEventListener("click", closeMenu);
+            if (overlay) {
+                overlay.querySelectorAll("a").forEach(a => a.addEventListener("click", closeMenu));
+            }
+        });
+
+        // --- Newsletter subscribe (lab form) ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const form = document.getElementById("lab-subscribe");
+            if (!form) return;
+
+            const wrap = form.querySelector(".input-wrap");
+            const msg = document.getElementById("lab-message");
+            const lang = () => (document.documentElement.lang === "ar" ? "ar" : "en");
+
+            const messages = {
+                en: {
+                    success: "Thanks for subscribing!",
+                    error: "Something went wrong. Please try again."
+                },
+                ar: {
+                    success: "شكراً لاشتراكك!",
+                    error: "حدث خطأ ما. حاول مرة أخرى."
+                }
+            };
+
+            form.addEventListener("submit", async(e) => {
+                e.preventDefault();
+                wrap.classList.add("loading");
+                msg.textContent = "";
+                msg.className = "form-message";
+
+                try {
+                    const email = form.email.value;
+                    const res = await fetch(form.action, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            email
+                        })
+                    });
+
+                    wrap.classList.remove("loading");
+
+                    if (res.ok) {
+                        wrap.classList.add("success");
+                        msg.textContent = messages[lang()].success;
+                        msg.classList.add("success");
+                        form.reset();
+                    } else {
+                        msg.textContent = messages[lang()].error;
+                        msg.classList.add("error");
+                    }
+                } catch (err) {
+                    wrap.classList.remove("loading");
+                    msg.textContent = messages[lang()].error;
+                    msg.classList.add("error");
+                }
+            });
+        });
+
+        // --- Initial language load ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedLang = localStorage.getItem("lang") || "en";
+            switchLanguage(savedLang);
+        });
+    </script>
 
 </body>
+
 </html>
