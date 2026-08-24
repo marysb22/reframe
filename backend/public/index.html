@@ -491,6 +491,14 @@
         grid-template-columns: repeat(3, 1fr);
         grid-template-rows: repeat(2, 1fr);
       }
+      /* .large/.tall/.small/.wide place themselves by explicit grid-column
+         lines that only exist in the 4-column desktop grid above. Left as
+         is, they reach past this 3-column grid's line 4, which forces the
+         browser to create an extra implicit column to satisfy them -- the
+         4th photo ends up pushed into that implicit column, off the right
+         edge of the screen. Resetting to auto lets all 4 photos fill the
+         actual grid in source order instead. */
+      .large, .tall, .small, .wide { grid-column: auto; grid-row: auto; }
     }
 
     @media (max-width: 768px) {
@@ -500,6 +508,7 @@
         grid-template-rows: repeat(2, 200px);
       }
       .bento-item { height: 200px; }
+      .large, .tall, .small, .wide { grid-column: auto; grid-row: auto; }
     }
 
     .section-header h2 {
