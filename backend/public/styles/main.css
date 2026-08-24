@@ -1168,7 +1168,16 @@ html[lang="ar"] td[data-ltr="true"], html[lang="ar"] th[data-ltr="true"] {
     overflow: hidden;
   }
   .nav-logo img { width: 155px; max-width: 100%; }
-  .nav-actions {
+  /* login.html wraps the language switcher in a .nav-actions div, but every
+     other public page (about/contact/hub/events/index/projects/t/
+     Training-Modules) puts .language-switcher directly in .nav-container
+     with no wrapper. Ordering only .nav-actions left .language-switcher a
+     plain flex child with the unset default order (0) on those 8 pages,
+     so it jumped ahead of the hamburger instead of trailing after the
+     logo. Targeting both selectors covers whichever one is actually the
+     flex item on a given page; the declaration is inert on the other. */
+  .nav-actions,
+  .language-switcher {
     order: 3;
     flex: 0 0 auto;
     flex-wrap: nowrap;
@@ -1196,7 +1205,6 @@ html[lang="ar"] td[data-ltr="true"], html[lang="ar"] th[data-ltr="true"] {
 @media (max-width: 768px) {
   .nav-menu { display: none; }
   .hamburger { display: flex; }
-  .language-switcher { order: -1; }
 
   /* Hero collapses to a single stacked photo, not the 4-col grid */
   .bento-grid { display: none; }
