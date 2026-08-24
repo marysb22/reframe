@@ -305,17 +305,18 @@
                 showMessage('Login successful. Redirecting...', 'success');
 
                 // Send each role to its own dashboard. Supervisors split further by
-                // supervisor_type: 'primary' is the Master Trainer, 'in_training' is
-                // the Trainer-in-Training (ToT) -- each has its own purpose-built
-                // dashboard rather than sharing the generic supervisor-dashboard.html.
+                // supervisor_type: 'primary' is the Master Trainer (masterDashborad.html),
+                // 'in_training' is the Trainer-in-Training / ToT (Totdashboard.html) --
+                // each has its own purpose-built dashboard. There's no third supervisor
+                // sub-type, but default to Totdashboard.html rather than crash if
+                // supervisor_type is ever unexpectedly unset.
                 const role = data.user.role;
                 const supervisorType = data.user.supervisorType;
                 const destination =
                     role === 'admin' ? 'AdminDashboard.html' :
                     role === 'supervisor' ? (
                         supervisorType === 'primary' ? 'masterDashborad.html' :
-                        supervisorType === 'in_training' ? 'Totdashboard.html' :
-                        'supervisor-dashboard.html'
+                        'Totdashboard.html'
                     ) :
                     role === 'designer' ? 'DesignerDashboard.html' :
                     'PersonalProfile.html';

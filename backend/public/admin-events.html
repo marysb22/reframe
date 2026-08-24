@@ -403,7 +403,7 @@ async function guardAdmin() {
     showToast("Admin access required. Redirecting to your dashboard.", "error");
     setTimeout(() => {
       window.location.href =
-        me.role === "supervisor" ? "supervisor-dashboard.html" :
+        me.role === "supervisor" ? (me.supervisorType === "primary" ? "masterDashborad.html" : "Totdashboard.html") :
         me.role === "designer" ? "DesignerDashboard.html" :
         "PersonalProfile.html";
     }, 800);

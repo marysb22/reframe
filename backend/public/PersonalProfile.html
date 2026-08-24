@@ -1944,8 +1944,8 @@
 
         async function apiRequest(url, options = {}) {
             try {
-                // FIX: see dashboard.html / supervisor-dashboard.html -- same bug,
-                // same fix. Authorization must be merged in, not replaced by
+                // FIX: see dashboard.html / masterDashborad.html / Totdashboard.html --
+                // same bug, same fix. Authorization must be merged in, not replaced by
                 // options.headers.
                 const response = await fetch(API + url, {
                     ...options,

@@ -294,9 +294,9 @@
                 const token = localStorage.getItem("token") || localStorage.getItem("reframe_token");
                 if (!token) window.location.href = "login.html";
 
-                function destinationForRole(role) {
+                function destinationForRole(role, supervisorType) {
                     if (role === "admin") return "AdminDashboard.html";
-                    if (role === "supervisor") return "supervisor-dashboard.html";
+                    if (role === "supervisor") return supervisorType === "primary" ? "masterDashborad.html" : "Totdashboard.html";
                     return "PersonalProfile.html";
                 }
 
@@ -349,7 +349,7 @@
                         document.getElementById("accName").textContent = data.full_name;
                         document.getElementById("accId").textContent = data.memberCode;
                         document.getElementById("accRole").textContent = data.role.charAt(0).toUpperCase() + data.role.slice(1);
-                        document.getElementById("backLink").href = destinationForRole(data.role);
+                        document.getElementById("backLink").href = destinationForRole(data.role, data.supervisorType);
                     } catch (err) {
                         showMsg("Could not reach the server. Make sure the backend is running on port 3000.", "error");
                     }

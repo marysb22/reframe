@@ -104,6 +104,8 @@ router.put(
       highestDegree,
       institution,
       certifications,
+      bio,
+      specialization,
     } = req.body || {};
 
     if (!full_name || !String(full_name).trim()) {
@@ -143,8 +145,8 @@ router.put(
       );
     } else if (table === "supervisors") {
       await db.query(
-        `UPDATE supervisors SET full_name = ?, email = ?, phone = ?, updated_at = NOW() WHERE id = ?`,
-        [full_name.trim(), email || null, phone || null, req.user.id]
+        `UPDATE supervisors SET full_name = ?, email = ?, phone = ?, bio = ?, specialization = ?, updated_at = NOW() WHERE id = ?`,
+        [full_name.trim(), email || null, phone || null, bio || null, specialization || null, req.user.id]
       );
     } else if (table === "designers") {
       await db.query(

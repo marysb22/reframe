@@ -155,7 +155,8 @@ router.get(
 
         const { rows: selfRows } = await db.query(
             `SELECT uc.id, uc.member_code, uc.status, uc.must_change_password,
-              sup.full_name, sup.email, sup.phone, sup.photo, sup.group_id, g.name AS group_name
+              sup.full_name, sup.email, sup.phone, sup.photo, sup.bio, sup.specialization,
+              sup.group_id, g.name AS group_name
        FROM user_credentials uc
        JOIN supervisors sup ON sup.id = uc.id
        LEFT JOIN trainer_groups g ON g.id = sup.group_id

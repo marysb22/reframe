@@ -52,6 +52,20 @@ function toPublicUser(row) {
     created_at: row.created_at,
     supervisors: parseSupervisorsField(row.supervisors), // [] for supervisors/admins, real list for trainees
     supervisorType: row.supervisor_type, // 'primary' (Master Trainer) | 'in_training' (Trainer/ToT); null for trainees/admins
+    groupId: row.group_id, // this account's own trainer_groups row (via sup.group_id or st.group_id), null if unassigned
+    groupName: row.group_name,
+    // CV-content fields, promoted up from toProfileResponse so the single
+    // already-loaded GET /users list (not just single-record GET /users/:id)
+    // carries everything the Trainers list and CVs grid need -- no extra
+    // per-row fetch just to know "does this person have a bio yet?".
+    // Student-only (null for a supervisor/admin row)
+    highestDegree: row.highest_degree,
+    institution: row.institution,
+    certifications: row.certifications,
+    cvFile: row.cv_file,
+    // Supervisor-only (null for a student/admin row)
+    specialization: row.specialization,
+    bio: row.bio,
   };
 }
 
@@ -69,13 +83,6 @@ function toProfileResponse(row) {
     cohort: row.cohort_name,
     cohortId: row.cohort_id,
     currentYear: row.current_year,
-    highestDegree: row.highest_degree,
-    institution: row.institution,
-    certifications: row.certifications,
-    cvFile: row.cv_file,
-    // Supervisor-only fields (null for a student/admin row)
-    specialization: row.specialization,
-    bio: row.bio,
   };
 }
 

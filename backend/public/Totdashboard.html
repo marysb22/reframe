@@ -1980,6 +1980,10 @@
                             <input type="text" id="settingsPhone" placeholder="Phone number">
                             <label>ToT ID</label>
                             <input type="text" id="settingsMemberCode" disabled>
+                            <label>Specialization</label>
+                            <input type="text" id="settingsSpecialization" placeholder="e.g. Cognitive Behavioral Therapy">
+                            <label>Professional Summary</label>
+                            <textarea id="settingsBio" style="height:90px;padding:10px 13px;resize:vertical;" placeholder="A short professional bio -- shown on your CV in the Admin console."></textarea>
                             <button type="submit" class="btn">Save profile</button>
                         </form>
                     </div>
@@ -2455,6 +2459,8 @@
                 document.getElementById("settingsEmail").value = me.email || "";
                 document.getElementById("settingsPhone").value = me.phone || "";
                 document.getElementById("settingsMemberCode").value = me.memberCode || "";
+                document.getElementById("settingsSpecialization").value = me.specialization || "";
+                document.getElementById("settingsBio").value = me.bio || "";
                 document.getElementById("settingsAvatarPreview").textContent = initials(me.full_name);
                 if (me.photo) {
                     document.getElementById("supervisorInitials").innerHTML = `<img src="${UPLOADS}/photos/${me.photo}" alt="">`;
@@ -3603,6 +3609,8 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
     full_name: document.getElementById("settingsName").value.trim(),
     email: document.getElementById("settingsEmail").value.trim(),
     phone: document.getElementById("settingsPhone").value.trim(),
+    specialization: document.getElementById("settingsSpecialization").value.trim(),
+    bio: document.getElementById("settingsBio").value.trim(),
   };
   const result = await apiRequest("/profile/me", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   if (result) {

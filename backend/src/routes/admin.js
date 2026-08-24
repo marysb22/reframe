@@ -48,6 +48,8 @@ const USER_SELECT = `
     sup.specialization, sup.bio, sup.supervisor_type,
     st.gender, st.date_of_birth, st.marital_status, st.address, st.certifications, st.cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year, st.highest_degree, st.institution,
+    sup.group_id AS supervisor_group_id, st.group_id AS student_group_id,
+    tg.id AS group_id, tg.name AS group_name,
     COALESCE(
       (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', sup2.id, 'full_name', sup2.full_name))
          FROM supervisor_students ss JOIN supervisors sup2 ON sup2.id = ss.supervisor_id
@@ -58,6 +60,7 @@ const USER_SELECT = `
   LEFT JOIN supervisors sup ON sup.id = uc.id
   LEFT JOIN students st ON st.id = uc.id
   LEFT JOIN cohorts c ON c.id = st.cohort_id
+  LEFT JOIN trainer_groups tg ON tg.id = COALESCE(sup.group_id, st.group_id)
 `;
 
 // MariaDB's JSON type is really just LONGTEXT with a CHECK constraint, so
@@ -102,6 +105,82 @@ async function resolveCohortId(db, cohortName) {
   if (existing.rows.length) return existing.rows[0].id;
   const created = await db.query("INSERT INTO cohorts (name) VALUES (?)", [name]);
   return created.insertId;
+}
+
+// ---- Shared helpers: Group/Trainer account creation & assignment --------
+// Used by POST /groups (whole-group creation), POST /trainers (standalone
+// trainer creation), and PATCH /trainers/:id/group (assign/reassign/
+// unassign) -- kept in one place so those three flows can never diverge on
+// how a trainer account or a trainee<->trainer caseload link gets made.
+
+/** Resolves a manually-supplied member code (checking for a conflict) or generates the next one for `prefix`. */
+async function resolveMemberCode(db, manualCode, prefix) {
+  if (manualCode && String(manualCode).trim()) {
+    const code = String(manualCode).trim().toUpperCase();
+    const { rows } = await db.query("SELECT id FROM user_credentials WHERE member_code = ?", [code]);
+    if (rows.length) return { conflict: `ID "${code}" is already in use` };
+    return { code };
+  }
+  return { code: await generateNextId(db, prefix) };
+}
+
+/** Inserts a user_credentials + supervisors row pair for a Master Trainer or Trainer (ToT). */
+async function insertSupervisorAccount(
+  db,
+  { fullName, memberCode, passwordHash, supervisorType, primarySupervisorId, groupId, email, phone }
+) {
+  const cred = await db.query(
+    `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password)
+     VALUES (?, ?, 'supervisor', TRUE)`,
+    [memberCode, passwordHash]
+  );
+  const id = cred.insertId;
+  await db.query(
+    `INSERT INTO supervisors (id, full_name, supervisor_type, primary_supervisor_id, group_id, email, phone)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [id, fullName.trim(), supervisorType, primarySupervisorId ?? null, groupId ?? null, email || null, phone || null]
+  );
+  await db.query("INSERT INTO settings (user_id) VALUES (?)", [id]);
+  await db.query("INSERT INTO privacy_preferences (user_id) VALUES (?)", [id]);
+  return { id, fullName: fullName.trim(), memberCode };
+}
+
+/** All trainee ids currently in a group. */
+async function getTraineeIdsInGroup(db, groupId) {
+  if (!groupId) return [];
+  const { rows } = await db.query("SELECT id FROM students WHERE group_id = ?", [groupId]);
+  return rows.map((r) => r.id);
+}
+
+/** Links a trainer to a set of trainees' caseloads (idempotent -- safe to call for trainees already linked). */
+async function linkTraineesToTrainer(db, trainerId, traineeIds, assignedByUserId) {
+  for (const traineeId of traineeIds) {
+    await db.query(
+      `INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE assigned_at = assigned_at`,
+      [trainerId, traineeId, assignedByUserId]
+    );
+  }
+}
+
+/** Removes a trainer's caseload links to a set of trainees (used when a trainer leaves a group). */
+async function unlinkTraineesFromTrainer(db, trainerId, traineeIds) {
+  if (!traineeIds.length) return;
+  await db.query(
+    `DELETE FROM supervisor_students WHERE supervisor_id = ? AND student_id IN (${traineeIds
+      .map(() => "?")
+      .join(",")})`,
+    [trainerId, ...traineeIds]
+  );
+}
+
+/** The group's current Master Trainer, if any -- status-agnostic on purpose: a suspended Master Trainer still occupies the group's one-Master-Trainer slot until explicitly unassigned. */
+async function getActiveMasterTrainer(db, groupId) {
+  const { rows } = await db.query(
+    "SELECT id, full_name FROM supervisors WHERE group_id = ? AND supervisor_type = 'primary' LIMIT 1",
+    [groupId]
+  );
+  return rows[0] || null;
 }
 
 // ---- Accounts (Trainees + Master Trainers/Trainers) ---------------------
@@ -278,7 +357,24 @@ router.put(
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ error: "Account not found" });
 
-    const { cohort, currentYear, status, supervisorIds, fullName, email, phone } = req.body || {};
+    const {
+      cohort,
+      currentYear,
+      status,
+      supervisorIds,
+      fullName,
+      email,
+      phone,
+      // CV-content fields -- bio/specialization only make sense for a
+      // supervisor row, highestDegree/institution/certifications only for
+      // a student row (see the role check below, same pattern as
+      // currentYear/cohort just above).
+      bio,
+      specialization,
+      highestDegree,
+      institution,
+      certifications,
+    } = req.body || {};
     const allowedStatus = ["active", "suspended"];
 
     if (status !== undefined && !allowedStatus.includes(status)) {
@@ -311,6 +407,26 @@ router.put(
       const cohortId = await resolveCohortId(db, cohort);
       profileParams.push(cohortId);
       profileUpdates.push(`cohort_id = ?`);
+    }
+    if (existing.role === "trainee" && highestDegree !== undefined) {
+      profileParams.push(highestDegree || null);
+      profileUpdates.push(`highest_degree = ?`);
+    }
+    if (existing.role === "trainee" && institution !== undefined) {
+      profileParams.push(institution || null);
+      profileUpdates.push(`institution = ?`);
+    }
+    if (existing.role === "trainee" && certifications !== undefined) {
+      profileParams.push(certifications || null);
+      profileUpdates.push(`certifications = ?`);
+    }
+    if (existing.role === "supervisor" && bio !== undefined) {
+      profileParams.push(bio || null);
+      profileUpdates.push(`bio = ?`);
+    }
+    if (existing.role === "supervisor" && specialization !== undefined) {
+      profileParams.push(specialization || null);
+      profileUpdates.push(`specialization = ?`);
     }
     if (profileUpdates.length) {
       profileParams.push(id);
@@ -607,29 +723,19 @@ router.post(
     // trainer/trainers already created -- asyncRoute rolls back the whole
     // transaction on any thrown error, but an early `return` here commits
     // whatever ran so far, so nothing gets inserted until all codes check out.
-    async function resolveCode(manualCode, prefix) {
-      if (manualCode && String(manualCode).trim()) {
-        const code = String(manualCode).trim().toUpperCase();
-        const { rows } = await db.query("SELECT id FROM user_credentials WHERE member_code = ?", [code]);
-        if (rows.length) return { conflict: `ID "${code}" is already in use` };
-        return { code };
-      }
-      return { code: await generateNextId(db, prefix) };
-    }
-
-    const masterCode = await resolveCode(masterTrainerIn.memberCode, "SUP");
+    const masterCode = await resolveMemberCode(db, masterTrainerIn.memberCode, "SUP");
     if (masterCode.conflict) return res.status(409).json({ error: masterCode.conflict });
 
     const trainerCodes = [];
     for (const t of trainersIn) {
-      const resolved = await resolveCode(t.memberCode, "SUP");
+      const resolved = await resolveMemberCode(db, t.memberCode, "SUP");
       if (resolved.conflict) return res.status(409).json({ error: resolved.conflict });
       trainerCodes.push(resolved.code);
     }
 
     const traineeCodes = [];
     for (const t of traineesIn) {
-      const resolved = await resolveCode(t.memberCode, "TTR");
+      const resolved = await resolveMemberCode(db, t.memberCode, "TTR");
       if (resolved.conflict) return res.status(409).json({ error: resolved.conflict });
       traineeCodes.push(resolved.code);
     }
@@ -648,29 +754,26 @@ router.post(
     const groupInsert = await db.query("INSERT INTO trainer_groups (name) VALUES (?)", [name]);
     const group = { id: groupInsert.insertId, name };
 
-    async function insertSupervisor(fullName, memberCode, supervisorType, primarySupervisorId) {
-      const cred = await db.query(
-        `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password)
-         VALUES (?, ?, 'supervisor', TRUE)`,
-        [memberCode, trainerHash]
-      );
-      const id = cred.insertId;
-      await db.query(
-        `INSERT INTO supervisors (id, full_name, supervisor_type, primary_supervisor_id, group_id)
-         VALUES (?, ?, ?, ?, ?)`,
-        [id, fullName.trim(), supervisorType, primarySupervisorId, group.id]
-      );
-      await db.query("INSERT INTO settings (user_id) VALUES (?)", [id]);
-      await db.query("INSERT INTO privacy_preferences (user_id) VALUES (?)", [id]);
-      return { id, fullName: fullName.trim(), memberCode };
-    }
-
-    const masterTrainer = await insertSupervisor(masterTrainerIn.fullName, masterCode.code, "primary", null);
+    const masterTrainer = await insertSupervisorAccount(db, {
+      fullName: masterTrainerIn.fullName,
+      memberCode: masterCode.code,
+      passwordHash: trainerHash,
+      supervisorType: "primary",
+      primarySupervisorId: null,
+      groupId: group.id,
+    });
 
     const trainers = [];
     for (let i = 0; i < trainersIn.length; i++) {
       trainers.push(
-        await insertSupervisor(trainersIn[i].fullName, trainerCodes[i], "in_training", masterTrainer.id)
+        await insertSupervisorAccount(db, {
+          fullName: trainersIn[i].fullName,
+          memberCode: trainerCodes[i],
+          passwordHash: trainerHash,
+          supervisorType: "in_training",
+          primarySupervisorId: masterTrainer.id,
+          groupId: group.id,
+        })
       );
     }
 
@@ -720,6 +823,213 @@ router.post(
       trainees,
       traineePassword: traineePlainPassword,
     });
+  })
+);
+
+// PATCH /api/admin/groups/:id  { name }
+// Rename a group. `trainer_groups` has no other editable column -- id,
+// name, created_at is the whole table -- so renaming is the entirety of
+// "edit group info".
+router.patch(
+  "/groups/:id",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid group id" });
+
+    const name = String((req.body || {}).name || "").trim();
+    if (!name) return res.status(400).json({ error: "Group name is required" });
+
+    const { rows: existingRows } = await db.query("SELECT id FROM trainer_groups WHERE id = ?", [id]);
+    if (!existingRows.length) return res.status(404).json({ error: "Group not found" });
+
+    const { rows: nameRows } = await db.query(
+      "SELECT id FROM trainer_groups WHERE name = ? AND id != ?",
+      [name, id]
+    );
+    if (nameRows.length) return res.status(409).json({ error: `A group named "${name}" already exists` });
+
+    await db.query("UPDATE trainer_groups SET name = ? WHERE id = ?", [name, id]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'group_updated', 'trainer_groups', ?)",
+      [req.user.id, id]
+    );
+
+    res.json({ id, name });
+  })
+);
+
+// ---- Trainers (create/assign independently of Group creation) -----------
+// A Trainer (Master Trainer or Trainer/ToT) is a `supervisors` row like any
+// created via POST /groups, but these two routes let Admin create or
+// (re)assign one WITHOUT touching an existing group's other members --
+// POST /groups is reserved for the initial "stand up a whole new group"
+// action. Both routes share the insertSupervisorAccount/linkTraineesToTrainer
+// helpers above with POST /groups, so there's exactly one way a trainer
+// account or a trainee<->trainer caseload link ever gets created.
+
+// POST /api/admin/trainers
+// { fullName, role: 'primary'|'in_training', groupId?, email?, phone?, memberCode?, tempPassword? }
+router.post(
+  "/trainers",
+  asyncRoute(async (req, res, db) => {
+    const body = req.body || {};
+    const fullName = String(body.fullName || "").trim();
+    const role = body.role;
+    const groupId = body.groupId ? Number(body.groupId) : null;
+
+    if (!fullName) return res.status(400).json({ error: "Full name is required" });
+    if (!["primary", "in_training"].includes(role)) {
+      return res.status(400).json({ error: "Role must be 'primary' (Master Trainer) or 'in_training' (Trainer)" });
+    }
+    if (role === "in_training" && !groupId) {
+      return res.status(400).json({
+        error:
+          "A Trainer (ToT) must be assigned to a Group with an active Master Trainer -- create the Master Trainer first, or pick an existing Group.",
+      });
+    }
+
+    let group = null;
+    let primarySupervisorId = null;
+    if (groupId) {
+      const { rows: groupRows } = await db.query("SELECT id, name FROM trainer_groups WHERE id = ?", [groupId]);
+      if (!groupRows.length) return res.status(404).json({ error: "Group not found" });
+      group = groupRows[0];
+
+      const existingMaster = await getActiveMasterTrainer(db, groupId);
+      if (role === "primary" && existingMaster) {
+        return res.status(409).json({
+          error: `This group already has a Master Trainer (${existingMaster.full_name}). Reassign or unassign them first.`,
+        });
+      }
+      if (role === "in_training") {
+        if (!existingMaster) {
+          return res.status(409).json({
+            error: "Assign this group's Master Trainer before adding a Trainer (ToT).",
+          });
+        }
+        primarySupervisorId = existingMaster.id;
+      }
+    }
+
+    const codeResult = await resolveMemberCode(db, body.memberCode, "SUP");
+    if (codeResult.conflict) return res.status(409).json({ error: codeResult.conflict });
+
+    const plainTempPassword =
+      body.tempPassword && String(body.tempPassword).length >= 8
+        ? String(body.tempPassword)
+        : generateTempPassword();
+    const passwordHash = await hashPassword(plainTempPassword);
+
+    const trainer = await insertSupervisorAccount(db, {
+      fullName,
+      memberCode: codeResult.code,
+      passwordHash,
+      supervisorType: role,
+      primarySupervisorId,
+      groupId: group ? group.id : null,
+      email: body.email,
+      phone: body.phone,
+    });
+
+    if (group) {
+      const traineeIds = await getTraineeIdsInGroup(db, group.id);
+      await linkTraineesToTrainer(db, trainer.id, traineeIds, req.user.id);
+    }
+
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'account_created', 'user_credentials', ?)",
+      [req.user.id, trainer.id]
+    );
+
+    const { rows } = await db.query(`${USER_SELECT} WHERE uc.id = ?`, [trainer.id]);
+    res.status(201).json({
+      user: toPublicUser(rows[0]),
+      memberCode: codeResult.code,
+      tempPassword: plainTempPassword,
+    });
+  })
+);
+
+// PATCH /api/admin/trainers/:id/group  { groupId: number|null }
+// Assigns, reassigns, or unassigns (groupId: null) an EXISTING trainer.
+// This is the one code path for both the standalone Trainers list's
+// "Reassign" action and Groups -> open group -> "Add Trainer" -> "assign an
+// existing unassigned trainer".
+router.patch(
+  "/trainers/:id/group",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid trainer id" });
+
+    const { rows: trainerRows } = await db.query(
+      "SELECT id, supervisor_type, group_id FROM supervisors WHERE id = ?",
+      [id]
+    );
+    if (!trainerRows.length) return res.status(404).json({ error: "Trainer not found" });
+    const trainer = trainerRows[0];
+
+    const body = req.body || {};
+    const hasGroupId = Object.prototype.hasOwnProperty.call(body, "groupId");
+    const newGroupId = hasGroupId && body.groupId !== null ? Number(body.groupId) : null;
+    if (!hasGroupId) return res.status(400).json({ error: "groupId is required (use null to unassign)" });
+
+    const oldTraineeIds = await getTraineeIdsInGroup(db, trainer.group_id);
+
+    if (newGroupId === null) {
+      // Unassigning a Master Trainer who still has active Trainers (ToT)
+      // reporting to them would orphan that reporting line -- block it.
+      if (trainer.supervisor_type === "primary") {
+        const { rows: dependents } = await db.query(
+          "SELECT id FROM supervisors WHERE primary_supervisor_id = ?",
+          [id]
+        );
+        if (dependents.length) {
+          return res.status(409).json({
+            error: "This Master Trainer still has Trainers (ToT) reporting to them. Reassign or remove those Trainers first.",
+          });
+        }
+      }
+      await db.query("UPDATE supervisors SET group_id = NULL, updated_at = NOW() WHERE id = ?", [id]);
+      await unlinkTraineesFromTrainer(db, id, oldTraineeIds);
+    } else {
+      const { rows: groupRows } = await db.query("SELECT id FROM trainer_groups WHERE id = ?", [newGroupId]);
+      if (!groupRows.length) return res.status(404).json({ error: "Group not found" });
+
+      const existingMaster = await getActiveMasterTrainer(db, newGroupId);
+      let primarySupervisorId;
+      if (trainer.supervisor_type === "primary") {
+        if (existingMaster && existingMaster.id !== id) {
+          return res.status(409).json({
+            error: `This group already has a Master Trainer (${existingMaster.full_name}). Reassign or unassign them first.`,
+          });
+        }
+        primarySupervisorId = null;
+      } else {
+        if (!existingMaster) {
+          return res.status(409).json({ error: "This group doesn't have a Master Trainer yet -- assign one before adding a Trainer (ToT)." });
+        }
+        primarySupervisorId = existingMaster.id;
+      }
+
+      await db.query(
+        "UPDATE supervisors SET group_id = ?, primary_supervisor_id = ?, updated_at = NOW() WHERE id = ?",
+        [newGroupId, primarySupervisorId, id]
+      );
+
+      if (trainer.group_id !== newGroupId) {
+        await unlinkTraineesFromTrainer(db, id, oldTraineeIds);
+      }
+      const newTraineeIds = await getTraineeIdsInGroup(db, newGroupId);
+      await linkTraineesToTrainer(db, id, newTraineeIds, req.user.id);
+    }
+
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'account_updated', 'user_credentials', ?)",
+      [req.user.id, id]
+    );
+
+    const { rows } = await db.query(`${USER_SELECT} WHERE uc.id = ?`, [id]);
+    res.json(toProfileResponse(rows[0]));
   })
 );
 

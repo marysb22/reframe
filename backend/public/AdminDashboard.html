@@ -161,6 +161,65 @@ tr:hover td{background:var(--surface-2);}
 .trainer-card .trainer-detail{font-size:12.5px;color:var(--muted);line-height:1.7;}
 .trainer-card .trainer-detail i{width:16px;text-align:center;color:var(--faint);}
 
+/* ===== Group detail + Add Trainer modal ===== */
+.group-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:20px;}
+.trainer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(10,20,18,.5);display:none;align-items:center;justify-content:center;z-index:9998;padding:20px;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--surface);border-radius:18px;padding:26px;max-width:460px;width:100%;box-shadow:var(--shadow-pop);max-height:90vh;overflow-y:auto;}
+.modal-box h3{margin:0 0 4px;font-size:16px;}
+.modal-tabs{display:flex;gap:8px;margin:16px 0;border-bottom:1px solid var(--border-soft);padding-bottom:2px;}
+.modal-tab{background:none;border:none;padding:8px 4px;font-weight:600;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;}
+.modal-tab.active{color:var(--primary);border-bottom-color:var(--primary);}
+.modal-actions{display:flex;gap:10px;margin-top:18px;}
+.modal-actions .btn{margin-top:0;}
+
+/* ===== CVs ===== */
+.pill.master-trainer{background:#EAF3EC;color:var(--success);}
+.pill.tot{background:#efe7fb;color:#6a3fb0;}
+.pill.unassigned{background:var(--surface-2);color:var(--faint);}
+
+.cv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:18px;}
+.cv-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:18px;box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:10px;}
+.cv-card-top{display:flex;align-items:center;gap:12px;}
+.cv-avatar{width:48px;height:48px;border-radius:50%;background:var(--success-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;overflow:hidden;flex-shrink:0;}
+.cv-avatar img{width:100%;height:100%;object-fit:cover;}
+.cv-card-name{font-weight:700;font-size:14.5px;margin:0;}
+.cv-card-id{font-size:11.5px;color:var(--faint);}
+.cv-card-meta{font-size:12.5px;color:var(--muted);line-height:1.7;}
+.cv-card-meta i{width:16px;text-align:center;color:var(--faint);}
+.cv-card .btn{margin-top:auto;}
+
+.cv-header{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:22px;}
+.cv-avatar-lg{width:72px;height:72px;border-radius:16px;background:var(--success-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;overflow:hidden;flex-shrink:0;}
+.cv-avatar-lg img{width:100%;height:100%;object-fit:cover;}
+.cv-header h2{margin:0 0 4px;font-size:19px;}
+.cv-header-meta{font-size:12.5px;color:var(--muted);margin-top:6px;}
+
+.cv-section{border-top:1px solid var(--border-soft);padding-top:16px;margin-top:16px;}
+.cv-section:first-of-type{border-top:none;padding-top:0;margin-top:0;}
+.cv-section h4{margin:0 0 12px;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+.cv-field-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+.cv-field label{margin:0 0 4px;font-size:11.5px;}
+.cv-field-value{font-size:13.5px;color:var(--text);}
+.cv-body-text{font-size:13.5px;line-height:1.7;color:var(--text);white-space:pre-wrap;}
+
+@media(max-width:900px){.cv-field-grid{grid-template-columns:1fr;}}
+@media(max-width:700px){.cv-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:480px){.cv-grid{grid-template-columns:1fr;}.cv-header{flex-direction:column;align-items:flex-start;}}
+
+/* Only the currently-active section is ever display:block (see
+   .dash-section.active-section above) -- printCv() relies on that
+   staying true, so this only needs to hide the chrome around it and the
+   CV list (never the case at print time anyway, since opening a CV
+   hides #cvListWrap already) rather than forcing every section visible. */
+@media print{
+  .sidebar,.topbar,.no-print,#cvListWrap{display:none !important;}
+  .main-content{margin:0 !important;width:100% !important;padding:0 !important;}
+  #cvDetailWrap{box-shadow:none;border:none;padding:0;}
+}
+
 @media(max-width:1080px){.create-grid{grid-template-columns:1fr;}.settings-grid{grid-template-columns:1fr;}}
 @media(max-width:900px){.kpi-grid{grid-template-columns:1fr;}}
 @media(max-width:700px){
@@ -186,10 +245,26 @@ tr:hover td{background:var(--surface-2);}
       <li><a data-section="dashboard" class="active" href="#dashboard"><i class="fa fa-gauge"></i>Dashboard</a></li>
     </ul>
 
+    <div class="nav-label">Groups</div>
+    <ul>
+      <li><a data-section="groupCreate" href="#groupCreate"><i class="fa fa-square-plus"></i>Create Group</a></li>
+      <li><a data-section="groups" href="#groups"><i class="fa fa-people-group"></i>All Groups</a></li>
+    </ul>
+
+    <div class="nav-label">Trainers</div>
+    <ul>
+      <li><a data-section="trainerCreate" href="#trainerCreate"><i class="fa fa-user-plus"></i>Create Trainer</a></li>
+      <li><a data-section="trainers" href="#trainers"><i class="fa fa-chalkboard-user"></i>All Trainers</a></li>
+    </ul>
+
     <div class="nav-label">Accounts</div>
     <ul>
-      <li><a data-section="groups" href="#groups"><i class="fa fa-people-group"></i>Groups</a></li>
       <li><a data-section="studentProfiles" href="#studentProfiles"><i class="fa fa-address-card"></i>Trainee Profiles</a></li>
+    </ul>
+
+    <div class="nav-label">CVs</div>
+    <ul>
+      <li><a data-section="cvs" href="#cvs"><i class="fa fa-id-card-clip"></i>All CVs</a></li>
     </ul>
 
     <div class="nav-label">Content &amp; Finance</div>
@@ -253,13 +328,13 @@ tr:hover td{background:var(--surface-2);}
   </section>
 
   <!-- ============================================================= -->
-  <!-- GROUPS                                                         -->
+  <!-- CREATE GROUP                                                   -->
   <!-- ============================================================= -->
-  <section class="dash-section" id="section-groups" data-title="Groups" data-eyebrow="Account management">
+  <section class="dash-section" id="section-groupCreate" data-title="Create Group" data-eyebrow="Groups">
 
     <div class="system-card">
-      <h3><i class="fa fa-people-group"></i>Add group</h3>
-      <p class="hint">Creates a complete group in one step -- 1 Master Trainer, 2 Trainers (ToT), and their Trainees. IDs auto-generate unless you set them. The Master Trainer and both Trainers share one password; every Trainee in the group shares another.</p>
+      <h3><i class="fa fa-people-group"></i>Create a new group</h3>
+      <p class="hint">Creates a complete group in one step -- 1 Master Trainer, 2 Trainers (ToT), and their Trainees. IDs auto-generate unless you set them. The Master Trainer and both Trainers share one password; every Trainee in the group shares another. To add more Trainers to an existing group later, use <a href="#trainerCreate" onclick="showSection('trainerCreate')">Create Trainer</a> or open the group under <a href="#groups" onclick="showSection('groups')">All Groups</a>.</p>
       <form id="groupForm">
         <label>Group name</label>
         <input type="text" id="grpName" required placeholder="e.g. Group A">
@@ -295,27 +370,111 @@ tr:hover td{background:var(--surface-2);}
         <div class="field-hint">Everyone will be required to change their password on first login.</div>
         <button type="submit" class="btn">Create group</button>
       </form>
-      <div class="result-box" id="grpResult"></div>
     </div>
 
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- GROUPS (list + detail management)                              -->
+  <!-- ============================================================= -->
+  <section class="dash-section" id="section-groups" data-title="Groups" data-eyebrow="Account management">
+
+    <div id="groupsListWrap">
+      <div class="result-box" id="grpJustCreatedBox"></div>
+
+      <div class="system-card">
+        <h3><i class="fa fa-people-group"></i>All groups</h3>
+        <div class="toolbar" style="margin-top:16px;">
+          <input type="text" id="groupSearch" placeholder="Search by group name...">
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>Master Trainer</th>
+              <th>Trainers (ToT)</th>
+              <th>Trainees</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="groupsBody">
+            <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="system-card" id="groupDetailWrap" style="display:none;"></div>
+
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- CREATE TRAINER                                                 -->
+  <!-- ============================================================= -->
+  <section class="dash-section" id="section-trainerCreate" data-title="Create Trainer" data-eyebrow="Trainers">
+
     <div class="system-card">
-      <h3><i class="fa fa-people-group"></i>All groups</h3>
+      <h3><i class="fa fa-user-plus"></i>Create a new Trainer</h3>
+      <p class="hint">Create a Master Trainer or Trainer (ToT) without creating a new Group. Assign them to an existing Group now, or leave a Master Trainer unassigned and assign them later.</p>
+      <form id="trainerCreateForm">
+        <label>Full name</label>
+        <input type="text" id="tcName" required placeholder="Full name">
+
+        <label>Role</label>
+        <select id="tcRole">
+          <option value="primary">Master Trainer</option>
+          <option value="in_training">Trainer (ToT)</option>
+        </select>
+
+        <label>Assign to group</label>
+        <select id="tcGroup">
+          <option value="">Leave unassigned</option>
+        </select>
+        <div class="field-hint" id="tcGroupHint">A Trainer (ToT) must be assigned to a group that already has an active Master Trainer.</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div><label>ID (optional)</label><input type="text" id="tcId" placeholder="Auto-generate"></div>
+          <div><label>Temp password</label><input type="text" id="tcPassword" value="password123"></div>
+        </div>
+
+        <div class="field-hint">The Trainer will be required to change their password on first login.</div>
+        <button type="submit" class="btn">Create trainer</button>
+      </form>
+      <div class="result-box" id="tcResult"></div>
+    </div>
+
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- TRAINERS (all Master Trainers + Trainers/ToT)                  -->
+  <!-- ============================================================= -->
+  <section class="dash-section" id="section-trainers" data-title="Trainers" data-eyebrow="Trainers">
+
+    <div class="system-card">
+      <h3><i class="fa fa-chalkboard-user"></i>All Trainers</h3>
+      <p class="hint">Every Master Trainer and Trainer (ToT) across all groups, plus any not yet assigned to a group.</p>
       <div class="toolbar" style="margin-top:16px;">
-        <input type="text" id="groupSearch" placeholder="Search by group name...">
+        <input type="text" id="trainerSearch" placeholder="Search by name or ID...">
+        <select id="trainerRoleFilter">
+          <option value="">All roles</option>
+          <option value="primary">Master Trainer</option>
+          <option value="in_training">Trainer (ToT)</option>
+        </select>
       </div>
       <table>
         <thead>
           <tr>
-            <th>Group</th>
-            <th>Master Trainer</th>
-            <th>Trainer 1 (ToT)</th>
-            <th>Trainer 2 (ToT)</th>
-            <th>Trainees</th>
-            <th>Created</th>
+            <th>Full Name</th>
+            <th>Trainer ID</th>
+            <th>Role</th>
+            <th>Assigned Group</th>
+            <th>Status</th>
+            <th>CV</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="groupsBody">
+        <tbody id="trainersBody">
           <tr><td colspan="7" class="empty-state">Loading...</td></tr>
         </tbody>
       </table>
@@ -430,6 +589,42 @@ tr:hover td{background:var(--surface-2);}
       </div>
 
     </div>
+
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- CVs -- Master Trainer / Trainer (ToT) / Trainee profiles, shown -->
+  <!-- as CVs. Fully decoupled from Groups/Trainers: the list is built -->
+  <!-- from the already-loaded `allUsers` (GET /admin/users), not from -->
+  <!-- GET /admin/groups. The detail view reuses GET/PUT               -->
+  <!-- /admin/users/:id, the same endpoint every other profile view in -->
+  <!-- this dashboard already uses -- no new backend surface.          -->
+  <!-- ============================================================= -->
+  <section class="dash-section" id="section-cvs" data-title="CVs" data-eyebrow="CVs">
+
+    <div class="system-card" id="cvListWrap">
+      <h3><i class="fa fa-id-card-clip"></i> All CVs</h3>
+      <p class="hint">Every Master Trainer, Trainer (ToT), and Trainee, with a professional CV view for each. Only sections with actual information are shown.</p>
+
+      <div class="toolbar" style="margin-top:16px;">
+        <input type="text" id="cvSearch" placeholder="Search by name or ID...">
+        <select id="cvRoleFilter">
+          <option value="">All roles</option>
+          <option value="primary">Master Trainer</option>
+          <option value="in_training">Trainer (ToT)</option>
+          <option value="trainee">Trainee</option>
+        </select>
+        <select id="cvGroupFilter">
+          <option value="">All groups</option>
+        </select>
+      </div>
+
+      <div class="cv-grid" id="cvGrid">
+        <div class="empty-state">Loading...</div>
+      </div>
+    </div>
+
+    <div class="system-card" id="cvDetailWrap" style="display:none;"></div>
 
   </section>
 
@@ -637,6 +832,54 @@ tr:hover td{background:var(--surface-2);}
   </div>
 </div>
 
+<!-- Add Trainer modal -- opened from a Group's detail view. Both tabs
+     (create a brand-new Trainer scoped to this group, or assign an
+     already-existing unassigned Trainer into it) call the exact same
+     createTrainer()/assignTrainerToGroup() functions the standalone
+     Create Trainer / Trainers pages use, so there's one code path per
+     operation no matter where it's triggered from. -->
+<div class="modal-overlay" id="addTrainerModal">
+  <div class="modal-box">
+    <h3>Add Trainer</h3>
+    <p class="hint" id="addTrainerModalHint" style="margin:0;"></p>
+
+    <div class="modal-tabs">
+      <button type="button" class="modal-tab active" data-modal-tab="create" onclick="switchAddTrainerTab('create')">Create new</button>
+      <button type="button" class="modal-tab" data-modal-tab="assign" onclick="switchAddTrainerTab('assign')">Assign existing unassigned</button>
+    </div>
+
+    <form id="addTrainerCreateForm" class="add-trainer-tab" data-tab="create">
+      <label style="margin-top:0;">Full name</label>
+      <input type="text" id="atName" required placeholder="Full name">
+      <label>Role</label>
+      <select id="atRole">
+        <option value="primary">Master Trainer</option>
+        <option value="in_training">Trainer (ToT)</option>
+      </select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><label>ID (optional)</label><input type="text" id="atId" placeholder="Auto-generate"></div>
+        <div><label>Temp password</label><input type="text" id="atPassword" value="password123"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeAddTrainerModal()">Cancel</button>
+        <button type="submit" class="btn">Create &amp; add to group</button>
+      </div>
+    </form>
+
+    <form id="addTrainerAssignForm" class="add-trainer-tab" data-tab="assign" style="display:none;">
+      <label style="margin-top:0;">Unassigned trainer</label>
+      <select id="atExistingTrainer" required>
+        <option value="">Select a trainer...</option>
+      </select>
+      <div class="field-hint">Only Trainers not currently assigned to any group are listed.</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeAddTrainerModal()">Cancel</button>
+        <button type="submit" class="btn">Assign to group</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script src="scripts/api-config.js"></script>
 <script>
 const API_BASE = window.API_BASE;
@@ -697,7 +940,7 @@ function copyText(text) {
 
 // ---- Section switching -------------------------------------------------
 
-const SECTION_IDS = ["dashboard", "groups", "studentProfiles", "events", "payments", "settings"];
+const SECTION_IDS = ["dashboard", "groupCreate", "groups", "trainerCreate", "trainers", "studentProfiles", "cvs", "events", "payments", "settings"];
 
 function showSection(name) {
   if (!SECTION_IDS.includes(name)) name = "dashboard";
@@ -784,7 +1027,7 @@ async function guardAdmin() {
     showToast("Admin access required. Redirecting to your dashboard.", "error");
     setTimeout(() => {
       window.location.href =
-        me.role === "supervisor" ? "supervisor-dashboard.html" :
+        me.role === "supervisor" ? (me.supervisorType === "primary" ? "masterDashborad.html" : "Totdashboard.html") :
         me.role === "designer" ? "DesignerDashboard.html" :
         "PersonalProfile.html";
     }, 800);
@@ -824,6 +1067,9 @@ async function loadUsers() {
   renderKpis();
   renderRecentAccounts();
   renderSpList();
+  renderTrainersList();
+  buildCvGroupFilterOptions();
+  renderCvList();
 }
 
 function renderKpis() {
@@ -859,10 +1105,12 @@ function renderRecentAccounts() {
   `).join("");
 }
 
-// ---- Groups (the only account-creation action Admin has -- creates a
-// Master Trainer + 2 Trainers (ToT) + Trainees as one unit) --------------
+// ---- Groups (list + detail management; creation lives in the separate
+// Create Group form/section) ----------------------------------------------
 
 let allGroups = [];
+let currentGroupId = null;
+let lastCreatedGroupId = null;
 
 function addTraineeRow(name = "", memberCode = "") {
   const wrap = document.getElementById("grpTraineesList");
@@ -877,12 +1125,27 @@ function addTraineeRow(name = "", memberCode = "") {
   wrap.appendChild(row);
 }
 
+function initials(name) {
+  return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => (w[0] && w[0].toUpperCase()) || "").join("");
+}
+
 async function loadGroups() {
   const data = await apiRequest("/admin/groups");
   if (!data) return;
   allGroups = data.groups;
   document.getElementById("kpiGroups").textContent = allGroups.length;
   renderGroups();
+  populateGroupSelect(document.getElementById("tcGroup"), { placeholder: "Leave unassigned" });
+  if (currentGroupId) renderGroupDetail();
+}
+
+/** Fills a <select> with every group as an option, keeping its current selection if still valid. */
+function populateGroupSelect(select, opts = {}) {
+  if (!select) return;
+  const current = select.value;
+  const options = allGroups.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join("");
+  select.innerHTML = `<option value="">${escapeHtml(opts.placeholder || "Select a group...")}</option>${options}`;
+  if (current && allGroups.some((g) => String(g.id) === current)) select.value = current;
 }
 
 function renderGroups() {
@@ -891,63 +1154,176 @@ function renderGroups() {
 
   const body = document.getElementById("groupsBody");
   if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="7" class="empty-state">No groups match.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No groups match.</td></tr>';
     return;
   }
 
   body.innerHTML = filtered
     .map(
       (g) => `
-    <tr>
+    <tr class="${g.id === lastCreatedGroupId ? "just-created" : ""}" style="${g.id === lastCreatedGroupId ? "background:var(--success-bg);" : ""}">
       <td><strong>${escapeHtml(g.name)}</strong></td>
       <td>${g.masterTrainer ? escapeHtml(g.masterTrainer.full_name) : "&mdash;"}</td>
-      <td>${g.trainers[0] ? escapeHtml(g.trainers[0].full_name) : "&mdash;"}</td>
-      <td>${g.trainers[1] ? escapeHtml(g.trainers[1].full_name) : "&mdash;"}</td>
+      <td>${g.trainers.length}</td>
       <td>${g.trainees.length}</td>
       <td>${new Date(g.createdAt).toLocaleDateString()}</td>
-      <td><button class="icon-btn" title="View members" onclick="toggleGroupMembers(${g.id})"><i class="fa fa-eye"></i></button></td>
+      <td><button class="btn btn-sm btn-secondary" onclick="openGroupDetail(${g.id})">Open</button></td>
     </tr>
-    <tr id="groupMembers${g.id}" style="display:none;"><td colspan="7">${renderGroupMembers(g)}</td></tr>
   `
     )
     .join("");
 }
 
-function renderGroupMembers(g) {
-  const rows = [];
-  if (g.masterTrainer) rows.push({ ...g.masterTrainer, roleLabel: "Master Trainer", deleteRole: "supervisor" });
-  g.trainers.forEach((t) => rows.push({ ...t, roleLabel: "Trainer (ToT)", deleteRole: "supervisor" }));
-  g.trainees.forEach((t) => rows.push({ ...t, roleLabel: "Trainee", deleteRole: "trainee" }));
-  if (!rows.length) return '<div class="empty-state">No members.</div>';
-  return `
-    <table style="margin:0;">
-      <thead><tr><th>Name</th><th>Role</th><th>ID</th><th>Status</th><th>First login pending</th><th></th></tr></thead>
-      <tbody>
-        ${rows
-          .map(
-            (m) => `
-          <tr>
-            <td>${escapeHtml(m.full_name)}</td>
-            <td>${escapeHtml(m.roleLabel)}</td>
-            <td>${escapeHtml(m.member_code)}</td>
-            <td><span class="pill ${m.status}">${escapeHtml(m.status)}</span></td>
-            <td>${m.must_change_password ? '<span class="pill pending">Yes</span>' : "&mdash;"}</td>
-            <td>
-              <button class="icon-btn" title="${m.status === "active" ? "Suspend" : "Activate"}" onclick="confirmToggleStatus(${m.id}, '${m.status}', '${escapeHtml(m.full_name)}')"><i class="fa ${m.status === "active" ? "fa-user-slash" : "fa-user-check"}"></i></button>
-              <button class="icon-btn danger" title="Delete" onclick="confirmDeleteUser(${m.id}, '${escapeHtml(m.full_name)}', '${m.deleteRole}')"><i class="fa fa-trash"></i></button>
-            </td>
-          </tr>
-        `
-          )
-          .join("")}
-      </tbody>
+function openGroupDetail(id) {
+  currentGroupId = id;
+  document.getElementById("groupsListWrap").style.display = "none";
+  document.getElementById("groupDetailWrap").style.display = "block";
+  renderGroupDetail();
+  document.getElementById("groupDetailWrap").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function closeGroupDetail() {
+  currentGroupId = null;
+  document.getElementById("groupDetailWrap").style.display = "none";
+  document.getElementById("groupsListWrap").style.display = "block";
+}
+
+function renderGroupDetail() {
+  const g = allGroups.find((x) => x.id === currentGroupId);
+  const wrap = document.getElementById("groupDetailWrap");
+  if (!g) {
+    closeGroupDetail();
+    return;
+  }
+
+  const memberActions = (m, deleteRole) => `
+    <button class="icon-btn" title="${m.status === "active" ? "Suspend" : "Activate"}" onclick="confirmToggleStatus(${m.id}, '${m.status}', '${escapeHtml(m.full_name)}')"><i class="fa ${m.status === "active" ? "fa-user-slash" : "fa-user-check"}"></i></button>
+    <button class="icon-btn danger" title="Delete account" onclick="confirmDeleteUser(${m.id}, '${escapeHtml(m.full_name)}', '${deleteRole}')"><i class="fa fa-trash"></i></button>
+  `;
+
+  const masterTrainerCard = g.masterTrainer
+    ? `
+    <div class="trainer-card">
+      <div class="trainer-name-row">
+        <div><strong>${escapeHtml(g.masterTrainer.full_name)}</strong> <span class="pill supervisor">${escapeHtml(g.masterTrainer.member_code)}</span> <span class="pill ${g.masterTrainer.status}">${escapeHtml(g.masterTrainer.status)}</span></div>
+        <div>
+          <button class="btn btn-secondary btn-sm" onclick="changeGroupMasterTrainer(${g.id}, ${g.masterTrainer.id}, '${escapeHtml(g.masterTrainer.full_name)}')">Change</button>
+          <button class="btn btn-secondary btn-sm" onclick="confirmRemoveTrainerFromGroup(${g.masterTrainer.id}, '${escapeHtml(g.masterTrainer.full_name)}')">Remove</button>
+        </div>
+      </div>
+      <div class="trainer-detail">${memberActions(g.masterTrainer, "supervisor")}</div>
+    </div>`
+    : `<div class="empty-state">No Master Trainer assigned. <button class="btn btn-sm" style="width:auto;margin-top:8px;" onclick="openAddTrainerModal(${g.id}, 'primary')">Assign Master Trainer</button></div>`;
+
+  const trainersCards = g.trainers.length
+    ? g.trainers
+        .map(
+          (t) => `
+    <div class="trainer-card">
+      <div class="trainer-name-row">
+        <div><strong>${escapeHtml(t.full_name)}</strong> <span class="pill supervisor">${escapeHtml(t.member_code)}</span> <span class="pill ${t.status}">${escapeHtml(t.status)}</span></div>
+        <button class="btn btn-secondary btn-sm" onclick="confirmRemoveTrainerFromGroup(${t.id}, '${escapeHtml(t.full_name)}')">Remove</button>
+      </div>
+      <div class="trainer-detail">${memberActions(t, "supervisor")}</div>
+    </div>`
+        )
+        .join("")
+    : '<div class="empty-state">No Trainers (ToT) yet.</div>';
+
+  const traineesRows = g.trainees.length
+    ? g.trainees
+        .map(
+          (t) => `
+    <tr>
+      <td>${escapeHtml(t.full_name)}</td>
+      <td>${escapeHtml(t.member_code)}</td>
+      <td><span class="pill ${t.status}">${escapeHtml(t.status)}</span></td>
+      <td>${memberActions(t, "trainee")}</td>
+    </tr>`
+        )
+        .join("")
+    : '<tr><td colspan="4" class="empty-state">No trainees.</td></tr>';
+
+  wrap.innerHTML = `
+    <div class="group-header">
+      <div style="flex:1;min-width:200px;">
+        <div id="gdNameView" style="display:flex;align-items:center;gap:10px;">
+          <h3 style="margin:0;font-size:19px;">${escapeHtml(g.name)}</h3>
+          <button class="icon-btn" title="Rename group" onclick="startGroupRename()"><i class="fa fa-pen"></i></button>
+        </div>
+        <div id="gdNameEdit" style="display:none;gap:8px;align-items:center;">
+          <input type="text" id="gdNameInput" value="${escapeHtml(g.name)}" style="max-width:260px;">
+          <button class="btn btn-sm" style="width:auto;margin-top:0;" onclick="saveGroupRename(${g.id})">Save</button>
+          <button class="btn btn-secondary btn-sm" style="width:auto;margin-top:0;" onclick="cancelGroupRename()">Cancel</button>
+        </div>
+        <p class="hint" style="margin:4px 0 0;">Created ${new Date(g.createdAt).toLocaleDateString()}</p>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="closeGroupDetail()"><i class="fa fa-arrow-left"></i> Back to all groups</button>
+    </div>
+
+    <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Master Trainer</h4>
+    <div style="margin-bottom:22px;">${masterTrainerCard}</div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h4 style="margin:0;font-size:13px;color:var(--muted);">Trainers (ToT)</h4>
+      <button class="btn btn-sm" style="width:auto;margin-top:0;" onclick="openAddTrainerModal(${g.id})"><i class="fa fa-plus"></i> Add Trainer</button>
+    </div>
+    <div class="trainer-grid" style="margin-bottom:22px;">${trainersCards}</div>
+
+    <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Trainees</h4>
+    <table>
+      <thead><tr><th>Name</th><th>ID</th><th>Status</th><th></th></tr></thead>
+      <tbody>${traineesRows}</tbody>
     </table>
   `;
 }
 
-function toggleGroupMembers(id) {
-  const row = document.getElementById(`groupMembers${id}`);
-  row.style.display = row.style.display === "none" ? "table-row" : "none";
+function startGroupRename() {
+  document.getElementById("gdNameView").style.display = "none";
+  document.getElementById("gdNameEdit").style.display = "flex";
+}
+function cancelGroupRename() {
+  document.getElementById("gdNameEdit").style.display = "none";
+  document.getElementById("gdNameView").style.display = "flex";
+}
+async function saveGroupRename(groupId) {
+  const name = document.getElementById("gdNameInput").value.trim();
+  if (!name) return showToast("Group name is required", "error");
+  const result = await apiRequest(`/admin/groups/${groupId}`, { method: "PATCH", body: JSON.stringify({ name }) });
+  if (!result) return;
+  showToast("Group renamed", "success");
+  await loadGroups();
+  renderGroupDetail();
+}
+
+function confirmRemoveTrainerFromGroup(trainerId, name) {
+  openConfirm(
+    "Remove this Trainer from the group?",
+    `${name} will be unassigned from this group. Their account isn't deleted -- they can be reassigned later from the Trainers page.`,
+    () => removeTrainerFromGroup(trainerId)
+  );
+}
+
+async function removeTrainerFromGroup(trainerId) {
+  const result = await apiRequest(`/admin/trainers/${trainerId}/group`, {
+    method: "PATCH",
+    body: JSON.stringify({ groupId: null }),
+  });
+  if (!result) return;
+  showToast("Trainer removed from group", "success");
+  await Promise.all([loadGroups(), loadUsers()]);
+  renderGroupDetail();
+}
+
+function changeGroupMasterTrainer(groupId, currentTrainerId, name) {
+  openConfirm(
+    "Change this group's Master Trainer?",
+    `${name} will be unassigned first, then you can assign a new Master Trainer.`,
+    async () => {
+      await removeTrainerFromGroup(currentTrainerId);
+      openAddTrainerModal(groupId, "primary");
+    }
+  );
 }
 
 document.getElementById("groupSearch").addEventListener("input", renderGroups);
@@ -990,7 +1366,12 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
   });
 
   if (result) {
-    const box = document.getElementById("grpResult");
+    document.getElementById("groupForm").reset();
+    document.getElementById("grpTraineesList").innerHTML = "";
+    addTraineeRow();
+
+    lastCreatedGroupId = result.group.id;
+    const box = document.getElementById("grpJustCreatedBox");
     box.className = "result-box show";
     box.innerHTML = `
       <div class="rlabel">Group "${escapeHtml(result.group.name)}" created</div>
@@ -999,15 +1380,445 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
       <div class="result-row"><span>Trainer password</span><strong>${escapeHtml(result.trainerPassword)}</strong> <button class="copy-btn" onclick="copyText('${result.trainerPassword}')">Copy</button></div>
       ${result.trainees.map((t) => `<div class="result-row"><span>Trainee</span><strong>${escapeHtml(t.fullName)} (${escapeHtml(t.memberCode)})</strong></div>`).join("")}
       <div class="result-row"><span>Trainee password</span><strong>${escapeHtml(result.traineePassword)}</strong> <button class="copy-btn" onclick="copyText('${result.traineePassword}')">Copy</button></div>
+      <button class="btn btn-secondary btn-sm" style="width:auto;margin-top:10px;" onclick="document.getElementById('grpJustCreatedBox').classList.remove('show')">Dismiss</button>
     `;
     showToast("Group created", "success");
-    document.getElementById("groupForm").reset();
-    document.getElementById("grpTraineesList").innerHTML = "";
-    addTraineeRow();
-    loadUsers();
-    loadGroups();
+
+    await Promise.all([loadUsers(), loadGroups()]);
+    showSection("groups");
+    setTimeout(() => { lastCreatedGroupId = null; renderGroups(); }, 6000);
   }
 });
+
+// ---- Trainers (create/assign independently of Group creation) ----------
+// createTrainer()/assignTrainerToGroup() are the single code path shared by
+// the standalone Create Trainer form, the Trainers list's "Reassign"
+// action, and the Add-Trainer modal opened from a Group's detail view --
+// wrapping POST /admin/trainers and PATCH /admin/trainers/:id/group.
+
+async function createTrainer({ fullName, role, groupId, memberCode, tempPassword }) {
+  return apiRequest("/admin/trainers", {
+    method: "POST",
+    body: JSON.stringify({ fullName, role, groupId: groupId || undefined, memberCode: memberCode || undefined, tempPassword: tempPassword || undefined }),
+  });
+}
+
+async function assignTrainerToGroup(trainerId, groupId) {
+  return apiRequest(`/admin/trainers/${trainerId}/group`, {
+    method: "PATCH",
+    body: JSON.stringify({ groupId: groupId || null }),
+  });
+}
+
+function renderTrainersList() {
+  const search = (document.getElementById("trainerSearch").value || "").toLowerCase();
+  const roleFilter = document.getElementById("trainerRoleFilter").value;
+
+  const trainers = allUsers.filter((u) => {
+    if (u.role !== "supervisor") return false;
+    if (roleFilter && u.supervisorType !== roleFilter) return false;
+    if (search) {
+      const name = (u.full_name || "").toLowerCase();
+      const code = (u.memberCode || "").toLowerCase();
+      if (!name.includes(search) && !code.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const body = document.getElementById("trainersBody");
+  if (!trainers.length) {
+    body.innerHTML = '<tr><td colspan="7" class="empty-state">No trainers match.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = trainers
+    .map(
+      (u) => `
+    <tr>
+      <td><strong>${escapeHtml(u.full_name)}</strong></td>
+      <td>${escapeHtml(u.memberCode)}</td>
+      <td><span class="pill ${u.supervisorType === "in_training" ? "tot" : "master-trainer"}">${escapeHtml(roleDisplayLabel(u))}</span></td>
+      <td>${u.groupName ? escapeHtml(u.groupName) : '<span class="pill unassigned">Unassigned</span>'}</td>
+      <td><span class="pill ${u.status}">${escapeHtml(u.status)}</span></td>
+      <td>${u.bio || u.specialization ? '<span class="pill active">Yes</span>' : '<span class="pill unassigned">No</span>'}</td>
+      <td>
+        <button class="icon-btn" title="Reassign group" onclick="openReassignTrainer(${u.id}, '${escapeHtml(u.full_name)}', ${u.groupId || "null"})"><i class="fa fa-people-arrows"></i></button>
+        <button class="icon-btn" title="View CV" onclick="showSection('cvs'); openCvDetail(${u.id});"><i class="fa fa-id-card-clip"></i></button>
+        <button class="icon-btn" title="${u.status === "active" ? "Suspend" : "Activate"}" onclick="confirmToggleStatus(${u.id}, '${u.status}', '${escapeHtml(u.full_name)}')"><i class="fa ${u.status === "active" ? "fa-user-slash" : "fa-user-check"}"></i></button>
+        <button class="icon-btn danger" title="Delete" onclick="confirmDeleteUser(${u.id}, '${escapeHtml(u.full_name)}', 'supervisor')"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>
+  `
+    )
+    .join("");
+}
+
+function openReassignTrainer(trainerId, name, existingGroupId) {
+  const options = allGroups
+    .filter((g) => g.id !== existingGroupId)
+    .map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`)
+    .join("");
+  const message = document.getElementById("confirmMessage");
+  openConfirm(`Reassign ${name}`, "", async () => {});
+  // The generic confirm dialog has no room for a select, so build a small
+  // inline picker inside its message area instead of a second modal type.
+  message.innerHTML = `
+    <label style="margin-top:0;">Move to group</label>
+    <select id="reassignGroupSelect"><option value="">Unassign (no group)</option>${options}</select>
+  `;
+  const btn = document.getElementById("confirmActionBtn");
+  const freshBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(freshBtn, btn);
+  freshBtn.addEventListener("click", async () => {
+    const groupId = document.getElementById("reassignGroupSelect").value || null;
+    closeConfirm();
+    const result = await assignTrainerToGroup(trainerId, groupId ? Number(groupId) : null);
+    if (!result) return;
+    showToast("Trainer reassigned", "success");
+    await Promise.all([loadUsers(), loadGroups()]);
+  });
+  document.getElementById("confirmOverlay").classList.add("show");
+}
+
+document.getElementById("trainerSearch").addEventListener("input", renderTrainersList);
+document.getElementById("trainerRoleFilter").addEventListener("change", renderTrainersList);
+
+document.getElementById("trainerCreateForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fullName = document.getElementById("tcName").value.trim();
+  const role = document.getElementById("tcRole").value;
+  const groupId = document.getElementById("tcGroup").value || null;
+  const memberCode = document.getElementById("tcId").value.trim();
+  const tempPassword = document.getElementById("tcPassword").value.trim();
+
+  if (role === "in_training" && !groupId) {
+    showToast("A Trainer (ToT) must be assigned to a group with an active Master Trainer", "error");
+    return;
+  }
+
+  const result = await createTrainer({ fullName, role, groupId, memberCode, tempPassword });
+  if (!result) return;
+
+  const box = document.getElementById("tcResult");
+  box.className = "result-box show";
+  box.innerHTML = `
+    <div class="rlabel">Trainer "${escapeHtml(result.user.full_name)}" created</div>
+    <div class="result-row"><span>ID</span><strong>${escapeHtml(result.memberCode)}</strong></div>
+    <div class="result-row"><span>Temp password</span><strong>${escapeHtml(result.tempPassword)}</strong> <button class="copy-btn" onclick="copyText('${result.tempPassword}')">Copy</button></div>
+  `;
+  showToast("Trainer created", "success");
+  document.getElementById("trainerCreateForm").reset();
+  document.getElementById("tcPassword").value = "password123";
+  await Promise.all([loadUsers(), loadGroups()]);
+});
+
+// ---- Add Trainer modal (Group detail -> "+ Add Trainer") ---------------
+
+let addTrainerGroupId = null;
+
+function openAddTrainerModal(groupId, forceRole) {
+  addTrainerGroupId = groupId;
+  const group = allGroups.find((g) => g.id === groupId);
+  document.getElementById("addTrainerModalHint").textContent = group ? `Adding to "${group.name}"` : "";
+
+  if (forceRole) {
+    document.getElementById("atRole").value = forceRole;
+  }
+
+  const unassigned = allUsers.filter((u) => u.role === "supervisor" && !u.groupId);
+  const select = document.getElementById("atExistingTrainer");
+  select.innerHTML = '<option value="">Select a trainer...</option>' +
+    unassigned.map((u) => `<option value="${u.id}">${escapeHtml(u.full_name)} (${escapeHtml(roleDisplayLabel(u))})</option>`).join("");
+
+  switchAddTrainerTab(unassigned.length ? "create" : "create");
+  document.getElementById("addTrainerModal").classList.add("show");
+}
+
+function closeAddTrainerModal() {
+  document.getElementById("addTrainerModal").classList.remove("show");
+  addTrainerGroupId = null;
+}
+
+function switchAddTrainerTab(tab) {
+  document.querySelectorAll(".modal-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.modalTab === tab));
+  document.querySelectorAll(".add-trainer-tab").forEach((form) => {
+    form.style.display = form.dataset.tab === tab ? "block" : "none";
+  });
+}
+
+document.getElementById("addTrainerCreateForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fullName = document.getElementById("atName").value.trim();
+  const role = document.getElementById("atRole").value;
+  const memberCode = document.getElementById("atId").value.trim();
+  const tempPassword = document.getElementById("atPassword").value.trim();
+
+  const result = await createTrainer({ fullName, role, groupId: addTrainerGroupId, memberCode, tempPassword });
+  if (!result) return;
+
+  showToast(`Trainer created and added to the group (ID ${result.memberCode}, temp password ${result.tempPassword})`, "success");
+  closeAddTrainerModal();
+  document.getElementById("addTrainerCreateForm").reset();
+  document.getElementById("atPassword").value = "password123";
+  await Promise.all([loadUsers(), loadGroups()]);
+  renderGroupDetail();
+});
+
+document.getElementById("addTrainerAssignForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const trainerId = Number(document.getElementById("atExistingTrainer").value);
+  if (!trainerId) return showToast("Select a trainer", "error");
+
+  const result = await assignTrainerToGroup(trainerId, addTrainerGroupId);
+  if (!result) return;
+
+  showToast("Trainer added to group", "success");
+  closeAddTrainerModal();
+  await Promise.all([loadUsers(), loadGroups()]);
+  renderGroupDetail();
+});
+
+// ---- CVs (Master Trainer / Trainer (ToT) / Trainee, as CVs) ------------
+// Fully decoupled from Groups/Trainers: the list is built from `allUsers`
+// (GET /admin/users, already loaded) rather than GET /admin/groups. "View
+// CV" reuses GET /admin/users/:id, the exact endpoint the Trainee Profiles
+// section already uses for full profile detail; "Edit" reuses
+// PUT /admin/users/:id. No new backend surface, no duplicate records.
+
+let currentCvId = null;
+let currentCvData = null;
+let cvEditing = false;
+
+function cvRoleMeta(u) {
+  if (u.role === "trainee") return { role: "trainee", label: "Trainee", pill: "trainee" };
+  if (u.supervisorType === "in_training") return { role: "in_training", label: "Trainer (ToT)", pill: "tot" };
+  return { role: "primary", label: "Master Trainer", pill: "master-trainer" };
+}
+
+function buildCvGroupFilterOptions() {
+  const select = document.getElementById("cvGroupFilter");
+  if (!select) return;
+  const current = select.value;
+  const seen = new Map();
+  allUsers.forEach((u) => {
+    if (u.groupId && !seen.has(u.groupId)) seen.set(u.groupId, u.groupName);
+  });
+  const options = Array.from(seen.entries())
+    .sort((a, b) => String(a[1]).localeCompare(String(b[1])))
+    .map(([id, name]) => `<option value="${id}">${escapeHtml(name)}</option>`)
+    .join("");
+  select.innerHTML = `<option value="">All groups</option>${options}`;
+  if (current && seen.has(Number(current))) select.value = current;
+}
+
+function renderCvList() {
+  const search = (document.getElementById("cvSearch").value || "").toLowerCase();
+  const roleFilter = document.getElementById("cvRoleFilter").value;
+  const groupFilter = document.getElementById("cvGroupFilter").value;
+
+  const filtered = allUsers.filter((u) => {
+    if (u.role !== "trainee" && u.role !== "supervisor") return false;
+    const meta = cvRoleMeta(u);
+    if (roleFilter && meta.role !== roleFilter) return false;
+    if (groupFilter && String(u.groupId || "") !== groupFilter) return false;
+    if (search) {
+      const name = (u.full_name || "").toLowerCase();
+      const code = (u.memberCode || "").toLowerCase();
+      if (!name.includes(search) && !code.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const grid = document.getElementById("cvGrid");
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No one matches.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered
+    .map((u) => {
+      const meta = cvRoleMeta(u);
+      return `
+    <div class="cv-card">
+      <div class="cv-card-top">
+        <div class="cv-avatar">${escapeHtml(initials(u.full_name))}</div>
+        <div style="min-width:0;">
+          <p class="cv-card-name">${escapeHtml(u.full_name)}</p>
+          <span class="cv-card-id">${escapeHtml(u.memberCode)}</span>
+        </div>
+      </div>
+      <div><span class="pill ${meta.pill}">${escapeHtml(meta.label)}</span> <span class="pill ${u.status}">${escapeHtml(u.status)}</span></div>
+      <div class="cv-card-meta">
+        <div><i class="fa fa-people-group"></i> ${u.groupName ? escapeHtml(u.groupName) : "Unassigned"}</div>
+        ${u.email ? `<div><i class="fa fa-envelope"></i> ${escapeHtml(u.email)}</div>` : ""}
+      </div>
+      <button class="btn btn-sm" onclick="openCvDetail(${u.id})"><i class="fa fa-address-card"></i> View CV</button>
+    </div>
+  `;
+    })
+    .join("");
+}
+
+async function openCvDetail(id) {
+  const data = await apiRequest(`/admin/users/${id}`);
+  if (!data) return;
+  currentCvId = id;
+  currentCvData = data;
+  cvEditing = false;
+  document.getElementById("cvListWrap").style.display = "none";
+  document.getElementById("cvDetailWrap").style.display = "block";
+  document.getElementById("cvDetailWrap").scrollIntoView({ behavior: "smooth", block: "start" });
+  renderCvDetail();
+}
+
+function closeCvDetail() {
+  document.getElementById("cvDetailWrap").style.display = "none";
+  document.getElementById("cvListWrap").style.display = "block";
+  currentCvId = null;
+  currentCvData = null;
+  cvEditing = false;
+}
+
+function printCv() {
+  window.print();
+}
+
+// A single field, view or edit mode, only rendered if it has a value (or
+// we're editing -- an empty field must still be editable). This is what
+// makes "don't show empty CV sections" work: a section whose every field
+// call returns "" contributes nothing, so the section wrapper below is
+// only emitted when at least one field would show.
+function cvFieldRow(label, value, editKey, opts) {
+  const o = opts || {};
+  if (!cvEditing && !value) return "";
+  const labelHtml = `<label>${escapeHtml(label)}</label>`;
+  if (!cvEditing) {
+    const display = o.multiline
+      ? `<div class="cv-body-text">${escapeHtml(value)}</div>`
+      : `<div class="cv-field-value">${escapeHtml(value)}</div>`;
+    return `<div class="cv-field">${labelHtml}${display}</div>`;
+  }
+  const inputTag = o.multiline
+    ? `<textarea data-cv-field="${editKey}" style="height:80px;">${escapeHtml(value || "")}</textarea>`
+    : `<input type="text" data-cv-field="${editKey}" value="${escapeHtml(value || "")}">`;
+  return `<div class="cv-field">${labelHtml}${inputTag}</div>`;
+}
+
+function renderCvDetail() {
+  const d = currentCvData;
+  const wrap = document.getElementById("cvDetailWrap");
+  if (!d) return;
+
+  const isSupervisor = d.role === "supervisor";
+  const meta = cvRoleMeta(d);
+  const photoSrc = d.photo ? `${API_BASE}/uploads/photos/${d.photo}` : "";
+
+  const personalFields = [
+    cvFieldRow("Email", d.email, "email"),
+    cvFieldRow("Phone", d.phone, "phone"),
+  ].join("");
+
+  const summaryValue = isSupervisor ? d.bio : "";
+  const summarySection = cvEditing || summaryValue
+    ? `<div class="cv-section"><h4>Professional Summary</h4>${cvFieldRow("Summary", summaryValue, "bio", { multiline: true })}</div>`
+    : "";
+
+  const specializationField = isSupervisor ? cvFieldRow("Specialization", d.specialization, "specialization") : "";
+  const specializationSection = cvEditing || specializationField
+    ? `<div class="cv-section"><h4>Specialization</h4><div class="cv-field-grid">${specializationField}</div></div>`
+    : "";
+
+  const educationParts = !isSupervisor
+    ? [
+        cvFieldRow("Highest Degree", d.highestDegree, "highestDegree"),
+        cvFieldRow("Institution", d.institution, "institution"),
+        cvFieldRow("Cohort", d.cohort, null),
+        cvFieldRow("Program Year", d.currentYear, null),
+      ].filter(Boolean)
+    : [];
+  const educationSection = cvEditing || educationParts.some((f) => f)
+    ? `<div class="cv-section"><h4>Education</h4><div class="cv-field-grid">${educationParts.join("")}</div></div>`
+    : "";
+
+  const certificationsValue = !isSupervisor ? d.certifications : "";
+  const certificationsSection = cvEditing || certificationsValue
+    ? `<div class="cv-section"><h4>Training &amp; Certifications</h4>${cvFieldRow("Certifications", certificationsValue, "certifications", { multiline: true })}</div>`
+    : "";
+
+  const actions = [
+    `<button class="btn btn-secondary btn-sm no-print" onclick="closeCvDetail()"><i class="fa fa-arrow-left"></i> Back to list</button>`,
+  ];
+  const rightActions = [];
+  if (!cvEditing) {
+    rightActions.push(`<button class="btn btn-secondary btn-sm no-print" onclick="printCv()"><i class="fa fa-print"></i> Print</button>`);
+    if (!isSupervisor && d.cvFile) {
+      rightActions.push(`<a class="btn btn-secondary btn-sm no-print" href="${API_BASE}/uploads/cv/${d.cvFile}" target="_blank" rel="noopener"><i class="fa fa-download"></i> Download CV</a>`);
+    }
+    rightActions.push(`<button class="btn btn-sm no-print" onclick="startCvEdit()"><i class="fa fa-pen"></i> Edit</button>`);
+  } else {
+    rightActions.push(`<button class="btn btn-secondary btn-sm no-print" onclick="cancelCvEdit()">Cancel</button>`);
+    rightActions.push(`<button class="btn btn-sm no-print" onclick="saveCvEdit()"><i class="fa fa-check"></i> Save</button>`);
+  }
+
+  wrap.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:6px;">
+      ${actions.join("")}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">${rightActions.join("")}</div>
+    </div>
+    <div class="cv-header">
+      <div class="cv-avatar-lg">${photoSrc ? `<img src="${photoSrc}" alt="">` : escapeHtml(initials(d.full_name))}</div>
+      <div>
+        <h2>${escapeHtml(d.full_name)}</h2>
+        <span class="pill ${meta.pill}">${escapeHtml(meta.label)}</span>
+        <span class="pill ${d.status}">${escapeHtml(d.status)}</span>
+        <p class="cv-header-meta">${escapeHtml(d.memberCode)}${d.groupName ? " &middot; " + escapeHtml(d.groupName) : ""}</p>
+      </div>
+    </div>
+
+    <div class="cv-section">
+      <h4>Personal Information</h4>
+      <div class="cv-field-grid">${personalFields}</div>
+    </div>
+    ${summarySection}
+    ${educationSection}
+    ${certificationsSection}
+    ${specializationSection}
+  `;
+}
+
+function startCvEdit() {
+  cvEditing = true;
+  renderCvDetail();
+}
+
+function cancelCvEdit() {
+  cvEditing = false;
+  renderCvDetail();
+}
+
+async function saveCvEdit() {
+  const inputs = document.querySelectorAll("#cvDetailWrap [data-cv-field]");
+  const payload = {};
+  inputs.forEach((el) => {
+    payload[el.dataset.cvField] = el.value.trim();
+  });
+
+  const result = await apiRequest(`/admin/users/${currentCvId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  if (!result) return;
+
+  currentCvData = result;
+  cvEditing = false;
+  showToast("Profile updated", "success");
+  renderCvDetail();
+  loadUsers();
+}
+
+document.getElementById("cvSearch").addEventListener("input", renderCvList);
+document.getElementById("cvRoleFilter").addEventListener("change", renderCvList);
+document.getElementById("cvGroupFilter").addEventListener("change", renderCvList);
 
 // ---- Trainee Profiles (full detail view) --------------------------------
 
@@ -1015,7 +1826,7 @@ function renderSpList() {
   const search = (document.getElementById("spSearch").value || "").toLowerCase();
   const students = allUsers.filter((u) => u.role === "trainee");
   const filtered = students.filter(
-    (u) => u.full_name.toLowerCase().includes(search) || u.memberCode.toLowerCase().includes(search)
+    (u) => (u.full_name || "").toLowerCase().includes(search) || (u.memberCode || "").toLowerCase().includes(search)
   );
 
   const body = document.getElementById("spListBody");
@@ -1407,7 +2218,7 @@ async function loadPayments() {
 function renderPayments() {
   const search = document.getElementById("paymentSearch").value.toLowerCase();
   const filtered = allPayments.filter(
-    (p) => p.fullName.toLowerCase().includes(search) || p.memberCode.toLowerCase().includes(search)
+    (p) => (p.fullName || "").toLowerCase().includes(search) || (p.memberCode || "").toLowerCase().includes(search)
   );
 
   const body = document.getElementById("paymentsBody");

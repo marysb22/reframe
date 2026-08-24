@@ -472,7 +472,7 @@ async function guardDesigner() {
     setTimeout(() => {
       window.location.href =
         me.role === "admin" ? "AdminDashboard.html" :
-        me.role === "supervisor" ? "supervisor-dashboard.html" :
+        me.role === "supervisor" ? (me.supervisorType === "primary" ? "masterDashborad.html" : "Totdashboard.html") :
         "PersonalProfile.html";
     }, 800);
     return null;
