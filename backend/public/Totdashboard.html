@@ -56,7 +56,45 @@
             font-family: "Lexend", "Inter", sans-serif;
             letter-spacing: -.01em;
         }
-        
+
+        /* Bare <label>/<input> pairs (e.g. the Settings forms) had no rules
+           of their own anywhere in this file, so they fell back to the
+           browser defaults -- label is inline and input is inline-block,
+           so with no width or stacking rule they just wrapped as text
+           wherever the row ran out of space instead of stacking one
+           field per line. Matches the same base rule every other
+           dashboard page (AdminDashboard.html etc.) already has. */
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 12.5px;
+            color: var(--muted);
+            margin: 12px 0 6px;
+        }
+        label:first-of-type {
+            margin-top: 0;
+        }
+        input,
+        textarea {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 0 13px;
+            font-size: 13.5px;
+            background: var(--surface-2);
+            font-family: inherit;
+        }
+        input {
+            height: 42px;
+        }
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            background: var(--surface);
+        }
+
         .system-layout {
             display: flex;
             min-height: 100vh;

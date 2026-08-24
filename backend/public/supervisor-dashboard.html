@@ -38,6 +38,15 @@
 *{box-sizing:border-box;}
 body{margin:0;font-family:"Inter",Arial,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
 h1,h2,h3,h4{font-family:"Lexend","Inter",sans-serif;letter-spacing:-.01em;}
+/* Bare <label>/<input> pairs (e.g. the Settings forms) had no rules of
+   their own here -- only .modal-box label and .progress-cell label were
+   scoped -- so they fell back to inline/inline-block browser defaults and
+   wrapped like text instead of stacking one field per line. */
+label{display:block;font-weight:600;font-size:12.5px;color:var(--muted);margin:12px 0 6px;}
+label:first-of-type{margin-top:0;}
+input,textarea{width:100%;border-radius:10px;border:1px solid var(--border);padding:0 13px;font-size:13.5px;background:var(--surface-2);font-family:inherit;}
+input{height:42px;}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--primary-light);background:var(--surface);}
 .system-layout{display:flex;min-height:100vh;}
 
 .sidebar{width:var(--sidebar-w);background:linear-gradient(190deg,#0F2320 0%,#0A1716 65%,#0A1615 100%);color:#EAF1EF;position:fixed;height:100vh;padding:26px 18px;overflow-y:auto;display:flex;flex-direction:column;z-index:40;transition:transform .25s ease;}
