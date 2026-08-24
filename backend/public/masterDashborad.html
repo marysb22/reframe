@@ -448,7 +448,22 @@
             font-size: 25px;
             font-weight: 700;
         }
-        
+
+        .section-subheading {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin: 4px 0 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-subheading i {
+            color: var(--primary);
+        }
+
         .widget-row {
             display: grid;
             grid-template-columns: 1.15fr 1fr;
@@ -709,7 +724,14 @@
             padding: 7px 13px;
             font-size: 12.5px;
         }
-        
+
+        .date-preset.active,
+        .week-pick.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
         .toolbar {
             display: flex;
             gap: 12px;
@@ -788,7 +810,18 @@
             background: var(--warning-bg);
             color: var(--warning);
         }
-        
+
+        .pill.overdue,
+        .pill.cancelled {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .pill.scheduled {
+            background: var(--info-bg);
+            color: var(--info);
+        }
+
         .row-actions {
             display: flex;
             gap: 7px;
@@ -1085,7 +1118,62 @@
             text-decoration: none;
             font-size: 12.5px;
         }
-        
+
+        .mt-progress-track {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .mt-progress-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: var(--primary);
+            transition: width .25s ease;
+        }
+
+        .cv-section {
+            border-top: 1px solid var(--border-soft);
+            padding-top: 14px;
+            margin-top: 14px;
+        }
+        .cv-section:first-of-type {
+            border-top: none;
+            padding-top: 0;
+            margin-top: 0;
+        }
+        .cv-section h4 {
+            margin: 0 0 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--muted);
+        }
+        .cv-section p {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .cv-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 6px 0;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border-soft);
+        }
+        .cv-row:last-child {
+            border-bottom: none;
+        }
+        .cv-row label {
+            color: var(--muted);
+            font-weight: 600;
+        }
+
         .material-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1315,7 +1403,25 @@
                 display: flex;
             }
         }
-        
+
+        /* Only the active section is ever display:block (see .dash-section.
+           active-section above) -- window.print() on the Weekly Reports
+           section relies on that staying true, so this only needs to hide
+           the chrome around it rather than forcing every section visible. */
+        @media print {
+            .sidebar, .topbar, .no-print {
+                display: none !important;
+            }
+            .main-content {
+                margin: 0 !important;
+                width: 100% !important;
+                padding: 0 !important;
+            }
+            .report-card {
+                break-inside: avoid;
+            }
+        }
+
         .settings-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -1409,6 +1515,15 @@
                     <li><a data-section="documents" href="#documents"><i class="fa fa-folder-open"></i>Documents</a></li>
                     <li><a data-section="activity" href="#activity"><i class="fa fa-clock-rotate-left"></i>Activity</a></li>
                 </ul>
+                <div class="nav-label">Insights</div>
+                <ul>
+                    <li><a data-section="assignments" href="#assignments"><i class="fa fa-list-check"></i>Assignments</a></li>
+                    <li><a data-section="needs-attention" href="#needs-attention"><i class="fa fa-triangle-exclamation"></i>Needs Attention</a></li>
+                    <li><a data-section="analytics" href="#analytics"><i class="fa fa-chart-column"></i>Analytics</a></li>
+                    <li><a data-section="milestones" href="#milestones"><i class="fa fa-flag-checkered"></i>Milestones</a></li>
+                    <li><a data-section="reports" href="#reports"><i class="fa fa-file-lines"></i>Weekly Reports</a></li>
+                    <li><a data-section="cvs" href="#cvs"><i class="fa fa-id-card-clip"></i>Team CVs</a></li>
+                </ul>
                 <div class="nav-label">Account</div>
                 <ul>
                     <li><a data-section="settings" href="#settings"><i class="fa fa-gear"></i>Settings</a></li>
@@ -1467,6 +1582,50 @@
                             <div class="kpi-icon"><i class="fa fa-chalkboard-user"></i></div>
                         </div><label>Sessions logged</label>
                         <h2 id="kpiSessions">&mdash;</h2>
+                    </div>
+                </section>
+
+                <h3 class="section-subheading"><i class="fa fa-chart-line"></i> Training performance</h3>
+                <section class="kpi-grid" id="kpiPerformanceGrid">
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-circle-check"></i></div></div>
+                        <label>Sessions completed</label><h2 id="kpiSessionsCompleted">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-calendar-plus"></i></div></div>
+                        <label>Upcoming sessions</label><h2 id="kpiSessionsUpcoming">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-calendar-xmark"></i></div></div>
+                        <label>Cancelled sessions</label><h2 id="kpiSessionsCancelled">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-list-check"></i></div></div>
+                        <label>Assignments completed</label><h2 id="kpiAssignmentsCompleted">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-hourglass-half"></i></div></div>
+                        <label>Assignments pending</label><h2 id="kpiAssignmentsPending">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-triangle-exclamation"></i></div></div>
+                        <label>Assignments overdue</label><h2 id="kpiAssignmentsOverdue">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-book"></i></div></div>
+                        <label>Materials added this week</label><h2 id="kpiMaterialsWeek">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-user-check"></i></div></div>
+                        <label>Attendance rate</label><h2 id="kpiAttendanceRate">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-percent"></i></div></div>
+                        <label>Assignment completion rate</label><h2 id="kpiCompletionRate">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-gauge-high"></i></div></div>
+                        <label id="kpiProgressLabel">Training progress</label><h2 id="kpiTrainingProgress">&mdash;</h2>
                     </div>
                 </section>
 
@@ -1530,13 +1689,15 @@
                                 <th>Trainees</th>
                                 <th>Sessions</th>
                                 <th>Hours</th>
+                                <th>Completion</th>
+                                <th>Attendance</th>
                                 <th>Status</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody id="totsBody">
                             <tr class="loading-row">
-                                <td colspan="7">Loading trainers...</td>
+                                <td colspan="9">Loading trainers...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1556,6 +1717,17 @@
                     <p class="card-subtitle">Every trainee belonging to your Group, with the Trainer(s) in Training currently assigned to them.</p>
                     <div class="toolbar">
                         <input type="text" id="traineeSearch" placeholder="Search by name or ID...">
+                        <select id="traineeTotFilter"><option value="">All ToTs</option></select>
+                        <select id="traineeStatusFilter">
+                            <option value="">Active &amp; Inactive</option>
+                            <option value="active">Active only</option>
+                            <option value="suspended">Inactive only</option>
+                        </select>
+                        <select id="traineeSort">
+                            <option value="name">Sort: Name</option>
+                            <option value="completion">Sort: Completion %</option>
+                            <option value="attendance">Sort: Attendance %</option>
+                        </select>
                     </div>
                     <table>
                         <thead>
@@ -1565,13 +1737,15 @@
                                 <th>Cohort</th>
                                 <th>Year</th>
                                 <th>Assigned ToT(s)</th>
+                                <th>Completion</th>
+                                <th>Attendance</th>
                                 <th>Status</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody id="traineesBody">
                             <tr class="loading-row">
-                                <td colspan="7">Loading trainees...</td>
+                                <td colspan="9">Loading trainees...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1615,9 +1789,32 @@
                         </div>
                     </div>
                     <div class="mt-readonly-note"><i class="fa fa-eye"></i> View-only &mdash; sessions are created and edited by each Trainer in Training from their own dashboard.</div>
-                    <ul class="sched-list" id="allSessionsList">
-                        <li class="empty-state">Loading sessions...</li>
-                    </ul>
+                    <div class="toolbar">
+                        <input type="text" id="sessionSearch" placeholder="Search by title or trainee...">
+                        <select id="sessionStatusFilter">
+                            <option value="">All statuses</option>
+                            <option value="completed">Completed</option>
+                            <option value="scheduled">Upcoming</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Type</th>
+                                <th>Title</th>
+                                <th>Trainee</th>
+                                <th>Trainer</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allSessionsBody">
+                            <tr class="loading-row"><td colspan="8">Loading sessions...</td></tr>
+                        </tbody>
+                    </table>
                 </section>
             </section>
 
@@ -1685,6 +1882,178 @@
                     <ul class="activity-feed" id="allActivityFeed">
                         <li class="empty-state">Loading activity...</li>
                     </ul>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- ASSIGNMENTS (group-wide, read-only)                            -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-assignments" data-title="Assignments" data-eyebrow="Insights">
+                <section class="kpi-grid" id="assignmentsSummaryGrid">
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-list-check"></i></div></div>
+                        <label>Total assignments</label><h2 id="asgKpiTotal">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-circle-check"></i></div></div>
+                        <label>Completed</label><h2 id="asgKpiCompleted">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-hourglass-half"></i></div></div>
+                        <label>Pending</label><h2 id="asgKpiPending">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-triangle-exclamation"></i></div></div>
+                        <label>Overdue</label><h2 id="asgKpiOverdue">&mdash;</h2>
+                    </div>
+                </section>
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-list-check"></i>
+                            <h2>Assignments across your Group</h2>
+                        </div>
+                    </div>
+                    <div class="mt-readonly-note"><i class="fa fa-eye"></i> View-only &mdash; assignments are created and edited by each Trainer in Training from their own dashboard.</div>
+                    <div class="toolbar">
+                        <input type="text" id="assignmentSearch" placeholder="Search by title or trainee...">
+                        <select id="assignmentTotFilter"><option value="">All ToTs</option></select>
+                        <select id="assignmentStatusFilter">
+                            <option value="">All statuses</option>
+                            <option value="completed">Completed</option>
+                            <option value="pending">Pending</option>
+                            <option value="overdue">Overdue</option>
+                        </select>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Trainee</th>
+                                <th>Trainer</th>
+                                <th>Due date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assignmentsBody">
+                            <tr class="loading-row"><td colspan="5">Loading assignments...</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- NEEDS ATTENTION                                                -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-needs-attention" data-title="Needs Attention" data-eyebrow="Insights">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-triangle-exclamation"></i>
+                            <h2>Needs Attention</h2>
+                        </div>
+                        <span class="tag" id="attentionCount">&mdash;</span>
+                    </div>
+                    <p class="card-subtitle">Automatically identified from real data in your Group -- overdue assignments, low attendance, inactive Trainers, and sessions that were never marked complete or cancelled.</p>
+                    <div id="attentionList">
+                        <div class="empty-state">Loading...</div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- ANALYTICS                                                      -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-analytics" data-title="Analytics" data-eyebrow="Insights">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-chart-column"></i>
+                            <h2>Training Analytics</h2>
+                        </div>
+                    </div>
+                    <div class="toolbar" id="analyticsFilterToolbar">
+                        <button type="button" class="btn btn-secondary btn-sm date-preset active" data-preset="week">This Week</button>
+                        <button type="button" class="btn btn-secondary btn-sm date-preset" data-preset="lastweek">Last Week</button>
+                        <button type="button" class="btn btn-secondary btn-sm date-preset" data-preset="month">This Month</button>
+                        <input type="date" id="analyticsFrom">
+                        <span style="align-self:center;color:var(--muted);font-size:12.5px;">to</span>
+                        <input type="date" id="analyticsTo">
+                        <button type="button" class="btn btn-secondary btn-sm" id="analyticsCustomApply">Apply</button>
+                    </div>
+                    <p class="card-subtitle" id="analyticsRangeLabel">&mdash;</p>
+                </section>
+
+                <section class="widget-row">
+                    <div class="widget">
+                        <div class="widget-title"><h3><i class="fa fa-chalkboard-user"></i>Sessions by status</h3></div>
+                        <div id="chartSessionsStatus"></div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-title"><h3><i class="fa fa-list-check"></i>Assignment completion</h3></div>
+                        <div id="chartAssignmentCompletion"></div>
+                    </div>
+                </section>
+                <section class="widget-row">
+                    <div class="widget">
+                        <div class="widget-title"><h3><i class="fa fa-scale-balanced"></i>Trainer (ToT) comparison &mdash; sessions completed</h3></div>
+                        <div id="chartTotComparison"></div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-title"><h3><i class="fa fa-chart-line"></i>Daily sessions completed</h3></div>
+                        <div id="chartDailySessions"></div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- MILESTONES (group-wide, read-only)                             -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-milestones" data-title="Milestones" data-eyebrow="Insights">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-flag-checkered"></i>
+                            <h2>Training Milestones</h2>
+                        </div>
+                    </div>
+                    <div class="mt-readonly-note"><i class="fa fa-eye"></i> View-only &mdash; Trainers (ToT) mark progress from their own dashboard; milestone stages themselves are defined by Admin.</div>
+                    <div id="milestonesGrid" class="material-grid">
+                        <div class="empty-state">Loading...</div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- WEEKLY TRAINING REPORTS                                        -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-reports" data-title="Weekly Reports" data-eyebrow="Insights">
+                <section class="system-card no-print">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-file-lines"></i>
+                            <h2>Weekly Training Reports</h2>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="window.print()"><i class="fa fa-print"></i> Print / Save as PDF</button>
+                    </div>
+                    <p class="card-subtitle">A complete, real-data summary of one training week. Pick a week below.</p>
+                    <div class="toolbar" id="reportHistoryToolbar">
+                        <div class="empty-state">Loading recent weeks...</div>
+                    </div>
+                </section>
+
+                <div id="reportContent"><div class="empty-state">Loading report...</div></div>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- TEAM CVs (read-only)                                           -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-cvs" data-title="Team CVs" data-eyebrow="Insights">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-id-card-clip"></i>
+                            <h2>Your Trainers in Training</h2>
+                        </div>
+                    </div>
+                    <p class="card-subtitle">Read-only professional profiles. Only sections with actual information are shown.</p>
+                    <div class="material-grid" id="teamCvGrid">
+                        <div class="empty-state">Loading...</div>
+                    </div>
                 </section>
             </section>
 
@@ -1764,6 +2133,7 @@
     </div>
 
     <script src="scripts/api-config.js"></script>
+    <script src="scripts/charts.js"></script>
     <script>
         const API = window.API_BASE + "/api";
         const UPLOADS = window.API_BASE + "/uploads";
@@ -1866,7 +2236,7 @@
 
         // ---- Section switching --------------------------------------------
 
-        const SECTION_IDS = ["dashboard", "group", "tots", "trainees", "calendar", "sessions", "meetings", "materials", "documents", "activity", "settings"];
+        const SECTION_IDS = ["dashboard", "group", "tots", "trainees", "calendar", "sessions", "meetings", "materials", "documents", "activity", "assignments", "needs-attention", "analytics", "milestones", "reports", "cvs", "settings"];
 
         const SECTION_LOADERS = {
             group: () => loadGroup(),
@@ -1878,6 +2248,12 @@
             materials: () => loadAllMaterials(),
             documents: () => loadAllDocuments(),
             activity: () => loadAllActivity(),
+            assignments: () => loadAssignments(),
+            "needs-attention": () => loadNeedsAttention(),
+            analytics: () => initAnalytics(),
+            milestones: () => loadGroupMilestones(),
+            reports: () => initWeeklyReports(),
+            cvs: () => renderTeamCvs(),
         };
         const loadedSections = new Set(["dashboard"]);
 
@@ -2014,9 +2390,33 @@
         </li>`).join("");
         }
 
+        function fmtPct(value) {
+            return value === null || value === undefined ? "&mdash;" : value + "%";
+        }
+
+        async function loadDashboardSummary() {
+            const data = await apiRequest("/master-trainer/dashboard-summary");
+            if (!data) return;
+            document.getElementById("kpiSessionsCompleted").textContent = data.sessionsCompleted;
+            document.getElementById("kpiSessionsUpcoming").textContent = data.sessionsUpcoming;
+            document.getElementById("kpiSessionsCancelled").textContent = data.sessionsCancelled;
+            document.getElementById("kpiAssignmentsCompleted").textContent = data.assignmentsCompleted;
+            document.getElementById("kpiAssignmentsPending").textContent =
+                Math.max(0, data.assignmentsTotal - data.assignmentsCompleted - data.assignmentsOverdue);
+            document.getElementById("kpiAssignmentsOverdue").textContent = data.assignmentsOverdue;
+            document.getElementById("kpiMaterialsWeek").textContent = data.materialsAddedThisWeek;
+            document.getElementById("kpiAttendanceRate").innerHTML = fmtPct(data.attendanceRatePct);
+            document.getElementById("kpiCompletionRate").innerHTML = fmtPct(data.completionRatePct);
+            document.getElementById("kpiTrainingProgress").innerHTML = fmtPct(data.trainingProgress.value);
+            document.getElementById("kpiProgressLabel").textContent = data.trainingProgress.basis === "milestones"
+                ? "Training progress (milestones)"
+                : "Training progress (assignment-based)";
+        }
+
         document.addEventListener("DOMContentLoaded", async() => {
             await loadMe();
             await loadDashboardHours();
+            await loadDashboardSummary();
             await loadSchedule();
             await loadActivity();
             const initialSection = window.location.hash.slice(1) || "dashboard";
@@ -2059,14 +2459,14 @@
         function renderTots() {
             const totSearchEl = document.getElementById("totSearch");
             const search = ((totSearchEl && totSearchEl.value) || "").toLowerCase();
-            const filtered = allTots.filter((t) => t.full_name.toLowerCase().includes(search) || t.member_code.toLowerCase().includes(search));
+            const filtered = allTots.filter((t) => (t.full_name || "").toLowerCase().includes(search) || (t.member_code || "").toLowerCase().includes(search));
             const body = document.getElementById("totsBody");
             if (!allTots.length) {
-                body.innerHTML = '<tr><td colspan="7" class="empty-state">No Trainers in Training in your Group yet.</td></tr>';
+                body.innerHTML = '<tr><td colspan="9" class="empty-state">No Trainers in Training in your Group yet.</td></tr>';
                 return;
             }
             if (!filtered.length) {
-                body.innerHTML = '<tr><td colspan="7" class="empty-state">No trainers match your search.</td></tr>';
+                body.innerHTML = '<tr><td colspan="9" class="empty-state">No trainers match your search.</td></tr>';
                 return;
             }
             body.innerHTML = filtered.map((t) => `
@@ -2076,6 +2476,8 @@
           <td>${t.trainee_count}</td>
           <td>${t.session_count}</td>
           <td>${Math.round((Number(t.training_hours || 0) + Number(t.supervision_hours || 0)) * 10) / 10}</td>
+          <td>${fmtPct(t.completion_pct)}</td>
+          <td>${fmtPct(t.attendance_rate)}</td>
           <td><span class="pill ${t.status}">${escapeHtml(t.status)}</span></td>
           <td><button class="icon-btn" title="Open profile" onclick="openTot(${t.id})"><i class="fa fa-eye"></i></button></td>
         </tr>`).join("");
@@ -2115,6 +2517,7 @@
                 ["materials", "Materials"],
                 ["meetings", "Meetings"],
                 ["activity", "Activity"],
+                ["cv", "CV"],
             ];
             document.getElementById("totTabs").innerHTML = tabs.map(([k, label]) =>
                 `<button class="tab-btn ${k === totActiveTab ? "active" : ""}" onclick="switchTotTab('${k}')">${label}</button>`
@@ -2189,7 +2592,235 @@
               <div class="atime">${new Date(a.createdAt).toLocaleString()}</div>
             </div></li>`).join("")}</ul>`
                     : '<p class="empty-state">No recent activity.</p>';
+                return;
             }
+            if (totActiveTab === "cv") {
+                c.innerHTML = renderCvCard(currentTot.trainer);
+            }
+        }
+
+        // Read-only CV card, view-only, only rendering fields/sections that
+        // have real data -- no empty "Professional Summary" box, no fake
+        // "highest degree" field (supervisors have no such column).
+        function renderCvCard(t) {
+            const contactRows = [
+                t.email ? `<div class="cv-row"><label>Email</label><span>${escapeHtml(t.email)}</span></div>` : "",
+                t.phone ? `<div class="cv-row"><label>Phone</label><span>${escapeHtml(t.phone)}</span></div>` : "",
+            ].join("");
+            const summary = t.bio
+                ? `<div class="cv-section"><h4>Professional Summary</h4><p>${escapeHtml(t.bio)}</p></div>` : "";
+            const specialization = t.specialization
+                ? `<div class="cv-section"><h4>Specialization</h4><p>${escapeHtml(t.specialization)}</p></div>` : "";
+            if (!contactRows && !summary && !specialization) {
+                return '<p class="empty-state">No CV information added yet.</p>';
+            }
+            return `
+        <div class="cv-section"><h4>Personal Information</h4>${contactRows || '<p class="empty-state">No contact info added.</p>'}</div>
+        ${summary}
+        ${specialization}
+      `;
+        }
+
+        // ---- Milestones (group-wide, read-only) ------------------------------
+
+        const MILESTONE_STATUS_LABELS = { not_started: "Not started", in_progress: "In progress", completed: "Completed" };
+
+        async function loadGroupMilestones() {
+            const grid = document.getElementById("milestonesGrid");
+            grid.innerHTML = '<div class="empty-state">Loading...</div>';
+            const data = await apiRequest("/master-trainer/milestones");
+            if (!data) return;
+            if (!data.milestones.length) {
+                grid.innerHTML = '<div class="empty-state">No milestones have been defined by Admin yet.</div>';
+                return;
+            }
+            grid.innerHTML = data.milestones.map((m) => `
+        <div class="material-card">
+          <h4 style="margin:0 0 4px;">${escapeHtml(m.nameEn)}</h4>
+          <p style="margin:0 0 4px;">${m.completedCount} of ${m.traineeCount} trainee${m.traineeCount === 1 ? "" : "s"}</p>
+          <div class="mt-progress-track"><div class="mt-progress-fill" style="width:${m.completionPct ?? 0}%;"></div></div>
+          <p style="margin:0;">${fmtPct(m.completionPct)}</p>
+          ${m.completedBy.length ? `<div class="rmeta" style="margin-top:8px;">Completed by: ${m.completedBy.map((c) => escapeHtml(c.fullName)).join(", ")}</div>` : ""}
+        </div>`).join("");
+        }
+
+        // ---- Weekly Training Reports ------------------------------------------
+        // Computed on demand for any ISO week -- see
+        // GET /master-trainer/reports/weekly. Print/PDF is the browser's own
+        // print dialog (see the @media print rules above), the same working
+        // pattern already used for CVs elsewhere in this app.
+
+        let currentReportWeek = null;
+
+        async function initWeeklyReports() {
+            const toolbar = document.getElementById("reportHistoryToolbar");
+            toolbar.innerHTML = '<div class="empty-state">Loading recent weeks...</div>';
+            const data = await apiRequest("/master-trainer/reports/weekly/history?count=8");
+            if (!data) return;
+
+            toolbar.innerHTML = data.weeks.map((w) => `
+        <button type="button" class="btn btn-secondary btn-sm week-pick ${w.isCurrent ? "active" : ""}" data-week="${w.week}">
+          ${w.week}${w.isCurrent ? " (current)" : ""} <span style="opacity:.65;">&middot; ${w.sessionsCount}</span>
+        </button>`).join("");
+
+            document.querySelectorAll(".week-pick").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    document.querySelectorAll(".week-pick").forEach((b) => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    loadWeeklyReport(btn.dataset.week);
+                });
+            });
+
+            const current = data.weeks.find((w) => w.isCurrent) || data.weeks[0];
+            if (current) loadWeeklyReport(current.week);
+        }
+
+        const PROGRESS_BUCKET_LABELS = {
+            on_track: "On Track",
+            needs_attention: "Needs Attention",
+            behind_schedule: "Behind Schedule",
+            completed_milestone: "Completed Milestone",
+        };
+        const PROGRESS_BUCKET_PILL = {
+            on_track: "active",
+            needs_attention: "absent",
+            behind_schedule: "pending",
+            completed_milestone: "completed",
+        };
+
+        async function loadWeeklyReport(week) {
+            currentReportWeek = week;
+            const container = document.getElementById("reportContent");
+            container.innerHTML = '<div class="empty-state">Loading report...</div>';
+            const data = await apiRequest(`/master-trainer/reports/weekly?week=${week}`);
+            if (!data) return;
+            renderWeeklyReport(data);
+        }
+
+        function renderWeeklyReport(d) {
+            const es = d.executiveSummary;
+            const container = document.getElementById("reportContent");
+
+            const summaryTiles = [
+                ["Total sessions", es.sessionsTotal],
+                ["Completed", es.sessionsCompleted],
+                ["Cancelled", es.sessionsCancelled],
+                ["Active trainees", es.activeTrainees],
+                ["Attendance", fmtPct(es.attendanceRatePct)],
+                ["Assignments completed", es.assignmentsCompleted],
+                ["Materials added", es.materialsAdded],
+                ["Milestones achieved", es.milestonesAchieved],
+                ["Needs attention", es.issuesRequiringAttention],
+            ].map(([label, value]) => `<div class="kpi-card"><label>${label}</label><h2 style="font-size:20px;">${value}</h2></div>`).join("");
+
+            const sessionsRows = d.sessions.length
+                ? d.sessions.map((s) => `
+            <tr>
+              <td>${s.date}</td>
+              <td>${s.time || "--:--"}</td>
+              <td>${escapeHtml(s.trainerName)}</td>
+              <td>${escapeHtml(s.studentName)}</td>
+              <td>${escapeHtml(s.title || "&mdash;")}</td>
+              <td>${s.durationMinutes ? s.durationMinutes + " min" : "&mdash;"}</td>
+              <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td>
+            </tr>`).join("")
+                : '<tr><td colspan="7" class="empty-state">No sessions this week.</td></tr>';
+
+            const totCards = d.totPerformance.map((t) => `
+        <div class="trainer-card">
+          <div class="trainer-name-row"><strong>${escapeHtml(t.fullName)}</strong></div>
+          <div class="trainer-detail">
+            <div><i class="fa fa-chalkboard-user"></i> ${t.sessionsCompleted} of ${t.sessionsTotal} sessions completed</div>
+            ${t.outstandingItems.length ? t.outstandingItems.map((o) => `<div><i class="fa fa-triangle-exclamation"></i> ${escapeHtml(o)}</div>`).join("") : '<div><i class="fa fa-circle-check"></i> No outstanding items</div>'}
+          </div>
+        </div>`).join("");
+
+            const progressRows = d.traineeProgress.length
+                ? d.traineeProgress.map((t) => `
+            <tr>
+              <td>${escapeHtml(t.fullName)}</td>
+              <td><span class="pill ${PROGRESS_BUCKET_PILL[t.bucket] || ""}">${escapeHtml(PROGRESS_BUCKET_LABELS[t.bucket] || t.bucket)}</span></td>
+              <td>${escapeHtml(t.reason || "&mdash;")}</td>
+            </tr>`).join("")
+                : '<tr><td colspan="3" class="empty-state">No trainees in your Group.</td></tr>';
+
+            const materialsList = d.materials.length
+                ? `<ul class="doc-list">${d.materials.map((m) => `<li class="doc-item"><div><strong>${escapeHtml(m.title)}</strong> <span style="color:var(--muted);font-size:11.5px;">(${escapeHtml(m.materialType)}) &middot; ${escapeHtml(m.trainerName)} &middot; ${new Date(m.createdAt).toLocaleDateString()}</span></div></li>`).join("")}</ul>`
+                : '<p class="empty-state">No materials added this week.</p>';
+
+            const milestonesList = d.milestonesAchieved.length
+                ? `<ul class="doc-list">${d.milestonesAchieved.map((m) => `<li class="doc-item"><div><strong>${escapeHtml(m.studentName)}</strong> &mdash; ${escapeHtml(m.milestoneName)} <span style="color:var(--muted);font-size:11.5px;">(${new Date(m.completedAt).toLocaleDateString()})</span></div></li>`).join("")}</ul>`
+                : '<p class="empty-state">No milestones achieved this week.</p>';
+
+            const recommendationsList = d.recommendations.length
+                ? `<div class="record-list">${d.recommendations.map((r) => `
+            <div class="record-item"><div><strong>${escapeHtml(r.entityName)}</strong><div class="rcontent">${escapeHtml(r.detail)}</div></div>
+              <span class="pill ${r.severity === "high" ? "absent" : "pending"}">${escapeHtml(r.severity)}</span></div>`).join("")}</div>`
+                : '<p class="empty-state">Nothing needs follow-up right now.</p>';
+
+            container.innerHTML = `
+        <section class="system-card report-card">
+          <h2 style="margin:0 0 4px;">Week ${d.week.split("-W")[1]} &mdash; ${d.range.start} to ${d.range.end}</h2>
+          <p class="card-subtitle">Executive Summary</p>
+          <div class="kpi-grid">${summaryTiles}</div>
+        </section>
+
+        <section class="system-card report-card">
+          <h3 style="margin:0 0 12px;"><i class="fa fa-chalkboard-user"></i> Training Activity &mdash; Sessions</h3>
+          <table>
+            <thead><tr><th>Date</th><th>Time</th><th>Trainer</th><th>Trainee</th><th>Topic</th><th>Duration</th><th>Status</th></tr></thead>
+            <tbody>${sessionsRows}</tbody>
+          </table>
+        </section>
+
+        <section class="system-card report-card">
+          <h3 style="margin:0 0 12px;"><i class="fa fa-scale-balanced"></i> Trainer (ToT) Performance</h3>
+          <div class="trainer-grid">${totCards}</div>
+        </section>
+
+        <section class="system-card report-card">
+          <h3 style="margin:0 0 12px;"><i class="fa fa-user-graduate"></i> Trainee Progress</h3>
+          <table>
+            <thead><tr><th>Trainee</th><th>Status</th><th>Reason</th></tr></thead>
+            <tbody>${progressRows}</tbody>
+          </table>
+        </section>
+
+        <section class="widget-row report-card">
+          <div class="widget">
+            <div class="widget-title"><h3><i class="fa fa-book"></i>Materials added this week</h3></div>
+            ${materialsList}
+          </div>
+          <div class="widget">
+            <div class="widget-title"><h3><i class="fa fa-flag-checkered"></i>Milestones achieved this week</h3></div>
+            ${milestonesList}
+          </div>
+        </section>
+
+        <section class="system-card report-card">
+          <h3 style="margin:0 0 4px;"><i class="fa fa-list-check"></i> Recommendations / Follow-up</h3>
+          <p class="card-subtitle">Derived from real, current data -- not a diagnosis, just measurable items worth a follow-up.</p>
+          ${recommendationsList}
+        </section>
+      `;
+        }
+
+        // ---- Team CVs (read-only) -------------------------------------------
+
+        function renderTeamCvs() {
+            const grid = document.getElementById("teamCvGrid");
+            if (!allTots.length) {
+                grid.innerHTML = '<div class="empty-state">No Trainers in Training in your Group yet.</div>';
+                return;
+            }
+            grid.innerHTML = allTots.map((t) => `
+        <div class="material-card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="avatar-circle">${escapeHtml(initials(t.full_name))}</div>
+            <div><h4 style="margin:0;">${escapeHtml(t.full_name)}</h4><p style="margin:2px 0 0;">${escapeHtml(t.member_code)}</p></div>
+          </div>
+          ${renderCvCard(t)}
+        </div>`).join("");
         }
 
         // ---- Trainees -----------------------------------------------------
@@ -2200,20 +2831,45 @@
             const data = await apiRequest("/master-trainer/trainees");
             if (!data) return;
             allTrainees = data.trainees;
+            populateTraineeTotFilter();
             renderTrainees();
         }
 
+        function populateTraineeTotFilter() {
+            const sel = document.getElementById("traineeTotFilter");
+            const current = sel.value;
+            sel.innerHTML = '<option value="">All ToTs</option>' +
+                allTots.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
+            sel.value = current;
+        }
+
         function renderTrainees() {
-            const traineeSearchEl = document.getElementById("traineeSearch");
-            const search = ((traineeSearchEl && traineeSearchEl.value) || "").toLowerCase();
-            const filtered = allTrainees.filter((s) => s.full_name.toLowerCase().includes(search) || s.member_code.toLowerCase().includes(search));
+            const search = (document.getElementById("traineeSearch").value || "").toLowerCase();
+            const totFilter = document.getElementById("traineeTotFilter").value;
+            const statusFilter = document.getElementById("traineeStatusFilter").value;
+            const sortBy = document.getElementById("traineeSort").value;
+
+            let filtered = allTrainees.filter((s) => {
+                if (search && !(s.full_name || "").toLowerCase().includes(search) && !(s.member_code || "").toLowerCase().includes(search)) return false;
+                if (totFilter && !(s.tots || []).some((t) => String(t.id) === totFilter)) return false;
+                if (statusFilter && s.status !== statusFilter) return false;
+                return true;
+            });
+            if (sortBy === "completion") {
+                filtered = [...filtered].sort((a, b) => (b.completion_pct ?? -1) - (a.completion_pct ?? -1));
+            } else if (sortBy === "attendance") {
+                filtered = [...filtered].sort((a, b) => (b.attendance_rate ?? -1) - (a.attendance_rate ?? -1));
+            } else {
+                filtered = [...filtered].sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
+            }
+
             const body = document.getElementById("traineesBody");
             if (!allTrainees.length) {
-                body.innerHTML = '<tr><td colspan="7" class="empty-state">No trainees in your Group yet.</td></tr>';
+                body.innerHTML = '<tr><td colspan="9" class="empty-state">No trainees in your Group yet.</td></tr>';
                 return;
             }
             if (!filtered.length) {
-                body.innerHTML = '<tr><td colspan="7" class="empty-state">No trainees match your search.</td></tr>';
+                body.innerHTML = '<tr><td colspan="9" class="empty-state">No trainees match your filters.</td></tr>';
                 return;
             }
             body.innerHTML = filtered.map((s) => `
@@ -2223,11 +2879,16 @@
           <td>${escapeHtml(s.cohort_name || "&mdash;")}</td>
           <td>${s.current_year ? "Year " + s.current_year : "&mdash;"}</td>
           <td>${(s.tots || []).map((t) => escapeHtml(t.fullName)).join(", ") || "&mdash;"}</td>
+          <td>${fmtPct(s.completion_pct)}</td>
+          <td>${fmtPct(s.attendance_rate)}</td>
           <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td>
           <td><button class="icon-btn" title="Open profile" onclick="openTrainee(${s.id})"><i class="fa fa-eye"></i></button></td>
         </tr>`).join("");
         }
         document.getElementById("traineeSearch").addEventListener("input", renderTrainees);
+        document.getElementById("traineeTotFilter").addEventListener("change", renderTrainees);
+        document.getElementById("traineeStatusFilter").addEventListener("change", renderTrainees);
+        document.getElementById("traineeSort").addEventListener("change", renderTrainees);
 
         async function openTrainee(studentId) {
             const data = await apiRequest(`/master-trainer/trainees/${studentId}`);
@@ -2243,7 +2904,7 @@
         }
 
         function renderTraineeTabs() {
-            const tabs = [["records", "Records"], ["documents", "Documents"]];
+            const tabs = [["records", "Records"], ["milestones", "Milestones"], ["documents", "Documents"]];
             document.getElementById("trTabs").innerHTML = tabs.map(([k, label]) =>
                 `<button class="tab-btn ${k === trActiveTab ? "active" : ""}" onclick="switchTraineeTab('${k}')">${label}</button>`
             ).join("");
@@ -2264,6 +2925,19 @@
                     : '<p class="empty-state">No records yet.</p>';
                 return;
             }
+            if (trActiveTab === "milestones") {
+                const ms = currentTrainee.milestones || [];
+                c.innerHTML = ms.length ? `<div class="record-list">${ms.map((m) => `
+          <div class="record-item">
+            <div>
+              <strong>${escapeHtml(m.name_en)}</strong>
+              ${m.completed_at ? `<div class="rmeta">Completed ${new Date(m.completed_at).toLocaleDateString()}</div>` : ""}
+            </div>
+            <span class="pill ${m.status === "completed" ? "completed" : m.status === "in_progress" ? "pending" : ""}">${escapeHtml(MILESTONE_STATUS_LABELS[m.status] || m.status)}</span>
+          </div>`).join("")}</div>`
+                    : '<p class="empty-state">No milestones defined yet.</p>';
+                return;
+            }
             if (trActiveTab === "documents") {
                 c.innerHTML = currentTrainee.documents.length ? `
           <ul class="doc-list">${currentTrainee.documents.map((d) => `
@@ -2274,23 +2948,51 @@
 
         // ---- Group-wide monitoring sections --------------------------------
 
+        let allSessions = [];
+
         async function loadAllSessions() {
-            const list = document.getElementById("allSessionsList");
-            list.innerHTML = '<li class="empty-state">Loading sessions...</li>';
-            const data = await apiRequest("/master-trainer/schedule");
+            const body = document.getElementById("allSessionsBody");
+            body.innerHTML = '<tr class="loading-row"><td colspan="8">Loading sessions...</td></tr>';
+            const data = await apiRequest("/master-trainer/sessions");
             if (!data) return;
-            const items = [...data.today, ...data.upcoming];
-            if (!items.length) {
-                list.innerHTML = '<li class="empty-state">No sessions found for your Group.</li>';
+            allSessions = data.sessions;
+            renderAllSessions();
+        }
+
+        function renderAllSessions() {
+            const search = (document.getElementById("sessionSearch").value || "").toLowerCase();
+            const statusFilter = document.getElementById("sessionStatusFilter").value;
+            const filtered = allSessions.filter((s) => {
+                if (statusFilter && s.status !== statusFilter) return false;
+                if (search) {
+                    const hay = `${s.title || ""} ${s.studentName || ""}`.toLowerCase();
+                    if (!hay.includes(search)) return false;
+                }
+                return true;
+            });
+            const body = document.getElementById("allSessionsBody");
+            if (!allSessions.length) {
+                body.innerHTML = '<tr><td colspan="8" class="empty-state">No sessions found for your Group.</td></tr>';
                 return;
             }
-            list.innerHTML = items.map((i) => `
-        <li class="sched-item">
-          <div class="sched-time">${i.time || "--:--"}<small>${i.date}</small></div>
-          <div class="sinfo"><strong>${escapeHtml(i.title || "")}</strong><span>${escapeHtml(i.studentName)} &middot; with ${escapeHtml(i.trainerName)}</span></div>
-          <span class="sched-badge ${i.recordType}">${i.recordType === "training_session" ? "Training" : "Supervision"}</span>
-        </li>`).join("");
+            if (!filtered.length) {
+                body.innerHTML = '<tr><td colspan="8" class="empty-state">No sessions match your filters.</td></tr>';
+                return;
+            }
+            body.innerHTML = filtered.map((s) => `
+        <tr>
+          <td>${s.date || "&mdash;"}</td>
+          <td>${s.time || "--:--"}</td>
+          <td><span class="sched-badge ${s.recordType}">${s.recordType === "training_session" ? "Training" : "Supervision"}</span></td>
+          <td>${escapeHtml(s.title || "&mdash;")}</td>
+          <td>${escapeHtml(s.studentName)}</td>
+          <td>${escapeHtml(s.trainerName)}</td>
+          <td>${s.durationMinutes ? s.durationMinutes + " min" : "&mdash;"}</td>
+          <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td>
+        </tr>`).join("");
         }
+        document.getElementById("sessionSearch").addEventListener("input", renderAllSessions);
+        document.getElementById("sessionStatusFilter").addEventListener("change", renderAllSessions);
 
         async function loadAllMeetings() {
             const wrap = document.getElementById("allMeetingsList");
@@ -2359,6 +3061,186 @@
           <div class="atext"><strong>${escapeHtml(a.trainerName)}</strong> &mdash; ${escapeHtml(a.action)}${a.studentName ? " &middot; " + escapeHtml(a.studentName) : ""}</div>
           <div class="atime">${new Date(a.createdAt).toLocaleString()}</div>
         </div></li>`).join("");
+        }
+
+        // ---- Assignments (group-wide, read-only) ----------------------------
+
+        let allAssignments = [];
+
+        function populateAssignmentTotFilter() {
+            const sel = document.getElementById("assignmentTotFilter");
+            const current = sel.value;
+            sel.innerHTML = '<option value="">All ToTs</option>' +
+                allTots.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
+            sel.value = current;
+        }
+
+        async function loadAssignments() {
+            const body = document.getElementById("assignmentsBody");
+            body.innerHTML = '<tr class="loading-row"><td colspan="5">Loading assignments...</td></tr>';
+            populateAssignmentTotFilter();
+            const data = await apiRequest("/master-trainer/assignments");
+            if (!data) return;
+            allAssignments = data.assignments;
+            document.getElementById("asgKpiTotal").textContent = data.summary.total;
+            document.getElementById("asgKpiCompleted").textContent = data.summary.completed;
+            document.getElementById("asgKpiPending").textContent = data.summary.pending;
+            document.getElementById("asgKpiOverdue").textContent = data.summary.overdue;
+            renderAssignments();
+        }
+
+        function renderAssignments() {
+            const search = (document.getElementById("assignmentSearch").value || "").toLowerCase();
+            const totFilter = document.getElementById("assignmentTotFilter").value;
+            const statusFilter = document.getElementById("assignmentStatusFilter").value;
+
+            const filtered = allAssignments.filter((a) => {
+                if (statusFilter && a.status !== statusFilter) return false;
+                if (totFilter && String(a.totId) !== totFilter) return false;
+                if (search) {
+                    const hay = `${a.title || ""} ${a.studentName || ""}`.toLowerCase();
+                    if (!hay.includes(search)) return false;
+                }
+                return true;
+            });
+
+            const body = document.getElementById("assignmentsBody");
+            if (!allAssignments.length) {
+                body.innerHTML = '<tr><td colspan="5" class="empty-state">No assignments in your Group yet.</td></tr>';
+                return;
+            }
+            if (!filtered.length) {
+                body.innerHTML = '<tr><td colspan="5" class="empty-state">No assignments match your filters.</td></tr>';
+                return;
+            }
+            body.innerHTML = filtered.map((a) => `
+        <tr>
+          <td><strong>${escapeHtml(a.title)}</strong></td>
+          <td>${escapeHtml(a.studentName)}</td>
+          <td>${escapeHtml(a.trainerName)}</td>
+          <td>${a.dueDate ? String(a.dueDate).slice(0, 10) : "&mdash;"}</td>
+          <td><span class="pill ${a.status}">${escapeHtml(a.status)}</span></td>
+        </tr>`).join("");
+        }
+        document.getElementById("assignmentSearch").addEventListener("input", renderAssignments);
+        document.getElementById("assignmentTotFilter").addEventListener("change", renderAssignments);
+        document.getElementById("assignmentStatusFilter").addEventListener("change", renderAssignments);
+
+        // ---- Needs Attention --------------------------------------------------
+        // Rule-based, computed server-side from real data only -- see
+        // GET /master-trainer/needs-attention. Never a fabricated alert.
+
+        const ATTENTION_LABELS = {
+            overdue_assignment: "Overdue assignment",
+            low_attendance: "Low attendance",
+            tot_inactive: "Trainer inactivity",
+            unmarked_session: "Unmarked session",
+        };
+
+        async function loadNeedsAttention() {
+            const list = document.getElementById("attentionList");
+            list.innerHTML = '<div class="empty-state">Loading...</div>';
+            const data = await apiRequest("/master-trainer/needs-attention");
+            if (!data) return;
+
+            document.getElementById("attentionCount").textContent = `${data.items.length} item${data.items.length === 1 ? "" : "s"}`;
+
+            if (!data.items.length) {
+                list.innerHTML = '<div class="empty-state">Nothing needs attention right now -- your Group is on track.</div>';
+                return;
+            }
+
+            list.innerHTML = `<div class="record-list">${data.items.map((item) => `
+        <div class="record-item">
+          <div>
+            <strong>${escapeHtml(ATTENTION_LABELS[item.ruleId] || item.ruleId)}</strong>
+            <div class="rmeta">${escapeHtml(item.entityName || "")}</div>
+            <div class="rcontent">${escapeHtml(item.detail)}</div>
+          </div>
+          <span class="pill ${item.severity === "high" ? "absent" : "pending"}">${escapeHtml(item.severity)}</span>
+        </div>`).join("")}</div>`;
+        }
+
+        // ---- Analytics ----------------------------------------------------
+
+        function mtCssVar(name, fallback) {
+            const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            return v || fallback;
+        }
+
+        function isoDate(d) {
+            return d.toISOString().slice(0, 10);
+        }
+
+        function computePresetRange(preset) {
+            const today = new Date();
+            if (preset === "lastweek") {
+                const day = today.getDay();
+                const end = new Date(today);
+                end.setDate(today.getDate() - day - 1);
+                const start = new Date(end);
+                start.setDate(end.getDate() - 6);
+                return { from: isoDate(start), to: isoDate(end) };
+            }
+            if (preset === "month") {
+                const start = new Date(today.getFullYear(), today.getMonth(), 1);
+                return { from: isoDate(start), to: isoDate(today) };
+            }
+            // "week" default: Sunday of this week through today
+            const start = new Date(today);
+            start.setDate(today.getDate() - today.getDay());
+            return { from: isoDate(start), to: isoDate(today) };
+        }
+
+        document.querySelectorAll(".date-preset").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".date-preset").forEach((b) => b.classList.remove("active"));
+                btn.classList.add("active");
+                const range = computePresetRange(btn.dataset.preset);
+                document.getElementById("analyticsFrom").value = range.from;
+                document.getElementById("analyticsTo").value = range.to;
+                loadAnalytics(range.from, range.to);
+            });
+        });
+        document.getElementById("analyticsCustomApply").addEventListener("click", () => {
+            document.querySelectorAll(".date-preset").forEach((b) => b.classList.remove("active"));
+            const from = document.getElementById("analyticsFrom").value;
+            const to = document.getElementById("analyticsTo").value;
+            if (from && to) loadAnalytics(from, to);
+        });
+
+        async function loadAnalytics(from, to) {
+            let url = "/master-trainer/analytics";
+            if (from && to) url += `?from=${from}&to=${to}`;
+            const data = await apiRequest(url);
+            if (!data) return;
+
+            document.getElementById("analyticsFrom").value = data.range.from;
+            document.getElementById("analyticsTo").value = data.range.to;
+            document.getElementById("analyticsRangeLabel").textContent = `Showing ${data.range.from} to ${data.range.to}`;
+
+            renderBarChart(document.getElementById("chartSessionsStatus"), [
+                { label: "Completed", value: data.sessionsCompleted, color: mtCssVar("--success", "#1D7A4C") },
+                { label: "Upcoming", value: data.sessionsScheduled, color: mtCssVar("--info", "#2563a8") },
+                { label: "Cancelled", value: data.sessionsCancelled, color: mtCssVar("--danger", "#B3372E") },
+            ]);
+
+            renderDonutChart(document.getElementById("chartAssignmentCompletion"), [
+                { label: "Completed", value: data.assignmentsCompleted, color: mtCssVar("--success", "#1D7A4C") },
+                { label: "Remaining", value: Math.max(0, data.assignmentsTotal - data.assignmentsCompleted), color: mtCssVar("--border", "#E4E9E7") },
+            ]);
+
+            renderBarChart(document.getElementById("chartTotComparison"),
+                data.totComparison.map((t) => ({ label: t.fullName, value: t.sessionsCompleted })));
+
+            renderSparkline(document.getElementById("chartDailySessions"), data.dailySessionsCompleted);
+        }
+
+        function initAnalytics() {
+            const range = computePresetRange("week");
+            document.getElementById("analyticsFrom").value = range.from;
+            document.getElementById("analyticsTo").value = range.to;
+            loadAnalytics(range.from, range.to);
         }
 
         // ---- Calendar (mirrors the Trainer dashboard's calendar) -----------

@@ -56,7 +56,6 @@
             font-family: "Lexend", "Inter", sans-serif;
             letter-spacing: -.01em;
         }
-
         /* Bare <label>/<input> pairs (e.g. the Settings forms) had no rules
            of their own anywhere in this file, so they fell back to the
            browser defaults -- label is inline and input is inline-block,
@@ -64,6 +63,7 @@
            wherever the row ran out of space instead of stacking one
            field per line. Matches the same base rule every other
            dashboard page (AdminDashboard.html etc.) already has. */
+        
         label {
             display: block;
             font-weight: 600;
@@ -71,9 +71,11 @@
             color: var(--muted);
             margin: 12px 0 6px;
         }
+        
         label:first-of-type {
             margin-top: 0;
         }
+        
         input,
         textarea {
             width: 100%;
@@ -84,9 +86,11 @@
             background: var(--surface-2);
             font-family: inherit;
         }
+        
         input {
             height: 42px;
         }
+        
         input:focus,
         textarea:focus,
         select:focus {
@@ -94,7 +98,7 @@
             border-color: var(--primary-light);
             background: var(--surface);
         }
-
+        
         .system-layout {
             display: flex;
             min-height: 100vh;
@@ -2292,7 +2296,7 @@
                 fields: ["date", "title", "score", "content"]
             },
         };
-        const TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "documents", "messages"];
+        const TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents", "messages"];
 
         async function apiRequest(url, options = {}) {
             try {
@@ -2672,6 +2676,7 @@
         function renderTabs() {
             const labels = {
                 overview: "Overview",
+                milestones: "Milestones",
                 documents: "Documents",
                 messages: "Messages"
             };
@@ -2696,6 +2701,11 @@
                 return;
             }
 
+            if (activeTab === "milestones") {
+                await renderMilestonesPanel(container);
+                return;
+            }
+
             if (activeTab === "documents") {
                 renderDocumentsPanel(container);
                 return;
@@ -2707,6 +2717,47 @@
             }
 
             renderRecordPanel(container, activeTab);
+        }
+
+        // ---- Training Milestones -------------------------------------------
+        // Definitions come from Admin (backend/src/routes/admin.js); marking
+        // progress here writes to trainee_milestone_progress via
+        // PUT /supervisor/students/:studentId/milestones/:milestoneId.
+
+        const MILESTONE_STATUS_LABELS = { not_started: "Not started", in_progress: "In progress", completed: "Completed" };
+
+        async function renderMilestonesPanel(container) {
+            container.innerHTML = '<p class="empty-state">Loading milestones...</p>';
+            const data = await apiRequest(`/supervisor/students/${currentStudentId}/milestones`);
+            if (!data) return;
+            if (!data.milestones.length) {
+                container.innerHTML = '<p class="empty-state">No milestones have been defined by Admin yet.</p>';
+                return;
+            }
+            container.innerHTML = `<div class="record-list">${data.milestones.map((m) => `
+        <div class="record-item">
+          <div>
+            <strong>${escapeHtml(m.name_en)}</strong>
+            ${m.completed_at ? `<div class="rmeta">Completed ${new Date(m.completed_at).toLocaleDateString()}</div>` : ""}
+          </div>
+          <select onchange="updateMilestoneStatus(${m.milestone_id}, this.value)" data-status="${escapeHtml(m.status)}">
+            <option value="not_started" ${m.status === "not_started" ? "selected" : ""}>Not started</option>
+            <option value="in_progress" ${m.status === "in_progress" ? "selected" : ""}>In progress</option>
+            <option value="completed" ${m.status === "completed" ? "selected" : ""}>Completed</option>
+          </select>
+        </div>`).join("")}</div>`;
+        }
+
+        async function updateMilestoneStatus(milestoneId, status) {
+            const result = await apiRequest(`/supervisor/students/${currentStudentId}/milestones/${milestoneId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status }),
+            });
+            if (result) {
+                showToast(`Milestone marked ${MILESTONE_STATUS_LABELS[status].toLowerCase()}`, "success");
+                renderMilestonesPanel(document.getElementById("sdPanels"));
+            }
         }
 
         function fieldInput(type, field, value) {

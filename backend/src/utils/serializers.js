@@ -335,6 +335,28 @@ async function computeProgressSummary(db, studentId) {
   };
 }
 
+// "Training progress %" has no single stored source -- it's milestone
+// completion when milestones are configured, and assignment completion
+// otherwise. `basis` tells the caller (and the UI) which one produced
+// `value`, so a fallback percentage never gets presented as if it were
+// the real milestone-based figure. Returns { value: null, basis: null }
+// only when NEITHER source has any denominator to work with at all.
+function computeTrainingProgress({ milestonesCompleted, milestonesTotal, assignmentsCompleted, assignmentsTotal }) {
+  if (Number(milestonesTotal) > 0) {
+    return {
+      value: Math.round((Number(milestonesCompleted) / Number(milestonesTotal)) * 1000) / 10,
+      basis: "milestones",
+    };
+  }
+  if (Number(assignmentsTotal) > 0) {
+    return {
+      value: Math.round((Number(assignmentsCompleted) / Number(assignmentsTotal)) * 1000) / 10,
+      basis: "assignments",
+    };
+  }
+  return { value: null, basis: null };
+}
+
 module.exports = {
   toArray,
   toPublicUser,
@@ -350,4 +372,5 @@ module.exports = {
   toAnnouncement,
   toStudentSummary,
   computeProgressSummary,
+  computeTrainingProgress,
 };

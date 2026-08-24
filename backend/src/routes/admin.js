@@ -1563,4 +1563,72 @@ router.post(
   })
 );
 
+// ---- Training Milestone definitions --------------------------------------
+// Admin defines the real curriculum stages here (seeded with an illustrative
+// starting set by migration 002) -- never hardcoded in route/frontend logic.
+// Trainers (ToT) mark trainee progress against these via
+// routes/supervisor.js; the Master Trainer's view is read-only.
+
+// GET /api/admin/milestones — every definition, active and inactive
+router.get(
+  "/milestones",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      "SELECT id, code, name_en, name_ar, description_en, description_ar, sort_order, is_active, created_at FROM training_milestones ORDER BY sort_order ASC"
+    );
+    res.json({ milestones: rows });
+  })
+);
+
+// POST /api/admin/milestones  { code, nameEn, nameAr?, descriptionEn?, descriptionAr?, sortOrder? }
+router.post(
+  "/milestones",
+  asyncRoute(async (req, res, db) => {
+    const { code, nameEn, nameAr, descriptionEn, descriptionAr, sortOrder } = req.body || {};
+    const cleanCode = String(code || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    if (!cleanCode) return res.status(400).json({ error: "Code is required" });
+    if (!nameEn || !String(nameEn).trim()) return res.status(400).json({ error: "English name is required" });
+
+    const { rows: existing } = await db.query("SELECT id FROM training_milestones WHERE code = ?", [cleanCode]);
+    if (existing.length) return res.status(409).json({ error: `Code "${cleanCode}" is already in use` });
+
+    const result = await db.query(
+      `INSERT INTO training_milestones (code, name_en, name_ar, description_en, description_ar, sort_order, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [cleanCode, nameEn.trim(), nameAr || null, descriptionEn || null, descriptionAr || null, Number(sortOrder) || 0, req.user.id]
+    );
+
+    res.status(201).json({ id: result.insertId, code: cleanCode });
+  })
+);
+
+// PUT /api/admin/milestones/:id  { nameEn?, nameAr?, descriptionEn?, descriptionAr?, sortOrder?, isActive? }
+router.put(
+  "/milestones/:id",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid milestone id" });
+
+    const { nameEn, nameAr, descriptionEn, descriptionAr, sortOrder, isActive } = req.body || {};
+    const updates = [];
+    const params = [];
+    if (nameEn !== undefined) { updates.push("name_en = ?"); params.push(nameEn); }
+    if (nameAr !== undefined) { updates.push("name_ar = ?"); params.push(nameAr || null); }
+    if (descriptionEn !== undefined) { updates.push("description_en = ?"); params.push(descriptionEn || null); }
+    if (descriptionAr !== undefined) { updates.push("description_ar = ?"); params.push(descriptionAr || null); }
+    if (sortOrder !== undefined) { updates.push("sort_order = ?"); params.push(Number(sortOrder) || 0); }
+    if (isActive !== undefined) { updates.push("is_active = ?"); params.push(!!isActive); }
+    if (!updates.length) return res.status(400).json({ error: "No fields to update" });
+
+    params.push(id);
+    const { affectedRows } = await db.query(
+      `UPDATE training_milestones SET ${updates.join(", ")}, updated_at = NOW() WHERE id = ?`,
+      params
+    );
+    if (!affectedRows) return res.status(404).json({ error: "Milestone not found" });
+
+    res.json({ success: true });
+  })
+);
+
 module.exports = router;

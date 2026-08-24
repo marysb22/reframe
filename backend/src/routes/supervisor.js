@@ -320,6 +320,11 @@ router.put(
       );
     }
 
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, ?, ?, ?, ?)",
+      [req.user.id, `${recordType.replace(/_/g, " ")} updated`, recordType, recordId, JSON.stringify(existing)]
+    );
+
     const freshRq = buildRecordsQuery(existing.student_id, recordType);
     const { rows: freshRows } = await db.query(freshRq.sql, freshRq.params);
     const [withName] = await attachSupervisorNames(db, freshRows.filter((r) => String(r.id) === String(recordId)));
@@ -335,17 +340,104 @@ router.delete(
     const meta = RECORD_TYPE_TABLES[recordType];
     if (!meta) return res.status(400).json({ error: "Unknown record type" });
 
-    const { rows: existingRows } = await db.query(`SELECT student_id FROM ${meta.table} WHERE id = ?`, [recordId]);
+    const { rows: existingRows } = await db.query(`SELECT * FROM ${meta.table} WHERE id = ?`, [recordId]);
     if (!existingRows.length) return res.status(404).json({ error: "Record not found" });
+    const existing = existingRows[0];
 
     const { rows: assignRows } = await db.query(
       "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
-      [req.user.id, existingRows[0].student_id]
+      [req.user.id, existing.student_id]
     );
     if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
 
     await db.query(`DELETE FROM ${meta.table} WHERE id = ?`, [recordId]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, ?, ?, ?, ?)",
+      [req.user.id, `${recordType.replace(/_/g, " ")} deleted`, recordType, recordId, JSON.stringify(existing)]
+    );
     res.json({ success: true });
+  })
+);
+
+// ---- Training Milestones ---------------------------------------------------
+// Definitions are Admin-managed (backend/src/routes/admin.js); a Trainer
+// (ToT) marks their own trainees' progress against them here. Progress rows
+// are created lazily (upserted) the first time a milestone is touched for a
+// given trainee -- not pre-seeded, so "no row" simply means not_started.
+
+// GET /api/supervisor/milestones — active milestone definitions (global, not
+// group-scoped -- these are shared curriculum stages, same list every
+// Trainer sees).
+router.get(
+  "/milestones",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      "SELECT id, code, name_en, name_ar, description_en, description_ar, sort_order FROM training_milestones WHERE is_active = TRUE ORDER BY sort_order ASC"
+    );
+    res.json({ milestones: rows });
+  })
+);
+
+// GET /api/supervisor/students/:studentId/milestones — this trainee's progress
+// against every active milestone (LEFT JOIN so an untouched milestone still
+// appears, as not_started, rather than being silently missing).
+router.get(
+  "/students/:studentId/milestones",
+  asyncRoute(async (req, res, db) => {
+    const studentId = Number(req.params.studentId);
+    const student = await loadAssignedStudent(db, req.user.id, studentId, res);
+    if (!student) return;
+
+    const { rows } = await db.query(
+      `SELECT tm.id AS milestone_id, tm.code, tm.name_en, tm.name_ar, tm.sort_order,
+              COALESCE(tmp.status, 'not_started') AS status, tmp.completed_at, tmp.notes, tmp.updated_at
+         FROM training_milestones tm
+         LEFT JOIN trainee_milestone_progress tmp ON tmp.milestone_id = tm.id AND tmp.student_id = ?
+        WHERE tm.is_active = TRUE
+        ORDER BY tm.sort_order ASC`,
+      [studentId]
+    );
+    res.json({ milestones: rows });
+  })
+);
+
+// PUT /api/supervisor/students/:studentId/milestones/:milestoneId  { status, notes? }
+router.put(
+  "/students/:studentId/milestones/:milestoneId",
+  asyncRoute(async (req, res, db) => {
+    const studentId = Number(req.params.studentId);
+    const milestoneId = Number(req.params.milestoneId);
+    const student = await loadAssignedStudent(db, req.user.id, studentId, res);
+    if (!student) return;
+
+    const { status, notes } = req.body || {};
+    if (!["not_started", "in_progress", "completed"].includes(status)) {
+      return res.status(400).json({ error: "Status must be 'not_started', 'in_progress', or 'completed'" });
+    }
+
+    const { rows: milestoneRows } = await db.query(
+      "SELECT id, name_en FROM training_milestones WHERE id = ? AND is_active = TRUE",
+      [milestoneId]
+    );
+    if (!milestoneRows.length) return res.status(404).json({ error: "Milestone not found" });
+
+    const completedAt = status === "completed" ? new Date() : null;
+    await db.query(
+      `INSERT INTO trainee_milestone_progress (student_id, milestone_id, status, completed_at, marked_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE status = VALUES(status), completed_at = VALUES(completed_at),
+         marked_by = VALUES(marked_by), notes = VALUES(notes), updated_at = NOW()`,
+      [studentId, milestoneId, status, completedAt, req.user.id, notes || null]
+    );
+
+    if (status === "completed") {
+      await db.query(
+        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'milestone_marked_completed', 'trainee_milestone_progress', ?, ?)",
+        [req.user.id, studentId, JSON.stringify({ milestoneId, milestoneName: milestoneRows[0].name_en })]
+      );
+    }
+
+    res.json({ success: true, studentId, milestoneId, status, completedAt });
   })
 );
 
@@ -462,6 +554,10 @@ router.post("/materials", (req, res) => {
         [req.user.id, studentId || null, title, description || null, materialType, req.file.filename, req.file.originalname]
       );
       const { rows } = await pool.query("SELECT * FROM learning_materials WHERE id = ?", [insert.insertId]);
+      await pool.query(
+        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'material added', 'learning_materials', ?)",
+        [req.user.id, insert.insertId]
+      );
       res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
     });
     return;
@@ -478,6 +574,10 @@ router.post("/materials", (req, res) => {
       [req.user.id, studentId || null, title, description || null, externalUrl]
     );
     const { rows } = await pool.query("SELECT * FROM learning_materials WHERE id = ?", [insert.insertId]);
+    await pool.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'material added', 'learning_materials', ?)",
+      [req.user.id, insert.insertId]
+    );
     res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
   })().catch((err) => res.status(500).json({ error: "Internal server error" }));
 });
@@ -485,11 +585,17 @@ router.post("/materials", (req, res) => {
 router.delete(
   "/materials/:materialId",
   asyncRoute(async (req, res, db) => {
-    const { affectedRows } = await db.query("DELETE FROM learning_materials WHERE id = ? AND supervisor_id = ?", [
+    const { rows: existingRows } = await db.query("SELECT * FROM learning_materials WHERE id = ? AND supervisor_id = ?", [
       req.params.materialId,
       req.user.id,
     ]);
-    if (!affectedRows) return res.status(404).json({ error: "Material not found" });
+    if (!existingRows.length) return res.status(404).json({ error: "Material not found" });
+
+    await db.query("DELETE FROM learning_materials WHERE id = ?", [req.params.materialId]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, 'material deleted', 'learning_materials', ?, ?)",
+      [req.user.id, req.params.materialId, JSON.stringify(existingRows[0])]
+    );
     res.json({ success: true });
   })
 );
@@ -644,6 +750,10 @@ router.post(
        VALUES (?,?,?,?,?,?,?)`,
       [req.user.id, studentId || null, title, platform, meetingUrl, scheduledAt || null, durationMinutes || null]
     );
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'meeting scheduled', 'meetings', ?)",
+      [req.user.id, insert.insertId]
+    );
     const { rows } = await db.query("SELECT * FROM meetings WHERE id = ?", [insert.insertId]);
     res.status(201).json(toMeeting(rows[0]));
   })
@@ -677,6 +787,10 @@ router.put(
         meetingId,
       ]
     );
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, 'meeting updated', 'meetings', ?, ?)",
+      [req.user.id, meetingId, JSON.stringify(existingRows[0])]
+    );
     const { rows } = await db.query("SELECT * FROM meetings WHERE id = ?", [meetingId]);
     res.json(toMeeting(rows[0]));
   })
@@ -686,11 +800,17 @@ router.put(
 router.delete(
   "/meetings/:id",
   asyncRoute(async (req, res, db) => {
-    const { affectedRows } = await db.query("DELETE FROM meetings WHERE id = ? AND supervisor_id = ?", [
+    const { rows: existingRows } = await db.query("SELECT * FROM meetings WHERE id = ? AND supervisor_id = ?", [
       req.params.id,
       req.user.id,
     ]);
-    if (!affectedRows) return res.status(404).json({ error: "Meeting not found" });
+    if (!existingRows.length) return res.status(404).json({ error: "Meeting not found" });
+
+    await db.query("DELETE FROM meetings WHERE id = ?", [req.params.id]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, 'meeting deleted', 'meetings', ?, ?)",
+      [req.user.id, req.params.id, JSON.stringify(existingRows[0])]
+    );
     res.json({ success: true });
   })
 );
