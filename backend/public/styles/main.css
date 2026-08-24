@@ -1137,25 +1137,42 @@ html[lang="ar"] td[data-ltr="true"], html[lang="ar"] th[data-ltr="true"] {
     background: #fff !important;
     height: 76px;
   }
+  /* Flexbox, not grid: a plain row with flex-wrap: nowrap is the most
+     bulletproof way to guarantee hamburger / logo / language-switcher can
+     never fall onto separate lines -- there is no auto-placement, no
+     implicit row creation, nothing to get wrong. `order` puts them in the
+     right visual sequence, and reverses automatically under dir="rtl"
+     exactly like the rest of this row already does (see [dir="rtl"]
+     .nav-actions above). */
   .nav-container {
-    display: grid;
-    grid-template-columns: 44px 1fr auto;
+    display: flex;
+    flex-wrap: nowrap;
     align-items: center;
+    justify-content: space-between;
     height: 76px;
     padding: 0 14px;
     gap: 10px;
   }
   .hamburger {
     display: flex;
-    grid-column: 1;
+    order: 1;
+    flex: 0 0 auto;
   }
-  .nav-logo { grid-column: 2; display: flex; justify-content: center; align-items: center; min-width: 0; }
-  .nav-logo img { width: 155px; }
-  /* .nav-actions (not .language-switcher, which is its child and not a grid item
-     itself) is the actual grid cell -- placing it explicitly, rather than relying
-     on auto-placement to land it in the one remaining column, keeps hamburger /
-     logo / language-switcher deterministically on the same header row. */
-  .nav-actions { grid-column: 3; justify-self: end; flex-wrap: nowrap; }
+  .nav-logo {
+    order: 2;
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .nav-logo img { width: 155px; max-width: 100%; }
+  .nav-actions {
+    order: 3;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
   .nav-menu, .login-btn { display: none; }
 
   .hero { margin-top: 76px; height: 420px; }
