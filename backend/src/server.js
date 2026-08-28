@@ -3,6 +3,23 @@ const cors = require("cors");
 const path = require("path");
 const config = require("./config");
 
+// Without these, any error that escapes a promise chain anywhere in the
+// app (not just email -- any future fire-and-forget async work) crashes
+// the entire Node process and drops every other in-flight user's request,
+// then relies on the host restarting it. Concretely hit this with a DNS
+// failure while sending a notification email: the process died and
+// restarted mid-request for everyone else on the server at that moment.
+// Logging and continuing is strictly safer than crashing for a background
+// task's failure -- a request that's already been answered (e.g. the
+// assignment was already created and its HTTP response already sent)
+// must never be retroactively undone by an unrelated background error.
+process.on("unhandledRejection", (reason) => {
+  console.error("[process] Unhandled promise rejection (server kept running):", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[process] Uncaught exception (server kept running):", err);
+});
+
 const app = express();
 
 // Without this, every browser-based page (login.html, the dashboards,
