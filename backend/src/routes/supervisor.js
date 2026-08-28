@@ -10,8 +10,10 @@ const {
   toAnnouncement,
   computeProgressSummary,
 } = require("../utils/serializers");
-const { documentUpload, materialUpload } = require("../utils/uploads");
+const { documentUpload, materialUpload, assignmentAttachmentUpload } = require("../utils/uploads");
 const { buildRecordsQuery, RECORD_TYPE_TABLES } = require("../utils/recordsQuery");
+const { createNotification } = require("../utils/notifications");
+const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi } = require("../utils/assignmentsQuery");
 
 const router = express.Router();
 
@@ -256,6 +258,17 @@ router.post(
       ]
     );
 
+    if (recordType === "assignment") {
+      await createNotification(db, {
+        recipientId: studentId,
+        type: "assignment",
+        title: `New assignment: ${title || "Untitled assignment"}`,
+        body: content || null,
+        relatedEntityType: "assignment",
+        relatedEntityId: insertedId,
+      });
+    }
+
     const freshRq = buildRecordsQuery(studentId, recordType);
     const { rows: freshRows } = await db.query(freshRq.sql, freshRq.params);
     const [withName] = await attachSupervisorNames(db, freshRows.filter((r) => r.id === insertedId));
@@ -438,6 +451,165 @@ router.put(
     }
 
     res.json({ success: true, studentId, milestoneId, status, completedAt });
+  })
+);
+
+// ---- Assignments (dedicated overview + grading) --------------------------
+// The generic POST /students/:studentId/records (recordType="assignment",
+// above) still works exactly as before for a single trainee -- these routes
+// add: (a) creating one assignment for MULTIPLE trainees at once without
+// changing that schema (one `assignments` row per trainee, looped, same as
+// every existing report already assumes), (b) a real overview that doesn't
+// require one API call per trainee, and (c) reviewing/grading a trainee's
+// submission, which previously had no route at all despite the submission
+// upload itself (routes/profile.js) already working.
+
+// POST /api/supervisor/assignments — create one assignment for one or more
+// trainees at once. Accepts multipart (field "attachment") or plain JSON;
+// "studentIds" is a JSON-array string either way (FormData can't carry a
+// real array field).
+router.post("/assignments", (req, res) => {
+  const contentType = req.headers["content-type"] || "";
+
+  const handle = async (attachmentFilename) => {
+    const { studentIds, title, description, dueDate, contentUrl } = req.body || {};
+    let ids;
+    try {
+      ids = typeof studentIds === "string" ? JSON.parse(studentIds) : studentIds;
+    } catch {
+      ids = null;
+    }
+    if (!Array.isArray(ids) || !ids.length) {
+      return res.status(400).json({ error: "studentIds must be a non-empty array" });
+    }
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: "title is required" });
+    }
+
+    const { pool } = require("../db");
+    const created = [];
+    for (const rawId of ids) {
+      const studentId = Number(rawId);
+      const { rows: assignRows } = await pool.query(
+        "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
+        [req.user.id, studentId]
+      );
+      if (!assignRows.length) continue; // silently skip a trainee not assigned to this Trainer -- never assign outside your own caseload
+
+      const insert = await pool.query(
+        `INSERT INTO assignments (student_id, supervisor_id, title, description, attachment_filename, content_url, due_date, status)
+         VALUES (?,?,?,?,?,?,?,'pending')`,
+        [studentId, req.user.id, title.trim(), description || null, attachmentFilename || null, contentUrl || null, dueDate || null]
+      );
+      await pool.query(
+        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'assignment added', 'assignment', ?, ?)",
+        [req.user.id, insert.insertId, JSON.stringify({ studentId })]
+      );
+      await createNotification(pool, {
+        recipientId: studentId,
+        type: "assignment",
+        title: `New assignment: ${title.trim()}`,
+        body: description || null,
+        relatedEntityType: "assignment",
+        relatedEntityId: insert.insertId,
+      });
+      created.push(insert.insertId);
+    }
+
+    if (!created.length) {
+      return res.status(403).json({ error: "None of the selected trainees are assigned to you" });
+    }
+    res.status(201).json({ createdIds: created, skipped: ids.length - created.length });
+  };
+
+  if (contentType.includes("multipart/form-data")) {
+    assignmentAttachmentUpload.single("attachment")(req, res, async (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      try {
+        await handle(req.file ? req.file.filename : null);
+      } catch (err) {
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+  } else {
+    handle(null).catch(() => res.status(500).json({ error: "Internal server error" }));
+  }
+});
+
+// GET /api/supervisor/assignments?status=&studentId= — full overview,
+// including each assignment's latest submission (if any), in one call.
+router.get(
+  "/assignments",
+  asyncRoute(async (req, res, db) => {
+    const clauses = ["a.supervisor_id = ?"];
+    const params = [req.user.id];
+    if (req.query.studentId) {
+      clauses.push("a.student_id = ?");
+      params.push(Number(req.query.studentId));
+    }
+    const { rows } = await db.query(
+      `${ASSIGNMENT_WITH_SUBMISSION_SELECT} WHERE ${clauses.join(" AND ")} ORDER BY a.due_date IS NULL, a.due_date ASC`,
+      params
+    );
+
+    let items = rows.map(assignmentRowToApi);
+    if (req.query.status) items = items.filter((i) => i.status === req.query.status);
+
+    res.json({ assignments: items });
+  })
+);
+
+// GET /api/supervisor/assignments/:id — single-assignment detail w/ submission
+router.get(
+  "/assignments/:id",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(`${ASSIGNMENT_WITH_SUBMISSION_SELECT} WHERE a.id = ? AND a.supervisor_id = ?`, [
+      req.params.id,
+      req.user.id,
+    ]);
+    if (!rows.length) return res.status(404).json({ error: "Assignment not found" });
+    res.json(assignmentRowToApi(rows[0]));
+  })
+);
+
+// PUT /api/supervisor/assignments/:id/grade  { score, feedback }
+router.put(
+  "/assignments/:id/grade",
+  asyncRoute(async (req, res, db) => {
+    const assignmentId = Number(req.params.id);
+    const { rows: assignmentRows } = await db.query(
+      "SELECT * FROM assignments WHERE id = ? AND supervisor_id = ?",
+      [assignmentId, req.user.id]
+    );
+    if (!assignmentRows.length) return res.status(404).json({ error: "Assignment not found" });
+    const assignment = assignmentRows[0];
+
+    const { rows: submissionRows } = await db.query(
+      "SELECT id FROM assignment_submissions WHERE assignment_id = ? ORDER BY submitted_at DESC LIMIT 1",
+      [assignmentId]
+    );
+    if (!submissionRows.length) return res.status(409).json({ error: "This trainee hasn't submitted anything yet" });
+
+    const { score, feedback } = req.body || {};
+    await db.query(
+      `UPDATE assignment_submissions SET score = ?, feedback = ?, graded_by = ?, graded_at = NOW(), status = 'graded' WHERE id = ?`,
+      [score ?? null, feedback || null, req.user.id, submissionRows[0].id]
+    );
+    await db.query("UPDATE assignments SET status = 'completed', updated_at = NOW() WHERE id = ?", [assignmentId]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'assignment graded', 'assignment_submissions', ?, ?)",
+      [req.user.id, submissionRows[0].id, JSON.stringify({ score, feedback })]
+    );
+    await createNotification(db, {
+      recipientId: assignment.student_id,
+      type: "assignment",
+      title: `Your assignment was graded: ${assignment.title}`,
+      body: feedback || null,
+      relatedEntityType: "assignment",
+      relatedEntityId: assignmentId,
+    });
+
+    res.json({ success: true });
   })
 );
 

@@ -1,9 +1,23 @@
 ﻿const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
 const crypto = require("crypto");
 
+// multer's diskStorage never creates its destination folder -- it just
+// fails the upload with ENOENT if it doesn't already exist. That bit
+// `uploads/submissions` in production (the folder was never created, so
+// every trainee assignment submission was silently erroring even though
+// the route logic itself was correct) until this was caught by live
+// end-to-end testing rather than by reading the code. Every disk-storage
+// destination below now creates its folder on first use instead of
+// assuming someone remembered to `mkdir` it by hand.
+function ensureUploadDir(dir) {
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
 const eventImageStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, "../../uploads/events")),
+  destination: (req, file, cb) => cb(null, ensureUploadDir(path.join(__dirname, "../../uploads/events"))),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);
@@ -25,7 +39,7 @@ const eventImageUpload = multer({
 
 function makeDiskStorage(subfolder) {
   return multer.diskStorage({
-    destination: (req, file, cb) => cb(null, path.join(__dirname, "../../uploads", subfolder)),
+    destination: (req, file, cb) => cb(null, ensureUploadDir(path.join(__dirname, "../../uploads", subfolder))),
     filename: (req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase();
       cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);
@@ -113,4 +127,26 @@ const submissionUpload = multer({
   },
 });
 
-module.exports = { eventImageUpload, photoUpload, cvUpload, documentUpload, materialUpload, submissionUpload };
+// Assignment attachments: the instructions/template a Trainer (ToT) attaches
+// when creating an assignment -- same allowed types as a submission, since
+// it's the same "instructions/reference document" use case in reverse.
+const assignmentAttachmentUpload = multer({
+  storage: makeDiskStorage("assignments"),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_DOCUMENT_TYPES.has(file.mimetype)) {
+      return cb(new Error("Only PDF, Word, or image files are allowed"));
+    }
+    cb(null, true);
+  },
+});
+
+module.exports = {
+  eventImageUpload,
+  photoUpload,
+  cvUpload,
+  documentUpload,
+  materialUpload,
+  submissionUpload,
+  assignmentAttachmentUpload,
+};

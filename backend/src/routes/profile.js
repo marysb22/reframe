@@ -14,6 +14,8 @@ const {
 const { hashPassword, verifyPassword } = require("../utils/authUtils");
 const { photoUpload, cvUpload, submissionUpload } = require("../utils/uploads");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
+const { createNotification } = require("../utils/notifications");
+const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi } = require("../utils/assignmentsQuery");
 
 const router = express.Router();
 
@@ -64,6 +66,23 @@ function inClause(ids) {
   return { sql: ids.map(() => "?").join(","), params: ids };
 }
 
+// Attaches the trainee's real supervisor_students list to a profile object
+// in place. toProfileResponse/toPublicUser always set `.supervisors` to []
+// for a trainee (PROFILE_SELECT has no supervisors column to parse), so
+// every route that returns a trainee profile must call this or the field
+// silently reads as "Unassigned" -- this bit PUT /me until fixed here,
+// wiping the Supervisor(s) field from the UI the instant a trainee saved
+// their profile even though nothing about their assignment had changed.
+async function attachTraineeSupervisors(db, profile, userId) {
+  const { rows: supRows } = await db.query(
+    `SELECT sup.id, sup.full_name FROM supervisor_students ss
+     JOIN supervisors sup ON sup.id = ss.supervisor_id
+     WHERE ss.student_id = ? ORDER BY sup.full_name`,
+    [userId]
+  );
+  profile.supervisors = supRows.map((r) => ({ id: r.id, full_name: r.full_name }));
+}
+
 // GET /api/profile/me
 router.get(
   "/me",
@@ -72,16 +91,7 @@ router.get(
     if (!rows.length) return res.status(404).json({ error: "Profile not found" });
 
     const profile = toProfileResponse(rows[0]);
-
-    if (req.user.role === "trainee") {
-      const { rows: supRows } = await db.query(
-        `SELECT sup.id, sup.full_name FROM supervisor_students ss
-         JOIN supervisors sup ON sup.id = ss.supervisor_id
-         WHERE ss.student_id = ? ORDER BY sup.full_name`,
-        [req.user.id]
-      );
-      profile.supervisors = supRows.map((r) => ({ id: r.id, full_name: r.full_name }));
-    }
+    if (req.user.role === "trainee") await attachTraineeSupervisors(db, profile, req.user.id);
 
     res.json(profile);
   })
@@ -168,7 +178,9 @@ router.put(
     );
 
     const { rows } = await db.query(PROFILE_SELECT, [req.user.id]);
-    res.json(toProfileResponse(rows[0]));
+    const profile = toProfileResponse(rows[0]);
+    if (req.user.role === "trainee") await attachTraineeSupervisors(db, profile, req.user.id);
+    res.json(profile);
   })
 );
 
@@ -256,7 +268,7 @@ router.post("/records/:id/submission", requireStudent, (req, res) => {
 
     try {
       const { rows: assignmentRows } = await pool.query(
-        "SELECT id, student_id FROM assignments WHERE id = ?",
+        "SELECT id, student_id, supervisor_id, title FROM assignments WHERE id = ?",
         [assignmentId]
       );
       if (!assignmentRows.length) {
@@ -280,6 +292,15 @@ router.post("/records/:id/submission", requireStudent, (req, res) => {
         "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'assignment_submitted', 'assignment_submissions', ?)",
         [req.user.id, insert.insertId]
       );
+
+      const { rows: studentRows } = await pool.query("SELECT full_name FROM students WHERE id = ?", [req.user.id]);
+      await createNotification(pool, {
+        recipientId: assignmentRows[0].supervisor_id,
+        type: "assignment",
+        title: `${studentRows[0]?.full_name || "A trainee"} submitted: ${assignmentRows[0].title}`,
+        relatedEntityType: "assignment",
+        relatedEntityId: assignmentRows[0].id,
+      });
 
       const { rows } = await pool.query("SELECT * FROM assignment_submissions WHERE id = ?", [insert.insertId]);
 
@@ -363,6 +384,161 @@ router.get(
       params
     );
     res.json({ documents: rows.map(toDocument) });
+  })
+);
+
+// ---- Assignments (richer than the generic /records?type=assignment view --
+// carries attachment/content link + submission + grade/feedback, none of
+// which fit the flat shape the other 6 record types share) ----------------
+
+// GET /api/profile/assignments?status=
+router.get(
+  "/assignments",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      `${ASSIGNMENT_WITH_SUBMISSION_SELECT} WHERE a.student_id = ? ORDER BY a.due_date IS NULL, a.due_date ASC`,
+      [req.user.id]
+    );
+    let items = rows.map(assignmentRowToApi);
+    if (req.query.status) items = items.filter((i) => i.status === req.query.status);
+    res.json({ assignments: items });
+  })
+);
+
+// GET /api/profile/assignments/:id
+router.get(
+  "/assignments/:id",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(`${ASSIGNMENT_WITH_SUBMISSION_SELECT} WHERE a.id = ? AND a.student_id = ?`, [
+      req.params.id,
+      req.user.id,
+    ]);
+    if (!rows.length) return res.status(404).json({ error: "Assignment not found" });
+    res.json(assignmentRowToApi(rows[0]));
+  })
+);
+
+// ---- Notifications (any role -- this file has no role restriction beyond
+// requireAuth, so it's the one place these live rather than duplicating
+// four copies across admin.js/supervisor.js/Mastertrainer.js/designer.js) --
+
+// GET /api/profile/notifications?unreadOnly=&limit=
+router.get(
+  "/notifications",
+  asyncRoute(async (req, res, db) => {
+    const limit = Math.min(Number(req.query.limit) || 30, 100);
+    const clauses = ["recipient_id = ?"];
+    const params = [req.user.id];
+    if (req.query.unreadOnly === "true") clauses.push("is_read = FALSE");
+    const { rows } = await db.query(
+      `SELECT id, notification_type, title, body, related_entity_type, related_entity_id, is_read, created_at
+         FROM notifications WHERE ${clauses.join(" AND ")} ORDER BY created_at DESC LIMIT ?`,
+      [...params, limit]
+    );
+    res.json({
+      notifications: rows.map((n) => ({
+        id: n.id,
+        type: n.notification_type,
+        title: n.title,
+        body: n.body,
+        relatedEntityType: n.related_entity_type,
+        relatedEntityId: n.related_entity_id,
+        isRead: !!n.is_read,
+        createdAt: n.created_at,
+      })),
+    });
+  })
+);
+
+// GET /api/profile/notifications/unread-count
+router.get(
+  "/notifications/unread-count",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      "SELECT COUNT(*) AS count FROM notifications WHERE recipient_id = ? AND is_read = FALSE",
+      [req.user.id]
+    );
+    res.json({ count: Number(rows[0].count) });
+  })
+);
+
+// PATCH /api/profile/notifications/:id/read
+router.patch(
+  "/notifications/:id/read",
+  asyncRoute(async (req, res, db) => {
+    const { affectedRows } = await db.query(
+      "UPDATE notifications SET is_read = TRUE WHERE id = ? AND recipient_id = ?",
+      [req.params.id, req.user.id]
+    );
+    if (!affectedRows) return res.status(404).json({ error: "Notification not found" });
+    res.json({ success: true });
+  })
+);
+
+// POST /api/profile/notifications/mark-all-read
+router.post(
+  "/notifications/mark-all-read",
+  asyncRoute(async (req, res, db) => {
+    await db.query("UPDATE notifications SET is_read = TRUE WHERE recipient_id = ? AND is_read = FALSE", [
+      req.user.id,
+    ]);
+    res.json({ success: true });
+  })
+);
+
+// PUT /api/profile/notification-preferences -- replaces the localStorage-only
+// stopgap every dashboard's Settings page currently uses; writes the real
+// `settings` row that createNotification() already reads from.
+router.put(
+  "/notification-preferences",
+  asyncRoute(async (req, res, db) => {
+    const { notifyMessages, notifyAssignments, notifySessions, notifyPayments, notifyAnnouncements } = req.body || {};
+    const updates = [];
+    const params = [];
+    const fields = {
+      notify_messages: notifyMessages,
+      notify_assignments: notifyAssignments,
+      notify_sessions: notifySessions,
+      notify_payments: notifyPayments,
+      notify_announcements: notifyAnnouncements,
+    };
+    for (const [column, value] of Object.entries(fields)) {
+      if (value !== undefined) {
+        updates.push(`${column} = ?`);
+        params.push(!!value);
+      }
+    }
+    if (!updates.length) return res.status(400).json({ error: "No preferences to update" });
+
+    params.push(req.user.id);
+    const { affectedRows } = await db.query(
+      `UPDATE settings SET ${updates.join(", ")}, updated_at = NOW() WHERE user_id = ?`,
+      params
+    );
+    if (!affectedRows) return res.status(404).json({ error: "Settings not found" });
+    res.json({ success: true });
+  })
+);
+
+// GET /api/profile/notification-preferences
+router.get(
+  "/notification-preferences",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      "SELECT notify_messages, notify_assignments, notify_sessions, notify_payments, notify_announcements FROM settings WHERE user_id = ?",
+      [req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Settings not found" });
+    const s = rows[0];
+    res.json({
+      notifyMessages: !!s.notify_messages,
+      notifyAssignments: !!s.notify_assignments,
+      notifySessions: !!s.notify_sessions,
+      notifyPayments: !!s.notify_payments,
+      notifyAnnouncements: !!s.notify_announcements,
+    });
   })
 );
 
