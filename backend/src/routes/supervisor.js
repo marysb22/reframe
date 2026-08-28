@@ -12,7 +12,7 @@ const {
 } = require("../utils/serializers");
 const { documentUpload, materialUpload, assignmentAttachmentUpload } = require("../utils/uploads");
 const { buildRecordsQuery, RECORD_TYPE_TABLES } = require("../utils/recordsQuery");
-const { createNotification } = require("../utils/notifications");
+const { createNotification, getUserContactInfo } = require("../utils/notifications");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi } = require("../utils/assignmentsQuery");
 
 const router = express.Router();
@@ -259,6 +259,7 @@ router.post(
     );
 
     if (recordType === "assignment") {
+      const trainer = await getUserContactInfo(db, req.user.id);
       await createNotification(db, {
         recipientId: studentId,
         type: "assignment",
@@ -266,6 +267,29 @@ router.post(
         body: content || null,
         relatedEntityType: "assignment",
         relatedEntityId: insertedId,
+        email: {
+          template: "newAssignment",
+          data: { assignmentTitle: title || "Untitled assignment", trainerName: (trainer && trainer.fullName) || "Your trainer", dueDate: date },
+        },
+      });
+    } else if (recordType === "training_session" || recordType === "supervision_session") {
+      const trainer = await getUserContactInfo(db, req.user.id);
+      await createNotification(db, {
+        recipientId: studentId,
+        type: "session",
+        title: `New ${recordType === "training_session" ? "training" : "supervision"} session scheduled`,
+        body: title || null,
+        relatedEntityType: "session",
+        relatedEntityId: insertedId,
+        email: {
+          template: "newSession",
+          data: {
+            sessionTitle: title,
+            sessionType: recordType === "training_session" ? "training" : "supervision",
+            trainerName: (trainer && trainer.fullName) || "Your trainer",
+            date,
+          },
+        },
       });
     }
 
@@ -487,6 +511,7 @@ router.post("/assignments", (req, res) => {
     }
 
     const { pool } = require("../db");
+    const trainer = await getUserContactInfo(pool, req.user.id);
     const created = [];
     for (const rawId of ids) {
       const studentId = Number(rawId);
@@ -512,6 +537,10 @@ router.post("/assignments", (req, res) => {
         body: description || null,
         relatedEntityType: "assignment",
         relatedEntityId: insert.insertId,
+        email: {
+          template: "newAssignment",
+          data: { assignmentTitle: title.trim(), trainerName: (trainer && trainer.fullName) || "Your trainer", dueDate },
+        },
       });
       created.push(insert.insertId);
     }
@@ -607,6 +636,10 @@ router.put(
       body: feedback || null,
       relatedEntityType: "assignment",
       relatedEntityId: assignmentId,
+      email: {
+        template: "assignmentGraded",
+        data: { assignmentTitle: assignment.title, score, feedback },
+      },
     });
 
     res.json({ success: true });
@@ -709,6 +742,34 @@ router.get(
   })
 );
 
+/**
+ * Notifies whoever a newly-added material is relevant to: just the one
+ * trainee if the material was scoped to them, or the supervisor's whole
+ * current caseload if it wasn't (materials with no studentId are shared
+ * with every assigned trainee -- see the materials-feed read side).
+ */
+async function notifyMaterialRecipients(pool, supervisorId, studentId, materialTitle, materialId) {
+  const trainer = await getUserContactInfo(pool, supervisorId);
+  const trainerName = (trainer && trainer.fullName) || "Your trainer";
+  let recipientIds;
+  if (studentId) {
+    recipientIds = [Number(studentId)];
+  } else {
+    const { rows } = await pool.query("SELECT student_id FROM supervisor_students WHERE supervisor_id = ?", [supervisorId]);
+    recipientIds = rows.map((r) => r.student_id);
+  }
+  for (const recipientId of recipientIds) {
+    await createNotification(pool, {
+      recipientId,
+      type: "document",
+      title: `New material: ${materialTitle}`,
+      relatedEntityType: "learning_material",
+      relatedEntityId: materialId,
+      email: { template: "newMaterial", data: { materialTitle, trainerName } },
+    });
+  }
+}
+
 router.post("/materials", (req, res) => {
   const contentType = req.headers["content-type"] || "";
   const { pool } = require("../db");
@@ -730,6 +791,7 @@ router.post("/materials", (req, res) => {
         "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'material added', 'learning_materials', ?)",
         [req.user.id, insert.insertId]
       );
+      await notifyMaterialRecipients(pool, req.user.id, studentId, title, insert.insertId);
       res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
     });
     return;
@@ -750,6 +812,7 @@ router.post("/materials", (req, res) => {
       "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'material added', 'learning_materials', ?)",
       [req.user.id, insert.insertId]
     );
+    await notifyMaterialRecipients(pool, req.user.id, studentId, title, insert.insertId);
     res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
   })().catch((err) => res.status(500).json({ error: "Internal server error" }));
 });
@@ -926,6 +989,29 @@ router.post(
       "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'meeting scheduled', 'meetings', ?)",
       [req.user.id, insert.insertId]
     );
+
+    {
+      const trainer = await getUserContactInfo(db, req.user.id);
+      const trainerName = (trainer && trainer.fullName) || "Your trainer";
+      let recipientIds;
+      if (studentId) {
+        recipientIds = [Number(studentId)];
+      } else {
+        const { rows: caseloadRows } = await db.query("SELECT student_id FROM supervisor_students WHERE supervisor_id = ?", [req.user.id]);
+        recipientIds = caseloadRows.map((r) => r.student_id);
+      }
+      for (const recipientId of recipientIds) {
+        await createNotification(db, {
+          recipientId,
+          type: "meeting",
+          title: `New meeting scheduled: ${title}`,
+          relatedEntityType: "meeting",
+          relatedEntityId: insert.insertId,
+          email: { template: "newMeeting", data: { meetingTitle: title, trainerName, platform, scheduledAt } },
+        });
+      }
+    }
+
     const { rows } = await db.query("SELECT * FROM meetings WHERE id = ?", [insert.insertId]);
     res.status(201).json(toMeeting(rows[0]));
   })

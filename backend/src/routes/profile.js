@@ -294,12 +294,17 @@ router.post("/records/:id/submission", requireStudent, (req, res) => {
       );
 
       const { rows: studentRows } = await pool.query("SELECT full_name FROM students WHERE id = ?", [req.user.id]);
+      const traineeName = (studentRows[0] && studentRows[0].full_name) || "A trainee";
       await createNotification(pool, {
         recipientId: assignmentRows[0].supervisor_id,
         type: "assignment",
-        title: `${studentRows[0]?.full_name || "A trainee"} submitted: ${assignmentRows[0].title}`,
+        title: `${traineeName} submitted: ${assignmentRows[0].title}`,
         relatedEntityType: "assignment",
         relatedEntityId: assignmentRows[0].id,
+        email: {
+          template: "assignmentSubmitted",
+          data: { assignmentTitle: assignmentRows[0].title, traineeName },
+        },
       });
 
       const { rows } = await pool.query("SELECT * FROM assignment_submissions WHERE id = ?", [insert.insertId]);
