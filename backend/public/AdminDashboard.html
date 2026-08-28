@@ -253,7 +253,7 @@ tr:hover td{background:var(--surface-2);}
 
     <div class="nav-label">Trainers</div>
     <ul>
-      <li><a data-section="trainerCreate" href="#trainerCreate"><i class="fa fa-user-plus"></i>Create Trainer</a></li>
+      <li><a data-section="trainerCreate" href="#trainerCreate"><i class="fa fa-user-plus"></i>Create Member</a></li>
       <li><a data-section="trainers" href="#trainers"><i class="fa fa-chalkboard-user"></i>All Trainers</a></li>
     </ul>
 
@@ -334,7 +334,7 @@ tr:hover td{background:var(--surface-2);}
 
     <div class="system-card">
       <h3><i class="fa fa-people-group"></i>Create a new group</h3>
-      <p class="hint">Creates a complete group in one step -- 1 Master Trainer, 2 Trainers (ToT), and their Trainees. IDs auto-generate unless you set them. The Master Trainer and both Trainers share one password; every Trainee in the group shares another. To add more Trainers to an existing group later, use <a href="#trainerCreate" onclick="showSection('trainerCreate')">Create Trainer</a> or open the group under <a href="#groups" onclick="showSection('groups')">All Groups</a>.</p>
+      <p class="hint">Creates a complete group in one step -- 1 Master Trainer, any number of Trainers (ToT), and their Trainees. IDs auto-generate unless you set them. The Master Trainer and any Trainers share one password; every Trainee in the group shares another. To add more Trainers to an existing group later, use <a href="#trainerCreate" onclick="showSection('trainerCreate')">Create Trainer</a> or open the group under <a href="#groups" onclick="showSection('groups')">All Groups</a>.</p>
       <form id="groupForm">
         <label>Group name</label>
         <input type="text" id="grpName" required placeholder="e.g. Group A">
@@ -345,19 +345,11 @@ tr:hover td{background:var(--surface-2);}
           <div><label style="margin-top:0;">ID (optional)</label><input type="text" id="grpMasterId" placeholder="Auto-generate"></div>
         </div>
 
-        <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Trainer 1 (ToT)</h4>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div><label style="margin-top:0;">Full name</label><input type="text" id="grpTrainer1Name" required placeholder="Full name"></div>
-          <div><label style="margin-top:0;">ID (optional)</label><input type="text" id="grpTrainer1Id" placeholder="Auto-generate"></div>
-        </div>
+        <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Trainers (ToT) <span style="font-weight:400;color:var(--faint);">(optional -- any number, including none)</span></h4>
+        <div id="grpTrainersList"></div>
+        <button type="button" class="btn btn-secondary" style="width:auto;margin-top:6px;" onclick="addTrainerRow()"><i class="fa fa-plus"></i> Add trainer</button>
 
-        <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Trainer 2 (ToT)</h4>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div><label style="margin-top:0;">Full name</label><input type="text" id="grpTrainer2Name" required placeholder="Full name"></div>
-          <div><label style="margin-top:0;">ID (optional)</label><input type="text" id="grpTrainer2Id" placeholder="Auto-generate"></div>
-        </div>
-
-        <label>Trainer password <span style="font-weight:400;color:var(--faint);">(shared by the Master Trainer and both Trainers)</span></label>
+        <label>Trainer password <span style="font-weight:400;color:var(--faint);">(shared by the Master Trainer and any Trainers)</span></label>
         <input type="text" id="grpTrainerPassword" value="password123">
 
         <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Trainees</h4>
@@ -410,13 +402,13 @@ tr:hover td{background:var(--surface-2);}
   </section>
 
   <!-- ============================================================= -->
-  <!-- CREATE TRAINER                                                 -->
+  <!-- CREATE MEMBER                                                  -->
   <!-- ============================================================= -->
-  <section class="dash-section" id="section-trainerCreate" data-title="Create Trainer" data-eyebrow="Trainers">
+  <section class="dash-section" id="section-trainerCreate" data-title="Create Member" data-eyebrow="Trainers">
 
     <div class="system-card">
-      <h3><i class="fa fa-user-plus"></i>Create a new Trainer</h3>
-      <p class="hint">Create a Master Trainer or Trainer (ToT) without creating a new Group. Assign them to an existing Group now, or leave a Master Trainer unassigned and assign them later.</p>
+      <h3><i class="fa fa-user-plus"></i>Create a new Member</h3>
+      <p class="hint">Create a Master Trainer, Trainer (ToT), or Trainee without creating a new Group. The form below changes based on the role you pick.</p>
       <form id="trainerCreateForm">
         <label>Full name</label>
         <input type="text" id="tcName" required placeholder="Full name">
@@ -425,21 +417,30 @@ tr:hover td{background:var(--surface-2);}
         <select id="tcRole">
           <option value="primary">Master Trainer</option>
           <option value="in_training">Trainer (ToT)</option>
+          <option value="trainee">Trainee</option>
         </select>
 
-        <label>Assign to group</label>
+        <label id="tcGroupLabel">Assign to group</label>
         <select id="tcGroup">
           <option value="">Leave unassigned</option>
         </select>
         <div class="field-hint" id="tcGroupHint">A Trainer (ToT) must be assigned to a group that already has an active Master Trainer.</div>
+
+        <div id="tcTotWrap" style="display:none;">
+          <label>Trainer in Training (ToT)</label>
+          <select id="tcTot">
+            <option value="">Leave unassigned</option>
+          </select>
+          <div class="field-hint">Only Trainers (ToT) belonging to the selected group are listed. Optional -- a Trainee can be assigned a ToT later.</div>
+        </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div><label>ID (optional)</label><input type="text" id="tcId" placeholder="Auto-generate"></div>
           <div><label>Temp password</label><input type="text" id="tcPassword" value="password123"></div>
         </div>
 
-        <div class="field-hint">The Trainer will be required to change their password on first login.</div>
-        <button type="submit" class="btn">Create trainer</button>
+        <div class="field-hint">The Member will be required to change their password on first login.</div>
+        <button type="submit" class="btn">Create member</button>
       </form>
       <div class="result-box" id="tcResult"></div>
     </div>
@@ -880,6 +881,65 @@ tr:hover td{background:var(--surface-2);}
   </div>
 </div>
 
+<!-- ADD TRAINEE (to an existing group, without recreating it) -->
+<div class="modal-overlay" id="addTraineeModal">
+  <div class="modal-box">
+    <h3>Add Trainee</h3>
+    <p class="hint" id="addTraineeModalHint" style="margin:0;"></p>
+    <form id="addTraineeCreateForm">
+      <label style="margin-top:0;">Full name</label>
+      <input type="text" id="atrName" required placeholder="Full name">
+      <label>Trainer (ToT)</label>
+      <select id="atrTot">
+        <option value="">Unassigned</option>
+      </select>
+      <div class="field-hint">Optional -- only this Group's Trainers are listed. The Trainee stays visible to the Master Trainer regardless.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><label>ID (optional)</label><input type="text" id="atrId" placeholder="Auto-generate"></div>
+        <div><label>Temp password</label><input type="text" id="atrPassword" value="password123"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeAddTraineeModal()">Cancel</button>
+        <button type="submit" class="btn">Create &amp; add to group</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- EDIT MEMBER (Master Trainer / Trainer (ToT) / Trainee) -->
+<div class="modal-overlay" id="editMemberModal">
+  <div class="modal-box">
+    <h3>Edit Member</h3>
+    <p class="hint" id="editMemberRoleHint" style="margin:0;"></p>
+    <form id="editMemberForm">
+      <input type="hidden" id="emId">
+      <label style="margin-top:0;">Full name</label>
+      <input type="text" id="emName" required placeholder="Full name">
+
+      <div id="emGroupWrap">
+        <label>Group</label>
+        <select id="emGroup">
+          <option value="">Unassigned</option>
+        </select>
+        <div class="field-hint" id="emGroupHint"></div>
+      </div>
+
+      <div id="emTotWrap" style="display:none;">
+        <label>Trainer in Training (ToT)</label>
+        <select id="emTot">
+          <option value="">Unassigned</option>
+        </select>
+        <div class="field-hint">Only Trainers belonging to the selected Group are listed.</div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeEditMemberModal()">Cancel</button>
+        <button type="submit" class="btn">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script src="scripts/api-config.js"></script>
 <script>
 const API_BASE = window.API_BASE;
@@ -1047,6 +1107,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadNotificationPrefs();
 
   addTraineeRow();
+  addTrainerRow();
+  addTrainerRow();
   loadUsers();
   loadGroups();
   loadEvents();
@@ -1116,13 +1178,48 @@ function addTraineeRow(name = "", memberCode = "") {
   const wrap = document.getElementById("grpTraineesList");
   const row = document.createElement("div");
   row.className = "grpTraineeRow";
-  row.style.cssText = "display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;";
+  row.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;";
   row.innerHTML = `
     <div><label style="margin-top:0;">Trainee name</label><input type="text" class="grpTraineeName" value="${escapeHtml(name)}" placeholder="Full name"></div>
     <div><label style="margin-top:0;">ID (optional)</label><input type="text" class="grpTraineeId" value="${escapeHtml(memberCode)}" placeholder="Auto-generate"></div>
+    <div><label style="margin-top:0;">Trainer (ToT)</label><select class="grpTraineeTot"><option value="">Unassigned</option></select></div>
     <button type="button" class="icon-btn danger" style="margin-bottom:0;" onclick="this.closest('.grpTraineeRow').remove()"><i class="fa fa-trash"></i></button>
   `;
   wrap.appendChild(row);
+  refreshGrpTraineeTotOptions();
+}
+
+// Rebuilds every trainee row's ToT dropdown from the Trainer rows that
+// exist right now (referenced by position, since new Trainers don't have
+// a real id yet -- see POST /groups' totIndex handling). Preserves each
+// row's current selection when that position still exists.
+function refreshGrpTraineeTotOptions() {
+  const trainerNames = Array.from(document.querySelectorAll("#grpTrainersList .grpTrainerRow .grpTrainerName")).map(
+    (el) => el.value.trim()
+  );
+  document.querySelectorAll("#grpTraineesList .grpTraineeRow .grpTraineeTot").forEach((select) => {
+    const current = select.value;
+    select.innerHTML =
+      '<option value="">Unassigned</option>' +
+      trainerNames.map((n, i) => `<option value="${i}">${escapeHtml(n || `Trainer ${i + 1}`)}</option>`).join("");
+    if (current && Number(current) < trainerNames.length) select.value = current;
+  });
+}
+
+// Any number of rows (including zero) is valid -- unlike trainees, a group
+// is never required to have a Trainer (ToT) at creation time.
+function addTrainerRow(name = "", memberCode = "") {
+  const wrap = document.getElementById("grpTrainersList");
+  const row = document.createElement("div");
+  row.className = "grpTrainerRow";
+  row.style.cssText = "display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;";
+  row.innerHTML = `
+    <div><label style="margin-top:0;">Trainer name</label><input type="text" class="grpTrainerName" value="${escapeHtml(name)}" placeholder="Full name" oninput="refreshGrpTraineeTotOptions()"></div>
+    <div><label style="margin-top:0;">ID (optional)</label><input type="text" class="grpTrainerId" value="${escapeHtml(memberCode)}" placeholder="Auto-generate"></div>
+    <button type="button" class="icon-btn danger" style="margin-bottom:0;" onclick="this.closest('.grpTrainerRow').remove(); refreshGrpTraineeTotOptions();"><i class="fa fa-trash"></i></button>
+  `;
+  wrap.appendChild(row);
+  refreshGrpTraineeTotOptions();
 }
 
 function initials(name) {
@@ -1197,6 +1294,7 @@ function renderGroupDetail() {
   }
 
   const memberActions = (m, deleteRole) => `
+    <button class="icon-btn" title="Edit" onclick="openEditMemberModal(${m.id})"><i class="fa fa-pen"></i></button>
     <button class="icon-btn" title="${m.status === "active" ? "Suspend" : "Activate"}" onclick="confirmToggleStatus(${m.id}, '${m.status}', '${escapeHtml(m.full_name)}')"><i class="fa ${m.status === "active" ? "fa-user-slash" : "fa-user-check"}"></i></button>
     <button class="icon-btn danger" title="Delete account" onclick="confirmDeleteUser(${m.id}, '${escapeHtml(m.full_name)}', '${deleteRole}')"><i class="fa fa-trash"></i></button>
   `;
@@ -1237,12 +1335,13 @@ function renderGroupDetail() {
     <tr>
       <td>${escapeHtml(t.full_name)}</td>
       <td>${escapeHtml(t.member_code)}</td>
+      <td>${(t.tots || []).length ? escapeHtml(t.tots.map((x) => x.full_name).join(", ")) : '<span class="hint" style="margin:0;">Unassigned</span>'}</td>
       <td><span class="pill ${t.status}">${escapeHtml(t.status)}</span></td>
       <td>${memberActions(t, "trainee")}</td>
     </tr>`
         )
         .join("")
-    : '<tr><td colspan="4" class="empty-state">No trainees.</td></tr>';
+    : '<tr><td colspan="5" class="empty-state">No trainees.</td></tr>';
 
   wrap.innerHTML = `
     <div class="group-header">
@@ -1270,9 +1369,12 @@ function renderGroupDetail() {
     </div>
     <div class="trainer-grid" style="margin-bottom:22px;">${trainersCards}</div>
 
-    <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Trainees</h4>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h4 style="margin:0;font-size:13px;color:var(--muted);">Trainees</h4>
+      <button class="btn btn-sm" style="width:auto;margin-top:0;" onclick="openAddTraineeModal(${g.id})"><i class="fa fa-plus"></i> Add Trainee</button>
+    </div>
     <table>
-      <thead><tr><th>Name</th><th>ID</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>ID</th><th>Trainer (ToT)</th><th>Status</th><th></th></tr></thead>
       <tbody>${traineesRows}</tbody>
     </table>
   `;
@@ -1336,29 +1438,32 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
     fullName: document.getElementById("grpMasterName").value.trim(),
     memberCode: document.getElementById("grpMasterId").value.trim() || undefined,
   };
-  const trainers = [
-    {
-      fullName: document.getElementById("grpTrainer1Name").value.trim(),
-      memberCode: document.getElementById("grpTrainer1Id").value.trim() || undefined,
-    },
-    {
-      fullName: document.getElementById("grpTrainer2Name").value.trim(),
-      memberCode: document.getElementById("grpTrainer2Id").value.trim() || undefined,
-    },
-  ];
+  // Any number of Trainer rows is valid, including none -- empty rows
+  // (never filled in) are simply skipped rather than sent as blanks.
+  const trainers = [];
+  document.querySelectorAll("#grpTrainersList .grpTrainerRow").forEach((row) => {
+    const fullName = row.querySelector(".grpTrainerName").value.trim();
+    const memberCode = row.querySelector(".grpTrainerId").value.trim();
+    if (fullName) trainers.push({ fullName, memberCode: memberCode || undefined });
+  });
   const trainerPassword = document.getElementById("grpTrainerPassword").value.trim() || undefined;
   const traineePassword = document.getElementById("grpTraineePassword").value.trim() || undefined;
 
+  // Zero trainees is valid -- a Group can be created with none and have
+  // Trainees added later.
   const trainees = [];
   document.querySelectorAll("#grpTraineesList .grpTraineeRow").forEach((row) => {
     const fullName = row.querySelector(".grpTraineeName").value.trim();
     const memberCode = row.querySelector(".grpTraineeId").value.trim();
-    if (fullName) trainees.push({ fullName, memberCode: memberCode || undefined });
+    const totIndexRaw = row.querySelector(".grpTraineeTot").value;
+    if (fullName) {
+      trainees.push({
+        fullName,
+        memberCode: memberCode || undefined,
+        totIndex: totIndexRaw !== "" ? Number(totIndexRaw) : undefined,
+      });
+    }
   });
-  if (!trainees.length) {
-    showToast("Add at least one trainee", "error");
-    return;
-  }
 
   const result = await apiRequest("/admin/groups", {
     method: "POST",
@@ -1369,6 +1474,9 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
     document.getElementById("groupForm").reset();
     document.getElementById("grpTraineesList").innerHTML = "";
     addTraineeRow();
+    document.getElementById("grpTrainersList").innerHTML = "";
+    addTrainerRow();
+    addTrainerRow();
 
     lastCreatedGroupId = result.group.id;
     const box = document.getElementById("grpJustCreatedBox");
@@ -1378,7 +1486,7 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
       <div class="result-row"><span>Master Trainer</span><strong>${escapeHtml(result.masterTrainer.fullName)} (${escapeHtml(result.masterTrainer.memberCode)})</strong></div>
       ${result.trainers.map((t) => `<div class="result-row"><span>Trainer (ToT)</span><strong>${escapeHtml(t.fullName)} (${escapeHtml(t.memberCode)})</strong></div>`).join("")}
       <div class="result-row"><span>Trainer password</span><strong>${escapeHtml(result.trainerPassword)}</strong> <button class="copy-btn" onclick="copyText('${result.trainerPassword}')">Copy</button></div>
-      ${result.trainees.map((t) => `<div class="result-row"><span>Trainee</span><strong>${escapeHtml(t.fullName)} (${escapeHtml(t.memberCode)})</strong></div>`).join("")}
+      ${result.trainees.map((t) => `<div class="result-row"><span>Trainee</span><strong>${escapeHtml(t.fullName)} (${escapeHtml(t.memberCode)})${t.tot ? ` &rarr; ${escapeHtml(t.tot.fullName)}` : ""}</strong></div>`).join("")}
       <div class="result-row"><span>Trainee password</span><strong>${escapeHtml(result.traineePassword)}</strong> <button class="copy-btn" onclick="copyText('${result.traineePassword}')">Copy</button></div>
       <button class="btn btn-secondary btn-sm" style="width:auto;margin-top:10px;" onclick="document.getElementById('grpJustCreatedBox').classList.remove('show')">Dismiss</button>
     `;
@@ -1396,10 +1504,16 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
 // action, and the Add-Trainer modal opened from a Group's detail view --
 // wrapping POST /admin/trainers and PATCH /admin/trainers/:id/group.
 
-async function createTrainer({ fullName, role, groupId, memberCode, tempPassword }) {
+async function createTrainer({ fullName, role, groupId, totId, memberCode, tempPassword }) {
   return apiRequest("/admin/trainers", {
     method: "POST",
-    body: JSON.stringify({ fullName, role, groupId: groupId || undefined, memberCode: memberCode || undefined, tempPassword: tempPassword || undefined }),
+    body: JSON.stringify({
+      fullName, role,
+      groupId: groupId || undefined,
+      totId: totId || undefined,
+      memberCode: memberCode || undefined,
+      tempPassword: tempPassword || undefined,
+    }),
   });
 }
 
@@ -1483,11 +1597,50 @@ function openReassignTrainer(trainerId, name, existingGroupId) {
 document.getElementById("trainerSearch").addEventListener("input", renderTrainersList);
 document.getElementById("trainerRoleFilter").addEventListener("change", renderTrainersList);
 
+// The form's meaning of "group" and whether a ToT sub-selector applies
+// changes per role -- Master Trainer/Trainer keep the existing behavior
+// exactly; Trainee is the new addition (Create Member's whole point).
+function updateTrainerCreateFormForRole() {
+  const role = document.getElementById("tcRole").value;
+  const groupLabel = document.getElementById("tcGroupLabel");
+  const groupHint = document.getElementById("tcGroupHint");
+  const groupSelect = document.getElementById("tcGroup");
+  const totWrap = document.getElementById("tcTotWrap");
+
+  if (role === "trainee") {
+    groupLabel.textContent = "Group";
+    groupHint.textContent = "A Trainee must belong to a Group.";
+    groupSelect.querySelector('option[value=""]').textContent = "Select a group...";
+    totWrap.style.display = "block";
+    populateTcTotOptions();
+  } else {
+    groupLabel.textContent = "Assign to group";
+    groupHint.textContent = "A Trainer (ToT) must be assigned to a group that already has an active Master Trainer.";
+    groupSelect.querySelector('option[value=""]').textContent = "Leave unassigned";
+    totWrap.style.display = "none";
+  }
+}
+
+function populateTcTotOptions() {
+  const groupId = Number(document.getElementById("tcGroup").value) || null;
+  const group = groupId ? allGroups.find((g) => g.id === groupId) : null;
+  const select = document.getElementById("tcTot");
+  const tots = group ? group.trainers : [];
+  select.innerHTML = '<option value="">Leave unassigned</option>' +
+    tots.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
+}
+
+document.getElementById("tcRole").addEventListener("change", updateTrainerCreateFormForRole);
+document.getElementById("tcGroup").addEventListener("change", () => {
+  if (document.getElementById("tcRole").value === "trainee") populateTcTotOptions();
+});
+
 document.getElementById("trainerCreateForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const fullName = document.getElementById("tcName").value.trim();
   const role = document.getElementById("tcRole").value;
   const groupId = document.getElementById("tcGroup").value || null;
+  const totId = document.getElementById("tcTot").value || null;
   const memberCode = document.getElementById("tcId").value.trim();
   const tempPassword = document.getElementById("tcPassword").value.trim();
 
@@ -1495,20 +1648,26 @@ document.getElementById("trainerCreateForm").addEventListener("submit", async (e
     showToast("A Trainer (ToT) must be assigned to a group with an active Master Trainer", "error");
     return;
   }
+  if (role === "trainee" && !groupId) {
+    showToast("A Trainee must be assigned to a group", "error");
+    return;
+  }
 
-  const result = await createTrainer({ fullName, role, groupId, memberCode, tempPassword });
+  const result = await createTrainer({ fullName, role, groupId, totId, memberCode, tempPassword });
   if (!result) return;
 
+  const roleLabel = role === "trainee" ? "Trainee" : "Member";
   const box = document.getElementById("tcResult");
   box.className = "result-box show";
   box.innerHTML = `
-    <div class="rlabel">Trainer "${escapeHtml(result.user.full_name)}" created</div>
+    <div class="rlabel">${roleLabel} "${escapeHtml(result.user.full_name)}" created</div>
     <div class="result-row"><span>ID</span><strong>${escapeHtml(result.memberCode)}</strong></div>
     <div class="result-row"><span>Temp password</span><strong>${escapeHtml(result.tempPassword)}</strong> <button class="copy-btn" onclick="copyText('${result.tempPassword}')">Copy</button></div>
   `;
-  showToast("Trainer created", "success");
+  showToast(`${roleLabel} created`, "success");
   document.getElementById("trainerCreateForm").reset();
   document.getElementById("tcPassword").value = "password123";
+  updateTrainerCreateFormForRole();
   await Promise.all([loadUsers(), loadGroups()]);
 });
 
@@ -1576,6 +1735,151 @@ document.getElementById("addTrainerAssignForm").addEventListener("submit", async
   closeAddTrainerModal();
   await Promise.all([loadUsers(), loadGroups()]);
   renderGroupDetail();
+});
+
+// ---- Add Trainee modal (Group detail -> "+ Add Trainee") ---------------
+// Adds one Trainee to an ALREADY-existing group without recreating it,
+// same reasoning as the Add Trainer modal above -- just backed by the new
+// role: 'trainee' branch of POST /admin/trainers instead of a separate
+// duplicate endpoint.
+
+let addTraineeGroupId = null;
+
+function openAddTraineeModal(groupId) {
+  addTraineeGroupId = groupId;
+  const group = allGroups.find((g) => g.id === groupId);
+  document.getElementById("addTraineeModalHint").textContent = group ? `Adding to "${group.name}"` : "";
+
+  const select = document.getElementById("atrTot");
+  const tots = group ? group.trainers : [];
+  select.innerHTML = '<option value="">Unassigned</option>' +
+    tots.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
+
+  document.getElementById("addTraineeModal").classList.add("show");
+}
+
+function closeAddTraineeModal() {
+  document.getElementById("addTraineeModal").classList.remove("show");
+  addTraineeGroupId = null;
+}
+
+document.getElementById("addTraineeCreateForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fullName = document.getElementById("atrName").value.trim();
+  const totId = document.getElementById("atrTot").value || undefined;
+  const memberCode = document.getElementById("atrId").value.trim();
+  const tempPassword = document.getElementById("atrPassword").value.trim();
+
+  const result = await createTrainer({ fullName, role: "trainee", groupId: addTraineeGroupId, totId, memberCode, tempPassword });
+  if (!result) return;
+
+  showToast(`Trainee created and added to the group (ID ${result.memberCode}, temp password ${result.tempPassword})`, "success");
+  closeAddTraineeModal();
+  document.getElementById("addTraineeCreateForm").reset();
+  document.getElementById("atrPassword").value = "password123";
+  await Promise.all([loadUsers(), loadGroups()]);
+  renderGroupDetail();
+});
+
+// ---- Edit Member modal (Master Trainer / Trainer (ToT) / Trainee) ------
+// One reusable modal for all three roles -- always re-fetches the current
+// record via GET /admin/users/:id rather than trusting whatever row data
+// the calling list already had cached, so it's correct no matter which
+// page (Trainers list, Group Detail, Trainee Profiles) opened it.
+
+let editMemberData = null; // the freshly-fetched profile being edited
+
+async function openEditMemberModal(id) {
+  const profile = await apiRequest(`/admin/users/${id}`);
+  if (!profile) return;
+  editMemberData = profile;
+
+  document.getElementById("emId").value = profile.id;
+  document.getElementById("emName").value = profile.full_name || "";
+
+  const groupSelect = document.getElementById("emGroup");
+  populateGroupSelect(groupSelect, { placeholder: "Unassigned" });
+  groupSelect.value = profile.groupId || "";
+
+  const isTrainee = profile.role === "trainee";
+  const isSupervisor = profile.role === "supervisor";
+  document.getElementById("editMemberRoleHint").textContent = isTrainee
+    ? "Trainee"
+    : profile.supervisorType === "primary"
+    ? "Master Trainer"
+    : "Trainer (ToT)";
+
+  document.getElementById("emGroupHint").textContent = isSupervisor && profile.supervisorType === "in_training"
+    ? "Changing the Group requires the new Group to already have an active Master Trainer."
+    : "";
+
+  document.getElementById("emTotWrap").style.display = isTrainee ? "block" : "none";
+  if (isTrainee) {
+    populateEmTotOptions();
+    const currentTot = (profile.supervisors || []).find((s) => s.supervisor_type === "in_training");
+    document.getElementById("emTot").value = currentTot ? currentTot.id : "";
+  }
+
+  document.getElementById("editMemberModal").classList.add("show");
+}
+
+function closeEditMemberModal() {
+  document.getElementById("editMemberModal").classList.remove("show");
+  editMemberData = null;
+}
+
+function populateEmTotOptions() {
+  const groupId = Number(document.getElementById("emGroup").value) || null;
+  const group = groupId ? allGroups.find((g) => g.id === groupId) : null;
+  const select = document.getElementById("emTot");
+  const tots = group ? group.trainers : [];
+  select.innerHTML = '<option value="">Unassigned</option>' +
+    tots.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
+}
+
+document.getElementById("emGroup").addEventListener("change", () => {
+  if (editMemberData && editMemberData.role === "trainee") populateEmTotOptions();
+});
+
+document.getElementById("editMemberForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!editMemberData) return;
+
+  const id = Number(document.getElementById("emId").value);
+  const fullName = document.getElementById("emName").value.trim();
+  const newGroupId = document.getElementById("emGroup").value ? Number(document.getElementById("emGroup").value) : null;
+  const isTrainee = editMemberData.role === "trainee";
+  const isSupervisor = editMemberData.role === "supervisor";
+
+  if (isTrainee) {
+    const newGroup = newGroupId ? allGroups.find((g) => g.id === newGroupId) : null;
+    const totId = document.getElementById("emTot").value ? Number(document.getElementById("emTot").value) : null;
+    const supervisorIds = [];
+    if (newGroup && newGroup.masterTrainer) supervisorIds.push(newGroup.masterTrainer.id);
+    if (totId) supervisorIds.push(totId);
+
+    const result = await apiRequest(`/admin/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ fullName, groupId: newGroupId, supervisorIds }),
+    });
+    if (!result) return;
+  } else if (isSupervisor) {
+    const nameResult = await apiRequest(`/admin/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ fullName }),
+    });
+    if (!nameResult) return;
+
+    if (newGroupId !== (editMemberData.groupId || null)) {
+      const groupResult = await assignTrainerToGroup(id, newGroupId);
+      if (!groupResult) return; // fullName change above already saved; group change failed its own validation (e.g. target group has no active Master Trainer)
+    }
+  }
+
+  showToast("Member updated", "success");
+  closeEditMemberModal();
+  await Promise.all([loadUsers(), loadGroups()]);
+  if (currentGroupId) renderGroupDetail();
 });
 
 // ---- CVs (Master Trainer / Trainer (ToT) / Trainee, as CVs) ------------

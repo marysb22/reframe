@@ -51,7 +51,7 @@ const USER_SELECT = `
     sup.group_id AS supervisor_group_id, st.group_id AS student_group_id,
     tg.id AS group_id, tg.name AS group_name,
     COALESCE(
-      (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', sup2.id, 'full_name', sup2.full_name))
+      (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', sup2.id, 'full_name', sup2.full_name, 'supervisor_type', sup2.supervisor_type))
          FROM supervisor_students ss JOIN supervisors sup2 ON sup2.id = ss.supervisor_id
          WHERE ss.student_id = uc.id),
       JSON_ARRAY()
@@ -362,6 +362,7 @@ router.put(
       currentYear,
       status,
       supervisorIds,
+      groupId,
       fullName,
       email,
       phone,
@@ -382,6 +383,38 @@ router.put(
     }
     if (status !== undefined) {
       await db.query("UPDATE user_credentials SET status = ?, updated_at = NOW() WHERE id = ?", [status, id]);
+    }
+
+    // A Trainee's Group can be edited here (Master Trainers/Trainers keep
+    // using PATCH /trainers/:id/group instead, which already has the
+    // "target group needs an active Master Trainer" business rule this
+    // route has no reason to duplicate). `groupId: null` unassigns.
+    let effectiveGroupId;
+    if (existing.role === "trainee" && groupId !== undefined) {
+      const newGroupId = groupId ? Number(groupId) : null;
+      if (newGroupId) {
+        const { rows: groupRows } = await db.query("SELECT id FROM trainer_groups WHERE id = ?", [newGroupId]);
+        if (!groupRows.length) return res.status(404).json({ error: "Group not found" });
+      }
+      await db.query("UPDATE students SET group_id = ?, updated_at = NOW() WHERE id = ?", [newGroupId, id]);
+      effectiveGroupId = newGroupId;
+    } else if (existing.role === "trainee") {
+      const { rows: currentRows } = await db.query("SELECT group_id FROM students WHERE id = ?", [id]);
+      effectiveGroupId = currentRows[0] ? currentRows[0].group_id : null;
+    }
+
+    // A Trainee's supervisorIds must all belong to their (possibly just-
+    // updated) Group -- never leave them connected to a Master Trainer/ToT
+    // from a different Group.
+    if (existing.role === "trainee" && Array.isArray(supervisorIds) && supervisorIds.length) {
+      const { sql: inSql, params: inParams } = { sql: supervisorIds.map(() => "?").join(","), params: supervisorIds };
+      const { rows: supRows } = await db.query(
+        `SELECT id FROM supervisors WHERE id IN (${inSql}) AND group_id ${effectiveGroupId ? "= ?" : "IS NULL"}`,
+        effectiveGroupId ? [...inParams, effectiveGroupId] : inParams
+      );
+      if (supRows.length !== supervisorIds.length) {
+        return res.status(400).json({ error: "A Trainee can only be assigned to a Master Trainer/Trainer (ToT) in their own Group" });
+      }
     }
 
     const profileTable = existing.role === "trainee" ? "students" : "supervisors";
@@ -656,6 +689,18 @@ router.get(
     const supervisorExtraFields =
       "'email', member.email, 'phone', member.phone, 'specialization', member.specialization, 'bio', member.bio";
 
+    // Each trainee's own current ToT assignment(s) -- an array, not a single
+    // value, because older data (created before selective assignment
+    // existed) may still have a trainee linked to more than one ToT at
+    // once; new trainees created/edited through this feature will only
+    // ever have zero or one.
+    const traineeExtraFields = `'tots', COALESCE((
+      SELECT JSON_ARRAYAGG(JSON_OBJECT('id', tot.id, 'full_name', tot.full_name))
+      FROM supervisor_students ss2
+      JOIN supervisors tot ON tot.id = ss2.supervisor_id
+      WHERE ss2.student_id = member.id AND tot.supervisor_type = 'in_training'
+    ), JSON_ARRAY())`;
+
     const { rows } = await db.query(
       `
       SELECT
@@ -672,7 +717,7 @@ router.get(
           LIMIT 1
         ) AS master_trainer,
         ${memberListSql("supervisors", supervisorExtraFields)} AS trainers,
-        ${memberListSql("students", null)} AS trainees
+        ${memberListSql("students", traineeExtraFields)} AS trainees
       FROM trainer_groups g
       ORDER BY g.created_at DESC
       `,
@@ -708,11 +753,30 @@ router.post(
     if (!masterTrainerIn.fullName || !String(masterTrainerIn.fullName).trim()) {
       return res.status(400).json({ error: "Master Trainer full name is required" });
     }
-    if (trainersIn.length !== 2 || trainersIn.some((t) => !t?.fullName || !String(t.fullName).trim())) {
-      return res.status(400).json({ error: "Both Trainer (ToT) full names are required" });
+    // Any number of Trainers (ToT) is allowed, including zero -- a group
+    // can be created with just a Master Trainer and Trainees, and more
+    // Trainers can always be added later via Create Trainer / a group's
+    // own "Add Trainer" action. Whichever rows ARE submitted still need a
+    // real name, same as before.
+    if (trainersIn.some((t) => !t || !t.fullName || !String(t.fullName).trim())) {
+      return res.status(400).json({ error: "Every Trainer (ToT) needs a full name" });
     }
-    if (!traineesIn.length || traineesIn.some((t) => !t?.fullName || !String(t.fullName).trim())) {
-      return res.status(400).json({ error: "At least one trainee full name is required" });
+    // Zero Trainees is valid -- a Group can be stood up with just a Master
+    // Trainer (and optionally Trainers/ToT) and Trainees added later.
+    // Whichever trainee rows ARE submitted still need a real name, and if
+    // one specifies a totIndex it must point at an actual Trainer row in
+    // this same submission (there's no Trainer id to check against yet --
+    // they don't exist until the insert loop below runs).
+    if (
+      traineesIn.some(
+        (t) =>
+          !t ||
+          !t.fullName ||
+          !String(t.fullName).trim() ||
+          (t.totIndex !== undefined && t.totIndex !== null && (!Number.isInteger(t.totIndex) || t.totIndex < 0 || t.totIndex >= trainersIn.length))
+      )
+    ) {
+      return res.status(400).json({ error: "Every trainee needs a full name and, if a Trainer (ToT) is selected, it must be one of this Group's Trainers" });
     }
 
     const { rows: nameRows } = await db.query("SELECT id FROM trainer_groups WHERE name = ?", [name]);
@@ -777,7 +841,6 @@ router.post(
       );
     }
 
-    const trainerRoleIds = [masterTrainer.id, ...trainers.map((t) => t.id)];
     const trainees = [];
     for (let i = 0; i < traineesIn.length; i++) {
       const memberCode = traineeCodes[i];
@@ -796,10 +859,15 @@ router.post(
       await db.query("INSERT INTO privacy_preferences (user_id) VALUES (?)", [id]);
       await db.query("INSERT INTO payments (student_id, total_fee_cents) VALUES (?, 0)", [id]);
 
-      // Assign this trainee to all three trainer-role accounts in the
-      // group (Master Trainer + both Trainers/ToT) so messaging,
-      // materials, and assignments work from all three, not just one.
-      for (const trainerId of trainerRoleIds) {
+      // Always visible to the Master Trainer; additionally linked to the
+      // one specific Trainer (ToT) selected for this row, if any -- NOT
+      // to every Trainer in the group. A trainee with no ToT picked is
+      // simply unassigned ToT-wise until an Admin assigns one later
+      // (Create Member's Trainee role, or Edit Member).
+      const rowTotIndex = traineesIn[i].totIndex;
+      const linkIds = [masterTrainer.id];
+      if (rowTotIndex !== undefined && rowTotIndex !== null) linkIds.push(trainers[rowTotIndex].id);
+      for (const trainerId of linkIds) {
         await db.query(
           `INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)
            ON DUPLICATE KEY UPDATE assigned_at = assigned_at`,
@@ -807,7 +875,12 @@ router.post(
         );
       }
 
-      trainees.push({ id, fullName: traineesIn[i].fullName.trim(), memberCode });
+      trainees.push({
+        id,
+        fullName: traineesIn[i].fullName.trim(),
+        memberCode,
+        tot: rowTotIndex !== undefined && rowTotIndex !== null ? { id: trainers[rowTotIndex].id, fullName: trainers[rowTotIndex].fullName } : null,
+      });
     }
 
     await db.query(
@@ -868,7 +941,11 @@ router.patch(
 // account or a trainee<->trainer caseload link ever gets created.
 
 // POST /api/admin/trainers
-// { fullName, role: 'primary'|'in_training', groupId?, email?, phone?, memberCode?, tempPassword? }
+// { fullName, role: 'primary'|'in_training'|'trainee', groupId?, totId?, email?, phone?, memberCode?, tempPassword? }
+// Despite the route name (kept as-is to avoid touching its three existing
+// callers), this is also where Create Member posts a Trainee -- one
+// endpoint for all three roles, per the "one reusable Member system"
+// requirement, rather than a separate near-duplicate route.
 router.post(
   "/trainers",
   asyncRoute(async (req, res, db) => {
@@ -878,8 +955,73 @@ router.post(
     const groupId = body.groupId ? Number(body.groupId) : null;
 
     if (!fullName) return res.status(400).json({ error: "Full name is required" });
+
+    if (role === "trainee") {
+      if (!groupId) return res.status(400).json({ error: "A Trainee must be assigned to a Group" });
+      const { rows: groupRows } = await db.query("SELECT id FROM trainer_groups WHERE id = ?", [groupId]);
+      if (!groupRows.length) return res.status(404).json({ error: "Group not found" });
+
+      const totId = body.totId ? Number(body.totId) : null;
+      if (totId) {
+        const { rows: totRows } = await db.query(
+          "SELECT id FROM supervisors WHERE id = ? AND group_id = ? AND supervisor_type = 'in_training'",
+          [totId, groupId]
+        );
+        if (!totRows.length) {
+          return res.status(400).json({ error: "That Trainer (ToT) does not belong to the selected Group" });
+        }
+      }
+
+      const codeResult = await resolveMemberCode(db, body.memberCode, "TTR");
+      if (codeResult.conflict) return res.status(409).json({ error: codeResult.conflict });
+
+      const plainTempPassword =
+        body.tempPassword && String(body.tempPassword).length >= 8
+          ? String(body.tempPassword)
+          : generateTempPassword();
+      const passwordHash = await hashPassword(plainTempPassword);
+
+      const cred = await db.query(
+        `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password) VALUES (?, ?, 'trainee', TRUE)`,
+        [codeResult.code, passwordHash]
+      );
+      const traineeId = cred.insertId;
+      await db.query("INSERT INTO students (id, full_name, group_id) VALUES (?, ?, ?)", [traineeId, fullName, groupId]);
+      await db.query("INSERT INTO settings (user_id) VALUES (?)", [traineeId]);
+      await db.query("INSERT INTO privacy_preferences (user_id) VALUES (?)", [traineeId]);
+      await db.query("INSERT INTO payments (student_id, total_fee_cents) VALUES (?, 0)", [traineeId]);
+
+      // Always visible to the group's Master Trainer (if one exists yet)
+      // and, additionally, to the one specific ToT selected -- NOT to
+      // every ToT in the group. This is deliberately more selective than
+      // POST /groups' bulk-creation path (see the note there): a Trainee
+      // added one at a time through Create Member is meant to belong to
+      // one specific ToT's caseload, not everyone's.
+      const master = await getActiveMasterTrainer(db, groupId);
+      const linkIds = [master ? master.id : null, totId].filter(Boolean);
+      for (const supId of linkIds) {
+        await db.query(
+          `INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE assigned_at = assigned_at`,
+          [supId, traineeId, req.user.id]
+        );
+      }
+
+      await db.query(
+        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'account_created', 'user_credentials', ?)",
+        [req.user.id, traineeId]
+      );
+
+      const { rows: traineeRows } = await db.query(`${USER_SELECT} WHERE uc.id = ?`, [traineeId]);
+      return res.status(201).json({
+        user: toPublicUser(traineeRows[0]),
+        memberCode: codeResult.code,
+        tempPassword: plainTempPassword,
+      });
+    }
+
     if (!["primary", "in_training"].includes(role)) {
-      return res.status(400).json({ error: "Role must be 'primary' (Master Trainer) or 'in_training' (Trainer)" });
+      return res.status(400).json({ error: "Role must be 'primary' (Master Trainer), 'in_training' (Trainer), or 'trainee'" });
     }
     if (role === "in_training" && !groupId) {
       return res.status(400).json({
