@@ -358,6 +358,7 @@ CREATE TABLE assignments (
   title               VARCHAR(255) NOT NULL,
   description         TEXT,
   attachment_filename VARCHAR(255),             -- optional file the supervisor attaches (instructions, template)
+  content_url         VARCHAR(2048),             -- added in migration 003: optional video/resource link
   due_date            DATE,
   status              VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'submitted', 'completed', 'overdue')),
   max_score           DECIMAL(5,2),
@@ -761,6 +762,41 @@ CREATE TABLE audit_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Structured before/after diffs for a real audit trail.';
 
+-- Added in migration 002 -- see that file's header for why this exists as
+-- Admin-configurable definitions rather than hardcoded stage names.
+CREATE TABLE training_milestones (
+  id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+  code            VARCHAR(50) NOT NULL UNIQUE,
+  name_en         VARCHAR(255) NOT NULL,
+  name_ar         VARCHAR(255),
+  description_en  TEXT,
+  description_ar  TEXT,
+  sort_order      INT NOT NULL DEFAULT 0,
+  is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by      BIGINT,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_milestone_creator FOREIGN KEY (created_by) REFERENCES admin_users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Admin-defined curriculum milestones -- not hardcoded in application code.';
+
+CREATE TABLE trainee_milestone_progress (
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id     BIGINT NOT NULL,
+  milestone_id   BIGINT NOT NULL,
+  status         VARCHAR(20) NOT NULL DEFAULT 'not_started' CHECK (status IN ('not_started', 'in_progress', 'completed')),
+  completed_at   DATETIME,
+  marked_by      BIGINT,
+  notes          TEXT,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_student_milestone (student_id, milestone_id),
+  CONSTRAINT fk_tmp_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_tmp_milestone FOREIGN KEY (milestone_id) REFERENCES training_milestones(id) ON DELETE CASCADE,
+  CONSTRAINT fk_tmp_marked_by FOREIGN KEY (marked_by) REFERENCES supervisors(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='One row per trainee per milestone the Trainer (ToT) has touched. Rows created lazily, not pre-seeded -- see migration 002.';
+
 
 -- =============================================================================
 -- SECTION 12: INDEXES
@@ -820,6 +856,9 @@ CREATE INDEX idx_events_created_by ON events(created_by);
 CREATE INDEX idx_audit_logs_actor ON audit_logs(actor_id, created_at DESC);
 CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 
+CREATE INDEX idx_milestone_progress_student ON trainee_milestone_progress(student_id);
+CREATE INDEX idx_milestone_progress_milestone ON trainee_milestone_progress(milestone_id);
+
 
 -- =============================================================================
 -- SECTION 13: SEED DATA (bootstrap Admin account only)
@@ -851,6 +890,15 @@ ALTER TABLE user_credentials AUTO_INCREMENT = 2;
 
 INSERT INTO settings (user_id) VALUES (1);
 INSERT INTO privacy_preferences (user_id) VALUES (1);
+
+-- Starting curriculum milestone definitions (see migration 002) -- Admin can
+-- edit/add/deactivate these later; this seed only bootstraps a usable set.
+INSERT INTO training_milestones (code, name_en, name_ar, sort_order, is_active) VALUES
+  ('foundation',          'Foundation',                'الأساسيات',            1, TRUE),
+  ('module_training',     'Module Training',            'تدريب الوحدات',        2, TRUE),
+  ('practical_training',  'Practical Training',         'التدريب العملي',       3, TRUE),
+  ('assessment',          'Assessment',                 'التقييم',              4, TRUE),
+  ('final_certification', 'Final Certification',        'الشهادة النهائية',     5, TRUE);
 
 SET FOREIGN_KEY_CHECKS = 1;
 
