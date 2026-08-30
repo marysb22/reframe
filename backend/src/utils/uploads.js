@@ -2,6 +2,7 @@
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const config = require("../config");
 
 // multer's diskStorage never creates its destination folder -- it just
 // fails the upload with ENOENT if it doesn't already exist. That bit
@@ -17,7 +18,7 @@ function ensureUploadDir(dir) {
 }
 
 const eventImageStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, ensureUploadDir(path.join(__dirname, "../../uploads/events"))),
+  destination: (req, file, cb) => cb(null, ensureUploadDir(path.join(config.uploadsDir, "events"))),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);
@@ -39,7 +40,7 @@ const eventImageUpload = multer({
 
 function makeDiskStorage(subfolder) {
   return multer.diskStorage({
-    destination: (req, file, cb) => cb(null, ensureUploadDir(path.join(__dirname, "../../uploads", subfolder))),
+    destination: (req, file, cb) => cb(null, ensureUploadDir(path.join(config.uploadsDir, subfolder))),
     filename: (req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase();
       cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);

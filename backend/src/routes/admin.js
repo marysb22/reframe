@@ -1,6 +1,7 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+const config = require("../config");
 const { requireAuth, requireAdmin, asyncRoute } = require("../middleware/auth");
 const { generateNextId } = require("../utils/idGenerator");
 const { hashPassword, generateTempPassword } = require("../utils/authUtils");
@@ -1316,7 +1317,7 @@ router.delete(
 
     await db.query("DELETE FROM documents WHERE id = ?", [id]);
 
-    const filePath = path.join(__dirname, "../../uploads/documents", rows[0].filename);
+    const filePath = path.join(config.uploadsDir, "documents", rows[0].filename);
     fs.unlink(filePath, (err) => {
       // A missing file on disk shouldn't fail the request -- the DB row
       // (the source of truth for "does this document exist") is already
