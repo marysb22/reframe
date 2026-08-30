@@ -248,6 +248,12 @@ function toMaterial(row) {
     externalUrl: row.external_url,
     supervisorName: row.supervisor_name,
     createdAt: row.created_at,
+    // Best-effort link from an 'assignment'-tagged material to a real row in
+    // the separate `assignments` table -- there is no actual foreign key
+    // between the two features, so callers match by title (see the
+    // matched_assignment_id subquery in each /materials route). Undefined
+    // (not just null) on any query that doesn't select that column.
+    matchedAssignmentId: row.matched_assignment_id != null ? row.matched_assignment_id : null,
   };
 }
 

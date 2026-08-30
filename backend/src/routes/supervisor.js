@@ -735,7 +735,14 @@ router.get(
   "/materials",
   asyncRoute(async (req, res, db) => {
     const { rows } = await db.query(
-      "SELECT * FROM learning_materials WHERE supervisor_id = ? ORDER BY created_at DESC",
+      `SELECT lm.*,
+              (SELECT a.id FROM assignments a
+                WHERE a.student_id = lm.student_id AND a.supervisor_id = lm.supervisor_id
+                  AND LOWER(a.title) = LOWER(lm.title)
+                ORDER BY a.id DESC LIMIT 1) AS matched_assignment_id
+       FROM learning_materials lm
+       WHERE lm.supervisor_id = ?
+       ORDER BY lm.created_at DESC`,
       [req.user.id]
     );
     res.json({ materials: rows.map((r) => toMaterial({ ...r, supervisor_name: req.user.member_code })) });

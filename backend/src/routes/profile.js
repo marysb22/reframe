@@ -612,14 +612,18 @@ router.get(
   requireStudent,
   asyncRoute(async (req, res, db) => {
     const { supervisorId } = req.query;
-    const params = [req.user.id, req.user.id];
+    const params = [req.user.id, req.user.id, req.user.id];
     let filter = "";
     if (supervisorId) {
       params.push(supervisorId);
       filter = "AND lm.supervisor_id = ?";
     }
     const { rows } = await db.query(
-      `SELECT lm.*, sup.full_name AS supervisor_name FROM learning_materials lm
+      `SELECT lm.*, sup.full_name AS supervisor_name,
+              (SELECT a.id FROM assignments a
+                WHERE a.student_id = ? AND LOWER(a.title) = LOWER(lm.title)
+                ORDER BY a.id DESC LIMIT 1) AS matched_assignment_id
+       FROM learning_materials lm
        JOIN supervisors sup ON sup.id = lm.supervisor_id
        WHERE lm.supervisor_id IN (SELECT supervisor_id FROM supervisor_students WHERE student_id = ?)
          AND (lm.student_id IS NULL OR lm.student_id = ?)

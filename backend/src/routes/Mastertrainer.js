@@ -1239,7 +1239,12 @@ router.get(
         if (!groupId) return noGroupResponse(res, { materials: [] });
 
         const { rows } = await db.query(
-            `SELECT lm.*, sup.full_name AS supervisor_name FROM learning_materials lm
+            `SELECT lm.*, sup.full_name AS supervisor_name,
+                    (SELECT a.id FROM assignments a
+                      WHERE a.student_id = lm.student_id AND a.supervisor_id = lm.supervisor_id
+                        AND LOWER(a.title) = LOWER(lm.title)
+                      ORDER BY a.id DESC LIMIT 1) AS matched_assignment_id
+       FROM learning_materials lm
        JOIN supervisors sup ON sup.id = lm.supervisor_id
        WHERE sup.group_id = ?
        ORDER BY lm.created_at DESC

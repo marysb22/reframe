@@ -3669,6 +3669,17 @@
         function openMaterialPreview(id) {
             const m = materialsRaw.find((x) => x.id === id);
             if (!m) return;
+
+            // Best-effort link: an 'assignment'-tagged material has no real
+            // deadline/status/submission data of its own -- if the backend
+            // found a same-titled real assignment, jump to the Assignments
+            // section (this view is read-only monitoring with no per-item
+            // detail modal, so there's nothing further to open here).
+            if (m.materialType === "assignment" && m.matchedAssignmentId) {
+                showSection("assignments");
+                return;
+            }
+
             document.getElementById("matPreviewTitle").textContent = m.title;
             const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
             document.getElementById("matPreviewMeta").textContent =

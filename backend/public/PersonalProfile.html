@@ -3260,9 +3260,22 @@ function materialsLoadMore() {
     applyMaterialsFilters();
 }
 
-function openMaterialPreview(id) {
+async function openMaterialPreview(id) {
     const m = materialsRaw.find((x) => x.id === id);
     if (!m) return;
+
+    // Best-effort link: an 'assignment'-tagged material has no real
+    // deadline/status/submission data of its own (it's just a labeled file
+    // upload, unrelated to the real assignments table) -- if the backend
+    // found a same-titled real assignment for this trainee, jump straight
+    // to that instead of showing a generic file preview.
+    if (m.materialType === "assignment" && m.matchedAssignmentId) {
+        showSection("assignments");
+        await loadAssignments();
+        openAssignmentDetail(m.matchedAssignmentId);
+        return;
+    }
+
     document.getElementById("matPreviewTitle").textContent = m.title;
     const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
     document.getElementById("matPreviewMeta").textContent =
