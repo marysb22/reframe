@@ -455,6 +455,7 @@ const translations = {
 
     // ===== remember =====
     "remember_me": "Remember me",
+    "forgot_password_link": "Forgot Password?",
 
     // ===== supervision =====
     "supervision_best_desc": "Practicing psychotherapists seeking supervision and clinical support.",
@@ -915,6 +916,7 @@ const translations = {
 
     // ===== remember =====
     "remember_me": "تذكرني",
+    "forgot_password_link": "نسيت كلمة المرور؟",
 
     // ===== supervision =====
     "supervision_best_desc": "المعالجين النفسيين الممارسين الباحثين عن دعم وإشراف مهني مستمر.",

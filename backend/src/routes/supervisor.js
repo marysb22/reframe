@@ -858,6 +858,29 @@ router.post(
       "INSERT INTO announcements (supervisor_id, title, content) VALUES (?, ?, ?)",
       [req.user.id, title, content]
     );
+
+    // Broadcast to every trainee currently assigned to this supervisor --
+    // announcements have no per-trainee scoping, they're always caseload-wide
+    // (matches the read side: GET /announcements has no studentId filter).
+    const trainer = await getUserContactInfo(db, req.user.id);
+    const { rows: caseloadRows } = await db.query("SELECT student_id FROM supervisor_students WHERE supervisor_id = ?", [
+      req.user.id,
+    ]);
+    for (const { student_id: recipientId } of caseloadRows) {
+      await createNotification(db, {
+        recipientId,
+        type: "announcement",
+        title: `New announcement: ${title}`,
+        body: content,
+        relatedEntityType: "announcement",
+        relatedEntityId: insert.insertId,
+        email: {
+          template: "newAnnouncement",
+          data: { announcementTitle: title, announcementContent: content, trainerName: (trainer && trainer.fullName) || "Your trainer" },
+        },
+      });
+    }
+
     const { rows } = await db.query("SELECT * FROM announcements WHERE id = ?", [insert.insertId]);
     res.status(201).json(toAnnouncement({ ...rows[0], supervisor_name: req.user.member_code }));
   })

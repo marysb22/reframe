@@ -957,7 +957,25 @@
       }
       function isArabic() { return getCurrentLang() === "ar"; }
       function copy() { return eventCopy[getCurrentLang()]; }
-      function getEventContent(event) { return isArabic() ? (event.arabic || {}) : (event.english || {}); }
+      // Per-field fallback: an event authored in only one language must
+      // still show real content in the other language instead of an empty
+      // (and therefore hidden) section. Each of the 8 sections falls back
+      // independently -- an event can have English "About" but only
+      // Arabic "Outcomes", and both render correctly in either language.
+      function getEventContent(event) {
+        const primary = isArabic() ? (event.arabic || {}) : (event.english || {});
+        const fallback = isArabic() ? (event.english || {}) : (event.arabic || {});
+        return {
+          title: primary.title || fallback.title || "",
+          format: primary.format || fallback.format || "",
+          facilitator: primary.facilitator || fallback.facilitator || "",
+          about: primary.about || fallback.about || "",
+          learn: safeArray(primary.learn).length ? primary.learn : safeArray(fallback.learn),
+          who: safeArray(primary.who).length ? primary.who : safeArray(fallback.who),
+          outcomes: safeArray(primary.outcomes).length ? primary.outcomes : safeArray(fallback.outcomes),
+          facilitatorBio: primary.facilitatorBio || fallback.facilitatorBio || "",
+        };
+      }
 
       function formatDate(dateString) {
         if (!dateString) return "";

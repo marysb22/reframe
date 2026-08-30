@@ -148,6 +148,36 @@ tr:hover td{background:var(--surface-2);}
 .toast.success{background:var(--success-bg);color:var(--success);}
 .toast.error{background:var(--danger-bg);color:var(--danger);}
 
+/* Centered success confirmation -- replaces the small bottom toast for
+   successful actions so an update is impossible to miss, without
+   blocking the page (pointer-events stays off so the user can keep
+   working underneath it while it's visible). */
+.success-notif-overlay{
+  position:fixed; inset:0; z-index:10000;
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .2s ease;
+}
+.success-notif-overlay.show{ opacity:1; visibility:visible; }
+.success-notif-box{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-lg); box-shadow:var(--shadow-pop);
+  padding:30px 34px; max-width:340px; width:100%; text-align:center;
+  transform:scale(.92); transition:transform .2s ease;
+}
+.success-notif-overlay.show .success-notif-box{ transform:scale(1); }
+.success-notif-icon{
+  width:54px; height:54px; margin:0 auto 14px; border-radius:50%;
+  background:var(--success-bg); color:var(--success);
+  display:flex; align-items:center; justify-content:center; font-size:24px;
+}
+.success-notif-title{ margin:0 0 6px; font-size:16.5px; font-weight:700; color:var(--text); }
+.success-notif-message{ margin:0; font-size:13.5px; color:var(--muted); line-height:1.5; }
+@media (max-width:480px){
+  .success-notif-box{ padding:24px 22px; }
+}
+
 .confirm-overlay{position:fixed;inset:0;background:rgba(10,20,18,.5);display:none;align-items:center;justify-content:center;z-index:9998;padding:20px;}
 .confirm-overlay.show{display:flex;}
 .confirm-box{background:var(--surface);border-radius:16px;padding:22px;max-width:360px;width:100%;box-shadow:var(--shadow-pop);}
@@ -839,6 +869,16 @@ tr:hover td{background:var(--surface-2);}
      createTrainer()/assignTrainerToGroup() functions the standalone
      Create Trainer / Trainers pages use, so there's one code path per
      operation no matter where it's triggered from. -->
+
+<!-- Centered success confirmation -- see showSuccessNotification() below. -->
+<div class="success-notif-overlay" id="successNotifOverlay" role="status" aria-live="polite">
+  <div class="success-notif-box">
+    <div class="success-notif-icon"><i class="fa fa-check"></i></div>
+    <h3 class="success-notif-title" id="successNotifTitle"></h3>
+    <p class="success-notif-message" id="successNotifMessage"></p>
+  </div>
+</div>
+
 <div class="modal-overlay" id="addTrainerModal">
   <div class="modal-box">
     <h3>Add Trainer</h3>
@@ -973,12 +1013,34 @@ async function apiRequest(url, options = {}) {
   }
 }
 
+// A successful save/create/update is easy to miss as a small bottom-corner
+// toast, especially for a Member who isn't sure their edit actually took --
+// route "success" through the centered confirmation instead. Error/warning/
+// info keep the original small toast unchanged.
 function showToast(text, type) {
+  if (type === "success") {
+    showSuccessNotification("Success", text);
+    return;
+  }
   const box = document.createElement("div");
   box.className = "toast " + type;
   box.textContent = text;
   document.body.appendChild(box);
   setTimeout(() => box.remove(), 3500);
+}
+
+let successNotifTimer = null;
+// Reusable centered confirmation for any important save/create/update.
+// Re-triggering it (e.g. a double-click on Save) just resets the timer and
+// swaps the text instead of stacking a second copy.
+function showSuccessNotification(title, message, duration = 2800) {
+  const overlay = document.getElementById("successNotifOverlay");
+  if (!overlay) return;
+  clearTimeout(successNotifTimer);
+  document.getElementById("successNotifTitle").textContent = title;
+  document.getElementById("successNotifMessage").textContent = message || "";
+  overlay.classList.add("show");
+  successNotifTimer = setTimeout(() => overlay.classList.remove("show"), duration);
 }
 
 function escapeHtml(str) {
@@ -1295,6 +1357,7 @@ function renderGroupDetail() {
 
   const memberActions = (m, deleteRole) => `
     <button class="icon-btn" title="Edit" onclick="openEditMemberModal(${m.id})"><i class="fa fa-pen"></i></button>
+    <button class="icon-btn" title="Reset password" onclick="confirmResetPassword(${m.id}, '${escapeHtml(m.full_name)}')"><i class="fa fa-key"></i></button>
     <button class="icon-btn" title="${m.status === "active" ? "Suspend" : "Activate"}" onclick="confirmToggleStatus(${m.id}, '${m.status}', '${escapeHtml(m.full_name)}')"><i class="fa ${m.status === "active" ? "fa-user-slash" : "fa-user-check"}"></i></button>
     <button class="icon-btn danger" title="Delete account" onclick="confirmDeleteUser(${m.id}, '${escapeHtml(m.full_name)}', '${deleteRole}')"><i class="fa fa-trash"></i></button>
   `;
@@ -1393,7 +1456,7 @@ async function saveGroupRename(groupId) {
   if (!name) return showToast("Group name is required", "error");
   const result = await apiRequest(`/admin/groups/${groupId}`, { method: "PATCH", body: JSON.stringify({ name }) });
   if (!result) return;
-  showToast("Group renamed", "success");
+  showSuccessNotification("Group Updated", "The group information has been updated successfully.");
   await loadGroups();
   renderGroupDetail();
 }
@@ -1490,7 +1553,7 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
       <div class="result-row"><span>Trainee password</span><strong>${escapeHtml(result.traineePassword)}</strong> <button class="copy-btn" onclick="copyText('${result.traineePassword}')">Copy</button></div>
       <button class="btn btn-secondary btn-sm" style="width:auto;margin-top:10px;" onclick="document.getElementById('grpJustCreatedBox').classList.remove('show')">Dismiss</button>
     `;
-    showToast("Group created", "success");
+    showSuccessNotification("Group Created", "The group and its members were created successfully.");
 
     await Promise.all([loadUsers(), loadGroups()]);
     showSection("groups");
@@ -1558,6 +1621,7 @@ function renderTrainersList() {
       <td>
         <button class="icon-btn" title="Reassign group" onclick="openReassignTrainer(${u.id}, '${escapeHtml(u.full_name)}', ${u.groupId || "null"})"><i class="fa fa-people-arrows"></i></button>
         <button class="icon-btn" title="View CV" onclick="showSection('cvs'); openCvDetail(${u.id});"><i class="fa fa-id-card-clip"></i></button>
+        <button class="icon-btn" title="Reset password" onclick="confirmResetPassword(${u.id}, '${escapeHtml(u.full_name)}')"><i class="fa fa-key"></i></button>
         <button class="icon-btn" title="${u.status === "active" ? "Suspend" : "Activate"}" onclick="confirmToggleStatus(${u.id}, '${u.status}', '${escapeHtml(u.full_name)}')"><i class="fa ${u.status === "active" ? "fa-user-slash" : "fa-user-check"}"></i></button>
         <button class="icon-btn danger" title="Delete" onclick="confirmDeleteUser(${u.id}, '${escapeHtml(u.full_name)}', 'supervisor')"><i class="fa fa-trash"></i></button>
       </td>
@@ -1588,7 +1652,7 @@ function openReassignTrainer(trainerId, name, existingGroupId) {
     closeConfirm();
     const result = await assignTrainerToGroup(trainerId, groupId ? Number(groupId) : null);
     if (!result) return;
-    showToast("Trainer reassigned", "success");
+    showSuccessNotification("Assignment Updated", "The member's group assignment has been updated successfully.");
     await Promise.all([loadUsers(), loadGroups()]);
   });
   document.getElementById("confirmOverlay").classList.add("show");
@@ -1656,7 +1720,7 @@ document.getElementById("trainerCreateForm").addEventListener("submit", async (e
   const result = await createTrainer({ fullName, role, groupId, totId, memberCode, tempPassword });
   if (!result) return;
 
-  const roleLabel = role === "trainee" ? "Trainee" : "Member";
+  const roleLabel = role === "trainee" ? "Trainee" : role === "primary" ? "Master Trainer" : "Trainer (ToT)";
   const box = document.getElementById("tcResult");
   box.className = "result-box show";
   box.innerHTML = `
@@ -1664,7 +1728,7 @@ document.getElementById("trainerCreateForm").addEventListener("submit", async (e
     <div class="result-row"><span>ID</span><strong>${escapeHtml(result.memberCode)}</strong></div>
     <div class="result-row"><span>Temp password</span><strong>${escapeHtml(result.tempPassword)}</strong> <button class="copy-btn" onclick="copyText('${result.tempPassword}')">Copy</button></div>
   `;
-  showToast(`${roleLabel} created`, "success");
+  showSuccessNotification("Member Created", `${roleLabel} "${result.user.full_name}" has been created successfully.`);
   document.getElementById("trainerCreateForm").reset();
   document.getElementById("tcPassword").value = "password123";
   updateTrainerCreateFormForRole();
@@ -1715,7 +1779,7 @@ document.getElementById("addTrainerCreateForm").addEventListener("submit", async
   const result = await createTrainer({ fullName, role, groupId: addTrainerGroupId, memberCode, tempPassword });
   if (!result) return;
 
-  showToast(`Trainer created and added to the group (ID ${result.memberCode}, temp password ${result.tempPassword})`, "success");
+  showSuccessNotification("Trainer Added", `ID ${result.memberCode}, temp password ${result.tempPassword}. The Trainer has been added to the group successfully.`, 6000);
   closeAddTrainerModal();
   document.getElementById("addTrainerCreateForm").reset();
   document.getElementById("atPassword").value = "password123";
@@ -1731,7 +1795,7 @@ document.getElementById("addTrainerAssignForm").addEventListener("submit", async
   const result = await assignTrainerToGroup(trainerId, addTrainerGroupId);
   if (!result) return;
 
-  showToast("Trainer added to group", "success");
+  showSuccessNotification("Trainer Added", "The Trainer (ToT) has been added to the group successfully.");
   closeAddTrainerModal();
   await Promise.all([loadUsers(), loadGroups()]);
   renderGroupDetail();
@@ -1773,7 +1837,7 @@ document.getElementById("addTraineeCreateForm").addEventListener("submit", async
   const result = await createTrainer({ fullName, role: "trainee", groupId: addTraineeGroupId, totId, memberCode, tempPassword });
   if (!result) return;
 
-  showToast(`Trainee created and added to the group (ID ${result.memberCode}, temp password ${result.tempPassword})`, "success");
+  showSuccessNotification("Trainee Added", `ID ${result.memberCode}, temp password ${result.tempPassword}. The trainee has been added to the group successfully.`, 6000);
   closeAddTraineeModal();
   document.getElementById("addTraineeCreateForm").reset();
   document.getElementById("atrPassword").value = "password123";
@@ -1850,10 +1914,14 @@ document.getElementById("editMemberForm").addEventListener("submit", async (e) =
   const newGroupId = document.getElementById("emGroup").value ? Number(document.getElementById("emGroup").value) : null;
   const isTrainee = editMemberData.role === "trainee";
   const isSupervisor = editMemberData.role === "supervisor";
+  const groupChanged = newGroupId !== (editMemberData.groupId || null);
+  let totChanged = false;
 
   if (isTrainee) {
     const newGroup = newGroupId ? allGroups.find((g) => g.id === newGroupId) : null;
     const totId = document.getElementById("emTot").value ? Number(document.getElementById("emTot").value) : null;
+    const previousTot = (editMemberData.supervisors || []).find((s) => s.supervisor_type === "in_training");
+    totChanged = (previousTot ? previousTot.id : null) !== totId;
     const supervisorIds = [];
     if (newGroup && newGroup.masterTrainer) supervisorIds.push(newGroup.masterTrainer.id);
     if (totId) supervisorIds.push(totId);
@@ -1870,13 +1938,21 @@ document.getElementById("editMemberForm").addEventListener("submit", async (e) =
     });
     if (!nameResult) return;
 
-    if (newGroupId !== (editMemberData.groupId || null)) {
+    if (groupChanged) {
       const groupResult = await assignTrainerToGroup(id, newGroupId);
       if (!groupResult) return; // fullName change above already saved; group change failed its own validation (e.g. target group has no active Master Trainer)
     }
   }
 
-  showToast("Member updated", "success");
+  // Pick the most specific confirmation for what actually changed, per the
+  // named examples -- a plain name edit still just says "Changes Saved."
+  if (isTrainee && totChanged && !groupChanged) {
+    showSuccessNotification("Trainer Assignment Updated", "The trainee has been successfully assigned to the selected Trainer.");
+  } else if (groupChanged) {
+    showSuccessNotification("Assignment Updated", "The member's group assignment has been updated successfully.");
+  } else {
+    showSuccessNotification("Changes Saved", "The member information was updated successfully.");
+  }
   closeEditMemberModal();
   await Promise.all([loadUsers(), loadGroups()]);
   if (currentGroupId) renderGroupDetail();
@@ -2115,7 +2191,7 @@ async function saveCvEdit() {
 
   currentCvData = result;
   cvEditing = false;
-  showToast("Profile updated", "success");
+  showSuccessNotification("Changes Saved", "The member's CV information has been updated successfully.");
   renderCvDetail();
   loadUsers();
 }
@@ -2437,6 +2513,30 @@ async function toggleUserStatus(id, nextStatus) {
   }
 }
 
+// Admin-assisted fallback for a Member who can't use the self-service
+// Forgot Password flow (no email on file, lost access to it, etc.) --
+// generates a one-time temporary password server-side; the Admin never
+// sees the account's real password, and the Member is forced to change it
+// on next login (must_change_password is set by the backend route).
+function confirmResetPassword(id, name) {
+  openConfirm(
+    "Reset this member's password?",
+    `${name} will be given a new temporary password and must change it on their next login.`,
+    () => resetMemberPassword(id, name)
+  );
+}
+
+async function resetMemberPassword(id, name) {
+  const result = await apiRequest(`/admin/users/${id}/reset-password`, { method: "POST" });
+  if (result) {
+    showSuccessNotification(
+      "Password Reset",
+      `Temporary password for ${name}: ${result.tempPassword} (ID ${result.memberCode}). They must change it on next login.`,
+      6000
+    );
+  }
+}
+
 // ---- Settings: profile + password + notifications --------------------
 
 document.getElementById("profileForm").addEventListener("submit", async (e) => {
@@ -2447,7 +2547,7 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
   };
   const result = await apiRequest("/profile/me", { method: "PUT", body: JSON.stringify(payload) });
   if (result) {
-    showToast("Profile updated", "success");
+    showSuccessNotification("Profile Updated", "Your profile information has been saved successfully.");
     document.getElementById("adminIdentity").textContent = payload.full_name || "Admin";
   }
 });
@@ -2474,7 +2574,7 @@ document.getElementById("passwordForm").addEventListener("submit", async (e) => 
   submitBtn.disabled = false;
 
   if (result) {
-    showToast("Password updated successfully", "success");
+    showSuccessNotification("Password Changed", "Your password has been updated successfully.");
     document.getElementById("passwordForm").reset();
   }
 });
@@ -2500,7 +2600,7 @@ function saveNotificationPrefs() {
     events: document.getElementById("notifEvents").checked,
   };
   localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
-  showToast("Preferences saved on this device", "success");
+  showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
 }
 
 // ---- Payments -----------------------------------------------------

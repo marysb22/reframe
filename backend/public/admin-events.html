@@ -148,6 +148,36 @@ tr:hover td{background:var(--surface-2);}
 .toast.success{background:var(--success-bg);color:var(--success);}
 .toast.error{background:var(--danger-bg);color:var(--danger);}
 
+/* Centered success confirmation -- replaces the small bottom toast for
+   successful actions so an update is impossible to miss, without
+   blocking the page (pointer-events stays off so the user can keep
+   working underneath it while it's visible). */
+.success-notif-overlay{
+  position:fixed; inset:0; z-index:10000;
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .2s ease;
+}
+.success-notif-overlay.show{ opacity:1; visibility:visible; }
+.success-notif-box{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-lg); box-shadow:var(--shadow-pop);
+  padding:30px 34px; max-width:340px; width:100%; text-align:center;
+  transform:scale(.92); transition:transform .2s ease;
+}
+.success-notif-overlay.show .success-notif-box{ transform:scale(1); }
+.success-notif-icon{
+  width:54px; height:54px; margin:0 auto 14px; border-radius:50%;
+  background:var(--success-bg); color:var(--success);
+  display:flex; align-items:center; justify-content:center; font-size:24px;
+}
+.success-notif-title{ margin:0 0 6px; font-size:16.5px; font-weight:700; color:var(--text); }
+.success-notif-message{ margin:0; font-size:13.5px; color:var(--muted); line-height:1.5; }
+@media (max-width:480px){
+  .success-notif-box{ padding:24px 22px; }
+}
+
 .confirm-overlay{position:fixed;inset:0;background:rgba(10,20,18,.5);display:none;align-items:center;justify-content:center;z-index:9998;padding:20px;}
 .confirm-overlay.show{display:flex;}
 .confirm-box{background:var(--surface);border-radius:16px;padding:22px;max-width:360px;width:100%;box-shadow:var(--shadow-pop);}
@@ -168,6 +198,15 @@ tr:hover td{background:var(--surface-2);}
 </style>
 </head>
 <body>
+<!-- Centered success confirmation -- see showSuccessNotification() in the script below. -->
+<div class="success-notif-overlay" id="successNotifOverlay" role="status" aria-live="polite">
+  <div class="success-notif-box">
+    <div class="success-notif-icon"><i class="fa fa-check"></i></div>
+    <h3 class="success-notif-title" id="successNotifTitle"></h3>
+    <p class="success-notif-message" id="successNotifMessage"></p>
+  </div>
+</div>
+
 <div class="system-layout">
 
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -337,12 +376,33 @@ async function apiRequest(url, options = {}) {
   }
 }
 
+// A successful save/create/update is easy to miss as a small bottom-corner
+// toast -- route "success" through the centered confirmation instead.
+// Error/warning/info keep the original small toast unchanged.
 function showToast(text, type) {
+  if (type === "success") {
+    showSuccessNotification("Success", text);
+    return;
+  }
   const box = document.createElement("div");
   box.className = "toast " + type;
   box.textContent = text;
   document.body.appendChild(box);
   setTimeout(() => box.remove(), 3500);
+}
+
+let successNotifTimer = null;
+// Reusable centered confirmation for any important save/create/update.
+// Re-triggering it (e.g. a double-click on Save) just resets the timer and
+// swaps the text instead of stacking a second copy.
+function showSuccessNotification(title, message, duration = 2800) {
+  const overlay = document.getElementById("successNotifOverlay");
+  if (!overlay) return;
+  clearTimeout(successNotifTimer);
+  document.getElementById("successNotifTitle").textContent = title;
+  document.getElementById("successNotifMessage").textContent = message || "";
+  overlay.classList.add("show");
+  successNotifTimer = setTimeout(() => overlay.classList.remove("show"), duration);
 }
 
 function escapeHtml(str) {
@@ -637,7 +697,10 @@ document.getElementById("eventForm").addEventListener("submit", async (e) => {
 
   const result = await apiRequest(url, { method, body: JSON.stringify(payload) });
   if (result) {
-    showToast(editingEventId ? "Event updated" : "Event created", "success");
+    showSuccessNotification(
+      editingEventId ? "Event Updated" : "Event Created",
+      editingEventId ? "The event has been updated successfully." : "The new event has been created successfully."
+    );
     closeEventForm();
     loadEvents();
   }

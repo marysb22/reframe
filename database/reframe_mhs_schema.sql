@@ -797,6 +797,23 @@ CREATE TABLE trainee_milestone_progress (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='One row per trainee per milestone the Trainer (ToT) has touched. Rows created lazily, not pre-seeded -- see migration 002.';
 
+-- Added in migration 004 -- see that file's header for why the raw code is
+-- never stored, only a bcrypt hash of it.
+CREATE TABLE password_reset_tokens (
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id        BIGINT NOT NULL,
+  code_hash      VARCHAR(255) NOT NULL,
+  expires_at     DATETIME NOT NULL,
+  used_at        DATETIME,
+  attempt_count  INT NOT NULL DEFAULT 0,
+  ip_address     VARCHAR(45),
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_password_reset_user FOREIGN KEY (user_id) REFERENCES user_credentials(id) ON DELETE CASCADE,
+  INDEX idx_password_reset_user (user_id, created_at),
+  INDEX idx_password_reset_ip (ip_address, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Single-use, short-lived, hashed reset codes for the self-service Forgot Password flow. See backend/src/utils/passwordReset.js.';
+
 
 -- =============================================================================
 -- SECTION 12: INDEXES

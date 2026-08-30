@@ -906,7 +906,23 @@
             background: var(--warning-bg);
             color: var(--warning);
         }
-        
+
+        .pill.overdue {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .pill.scheduled {
+            background: var(--info-bg);
+            color: var(--info);
+        }
+
+        .field-hint {
+            font-size: 11px;
+            color: var(--faint);
+            margin-top: 5px;
+        }
+
         .row-actions {
             display: flex;
             gap: 7px;
@@ -1114,7 +1130,80 @@
             background: var(--danger-bg);
             color: var(--danger);
         }
-        
+
+        /* Centered success confirmation -- replaces the small bottom toast
+           for successful actions so an update is impossible to miss,
+           without blocking the page (pointer-events stays off so the user
+           can keep working underneath it while it's visible). */
+        .success-notif-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .2s ease;
+        }
+
+        .success-notif-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .success-notif-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-pop);
+            padding: 30px 34px;
+            max-width: 340px;
+            width: 100%;
+            text-align: center;
+            transform: scale(.92);
+            transition: transform .2s ease;
+        }
+
+        .success-notif-overlay.show .success-notif-box {
+            transform: scale(1);
+        }
+
+        .success-notif-icon {
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 14px;
+            border-radius: 50%;
+            background: var(--success-bg);
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .success-notif-title {
+            margin: 0 0 6px;
+            font-size: 16.5px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .success-notif-message {
+            margin: 0;
+            font-size: 13.5px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 480px) {
+            .success-notif-box {
+                padding: 24px 22px;
+            }
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateY(16px);
@@ -1722,6 +1811,15 @@
 </head>
 
 <body>
+    <!-- Centered success confirmation -- see showSuccessNotification() in the script below. -->
+    <div class="success-notif-overlay" id="successNotifOverlay" role="status" aria-live="polite">
+        <div class="success-notif-box">
+            <div class="success-notif-icon"><i class="fa fa-check"></i></div>
+            <h3 class="success-notif-title" id="successNotifTitle"></h3>
+            <p class="success-notif-message" id="successNotifMessage"></p>
+        </div>
+    </div>
+
     <div class="system-layout">
 
         <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1928,24 +2026,29 @@
             <!-- ASSIGNMENTS                                                    -->
             <!-- ============================================================= -->
             <section class="dash-section" id="section-assignments" data-title="Assignments" data-eyebrow="Training">
+                <section class="kpi-grid" id="asgSummaryGrid">
+                    <div class="kpi-card"><label>Total</label><h2 id="asgKpiTotal">&mdash;</h2></div>
+                    <div class="kpi-card"><label>Pending</label><h2 id="asgKpiPending">&mdash;</h2></div>
+                    <div class="kpi-card"><label>Submitted</label><h2 id="asgKpiSubmitted">&mdash;</h2></div>
+                    <div class="kpi-card"><label>Overdue</label><h2 id="asgKpiOverdue">&mdash;</h2></div>
+                    <div class="kpi-card"><label>Graded</label><h2 id="asgKpiGraded">&mdash;</h2></div>
+                </section>
                 <section class="system-card">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-list-check"></i>
                             <h2>Assignments</h2>
                         </div>
-                        <button class="btn" onclick="openAssignmentModal()"><i class="fa fa-plus"></i>New assignment</button>
+                        <button class="btn" onclick="openAssignmentModal()"><i class="fa fa-plus"></i><span>New assignment</span></button>
                     </div>
-                    <p class="card-subtitle">Across your whole caseload. Deadlines map to the record date; edit or delete from here or from a trainee's own profile.</p>
-                    <div class="notice-banner">
-                        <i class="fa fa-circle-info"></i>
-                        <span>The current schema has no <code>assignment_submissions</code> table, so trainees can't yet upload a file back for you to review here &mdash; this view tracks title, deadline, and pending/completed status only. Ask your backend team to add that table when file submissions are needed.</span>
-                    </div>
+                    <p class="card-subtitle">Across your whole caseload. Create once for one or more trainees, review submissions, and grade -- all from here.</p>
                     <div class="toolbar">
                         <input type="text" id="assignmentSearch" placeholder="Search by title or trainee...">
                         <select id="assignmentStatusFilter">
 <option value="">All statuses</option>
-<option value="pending">Pending</option>
-<option value="completed">Completed</option>
+<option value="pending">Pending (New)</option>
+<option value="submitted">Submitted</option>
+<option value="overdue">Overdue</option>
+<option value="completed">Graded / Completed</option>
 </select>
                     </div>
                     <table>
@@ -1953,14 +2056,15 @@
                             <tr>
                                 <th>Title</th>
                                 <th>Trainee</th>
-                                <th>Deadline</th>
+                                <th>Due date</th>
+                                <th>Content</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="assignmentsBody">
                             <tr class="loading-row">
-                                <td colspan="5">Loading assignments...</td>
+                                <td colspan="6">Loading assignments...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -2235,22 +2339,57 @@
             <h3 id="assignmentModalTitle">New assignment</h3>
             <form id="assignmentModalForm">
                 <input type="hidden" id="asgEditId">
-                <label>Trainee</label>
-                <select id="asgStudent" required></select>
+                <input type="hidden" id="asgEditStudentId">
+                <div id="asgStudentMultiWrap">
+                    <label>Target trainee(s)</label>
+                    <select id="asgStudentMulti" multiple size="5" required style="height:auto;"></select>
+                    <div class="field-hint">Hold Ctrl (Cmd on Mac) to select more than one. Creates one assignment per selected trainee.</div>
+                </div>
+                <div id="asgStudentSingleWrap" style="display:none;">
+                    <label>Trainee</label>
+                    <div id="asgStudentSingleName" style="padding:10px 0;color:var(--muted);"></div>
+                </div>
                 <label>Title</label>
                 <input type="text" id="asgTitle" required>
-                <label>Deadline</label>
+                <label>Due date</label>
                 <input type="date" id="asgDeadline">
-                <label>Status</label>
+                <label id="asgStatusLabel">Status</label>
                 <select id="asgStatus">
 <option value="pending">Pending</option>
 <option value="completed">Completed</option>
 </select>
                 <label>Description / instructions</label>
                 <textarea id="asgContent"></textarea>
+                <div id="asgCreateOnlyFields">
+                    <label>Attachment</label> <span style="font-weight:400;color:var(--faint);">(PDF, Word, or image -- optional)</span>
+                    <input type="file" id="asgAttachment" accept=".pdf,.doc,.docx,image/*">
+                    <label>Video / resource link</label> <span style="font-weight:400;color:var(--faint);">(optional)</span>
+                    <input type="url" id="asgContentUrl" placeholder="https://...">
+                </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('assignmentModal')">Cancel</button>
                     <button type="submit" class="btn">Save assignment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- REVIEW / GRADE SUBMISSION MODAL -->
+    <div class="modal-overlay" id="gradeModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('gradeModal')">&times;</button>
+            <h3>Review submission</h3>
+            <div id="gradeAssignmentInfo" style="margin-bottom:14px;"></div>
+            <div id="gradeSubmissionInfo" style="margin-bottom:14px;"></div>
+            <form id="gradeModalForm">
+                <input type="hidden" id="gradeAssignmentId">
+                <label>Score</label>
+                <input type="number" id="gradeScore" min="0" max="100" step="0.5">
+                <label>Feedback</label>
+                <textarea id="gradeFeedback" placeholder="Feedback for the trainee..."></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('gradeModal')">Cancel</button>
+                    <button type="submit" class="btn">Save grade</button>
                 </div>
             </form>
         </div>
@@ -2444,12 +2583,33 @@
             }
         }
 
+        // A successful save/create/update is easy to miss as a small bottom-
+        // corner toast -- route "success" through the centered confirmation
+        // instead. Error/warning/info keep the original small toast unchanged.
         function showToast(text, type) {
+            if (type === "success") {
+                showSuccessNotification("Success", text);
+                return;
+            }
             const box = document.createElement("div");
             box.className = "toast " + type;
             box.textContent = text;
             document.body.appendChild(box);
             setTimeout(() => box.remove(), 3000);
+        }
+
+        let successNotifTimer = null;
+        // Reusable centered confirmation for any important save/create/
+        // update. Re-triggering it (e.g. a double-click on Save) just resets
+        // the timer and swaps the text instead of stacking a second copy.
+        function showSuccessNotification(title, message, duration = 2800) {
+            const overlay = document.getElementById("successNotifOverlay");
+            if (!overlay) return;
+            clearTimeout(successNotifTimer);
+            document.getElementById("successNotifTitle").textContent = title;
+            document.getElementById("successNotifMessage").textContent = message || "";
+            overlay.classList.add("show");
+            successNotifTimer = setTimeout(() => overlay.classList.remove("show"), duration);
         }
 
         // Written without ?./?? on purpose -- a broken formatter in this project's
@@ -2467,77 +2627,6 @@
 
         function initials(name) {
             return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => (w[0] && w[0].toUpperCase()) || "").join("");
-        }
-
-        // ---- Notification Center ----
-        let notifDropdownOpen = false;
-        let notifPollTimer = null;
-
-        function toggleNotifDropdown() {
-            notifDropdownOpen = !notifDropdownOpen;
-            const panel = document.getElementById("notifDropdown");
-            if (panel) panel.classList.toggle("open", notifDropdownOpen);
-            if (notifDropdownOpen) loadNotifList();
-        }
-
-        function closeNotifDropdown() {
-            notifDropdownOpen = false;
-            const panel = document.getElementById("notifDropdown");
-            if (panel) panel.classList.remove("open");
-        }
-
-        document.addEventListener("click", (e) => {
-            if (!notifDropdownOpen) return;
-            const wrap = document.querySelector(".notif-wrap");
-            if (wrap && !wrap.contains(e.target)) closeNotifDropdown();
-        });
-
-        async function loadNotifUnreadCount() {
-            const data = await apiRequest("/profile/notifications/unread-count");
-            const dot = document.getElementById("notifDot");
-            if (!dot) return;
-            dot.style.display = data && data.count > 0 ? "block" : "none";
-        }
-
-        async function loadNotifList() {
-            const list = document.getElementById("notifList");
-            if (!list) return;
-            list.innerHTML = '<div class="notif-empty">Loading...</div>';
-            const data = await apiRequest("/profile/notifications?limit=20");
-            if (!data) return;
-            if (!data.notifications.length) {
-                list.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
-                return;
-            }
-            list.innerHTML = data.notifications.map((n) => `
-                <div class="notif-item ${n.isRead ? "" : "unread"}" onclick="handleNotifClick(${n.id}, '${escapeHtml(n.relatedEntityType || "")}', ${n.relatedEntityId || "null"})">
-                    <span class="ni-dot ${n.isRead ? "read" : ""}"></span>
-                    <div>
-                        <div class="ni-title">${escapeHtml(n.title)}</div>
-                        ${n.body ? `<div class="ni-body">${escapeHtml(n.body)}</div>` : ""}
-                        <div class="ni-time">${new Date(n.createdAt).toLocaleString()}</div>
-                    </div>
-                </div>
-            `).join("");
-        }
-
-        async function markAllNotifsRead() {
-            const btn = document.getElementById("notifMarkAllBtn");
-            if (btn) btn.disabled = true;
-            await apiRequest("/profile/notifications/mark-all-read", { method: "POST" });
-            if (btn) btn.disabled = false;
-            loadNotifList();
-            loadNotifUnreadCount();
-        }
-
-        async function handleNotifClick(id, relatedEntityType, relatedEntityId) {
-            await apiRequest(`/profile/notifications/${id}/read`, { method: "PATCH" });
-            loadNotifUnreadCount();
-            closeNotifDropdown();
-            if (relatedEntityType === "assignment" && relatedEntityId) {
-                showSection("assignments");
-                await loadAssignments();
-            }
         }
 
         function openModal(id) {
@@ -2681,6 +2770,79 @@
             showSection(initialSection);
         });
 
+        // ---- Notification Center ----
+        let notifDropdownOpen = false;
+        let notifPollTimer = null;
+
+        function toggleNotifDropdown() {
+            notifDropdownOpen = !notifDropdownOpen;
+            const panel = document.getElementById("notifDropdown");
+            if (panel) panel.classList.toggle("open", notifDropdownOpen);
+            if (notifDropdownOpen) loadNotifList();
+        }
+
+        function closeNotifDropdown() {
+            notifDropdownOpen = false;
+            const panel = document.getElementById("notifDropdown");
+            if (panel) panel.classList.remove("open");
+        }
+
+        document.addEventListener("click", (e) => {
+            if (!notifDropdownOpen) return;
+            const wrap = document.querySelector(".notif-wrap");
+            if (wrap && !wrap.contains(e.target)) closeNotifDropdown();
+        });
+
+        async function loadNotifUnreadCount() {
+            const data = await apiRequest("/profile/notifications/unread-count");
+            const dot = document.getElementById("notifDot");
+            if (!dot) return;
+            dot.style.display = data && data.count > 0 ? "block" : "none";
+        }
+
+        async function loadNotifList() {
+            const list = document.getElementById("notifList");
+            if (!list) return;
+            list.innerHTML = '<div class="notif-empty">Loading...</div>';
+            const data = await apiRequest("/profile/notifications?limit=20");
+            if (!data) return;
+            if (!data.notifications.length) {
+                list.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
+                return;
+            }
+            list.innerHTML = data.notifications.map((n) => `
+                <div class="notif-item ${n.isRead ? "" : "unread"}" onclick="handleNotifClick(${n.id}, '${escapeHtml(n.relatedEntityType || "")}', ${n.relatedEntityId || "null"})">
+                    <span class="ni-dot ${n.isRead ? "read" : ""}"></span>
+                    <div>
+                        <div class="ni-title">${escapeHtml(n.title)}</div>
+                        ${n.body ? `<div class="ni-body">${escapeHtml(n.body)}</div>` : ""}
+                        <div class="ni-time">${new Date(n.createdAt).toLocaleString()}</div>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        async function markAllNotifsRead() {
+            const btn = document.getElementById("notifMarkAllBtn");
+            if (btn) btn.disabled = true;
+            await apiRequest("/profile/notifications/mark-all-read", { method: "POST" });
+            if (btn) btn.disabled = false;
+            loadNotifList();
+            loadNotifUnreadCount();
+        }
+
+        async function handleNotifClick(id, relatedEntityType, relatedEntityId) {
+            await apiRequest(`/profile/notifications/${id}/read`, { method: "PATCH" });
+            loadNotifUnreadCount();
+            closeNotifDropdown();
+            if (relatedEntityType === "assignment" && relatedEntityId) {
+                showSection("assignments");
+                await loadAssignments();
+                const target = allAssignments.find((a) => Number(a.id) === Number(relatedEntityId));
+                if (target && target.submission) openGradeModal(target.id);
+            }
+        }
+
         async function loadStudents() {
             const data = await apiRequest("/supervisor/students");
             if (!data) return;
@@ -2694,9 +2856,9 @@
             const options = allStudents
                 .map((s) => `<option value="${s.id}">${escapeHtml(s.full_name)} (${escapeHtml(s.memberCode)})</option>`)
                 .join("");
-            const asgSel = document.getElementById("asgStudent");
+            const asgMultiSel = document.getElementById("asgStudentMulti");
             const sesSel = document.getElementById("sesStudent");
-            if (asgSel) asgSel.innerHTML = options || '<option value="">No trainees assigned yet</option>';
+            if (asgMultiSel) asgMultiSel.innerHTML = options || '<option value="" disabled>No trainees assigned yet</option>';
             if (sesSel) sesSel.innerHTML = options || '<option value="">No trainees assigned yet</option>';
 
             const mtgSel = document.getElementById("mtgStudent");
@@ -3274,7 +3436,7 @@ document.getElementById("materialForm").addEventListener("submit", async (e) => 
   }
 
   if (result) {
-    showToast("Material shared with your trainees", "success");
+    showSuccessNotification("Material Uploaded", "The material has been shared with your trainees successfully.");
     closeModal("materialModal");
     loadMaterials();
   }
@@ -3349,17 +3511,52 @@ async function deleteAnnouncement(id) {
 
 let allAssignments = [];
 
+// Real, distinct states only -- no invented "in progress" (nothing tracks
+// partial progress on an assignment) and no fake counts. `status` here is
+// the live-computed value the backend already returns (pending/submitted/
+// overdue/completed); "graded" is read off the nested submission instead,
+// since grading doesn't change the assignment's own status enum value
+// beyond flipping it to 'completed'.
+function assignmentDisplayStatus(a) {
+  if (a.submission && a.submission.status === "graded") return "graded";
+  return a.status || "pending";
+}
+const ASSIGNMENT_STATUS_LABEL = {
+  pending: "Pending (New)",
+  submitted: "Submitted",
+  overdue: "Overdue",
+  completed: "Completed",
+  graded: "Graded",
+};
+const ASSIGNMENT_STATUS_PILL = {
+  pending: "pending",
+  submitted: "scheduled",
+  overdue: "overdue",
+  completed: "completed",
+  graded: "completed",
+};
+
 async function loadAssignments() {
   const body = document.getElementById("assignmentsBody");
-  body.innerHTML = '<tr class="loading-row"><td colspan="5">Loading assignments...</td></tr>';
-  allAssignments = [];
-  for (const s of allStudents) {
-    const detail = await apiRequest(`/supervisor/students/${s.id}`);
-    if (!detail) continue;
-    detail.records
-      .filter((r) => r.recordType === "assignment")
-      .forEach((r) => allAssignments.push({ ...r, studentName: s.full_name, studentCode: s.memberCode, studentId: s.id }));
-  }
+  body.innerHTML = '<tr class="loading-row"><td colspan="6">Loading assignments...</td></tr>';
+  const data = await apiRequest("/supervisor/assignments");
+  if (!data) return;
+  allAssignments = data.assignments;
+
+  const counts = { total: allAssignments.length, pending: 0, submitted: 0, overdue: 0, graded: 0 };
+  allAssignments.forEach((a) => {
+    const s = assignmentDisplayStatus(a);
+    if (s === "pending") counts.pending++;
+    else if (s === "submitted") counts.submitted++;
+    else if (s === "overdue") counts.overdue++;
+    else if (s === "graded" || s === "completed") counts.graded++;
+  });
+  document.getElementById("asgKpiTotal").textContent = counts.total;
+  document.getElementById("asgKpiPending").textContent = counts.pending;
+  document.getElementById("asgKpiSubmitted").textContent = counts.submitted;
+  document.getElementById("asgKpiOverdue").textContent = counts.overdue;
+  document.getElementById("asgKpiGraded").textContent = counts.graded;
+
   renderAssignments();
 }
 
@@ -3367,33 +3564,43 @@ function renderAssignments() {
   const search = (document.getElementById("assignmentSearch").value || "").toLowerCase();
   const statusFilter = document.getElementById("assignmentStatusFilter").value;
   const filtered = allAssignments.filter((a) => {
-    const matchesSearch = (a.title || "").toLowerCase().includes(search) || a.studentName.toLowerCase().includes(search);
-    const matchesStatus = !statusFilter || a.status === statusFilter;
+    const matchesSearch = (a.title || "").toLowerCase().includes(search) || (a.studentName || "").toLowerCase().includes(search);
+    const displayStatus = assignmentDisplayStatus(a);
+    const matchesStatus = !statusFilter || displayStatus === statusFilter || (statusFilter === "completed" && displayStatus === "graded");
     return matchesSearch && matchesStatus;
   });
 
   const body = document.getElementById("assignmentsBody");
   if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="5" class="empty-state">No assignments match. Create one with "New assignment".</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No assignments match. Create one with "New assignment".</td></tr>';
     return;
   }
 
   body.innerHTML = filtered
-    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-    .map((a) => `
+    .sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""))
+    .map((a) => {
+      const displayStatus = assignmentDisplayStatus(a);
+      const contentBits = [];
+      if (a.attachmentFilename) contentBits.push(`<a href="${UPLOADS}/assignments/${a.attachmentFilename}" target="_blank" rel="noopener" title="Attachment"><i class="fa fa-paperclip"></i></a>`);
+      if (a.contentUrl) contentBits.push(`<a href="${escapeHtml(a.contentUrl)}" target="_blank" rel="noopener" title="Video/resource link"><i class="fa fa-play-circle"></i></a>`);
+      const canReview = a.submission != null;
+      return `
       <tr>
         <td><strong>${escapeHtml(a.title || "Untitled")}</strong></td>
-        <td>${escapeHtml(a.studentName)} <span style="color:var(--faint);">(${escapeHtml(a.studentCode)})</span></td>
-        <td>${a.date ? escapeHtml(a.date) : "&mdash;"}</td>
-        <td><span class="pill ${a.status || "pending"}">${escapeHtml(a.status || "pending")}</span></td>
+        <td>${escapeHtml(a.studentName)}</td>
+        <td>${a.dueDate ? escapeHtml(String(a.dueDate).slice(0, 10)) : "&mdash;"}</td>
+        <td>${contentBits.join(" ") || "&mdash;"}</td>
+        <td><span class="pill ${ASSIGNMENT_STATUS_PILL[displayStatus] || "pending"}">${escapeHtml(ASSIGNMENT_STATUS_LABEL[displayStatus] || displayStatus)}</span></td>
         <td>
           <div class="row-actions">
+            ${canReview ? `<button class="icon-btn" title="Review submission" onclick="openGradeModal(${a.id})"><i class="fa fa-eye"></i></button>` : ""}
             <button class="icon-btn" title="Edit" onclick="editAssignment(${a.id})"><i class="fa fa-pen"></i></button>
             <button class="icon-btn danger" title="Delete" onclick="confirmDeleteAssignment(${a.id})"><i class="fa fa-trash"></i></button>
           </div>
         </td>
       </tr>
-    `)
+    `;
+    })
     .join("");
 }
 
@@ -3405,14 +3612,20 @@ function openAssignmentModal(assignment) {
   form.reset();
   document.getElementById("asgEditId").value = "";
   document.getElementById("assignmentModalTitle").textContent = "New assignment";
+  const isEdit = !!assignment;
+  document.getElementById("asgStudentMultiWrap").style.display = isEdit ? "none" : "block";
+  document.getElementById("asgStudentSingleWrap").style.display = isEdit ? "block" : "none";
+  document.getElementById("asgCreateOnlyFields").style.display = isEdit ? "none" : "block";
+  document.getElementById("asgStudentMulti").required = !isEdit;
   if (assignment) {
     document.getElementById("asgEditId").value = assignment.id;
+    document.getElementById("asgEditStudentId").value = assignment.studentId;
     document.getElementById("assignmentModalTitle").textContent = "Edit assignment";
-    document.getElementById("asgStudent").value = assignment.studentId;
+    document.getElementById("asgStudentSingleName").textContent = assignment.studentName || "";
     document.getElementById("asgTitle").value = assignment.title || "";
-    document.getElementById("asgDeadline").value = assignment.date || "";
-    document.getElementById("asgStatus").value = assignment.status || "pending";
-    document.getElementById("asgContent").value = assignment.content || "";
+    document.getElementById("asgDeadline").value = assignment.dueDate ? String(assignment.dueDate).slice(0, 10) : "";
+    document.getElementById("asgStatus").value = assignment.status === "overdue" ? "pending" : (assignment.status || "pending");
+    document.getElementById("asgContent").value = assignment.description || "";
   }
   openModal("assignmentModal");
 }
@@ -3425,31 +3638,67 @@ function editAssignment(id) {
 document.getElementById("assignmentModalForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const editId = document.getElementById("asgEditId").value;
-  const studentId = document.getElementById("asgStudent").value;
-  const payload = {
-    recordType: "assignment",
-    title: document.getElementById("asgTitle").value,
-    date: document.getElementById("asgDeadline").value,
-    status: document.getElementById("asgStatus").value,
-    content: document.getElementById("asgContent").value,
-  };
+  const title = document.getElementById("asgTitle").value;
+  const dueDate = document.getElementById("asgDeadline").value;
+  const description = document.getElementById("asgContent").value;
 
-  // FIX (rename pass): type-scoped URL ("assignment") to match the real backend.
-  const url = editId ? `/supervisor/records/assignment/${editId}` : `/supervisor/students/${studentId}/records`;
-  const method = editId ? "PUT" : "POST";
-  const result = await apiRequest(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  if (editId) {
+    const payload = {
+      recordType: "assignment",
+      title,
+      date: dueDate,
+      status: document.getElementById("asgStatus").value,
+      content: description,
+    };
+    const result = await apiRequest(`/supervisor/records/assignment/${editId}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+    });
+    if (result) {
+      showSuccessNotification("Assignment Updated", "The assignment has been updated successfully.");
+      closeModal("assignmentModal");
+      loadAssignments();
+      const editStudentId = document.getElementById("asgEditStudentId").value;
+      if (currentStudentId && editStudentId && currentStudentId == editStudentId) refreshCurrentStudent();
+    }
+    return;
+  }
+
+  const studentIds = Array.from(document.getElementById("asgStudentMulti").selectedOptions).map((o) => Number(o.value));
+  if (!studentIds.length) {
+    showToast("Select at least one trainee", "error");
+    return;
+  }
+  const attachmentFile = document.getElementById("asgAttachment").files[0];
+  const contentUrl = document.getElementById("asgContentUrl").value;
+
+  let result;
+  if (attachmentFile) {
+    const form = new FormData();
+    form.append("studentIds", JSON.stringify(studentIds));
+    form.append("title", title);
+    form.append("description", description);
+    form.append("dueDate", dueDate);
+    form.append("contentUrl", contentUrl);
+    form.append("attachment", attachmentFile);
+    const res = await fetch(`${API}/supervisor/assignments`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
+    result = await res.json().catch(() => null);
+    if (!res.ok) { showToast((result && result.error) || "Could not create assignment", "error"); return; }
+  } else {
+    result = await apiRequest("/supervisor/assignments", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentIds, title, description, dueDate, contentUrl }),
+    });
+  }
 
   if (result) {
-    showToast(editId ? "Assignment updated" : "Assignment created", "success");
+    showSuccessNotification("Assignment Created", `The assignment was created for ${result.createdIds.length} trainee(s).`);
     closeModal("assignmentModal");
     loadAssignments();
-    if (currentStudentId == studentId) refreshCurrentStudent();
   }
 });
 
 function confirmDeleteAssignment(id) {
   openConfirm("Delete this assignment?", "This can't be undone.", async () => {
-    // FIX (rename pass): type-scoped URL to match the real backend.
     const result = await apiRequest(`/supervisor/records/assignment/${id}`, { method: "DELETE" });
     if (result) {
       showToast("Assignment deleted", "success");
@@ -3457,6 +3706,48 @@ function confirmDeleteAssignment(id) {
     }
   });
 }
+
+// ---- Review / grade a submission ---------------------------------------
+
+function openGradeModal(id) {
+  const a = allAssignments.find((x) => x.id === id);
+  if (!a || !a.submission) return;
+  document.getElementById("gradeAssignmentId").value = a.id;
+  document.getElementById("gradeAssignmentInfo").innerHTML = `
+    <strong>${escapeHtml(a.title)}</strong>
+    <div style="color:var(--muted);font-size:12.5px;margin-top:2px;">${escapeHtml(a.studentName)} &middot; due ${a.dueDate ? escapeHtml(String(a.dueDate).slice(0, 10)) : "no date"}</div>
+  `;
+  const s = a.submission;
+  document.getElementById("gradeSubmissionInfo").innerHTML = `
+    <div class="record-item">
+      <div>
+        <a href="${UPLOADS}/submissions/${s.filename}" target="_blank" rel="noopener"><i class="fa fa-file-arrow-down"></i> ${escapeHtml(s.originalName)}</a>
+        <div class="rmeta">Submitted ${new Date(s.submittedAt).toLocaleString()}</div>
+        ${s.notes ? `<div class="rcontent">${escapeHtml(s.notes)}</div>` : ""}
+      </div>
+      <span class="pill ${s.status === "graded" ? "completed" : "scheduled"}">${escapeHtml(ASSIGNMENT_STATUS_LABEL[s.status] || s.status)}</span>
+    </div>
+  `;
+  document.getElementById("gradeScore").value = nc(s.score, "");
+  document.getElementById("gradeFeedback").value = s.feedback || "";
+  openModal("gradeModal");
+}
+
+document.getElementById("gradeModalForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("gradeAssignmentId").value;
+  const score = document.getElementById("gradeScore").value;
+  const feedback = document.getElementById("gradeFeedback").value;
+  const result = await apiRequest(`/supervisor/assignments/${id}/grade`, {
+    method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ score: score === "" ? null : Number(score), feedback }),
+  });
+  if (result) {
+    showSuccessNotification("Grade Saved", "The assignment has been graded successfully.");
+    closeModal("gradeModal");
+    loadAssignments();
+  }
+});
 
 let allSessions = [];
 
@@ -3561,7 +3852,10 @@ document.getElementById("sessionModalForm").addEventListener("submit", async (e)
   const result = await apiRequest(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
 
   if (result) {
-    showToast(editId ? "Session updated" : "Session scheduled", "success");
+    showSuccessNotification(
+      editId ? "Session Updated" : "Session Created",
+      editId ? "The session has been updated successfully." : "The session has been scheduled successfully."
+    );
     closeModal("sessionModal");
     loadSessions();
     loadSchedule();
@@ -3661,7 +3955,10 @@ document.getElementById("meetingModalForm").addEventListener("submit", async (e)
   const result = await apiRequest(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
 
   if (result) {
-    showToast(editId ? "Meeting updated" : "Meeting scheduled", "success");
+    showSuccessNotification(
+      editId ? "Meeting Updated" : "Meeting Created",
+      editId ? "The meeting has been updated successfully." : "The meeting has been scheduled successfully."
+    );
     closeModal("meetingModal");
     loadMeetings();
   }
@@ -3843,7 +4140,7 @@ document.getElementById("settingsPhotoFile").addEventListener("change", async ()
     const data = await response.json();
     document.getElementById("settingsAvatarPreview").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}" alt="">`;
     document.getElementById("supervisorInitials").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}" alt="">`;
-    showToast("Profile photo updated", "success");
+    showSuccessNotification("Profile Updated", "Your profile photo has been updated successfully.");
   } catch (err) {
     showToast(err.message, "error");
   }
@@ -3860,7 +4157,7 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
   };
   const result = await apiRequest("/profile/me", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   if (result) {
-    showToast("Profile updated", "success");
+    showSuccessNotification("Profile Updated", "Your profile information has been saved successfully.");
     document.getElementById("supervisorName").textContent = payload.full_name || "ToT";
   }
 });
@@ -3882,7 +4179,7 @@ document.getElementById("passwordForm").addEventListener("submit", async (e) => 
     body: JSON.stringify({ currentPassword, newPassword }),
   });
   if (result) {
-    showToast("Password updated", "success");
+    showSuccessNotification("Password Changed", "Your password has been updated successfully.");
     document.getElementById("passwordForm").reset();
   }
 });
@@ -3907,7 +4204,7 @@ function saveNotificationPrefs() {
     showPhoto: document.getElementById("privacyShowPhoto").checked,
   };
   localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
-  showToast("Preferences saved on this device", "success");
+  showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
 }
     </script>
 </body>

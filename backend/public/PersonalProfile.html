@@ -406,7 +406,7 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .avatar-circle {
             width: 38px;
             height: 38px;
@@ -873,11 +873,164 @@
             color: var(--warning);
         }
         
-        .pill.unpaid {
+        .pill.unpaid,
+        .pill.overdue {
             background: var(--danger-bg);
             color: var(--danger);
         }
-        
+
+        .pill.submitted,
+        .pill.scheduled {
+            background: var(--info-bg);
+            color: var(--info);
+        }
+
+        /* ===== Modal (matches Totdashboard.html/masterDashborad.html) ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 20, 30, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            -webkit-backdrop-filter: blur(2px);
+            backdrop-filter: blur(2px);
+        }
+        .modal-overlay.open {
+            display: flex;
+        }
+        .modal-box {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            width: 100%;
+            max-width: 460px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: var(--shadow-pop);
+        }
+        .modal-box.wide {
+            max-width: 700px;
+        }
+        .modal-box h3 {
+            margin: 0 0 18px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .modal-box label {
+            display: block;
+            font-weight: 600;
+            font-size: 12.5px;
+            margin-bottom: 6px;
+            margin-top: 14px;
+            color: var(--muted);
+        }
+        .modal-box input,
+        .modal-box select,
+        .modal-box textarea {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            font-size: 13.5px;
+            font-family: inherit;
+            background: var(--surface-2);
+        }
+        .modal-box input:focus,
+        .modal-box select:focus,
+        .modal-box textarea:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            background: var(--surface);
+        }
+        .modal-box input,
+        .modal-box select {
+            height: 42px;
+        }
+        .modal-box textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 22px;
+        }
+        .modal-actions .btn {
+            flex: 1;
+            justify-content: center;
+        }
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: var(--faint);
+            cursor: pointer;
+        }
+
+        /* ===== Assignment detail content ===== */
+        .content-preview-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            padding: 14px;
+            text-decoration: none;
+            color: var(--text);
+        }
+        .content-preview-link .cp-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            background: var(--primary);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .video-embed-wrap {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+        }
+        .video-embed-wrap iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+        .assignment-detail-section {
+            border-top: 1px solid var(--border-soft);
+            padding-top: 14px;
+            margin-top: 14px;
+        }
+        .assignment-detail-section:first-of-type {
+            border-top: none;
+            padding-top: 0;
+            margin-top: 0;
+        }
+        .assignment-detail-section h5 {
+            margin: 0 0 8px;
+            font-size: 11.5px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--muted);
+        }
+
         .empty-state {
             text-align: center;
             padding: 34px;
@@ -1290,7 +1443,23 @@
             border-color: var(--primary-light);
             background: var(--surface);
         }
-        
+
+        .form-grid input:disabled,
+        .form-grid select:disabled,
+        .form-grid textarea:disabled {
+            background: var(--surface-2);
+            color: var(--text);
+            border-color: transparent;
+            cursor: default;
+            opacity: 1;
+        }
+
+        .profile-edit-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
         .upload-row {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -1473,7 +1642,80 @@
             background: var(--danger-bg);
             color: var(--danger);
         }
-        
+
+        /* Centered success confirmation -- replaces the small bottom toast
+           for successful actions so an update is impossible to miss,
+           without blocking the page (pointer-events stays off so the user
+           can keep working underneath it while it's visible). */
+        .success-notif-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .2s ease;
+        }
+
+        .success-notif-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .success-notif-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-pop);
+            padding: 30px 34px;
+            max-width: 340px;
+            width: 100%;
+            text-align: center;
+            transform: scale(.92);
+            transition: transform .2s ease;
+        }
+
+        .success-notif-overlay.show .success-notif-box {
+            transform: scale(1);
+        }
+
+        .success-notif-icon {
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 14px;
+            border-radius: 50%;
+            background: var(--success-bg);
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .success-notif-title {
+            margin: 0 0 6px;
+            font-size: 16.5px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .success-notif-message {
+            margin: 0;
+            font-size: 13.5px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 480px) {
+            .success-notif-box {
+                padding: 24px 22px;
+            }
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateY(16px);
@@ -1536,6 +1778,15 @@
 </head>
 
 <body>
+    <!-- Centered success confirmation -- see showSuccessNotification() in the script below. -->
+    <div class="success-notif-overlay" id="successNotifOverlay" role="status" aria-live="polite">
+        <div class="success-notif-box">
+            <div class="success-notif-icon"><i class="fa fa-check"></i></div>
+            <h3 class="success-notif-title" id="successNotifTitle"></h3>
+            <p class="success-notif-message" id="successNotifMessage"></p>
+        </div>
+    </div>
+
     <div class="system-layout">
 
         <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -1705,15 +1956,16 @@
                         <div class="card-title-left"><i class="fa fa-user"></i>
                             <h2>Personal information</h2>
                         </div>
+                        <button type="button" class="btn btn-secondary" id="profileEditBtn" onclick="startProfileEdit()"><i class="fa fa-pen"></i> Edit</button>
                     </div>
                     <div class="form-grid">
-                        <div><label>Full name</label><input id="name"></div>
-                        <div><label>Sex</label><select id="gender"><option value="">&mdash;</option><option>Female</option><option>Male</option></select></div>
-                        <div><label>Date of birth</label><input type="date" id="dateOfBirth"></div>
-                        <div><label>Marital status</label><select id="maritalStatus"><option value="">&mdash;</option><option>Single</option><option>Married</option></select></div>
-                        <div><label>Phone</label><input id="phone" placeholder="+961"></div>
-                        <div><label>Email</label><input type="email" id="email"></div>
-                        <div class="full"><label>Address</label><input id="address"></div>
+                        <div><label>Full name</label><input id="name" class="profile-editable-field" disabled></div>
+                        <div><label>Sex</label><select id="gender" class="profile-editable-field" disabled><option value="">&mdash;</option><option>Female</option><option>Male</option></select></div>
+                        <div><label>Date of birth</label><input type="date" id="dateOfBirth" class="profile-editable-field" disabled></div>
+                        <div><label>Marital status</label><select id="maritalStatus" class="profile-editable-field" disabled><option value="">&mdash;</option><option>Single</option><option>Married</option></select></div>
+                        <div><label>Phone</label><input id="phone" placeholder="+961" class="profile-editable-field" disabled></div>
+                        <div><label>Email</label><input type="email" id="email" class="profile-editable-field" disabled></div>
+                        <div class="full"><label>Address</label><input id="address" class="profile-editable-field" disabled></div>
                     </div>
                 </section>
 
@@ -1724,9 +1976,9 @@
                         </div>
                     </div>
                     <div class="form-grid">
-                        <div><label>Highest degree</label><input id="highestDegree" placeholder="Master's Degree"></div>
-                        <div><label>Institution</label><input id="institution"></div>
-                        <div class="full"><label>Mental health certifications</label><textarea id="certifications"></textarea></div>
+                        <div><label>Highest degree</label><input id="highestDegree" placeholder="Master's Degree" class="profile-editable-field" disabled></div>
+                        <div><label>Institution</label><input id="institution" class="profile-editable-field" disabled></div>
+                        <div class="full"><label>Mental health certifications</label><textarea id="certifications" class="profile-editable-field" disabled></textarea></div>
                     </div>
                     <div class="upload-row">
                         <div class="upload-box">
@@ -1763,7 +2015,10 @@
                     <label class="consent-row"><input type="checkbox" id="healthConsent">I understand why this information is collected and who can access it.</label>
                 </section>
 
-                <button class="btn" id="saveProfileBtn" style="width:auto;">Save profile changes</button>
+                <div class="profile-edit-actions" id="profileSaveActions" style="display:none;">
+                    <button type="button" class="btn" id="saveProfileBtn" style="width:auto;">Save changes</button>
+                    <button type="button" class="btn btn-secondary" style="width:auto;" onclick="cancelProfileEdit()">Cancel</button>
+                </div>
 
             </section>
 
@@ -1818,12 +2073,36 @@
                             <h2>Assignments</h2>
                         </div>
                     </div>
-                    <div class="toolbar"><select id="assignmentsSupFilter" onchange="loadAssignments()"><option value="">All supervisors</option></select></div>
+                    <div class="toolbar">
+                        <input type="text" id="assignmentsSearch" placeholder="Search by title...">
+                        <select id="assignmentsSupFilter"><option value="">All supervisors</option></select>
+                        <select id="assignmentsStatusFilter">
+                            <option value="">All statuses</option>
+                            <option value="pending">New</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="overdue">Late</option>
+                            <option value="graded">Graded</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                        <select id="assignmentsSort">
+                            <option value="due">Sort: Due date</option>
+                            <option value="newest">Sort: Newest first</option>
+                        </select>
+                    </div>
                     <div id="assignmentsList">
                         <div class="empty-state">Loading assignments...</div>
                     </div>
                 </section>
             </section>
+
+            <!-- ASSIGNMENT DETAIL MODAL -->
+            <div class="modal-overlay" id="assignmentDetailModal">
+                <div class="modal-box wide">
+                    <button class="close-modal" onclick="closeModal('assignmentDetailModal')">&times;</button>
+                    <h3 id="asgDetailTitle">&mdash;</h3>
+                    <div id="asgDetailBody"></div>
+                </div>
+            </div>
 
             <!-- ============================================================= -->
             <!-- SESSIONS & ATTENDANCE                                          -->
@@ -2091,12 +2370,33 @@
             }
         }
 
+        // A successful save/create/update is easy to miss as a small bottom-
+        // corner toast -- route "success" through the centered confirmation
+        // instead. Error/warning/info keep the original small toast unchanged.
         function showToast(text, type) {
+            if (type === "success") {
+                showSuccessNotification("Success", text);
+                return;
+            }
             const box = document.createElement("div");
             box.className = "toast " + type;
             box.textContent = text;
             document.body.appendChild(box);
             setTimeout(() => box.remove(), 3000);
+        }
+
+        let successNotifTimer = null;
+        // Reusable centered confirmation for any important save/create/
+        // update. Re-triggering it (e.g. a double-click on Save) just resets
+        // the timer and swaps the text instead of stacking a second copy.
+        function showSuccessNotification(title, message, duration = 2800) {
+            const overlay = document.getElementById("successNotifOverlay");
+            if (!overlay) return;
+            clearTimeout(successNotifTimer);
+            document.getElementById("successNotifTitle").textContent = title;
+            document.getElementById("successNotifMessage").textContent = message || "";
+            overlay.classList.add("show");
+            successNotifTimer = setTimeout(() => overlay.classList.remove("show"), duration);
         }
 
         // Written without ?./?? on purpose -- a broken formatter in this project's
@@ -2116,75 +2416,12 @@
             return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => (w[0] && w[0].toUpperCase()) || "").join("");
         }
 
-        // ---- Notification Center ----
-        let notifDropdownOpen = false;
-        let notifPollTimer = null;
 
-        function toggleNotifDropdown() {
-            notifDropdownOpen = !notifDropdownOpen;
-            const panel = document.getElementById("notifDropdown");
-            if (panel) panel.classList.toggle("open", notifDropdownOpen);
-            if (notifDropdownOpen) loadNotifList();
+        function openModal(id) {
+            document.getElementById(id).classList.add("open");
         }
-
-        function closeNotifDropdown() {
-            notifDropdownOpen = false;
-            const panel = document.getElementById("notifDropdown");
-            if (panel) panel.classList.remove("open");
-        }
-
-        document.addEventListener("click", (e) => {
-            if (!notifDropdownOpen) return;
-            const wrap = document.querySelector(".notif-wrap");
-            if (wrap && !wrap.contains(e.target)) closeNotifDropdown();
-        });
-
-        async function loadNotifUnreadCount() {
-            const data = await apiRequest("/profile/notifications/unread-count");
-            const dot = document.getElementById("notifDot");
-            if (!dot) return;
-            dot.style.display = data && data.count > 0 ? "block" : "none";
-        }
-
-        async function loadNotifList() {
-            const list = document.getElementById("notifList");
-            if (!list) return;
-            list.innerHTML = '<div class="notif-empty">Loading...</div>';
-            const data = await apiRequest("/profile/notifications?limit=20");
-            if (!data) return;
-            if (!data.notifications.length) {
-                list.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
-                return;
-            }
-            list.innerHTML = data.notifications.map((n) => `
-                <div class="notif-item ${n.isRead ? "" : "unread"}" onclick="handleNotifClick(${n.id}, '${escapeHtml(n.relatedEntityType || "")}', ${n.relatedEntityId || "null"})">
-                    <span class="ni-dot ${n.isRead ? "read" : ""}"></span>
-                    <div>
-                        <div class="ni-title">${escapeHtml(n.title)}</div>
-                        ${n.body ? `<div class="ni-body">${escapeHtml(n.body)}</div>` : ""}
-                        <div class="ni-time">${new Date(n.createdAt).toLocaleString()}</div>
-                    </div>
-                </div>
-            `).join("");
-        }
-
-        async function markAllNotifsRead() {
-            const btn = document.getElementById("notifMarkAllBtn");
-            if (btn) btn.disabled = true;
-            await apiRequest("/profile/notifications/mark-all-read", { method: "POST" });
-            if (btn) btn.disabled = false;
-            loadNotifList();
-            loadNotifUnreadCount();
-        }
-
-        async function handleNotifClick(id, relatedEntityType, relatedEntityId) {
-            await apiRequest(`/profile/notifications/${id}/read`, { method: "PATCH" });
-            loadNotifUnreadCount();
-            closeNotifDropdown();
-            if (relatedEntityType === "assignment" && relatedEntityId) {
-                showSection("assignments");
-                await loadAssignments();
-            }
+        function closeModal(id) {
+            document.getElementById(id).classList.remove("open");
         }
 
         function setValue(id, value) {
@@ -2296,18 +2533,87 @@
             showSection(initialSection);
         });
 
-        // ---- Profile (Dashboard header + My Profile section) -------------------
+        // ---- Notification Center ----
+        let notifDropdownOpen = false;
+        let notifPollTimer = null;
 
-        async function loadProfile() {
-            const data = await apiRequest("/profile/me");
+        function toggleNotifDropdown() {
+            notifDropdownOpen = !notifDropdownOpen;
+            const panel = document.getElementById("notifDropdown");
+            if (panel) panel.classList.toggle("open", notifDropdownOpen);
+            if (notifDropdownOpen) loadNotifList();
+        }
+
+        function closeNotifDropdown() {
+            notifDropdownOpen = false;
+            const panel = document.getElementById("notifDropdown");
+            if (panel) panel.classList.remove("open");
+        }
+
+        document.addEventListener("click", (e) => {
+            if (!notifDropdownOpen) return;
+            const wrap = document.querySelector(".notif-wrap");
+            if (wrap && !wrap.contains(e.target)) closeNotifDropdown();
+        });
+
+        async function loadNotifUnreadCount() {
+            const data = await apiRequest("/profile/notifications/unread-count");
+            const dot = document.getElementById("notifDot");
+            if (!dot) return;
+            dot.style.display = data && data.count > 0 ? "block" : "none";
+        }
+
+        async function loadNotifList() {
+            const list = document.getElementById("notifList");
+            if (!list) return;
+            list.innerHTML = `<div class="notif-empty">Loading...</div>`;
+            const data = await apiRequest("/profile/notifications?limit=20");
             if (!data) return;
-            currentProfile = data;
-
-            if (data.must_change_password) {
-                window.location.href = "change-password.html";
+            if (!data.notifications.length) {
+                list.innerHTML = `<div class="notif-empty">No notifications yet.</div>`;
                 return;
             }
+            list.innerHTML = data.notifications.map((n) => `
+                <div class="notif-item ${n.isRead ? "" : "unread"}" onclick="handleNotifClick(${n.id}, '${escapeHtml(n.relatedEntityType || "")}', ${n.relatedEntityId || "null"})">
+                    <span class="ni-dot ${n.isRead ? "read" : ""}"></span>
+                    <div>
+                        <div class="ni-title">${escapeHtml(n.title)}</div>
+                        ${n.body ? `<div class="ni-body">${escapeHtml(n.body)}</div>` : ""}
+                        <div class="ni-time">${new Date(n.createdAt).toLocaleString()}</div>
+                    </div>
+                </div>
+            `).join("");
+        }
 
+        async function markAllNotifsRead() {
+            const btn = document.getElementById("notifMarkAllBtn");
+            if (btn) btn.disabled = true;
+            await apiRequest("/profile/notifications/mark-all-read", { method: "POST" });
+            if (btn) btn.disabled = false;
+            loadNotifList();
+            loadNotifUnreadCount();
+        }
+
+        async function handleNotifClick(id, relatedEntityType, relatedEntityId) {
+            await apiRequest(`/profile/notifications/${id}/read`, { method: "PATCH" });
+            loadNotifUnreadCount();
+            closeNotifDropdown();
+            if (relatedEntityType === "assignment" && relatedEntityId) {
+                showSection("assignments");
+                await loadAssignments();
+                openAssignmentDetail(Number(relatedEntityId));
+            }
+        }
+
+        // ---- Profile (Dashboard header + My Profile section) -------------------
+
+        // Single "database -> UI" pipeline: every successful GET or PUT of the
+        // profile flows through here, so the form always shows exactly what's
+        // stored server-side. Never partially apply a profile response --
+        // always pass the FULL object (GET /profile/me or the PUT result,
+        // which returns the same complete shape) so no field is ever left
+        // showing a stale or blanked-out value.
+        function populateProfileFields(data) {
             setText("topbarName", data.full_name);
             document.getElementById("topbarSub").textContent = data.memberCode || "Trainee";
             setText("profileFullName", data.full_name);
@@ -2345,10 +2651,51 @@
             if (cvStatus) cvStatus.textContent = data.cvFile ? `Current file: ${data.cvFile}` : "PDF, maximum 10MB";
 
             mySupervisors = data.supervisors || [];
+        }
+
+        async function loadProfile() {
+            const data = await apiRequest("/profile/me");
+            if (!data) return;
+            currentProfile = data;
+
+            if (data.must_change_password) {
+                window.location.href = "change-password.html";
+                return;
+            }
+
+            populateProfileFields(data);
 
             loadDashboardProgress();
             loadDashboardSchedule();
             loadDashboardActivity();
+        }
+
+        // ---- Personal information / Education edit mode -----------------------
+        // Fields render read-only (disabled) until "Edit" is clicked, so a
+        // trainee always sees their saved data by default and can't confuse a
+        // half-typed in-progress edit with what's actually persisted. Cancel
+        // reverts to currentProfile (the last known-good server state) instead
+        // of leaving whatever was typed on screen.
+        function setProfileFieldsDisabled(disabled) {
+            document.querySelectorAll(".profile-editable-field").forEach((el) => { el.disabled = disabled; });
+        }
+
+        function startProfileEdit() {
+            setProfileFieldsDisabled(false);
+            document.getElementById("profileEditBtn").style.display = "none";
+            document.getElementById("profileSaveActions").style.display = "flex";
+            document.getElementById("name").focus();
+        }
+
+        function endProfileEdit() {
+            setProfileFieldsDisabled(true);
+            document.getElementById("profileEditBtn").style.display = "";
+            document.getElementById("profileSaveActions").style.display = "none";
+        }
+
+        function cancelProfileEdit() {
+            if (currentProfile) populateProfileFields(currentProfile);
+            endProfileEdit();
         }
 
         async function loadDashboardProgress() {
@@ -2445,7 +2792,7 @@
                     throw new Error((body && body.error) || "Upload failed");
                 }
                 const data = await response.json();
-                showToast("Photo updated", "success");
+                showSuccessNotification("Profile Updated", "Your profile photo has been updated successfully.");
                 // FIX: previously called loadProfile() here, which re-fetches the
                 // ENTIRE profile from the database and overwrites every form field --
                 // wiping out anything typed into Personal/Education fields that
@@ -2518,8 +2865,12 @@
             });
             if (result) {
                 currentProfile = result;
-                showToast("Profile updated successfully", "success");
+                populateProfileFields(result);
+                endProfileEdit();
+                showSuccessNotification("Profile Updated", "Your profile information has been saved successfully.");
             }
+            // On failure apiRequest() already showed the error toast -- leave
+            // edit mode active so the trainee doesn't lose what they typed.
         });
         // NOTE: the "Health & emergency information" fields (medicalConditions,
         // emergencyName, emergencyRelationship, emergencyPhone, healthConsent) are
@@ -2576,48 +2927,196 @@
     .join("");
 }
 
-// ---- Assignments (view + submit-if-enabled) -----------------------------
+// ---- Assignments -----------------------------------------------------
+// Modern LMS-style list + detail modal. Only real, backend-computed
+// statuses are ever shown (pending/submitted/overdue/graded/completed) --
+// nothing here is invented client-side.
+
+let allAssignments = [];
+
+const ASSIGNMENT_STATUS_LABEL = {
+  pending: "New",
+  submitted: "Submitted",
+  overdue: "Late",
+  completed: "Completed",
+  graded: "Graded",
+};
+const ASSIGNMENT_STATUS_PILL = {
+  pending: "pending",
+  submitted: "submitted",
+  overdue: "overdue",
+  completed: "completed",
+  graded: "completed",
+};
+
+function assignmentDisplayStatus(a) {
+  if (a.submission && a.submission.status === "graded") return "graded";
+  return a.status || "pending";
+}
 
 async function loadAssignments() {
   const wrap = document.getElementById("assignmentsList");
-  const data = allRecords.length ? { records: allRecords } : await apiRequest("/profile/records");
+  wrap.innerHTML = `<div class="empty-state">Loading assignments...</div>`;
+  const data = await apiRequest("/profile/assignments");
   if (!data) return;
-  allRecords = data.records;
-  const supFilter = document.getElementById("assignmentsSupFilter").value;
-  const assignments = allRecords.filter(
-    (r) => r.recordType === "assignment" && (!supFilter || String(r.supervisorId) === supFilter)
-  );
+  allAssignments = data.assignments;
 
-  if (!assignments.length) {
-    wrap.innerHTML = '<div class="empty-state">No assignments yet.</div>';
+  const supSel = document.getElementById("assignmentsSupFilter");
+  if (supSel) {
+    const current = supSel.value;
+    // Filtered by trainer NAME rather than id -- the API doesn't expose a
+    // trainerId on this shape, and a trainee's caseload is small enough
+    // (1-3 trainers) that a name collision is not a realistic concern here.
+    const names = Array.from(new Set(allAssignments.map((a) => a.trainerName))).sort();
+    supSel.innerHTML = `<option value="">All supervisors</option>` + names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+    if (names.includes(current)) supSel.value = current;
+  }
+
+  renderAssignments();
+}
+
+function renderAssignments() {
+  const wrap = document.getElementById("assignmentsList");
+  const search = (document.getElementById("assignmentsSearch").value || "").toLowerCase();
+  const supFilter = document.getElementById("assignmentsSupFilter").value;
+  const statusFilter = document.getElementById("assignmentsStatusFilter").value;
+  const sortBy = document.getElementById("assignmentsSort").value;
+
+  let filtered = allAssignments.filter((a) => {
+    if (search && !(a.title || "").toLowerCase().includes(search)) return false;
+    if (supFilter && a.trainerName !== supFilter) return false;
+    if (statusFilter && assignmentDisplayStatus(a) !== statusFilter) return false;
+    return true;
+  });
+  filtered = sortBy === "newest"
+    ? [...filtered].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+    : [...filtered].sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
+
+  if (!allAssignments.length) {
+    wrap.innerHTML = `<div class="empty-state">No assignments yet.</div>`;
+    return;
+  }
+  if (!filtered.length) {
+    wrap.innerHTML = `<div class="empty-state">No assignments match your filters.</div>`;
     return;
   }
 
-  wrap.innerHTML = assignments
-    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-    .map((a) => `
-      <div class="assignment-card">
+  wrap.innerHTML = filtered.map((a) => {
+    const displayStatus = assignmentDisplayStatus(a);
+    const contentBits = [];
+    if (a.attachmentFilename) contentBits.push(`<i class="fa fa-paperclip" title="Attachment"></i>`);
+    if (a.contentUrl) contentBits.push(`<i class="fa fa-circle-play" title="Video / Content"></i>`);
+    return `
+      <div class="assignment-card" style="cursor:pointer;" onclick="openAssignmentDetail(${a.id})">
         <div class="atop">
           <div>
             <h4>${escapeHtml(a.title || "Untitled assignment")}</h4>
-            <div class="adeadline">Deadline: ${a.date ? escapeHtml(a.date) : "No deadline set"} &middot; assigned by ${escapeHtml(a.supervisorName)}</div>
+            <div class="adeadline">Due ${a.dueDate ? escapeHtml(String(a.dueDate).slice(0, 10)) : "no deadline"} &middot; assigned by ${escapeHtml(a.trainerName)} ${contentBits.length ? "&middot; " + contentBits.join(" ") : ""}</div>
           </div>
-          <span class="pill ${a.status || "pending"}">${escapeHtml(a.status || "pending")}</span>
+          <span class="pill ${ASSIGNMENT_STATUS_PILL[displayStatus] || "pending"}">${escapeHtml((ASSIGNMENT_STATUS_LABEL[displayStatus] || displayStatus))}</span>
         </div>
-        ${a.content ? `<div class="acontent">${escapeHtml(a.content)}</div>` : ""}
-        <div class="submit-row">
-          <input type="file" id="submitFile-${a.id}">
-          <button class="btn btn-sm" onclick="submitAssignment(${a.id})"><i class="fa fa-upload"></i> Submit</button>
-        </div>
+        ${a.description ? `<div class="acontent">${escapeHtml(a.description.length > 140 ? a.description.slice(0, 140) + "…" : a.description)}</div>` : ""}
       </div>
-    `)
-    .join("");
+    `;
+  }).join("");
 }
 
-// NOTE: guessed endpoint, no backend support yet -- see the notice banner
-// in the Assignments section for the schema gap.
-async function submitAssignment(recordId) {
-  const input = document.getElementById(`submitFile-${recordId}`);
+document.getElementById("assignmentsSearch").addEventListener("input", renderAssignments);
+document.getElementById("assignmentsSupFilter").addEventListener("change", renderAssignments);
+document.getElementById("assignmentsStatusFilter").addEventListener("change", renderAssignments);
+document.getElementById("assignmentsSort").addEventListener("change", renderAssignments);
+
+/** Turns a YouTube/Vimeo URL into an embeddable iframe src, or null for
+ *  anything else (which gets a link-card instead, never a raw <a> dump). */
+function videoEmbedSrc(url) {
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,})/);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  return null;
+}
+
+function openAssignmentDetail(id) {
+  const a = allAssignments.find((x) => x.id === id);
+  if (!a) return;
+  const displayStatus = assignmentDisplayStatus(a);
+
+  document.getElementById("asgDetailTitle").textContent = a.title || "Untitled assignment";
+
+  const contentSection = a.contentUrl ? (() => {
+    const embed = videoEmbedSrc(a.contentUrl);
+    return embed
+      ? `<div class="video-embed-wrap"><iframe src="${embed}" allowfullscreen title="Assignment video"></iframe></div>`
+      : `<a class="content-preview-link" href="${escapeHtml(a.contentUrl)}" target="_blank" rel="noopener">
+           <span class="cp-icon"><i class="fa fa-play"></i></span>
+           <div><strong>Watch / open resource</strong><div style="font-size:11.5px;color:var(--muted);">${escapeHtml(a.contentUrl)}</div></div>
+         </a>`;
+  })() : "";
+
+  const attachmentSection = a.attachmentFilename
+    ? `<a class="content-preview-link" href="${UPLOADS}/assignments/${a.attachmentFilename}" target="_blank" rel="noopener">
+         <span class="cp-icon"><i class="fa fa-file-arrow-down"></i></span>
+         <div><strong>Download attachment</strong></div>
+       </a>`
+    : "";
+
+  let submissionSection;
+  if (a.submission) {
+    const s = a.submission;
+    submissionSection = `
+      <div class="assignment-card" style="margin:0;">
+        <div class="atop">
+          <div>
+            <h4><i class="fa fa-file-circle-check"></i> ${escapeHtml(s.originalName)}</h4>
+            <div class="adeadline">Submitted ${new Date(s.submittedAt).toLocaleString()}</div>
+          </div>
+          <span class="pill ${s.status === "graded" ? "completed" : "submitted"}">${escapeHtml((ASSIGNMENT_STATUS_LABEL[s.status] || s.status))}</span>
+        </div>
+        ${s.notes ? `<div class="acontent">${escapeHtml(s.notes)}</div>` : ""}
+        <a href="${UPLOADS}/submissions/${s.filename}" target="_blank" rel="noopener" style="font-size:12.5px;font-weight:600;color:var(--primary);text-decoration:none;">
+          <i class="fa fa-download"></i> View my submitted file
+        </a>
+      </div>
+      ${s.status === "graded" ? `
+        <div class="assignment-detail-section">
+          <h5>Grade & Feedback</h5>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
+            <span style="font-size:22px;font-weight:700;">${s.score != null ? s.score : "&mdash;"}</span>
+            ${a.maxScore ? `<span style="color:var(--muted);">/ ${a.maxScore}</span>` : ""}
+          </div>
+          ${s.feedback ? `<div class="acontent">${escapeHtml(s.feedback)}</div>` : `<div class="empty-state">No written feedback.</div>`}
+        </div>` : ""}
+    `;
+  } else {
+    submissionSection = `
+      <div class="submit-row">
+        <input type="file" id="submitFileDetail">
+        <button class="btn btn-sm" onclick="submitAssignmentDetail(${a.id})"><i class="fa fa-upload"></i> Submit</button>
+      </div>
+    `;
+  }
+
+  document.getElementById("asgDetailBody").innerHTML = `
+    <div class="assignment-detail-section">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:2px;">
+        <span style="color:var(--muted);font-size:12.5px;">assigned by ${escapeHtml(a.trainerName)} &middot; Due ${a.dueDate ? escapeHtml(String(a.dueDate).slice(0, 10)) : "no deadline"}</span>
+        <span class="pill ${ASSIGNMENT_STATUS_PILL[displayStatus] || "pending"}">${escapeHtml((ASSIGNMENT_STATUS_LABEL[displayStatus] || displayStatus))}</span>
+      </div>
+    </div>
+    ${a.description ? `<div class="assignment-detail-section"><h5>Instructions</h5><div class="acontent" style="white-space:pre-wrap;">${escapeHtml(a.description)}</div></div>` : ""}
+    ${contentSection ? `<div class="assignment-detail-section"><h5>Video / Content</h5>${contentSection}</div>` : ""}
+    ${attachmentSection ? `<div class="assignment-detail-section"><h5>Attachment</h5>${attachmentSection}</div>` : ""}
+    <div class="assignment-detail-section">
+      <h5>${a.submission ? "Your Submission" : "Submit Your Work"}</h5>
+      ${submissionSection}
+    </div>
+  `;
+
+  openModal("assignmentDetailModal");
+}
+
+async function submitAssignmentDetail(recordId) {
+  const input = document.getElementById("submitFileDetail");
   const file = input && input.files[0];
   if (!file) return showToast("Choose a file first", "error");
   const form = new FormData();
@@ -2632,7 +3131,8 @@ async function submitAssignment(recordId) {
       const body = await response.json().catch(() => null);
       throw new Error((body && body.error) || "Submission failed");
     }
-    showToast("Assignment submitted", "success");
+    showSuccessNotification("Assignment Submitted", "Your assignment has been submitted successfully.");
+    closeModal("assignmentDetailModal");
     loadAssignments();
   } catch (err) {
     showToast(err.message, "error");
@@ -2909,7 +3409,7 @@ document.getElementById("passwordForm").addEventListener("submit", async (e) => 
     body: JSON.stringify({ currentPassword, newPassword }),
   });
   if (result) {
-    showToast("Password updated", "success");
+    showSuccessNotification("Password Changed", "Your password has been updated successfully.");
     document.getElementById("passwordForm").reset();
   }
 });
@@ -2934,7 +3434,7 @@ function saveNotificationPrefs() {
     sessions: document.getElementById("notifSessions").checked,
   };
   localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
-  showToast("Preferences saved on this device", "success");
+  showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
 }
     </script>
 </body>

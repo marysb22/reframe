@@ -82,6 +82,18 @@ const TEMPLATES = {
     return { subject: "New Training Material Added", text, html };
   },
 
+  newAnnouncement({ recipientName, announcementTitle, announcementContent, trainerName }) {
+    const lines = [
+      "A new announcement has been posted to your training account.",
+      "",
+      field("Title", announcementTitle),
+      field("Posted by", trainerName),
+    ];
+    if (announcementContent) lines.push("", escapeHtml(announcementContent));
+    const { text, html } = wrap(recipientName, lines);
+    return { subject: "New Announcement", text, html };
+  },
+
   assignmentSubmitted({ recipientName, assignmentTitle, traineeName }) {
     const { text, html } = wrap(recipientName, [
       "A trainee has submitted an assignment for your review.",
@@ -102,6 +114,41 @@ const TEMPLATES = {
     if (feedback) lines.push(field("Feedback", feedback));
     const { text, html } = wrap(recipientName, lines);
     return { subject: "Assignment Graded", text, html };
+  },
+
+  // Deliberately does NOT use wrap() -- its "log in to view details" footer
+  // doesn't apply to a pre-authentication email, and a reset code needs to
+  // stand out visually rather than read like a routine activity notice.
+  passwordReset({ recipientName, code, expiresInMinutes }) {
+    const text = [
+      `Hello ${recipientName},`,
+      "",
+      "We received a request to reset your password.",
+      "",
+      `Your verification code is: ${code}`,
+      "",
+      `This code expires in ${expiresInMinutes} minutes.`,
+      "",
+      "If you did not request this password reset, you can safely ignore this email -- your password will not be changed.",
+      "",
+      "Regards,",
+      "Training System",
+    ].join("\n");
+
+    const html = `
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#16211F;line-height:1.6;max-width:480px;">
+        <p>Hello ${escapeHtml(recipientName)},</p>
+        <p style="margin:0 0 8px;">We received a request to reset your password.</p>
+        <p style="margin:20px 0;text-align:center;">
+          <span style="display:inline-block;background:#E4F5EA;color:#1D7A4C;font-size:28px;font-weight:700;letter-spacing:4px;padding:14px 28px;border-radius:12px;">${escapeHtml(code)}</span>
+        </p>
+        <p style="margin:0 0 8px;color:#5D6C6A;">This code expires in ${expiresInMinutes} minutes.</p>
+        <p style="margin:16px 0 0;color:#5D6C6A;">If you did not request this password reset, you can safely ignore this email -- your password will not be changed.</p>
+        <p style="margin-top:24px;color:#5D6C6A;">Regards,<br>Training System</p>
+      </div>
+    `.trim();
+
+    return { subject: "Your Password Reset Code", text, html };
   },
 };
 

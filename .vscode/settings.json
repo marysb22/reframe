@@ -2,5 +2,6 @@
   "// why this file exists": "Some HTML formatter (global user setting or extension) was running on save and corrupting `?.`/`??` in the inline <script> blocks across backend/public/*.html into `? .`/`? ?`, silently breaking the JavaScript on those pages every time they got saved. This turns off format-on-save specifically for HTML in this workspace so it stops happening regardless of what's configured globally. If you want formatting back, fix/replace the offending formatter first, then remove this override.",
   "[html]": {
     "editor.formatOnSave": false
-  }
+  },
+  "liveServer.settings.port": 5501
 }
