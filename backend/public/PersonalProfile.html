@@ -1390,7 +1390,221 @@
             background: var(--surface-2);
             resize: vertical;
         }
-        
+
+        .icon-btn {
+            width: 40px;
+            height: 42px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--muted);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .icon-btn:hover {
+            background: var(--surface-2);
+        }
+
+        /* Group Chats -- Master Trainer-curated rooms, independent of this
+           file's existing 1:1 chat above (whose .chat-thread/.chat-bubble
+           are reused as-is here). */
+        .gc-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 16px;
+            height: 520px;
+        }
+
+        .gc-room-list {
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            overflow-y: auto;
+            padding: 6px;
+        }
+
+        .gc-room-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 11px;
+            cursor: pointer;
+            font-family: inherit;
+            margin-bottom: 2px;
+        }
+
+        .gc-room-item:hover {
+            background: var(--surface-2);
+        }
+
+        .gc-room-item.active {
+            background: var(--primary);
+        }
+
+        .gc-room-item.active .gc-room-name,
+        .gc-room-item.active .gc-room-preview {
+            color: #fff;
+        }
+
+        .gc-room-name {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .gc-unread-badge {
+            background: var(--danger);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 10px;
+            padding: 1px 6px;
+            flex-shrink: 0;
+        }
+
+        .gc-room-preview {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .gc-thread-panel {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            padding: 14px;
+            min-width: 0;
+        }
+
+        .gc-thread-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .gc-thread-header h4 {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .gc-thread-header .gc-member-count {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .gc-thread-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .gc-composer {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .gc-composer textarea {
+            flex: 1;
+            height: 42px;
+            max-height: 100px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            font-family: inherit;
+            font-size: 12.5px;
+            resize: vertical;
+        }
+
+        .gc-attachment-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 10px;
+            padding: 7px 10px;
+            font-size: 11.5px;
+            margin-top: 8px;
+        }
+
+        .gc-attachment-chip button {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        .attachment-bubble {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .attachment-bubble .ab-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            background: rgba(255, 255, 255, .2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .chat-bubble.theirs .attachment-bubble .ab-icon {
+            background: var(--surface);
+            color: var(--primary);
+        }
+
+        .attachment-bubble .ab-name {
+            font-weight: 700;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .attachment-bubble .ab-meta {
+            font-size: 10.5px;
+            opacity: .8;
+        }
+
+        .attachment-bubble a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        @media (max-width: 720px) {
+            .gc-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .gc-room-list {
+                max-height: 160px;
+            }
+            .gc-thread-body {
+                max-height: 340px;
+            }
+        }
+
         .supervisor-tabs {
             display: flex;
             gap: 8px;
@@ -2058,6 +2272,7 @@
                 <div class="nav-label">Communication</div>
                 <ul>
                     <li><a data-section="chat" href="#chat"><i class="fa fa-comments"></i>Chat</a></li>
+                    <li><a data-section="group-chats" href="#group-chats"><i class="fa fa-people-group"></i>Group Chats</a></li>
                     <li><a data-section="documents" href="#documents"><i class="fa fa-folder-open"></i>Documents</a></li>
                     <li><a data-section="announcements" href="#announcements"><i class="fa fa-bullhorn"></i>Announcements</a></li>
                 </ul>
@@ -2444,6 +2659,43 @@
             </section>
 
             <!-- ============================================================= -->
+            <!-- GROUP CHATS                                                    -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-group-chats" data-title="Group Chats" data-eyebrow="Communication">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-people-group"></i>
+                            <h2>Group Chats</h2>
+                        </div>
+                    </div>
+                    <p class="card-subtitle">Rooms your Master Trainer has added you to. Everyone in a room can send and receive messages and files.</p>
+                    <div class="gc-layout">
+                        <div class="gc-room-list" id="gcRoomList">
+                            <div class="empty-state">Loading rooms...</div>
+                        </div>
+                        <div class="gc-thread-panel">
+                            <div class="gc-thread-header" id="gcThreadHeader" style="display:none;">
+                                <div>
+                                    <h4 id="gcThreadName">&mdash;</h4>
+                                    <div class="gc-member-count" id="gcThreadMemberCount"></div>
+                                </div>
+                            </div>
+                            <div class="chat-thread gc-thread-body" id="gcThread">
+                                <div class="empty-state">Select a room to start chatting.</div>
+                            </div>
+                            <div id="gcAttachmentChip"></div>
+                            <div class="gc-composer">
+                                <input type="file" id="gcAttachmentInput" style="display:none;" onchange="onGcAttachmentSelected(this)">
+                                <button type="button" class="icon-btn" title="Attach a file" onclick="document.getElementById('gcAttachmentInput').click()"><i class="fa fa-paperclip"></i></button>
+                                <textarea id="gcInput" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGcMessage();}"></textarea>
+                                <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendGcMessage()"><i class="fa fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
             <!-- DOCUMENTS                                                      -->
             <!-- ============================================================= -->
             <section class="dash-section" id="section-documents" data-title="Documents" data-eyebrow="Communication">
@@ -2575,6 +2827,7 @@
     </div>
 
     <script src="scripts/api-config.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
     <script>
         const API = window.API_BASE + "/api";
         const UPLOADS = window.API_BASE + "/uploads";
@@ -2720,7 +2973,7 @@
 
         const SECTION_IDS = [
             "dashboard", "profile", "calendar", "materials", "assignments", "sessions",
-            "meetings", "chat", "documents", "announcements", "payments", "settings",
+            "meetings", "chat", "group-chats", "documents", "announcements", "payments", "settings",
         ];
 
         const SECTION_LOADERS = {
@@ -2730,6 +2983,7 @@
             sessions: () => loadSessions(),
             meetings: () => loadMeetings(),
             chat: () => loadChat(),
+            "group-chats": () => loadGroupChats(),
             documents: () => loadDocuments(),
             announcements: () => loadAnnouncements(),
             payments: () => loadPayments(),
@@ -3750,6 +4004,196 @@ async function sendMessage() {
     input.value = "";
     openThread(activeSupervisorId);
   }
+}
+
+// ---- Group Chats ---------------------------------------------------------
+// Master Trainer-curated rooms (a separate feature from the 1:1 Chat
+// above). This is the first real-time (socket.io) feature in this app --
+// everything else polls. If the socket never connects (e.g. the host
+// doesn't proxy WebSocket upgrades) this falls back to polling every 5s
+// instead, so it still works either way.
+
+const myUserId = Number((JSON.parse(localStorage.getItem("user") || localStorage.getItem("reframe_user") || "{}")).id);
+const ATTACHMENT_ICONS = {
+    "application/pdf": "fa-file-pdf",
+    "application/msword": "fa-file-word",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "fa-file-word",
+    "application/vnd.ms-excel": "fa-file-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "fa-file-excel",
+    "application/vnd.ms-powerpoint": "fa-file-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "fa-file-powerpoint",
+    "application/zip": "fa-file-zipper",
+    "application/x-zip-compressed": "fa-file-zipper",
+};
+
+let gcRooms = [];
+let gcActiveRoomId = null;
+let gcSocket = null;
+let gcUsingSocket = false;
+let gcPollTimer = null;
+let gcPendingAttachment = null;
+
+function connectGcSocket() {
+    if (gcSocket) return;
+    gcSocket = io(window.API_BASE, { auth: { token } });
+    let connected = false;
+    gcSocket.on("connect", () => {
+        connected = true;
+        gcUsingSocket = true;
+        stopGcPolling();
+    });
+    gcSocket.on("connect_error", () => {
+        if (!gcUsingSocket) startGcPolling();
+    });
+    gcSocket.on("newMessage", (payload) => {
+        loadGcRoomList();
+        if (payload.roomId === gcActiveRoomId) {
+            appendGcMessage(payload.message);
+            markGcRoomRead(gcActiveRoomId);
+        }
+    });
+    setTimeout(() => {
+        if (!connected) startGcPolling();
+    }, 4000);
+}
+
+function startGcPolling() {
+    if (gcPollTimer) return;
+    gcUsingSocket = false;
+    gcPollTimer = setInterval(() => {
+        loadGcRoomList();
+        if (gcActiveRoomId) loadGcThread(gcActiveRoomId);
+    }, 5000);
+}
+
+function stopGcPolling() {
+    if (gcPollTimer) {
+        clearInterval(gcPollTimer);
+        gcPollTimer = null;
+    }
+}
+
+async function loadGroupChats() {
+    connectGcSocket();
+    await loadGcRoomList();
+    if (!gcActiveRoomId && gcRooms.length) openGcRoom(gcRooms[0].id);
+}
+
+async function loadGcRoomList() {
+    const data = await apiRequest("/chat-rooms");
+    if (!data) return;
+    gcRooms = data.rooms;
+    const list = document.getElementById("gcRoomList");
+    if (!gcRooms.length) {
+        list.innerHTML = '<div class="empty-state">Your Master Trainer hasn\'t added you to a room yet.</div>';
+        return;
+    }
+    list.innerHTML = gcRooms.map((r) => `
+    <button type="button" class="gc-room-item${r.id === gcActiveRoomId ? " active" : ""}" onclick="openGcRoom(${r.id})">
+      <div class="gc-room-name">${escapeHtml(r.name)}${r.unreadCount ? `<span class="gc-unread-badge">${r.unreadCount}</span>` : ""}</div>
+      <div class="gc-room-preview">${r.lastMessage ? escapeHtml(r.lastMessage.senderName) + ": " + escapeHtml(r.lastMessage.preview) : "No messages yet"}</div>
+    </button>
+  `).join("");
+}
+
+async function openGcRoom(roomId) {
+    gcActiveRoomId = roomId;
+    await loadGcRoomList();
+    const room = gcRooms.find((r) => r.id === roomId);
+    document.getElementById("gcThreadHeader").style.display = "flex";
+    document.getElementById("gcThreadName").textContent = room ? room.name : "";
+    document.getElementById("gcThreadMemberCount").textContent = room ? `${room.memberCount} member${room.memberCount === 1 ? "" : "s"}` : "";
+
+    if (gcSocket) gcSocket.emit("joinRoom", roomId);
+    await loadGcThread(roomId);
+    await markGcRoomRead(roomId);
+}
+
+async function loadGcThread(roomId) {
+    const data = await apiRequest(`/chat-rooms/${roomId}/messages?limit=50`);
+    if (!data) return;
+    const thread = document.getElementById("gcThread");
+    if (!data.messages.length) {
+        thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>';
+        return;
+    }
+    thread.innerHTML = data.messages.map(gcMessageHtml).join("");
+    thread.scrollTop = thread.scrollHeight;
+}
+
+function appendGcMessage(m) {
+    const thread = document.getElementById("gcThread");
+    if (thread.querySelector(".empty-state")) thread.innerHTML = "";
+    thread.insertAdjacentHTML("beforeend", gcMessageHtml(m));
+    thread.scrollTop = thread.scrollHeight;
+}
+
+function formatFileSize(bytes) {
+    if (!bytes) return "";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function gcMessageHtml(m) {
+    const mine = m.senderId === myUserId;
+    const bodyHtml = m.attachment
+        ? `<div class="attachment-bubble">
+          <div class="ab-icon"><i class="fa ${ATTACHMENT_ICONS[m.attachment.mime] || (m.attachment.mime && m.attachment.mime.startsWith("image/") ? "fa-image" : "fa-file")}"></i></div>
+          <div>
+            <div class="ab-name">${escapeHtml(m.attachment.originalName)}</div>
+            <div class="ab-meta">${formatFileSize(m.attachment.size)} &middot; <a href="${UPLOADS}/chat/${m.attachment.filename}" target="_blank" rel="noopener" download>Download</a></div>
+          </div>
+        </div>
+        ${m.content ? `<div style="margin-top:6px;">${escapeHtml(m.content)}</div>` : ""}`
+        : escapeHtml(m.content || "");
+    return `<div class="chat-bubble ${mine ? "mine" : "theirs"}">${bodyHtml}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}</div></div>`;
+}
+
+async function markGcRoomRead(roomId) {
+    await apiRequest(`/chat-rooms/${roomId}/read`, { method: "POST" });
+}
+
+function onGcAttachmentSelected(input) {
+    const file = input.files[0];
+    gcPendingAttachment = file || null;
+    const chip = document.getElementById("gcAttachmentChip");
+    if (!file) {
+        chip.innerHTML = "";
+        return;
+    }
+    chip.innerHTML = `
+    <div class="gc-attachment-chip">
+      <i class="fa fa-paperclip"></i> ${escapeHtml(file.name)} (${formatFileSize(file.size)})
+      <button type="button" onclick="clearGcAttachment()"><i class="fa fa-xmark"></i></button>
+    </div>`;
+}
+
+function clearGcAttachment() {
+    gcPendingAttachment = null;
+    document.getElementById("gcAttachmentInput").value = "";
+    document.getElementById("gcAttachmentChip").innerHTML = "";
+}
+
+async function sendGcMessage() {
+    if (!gcActiveRoomId) return;
+    const input = document.getElementById("gcInput");
+    const content = input.value.trim();
+    if (!content && !gcPendingAttachment) return;
+
+    const formData = new FormData();
+    if (content) formData.append("content", content);
+    if (gcPendingAttachment) formData.append("attachment", gcPendingAttachment);
+
+    const result = await apiRequest(`/chat-rooms/${gcActiveRoomId}/messages`, {
+        method: "POST",
+        body: formData,
+    });
+    if (result) {
+        input.value = "";
+        clearGcAttachment();
+        appendGcMessage(result);
+        loadGcRoomList();
+    }
 }
 
 // ---- Documents (read-only) ----------------------------------------------

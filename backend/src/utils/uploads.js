@@ -142,6 +142,34 @@ const assignmentAttachmentUpload = multer({
   },
 });
 
+// Group chat attachments: broader than a plain document (adds Excel/
+// PowerPoint/ZIP per the Group Chats feature's requirements) but capped
+// lower than learning materials, since chat isn't meant for large media.
+const ALLOWED_CHAT_ATTACHMENT_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/zip",
+  "application/x-zip-compressed",
+]);
+const chatAttachmentUpload = multer({
+  storage: makeDiskStorage("chat"),
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_CHAT_ATTACHMENT_TYPES.has(file.mimetype)) {
+      return cb(new Error("That file type isn't supported in chat"));
+    }
+    cb(null, true);
+  },
+});
+
 module.exports = {
   eventImageUpload,
   photoUpload,
@@ -150,4 +178,5 @@ module.exports = {
   materialUpload,
   submissionUpload,
   assignmentAttachmentUpload,
+  chatAttachmentUpload,
 };

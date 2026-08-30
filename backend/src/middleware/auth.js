@@ -51,6 +51,31 @@ const requireSupervisor = requireRole("supervisor");
 const requireDesigner = requireRole("designer");
 
 /**
+ * Loads the calling user's own Master Trainer row (must be
+ * supervisor_type='primary'), attaches req.masterTrainer = { id, groupId,
+ * fullName }, or responds 403/404. Moved here (was previously local to
+ * Mastertrainer.js) so other route files -- e.g. chatRooms.js -- can reuse
+ * the exact same permission check instead of duplicating it.
+ */
+async function requireMasterTrainer(req, res, next) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT sup.id, sup.full_name, sup.group_id, sup.supervisor_type
+         FROM supervisors sup
+        WHERE sup.id = ?`,
+      [req.user.id]
+    );
+    if (!rows.length || rows[0].supervisor_type !== "primary") {
+      return res.status(403).json({ error: "Master Trainer access only" });
+    }
+    req.masterTrainer = { id: rows[0].id, groupId: rows[0].group_id, fullName: rows[0].full_name };
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * Wraps a route handler in its own MySQL transaction. Commits on success,
  * rolls back and forwards to the error handler on any thrown error.
  *
@@ -76,4 +101,4 @@ function asyncRoute(handler) {
   };
 }
 
-module.exports = { requireAuth, requireAdmin, requireSupervisor, requireDesigner, requireRole, asyncRoute };
+module.exports = { requireAuth, requireAdmin, requireSupervisor, requireDesigner, requireRole, requireMasterTrainer, asyncRoute };

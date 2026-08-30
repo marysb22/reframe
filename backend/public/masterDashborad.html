@@ -523,6 +523,249 @@
             margin-top: 0;
         }
 
+        /* Group Chats -- a Master Trainer-curated chat room, independent of
+           the 1:1 supervisor/trainee chat elsewhere in this app. Reuses the
+           .chat-thread/.chat-bubble visual language (copied here since this
+           file never had the 1:1 chat feature to inherit it from). */
+        .chat-thread {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .chat-bubble {
+            max-width: 75%;
+            padding: 9px 13px;
+            border-radius: 13px;
+            font-size: 12.5px;
+        }
+
+        .chat-bubble.mine {
+            align-self: flex-end;
+            background: var(--primary);
+            color: white;
+        }
+
+        .chat-bubble.theirs {
+            align-self: flex-start;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+        }
+
+        .chat-bubble .meta {
+            font-size: 10.5px;
+            opacity: .75;
+            margin-top: 4px;
+        }
+
+        .gc-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 16px;
+            height: 520px;
+        }
+
+        .gc-room-list {
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            overflow-y: auto;
+            padding: 6px;
+        }
+
+        .gc-room-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 11px;
+            cursor: pointer;
+            font-family: inherit;
+            margin-bottom: 2px;
+        }
+
+        .gc-room-item:hover {
+            background: var(--surface-2);
+        }
+
+        .gc-room-item.active {
+            background: var(--primary);
+        }
+
+        .gc-room-item.active .gc-room-name,
+        .gc-room-item.active .gc-room-preview {
+            color: #fff;
+        }
+
+        .gc-room-name {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .gc-unread-badge {
+            background: var(--danger);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 10px;
+            padding: 1px 6px;
+            flex-shrink: 0;
+        }
+
+        .gc-room-preview {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .gc-thread-panel {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            padding: 14px;
+            min-width: 0;
+        }
+
+        .gc-thread-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .gc-thread-header h4 {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .gc-thread-header .gc-member-count {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .gc-thread-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .gc-composer {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .gc-composer textarea {
+            flex: 1;
+            height: 42px;
+            max-height: 100px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            font-family: inherit;
+            font-size: 12.5px;
+            resize: vertical;
+        }
+
+        .gc-attachment-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 10px;
+            padding: 7px 10px;
+            font-size: 11.5px;
+            margin-top: 8px;
+        }
+
+        .gc-attachment-chip button {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        .attachment-bubble {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .attachment-bubble .ab-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            background: rgba(255, 255, 255, .2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .chat-bubble.theirs .attachment-bubble .ab-icon {
+            background: var(--surface);
+            color: var(--primary);
+        }
+
+        .attachment-bubble .ab-name {
+            font-weight: 700;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .attachment-bubble .ab-meta {
+            font-size: 10.5px;
+            opacity: .8;
+        }
+
+        .attachment-bubble a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .gc-member-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-soft);
+            font-size: 12.5px;
+        }
+
+        .gc-member-row:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 720px) {
+            .gc-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .gc-room-list {
+                max-height: 160px;
+            }
+            .gc-thread-body {
+                max-height: 340px;
+            }
+        }
+
         .profile-mini {
             display: flex;
             align-items: center;
@@ -1033,6 +1276,15 @@
             place-items: center;
             transition: .15s;
             font-size: 12.5px;
+        }
+
+        .icon-btn.danger {
+            color: var(--danger);
+            border-color: var(--danger-bg);
+        }
+
+        .icon-btn.danger:hover {
+            background: var(--danger-bg);
         }
         
         .icon-btn:hover {
@@ -1970,6 +2222,10 @@
                     <li><a data-section="trainees" href="#trainees"><i class="fa fa-user-graduate"></i>Trainees</a></li>
                     <li><a data-section="calendar" href="#calendar"><i class="fa fa-calendar"></i>Calendar</a></li>
                 </ul>
+                <div class="nav-label">Communication</div>
+                <ul>
+                    <li><a data-section="group-chats" href="#group-chats"><i class="fa fa-people-group"></i>Group Chats</a></li>
+                </ul>
                 <div class="nav-label">Monitoring</div>
                 <ul>
                     <li><a data-section="sessions" href="#sessions"><i class="fa fa-chalkboard-user"></i>Sessions</a></li>
@@ -2389,6 +2645,77 @@
             </section>
 
             <!-- ============================================================= -->
+            <!-- GROUP CHATS                                                    -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-group-chats" data-title="Group Chats" data-eyebrow="Communication">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-people-group"></i>
+                            <h2>Group Chats</h2>
+                        </div>
+                        <button type="button" class="btn" onclick="openNewRoomModal()"><i class="fa fa-plus"></i>New Room</button>
+                    </div>
+                    <p class="card-subtitle">Create a room and add your ToTs and Trainees -- everyone in the room can send and receive messages and files.</p>
+                    <div class="gc-layout">
+                        <div class="gc-room-list" id="gcRoomList">
+                            <div class="empty-state">Loading rooms...</div>
+                        </div>
+                        <div class="gc-thread-panel">
+                            <div class="gc-thread-header" id="gcThreadHeader" style="display:none;">
+                                <div>
+                                    <h4 id="gcThreadName">&mdash;</h4>
+                                    <div class="gc-member-count" id="gcThreadMemberCount"></div>
+                                </div>
+                                <div style="display:flex;gap:6px;">
+                                    <button class="icon-btn" title="Manage members" id="gcManageBtn" onclick="openManageMembersModal()" style="display:none;"><i class="fa fa-user-gear"></i></button>
+                                    <button class="icon-btn danger" title="Delete room" id="gcDeleteBtn" onclick="confirmDeleteRoom()" style="display:none;"><i class="fa fa-trash"></i></button>
+                                </div>
+                            </div>
+                            <div class="chat-thread gc-thread-body" id="gcThread">
+                                <div class="empty-state">Select a room to start chatting.</div>
+                            </div>
+                            <div id="gcAttachmentChip"></div>
+                            <div class="gc-composer">
+                                <input type="file" id="gcAttachmentInput" style="display:none;" onchange="onGcAttachmentSelected(this)">
+                                <button type="button" class="icon-btn" title="Attach a file" onclick="document.getElementById('gcAttachmentInput').click()"><i class="fa fa-paperclip"></i></button>
+                                <textarea id="gcInput" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGcMessage();}"></textarea>
+                                <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendGcMessage()"><i class="fa fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- NEW ROOM MODAL -->
+            <div class="modal-overlay" id="newRoomModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('newRoomModal')">&times;</button>
+                    <h3>Create a chat room</h3>
+                    <form id="newRoomForm">
+                        <label>Room name</label>
+                        <input type="text" id="newRoomName" required placeholder="e.g. Team Alpha">
+                        <label>Members</label>
+                        <div id="newRoomRoster" style="max-height:220px;overflow-y:auto;border:1px solid var(--border-soft);border-radius:10px;padding:8px;">
+                            <div class="empty-state">Loading your Group...</div>
+                        </div>
+                        <button type="submit" class="btn" style="margin-top:16px;">Create Room</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- MANAGE MEMBERS MODAL -->
+            <div class="modal-overlay" id="manageMembersModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('manageMembersModal')">&times;</button>
+                    <h3>Manage members</h3>
+                    <p class="card-subtitle">Current members</p>
+                    <div id="gcCurrentMembers"></div>
+                    <p class="card-subtitle" style="margin-top:14px;">Add from your Group</p>
+                    <div id="gcCandidateMembers"></div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
             <!-- ASSIGNMENTS (group-wide, read-only)                            -->
             <!-- ============================================================= -->
             <section class="dash-section" id="section-assignments" data-title="Assignments" data-eyebrow="Insights">
@@ -2637,6 +2964,7 @@
 
     <script src="scripts/api-config.js"></script>
     <script src="scripts/charts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
     <script>
         const API = window.API_BASE + "/api";
         const UPLOADS = window.API_BASE + "/uploads";
@@ -2760,10 +3088,11 @@
 
         // ---- Section switching --------------------------------------------
 
-        const SECTION_IDS = ["dashboard", "group", "tots", "trainees", "calendar", "sessions", "meetings", "materials", "documents", "activity", "assignments", "needs-attention", "analytics", "milestones", "reports", "cvs", "settings"];
+        const SECTION_IDS = ["dashboard", "group", "tots", "trainees", "calendar", "group-chats", "sessions", "meetings", "materials", "documents", "activity", "assignments", "needs-attention", "analytics", "milestones", "reports", "cvs", "settings"];
 
         const SECTION_LOADERS = {
             group: () => loadGroup(),
+            "group-chats": () => loadGroupChats(),
             tots: () => loadTots(),
             trainees: () => loadTrainees(),
             calendar: () => loadCalendar(),
@@ -3955,6 +4284,314 @@
             currentActivityWeek = weekStart;
             document.getElementById("activityWeekPicker").style.display = "none";
             loadAllActivity();
+        }
+
+        // ---- Group Chats --------------------------------------------------
+        // The first real-time feature in this app (socket.io) -- every other
+        // "live-ish" thing elsewhere just polls. If the socket never connects
+        // (e.g. the host doesn't proxy WebSocket upgrades) this transparently
+        // falls back to polling every 5s instead, so the feature still works
+        // either way -- see the Group Chats plan for why that matters here.
+
+        const myUserId = Number((JSON.parse(localStorage.getItem("user") || localStorage.getItem("reframe_user") || "{}")).id);
+        const ATTACHMENT_ICONS = {
+            "application/pdf": "fa-file-pdf",
+            "application/msword": "fa-file-word",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "fa-file-word",
+            "application/vnd.ms-excel": "fa-file-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "fa-file-excel",
+            "application/vnd.ms-powerpoint": "fa-file-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation": "fa-file-powerpoint",
+            "application/zip": "fa-file-zipper",
+            "application/x-zip-compressed": "fa-file-zipper",
+        };
+
+        let gcRooms = [];
+        let gcActiveRoomId = null;
+        let gcSocket = null;
+        let gcUsingSocket = false;
+        let gcPollTimer = null;
+        let gcPendingAttachment = null;
+
+        function connectGcSocket() {
+            if (gcSocket) return;
+            gcSocket = io(window.API_BASE, { auth: { token } });
+            let connected = false;
+            gcSocket.on("connect", () => {
+                connected = true;
+                gcUsingSocket = true;
+                stopGcPolling();
+            });
+            gcSocket.on("connect_error", () => {
+                if (!gcUsingSocket) startGcPolling();
+            });
+            gcSocket.on("newMessage", (payload) => {
+                loadGcRoomList();
+                if (payload.roomId === gcActiveRoomId) {
+                    appendGcMessage(payload.message);
+                    markGcRoomRead(gcActiveRoomId);
+                }
+            });
+            setTimeout(() => {
+                if (!connected) startGcPolling();
+            }, 4000);
+        }
+
+        function startGcPolling() {
+            if (gcPollTimer) return;
+            gcUsingSocket = false;
+            gcPollTimer = setInterval(() => {
+                loadGcRoomList();
+                if (gcActiveRoomId) loadGcThread(gcActiveRoomId);
+            }, 5000);
+        }
+
+        function stopGcPolling() {
+            if (gcPollTimer) {
+                clearInterval(gcPollTimer);
+                gcPollTimer = null;
+            }
+        }
+
+        async function loadGroupChats() {
+            connectGcSocket();
+            await loadGcRoomList();
+            if (!gcActiveRoomId && gcRooms.length) openGcRoom(gcRooms[0].id);
+        }
+
+        async function loadGcRoomList() {
+            const data = await apiRequest("/chat-rooms");
+            if (!data) return;
+            gcRooms = data.rooms;
+            const list = document.getElementById("gcRoomList");
+            if (!gcRooms.length) {
+                list.innerHTML = '<div class="empty-state">No rooms yet. Create one to get started.</div>';
+                return;
+            }
+            list.innerHTML = gcRooms.map((r) => `
+        <button type="button" class="gc-room-item${r.id === gcActiveRoomId ? " active" : ""}" onclick="openGcRoom(${r.id})">
+          <div class="gc-room-name">${escapeHtml(r.name)}${r.unreadCount ? `<span class="gc-unread-badge">${r.unreadCount}</span>` : ""}</div>
+          <div class="gc-room-preview">${r.lastMessage ? escapeHtml(r.lastMessage.senderName) + ": " + escapeHtml(r.lastMessage.preview) : "No messages yet"}</div>
+        </button>
+      `).join("");
+        }
+
+        async function openGcRoom(roomId) {
+            gcActiveRoomId = roomId;
+            await loadGcRoomList();
+            const room = gcRooms.find((r) => r.id === roomId);
+            document.getElementById("gcThreadHeader").style.display = "flex";
+            document.getElementById("gcThreadName").textContent = room ? room.name : "";
+            document.getElementById("gcThreadMemberCount").textContent = room ? `${room.memberCount} member${room.memberCount === 1 ? "" : "s"}` : "";
+            document.getElementById("gcManageBtn").style.display = room && room.isOwner ? "grid" : "none";
+            document.getElementById("gcDeleteBtn").style.display = room && room.isOwner ? "grid" : "none";
+
+            if (gcSocket) gcSocket.emit("joinRoom", roomId);
+            await loadGcThread(roomId);
+            await markGcRoomRead(roomId);
+        }
+
+        async function loadGcThread(roomId) {
+            const data = await apiRequest(`/chat-rooms/${roomId}/messages?limit=50`);
+            if (!data) return;
+            const thread = document.getElementById("gcThread");
+            if (!data.messages.length) {
+                thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>';
+                return;
+            }
+            thread.innerHTML = data.messages.map(gcMessageHtml).join("");
+            thread.scrollTop = thread.scrollHeight;
+        }
+
+        function appendGcMessage(m) {
+            const thread = document.getElementById("gcThread");
+            if (thread.querySelector(".empty-state")) thread.innerHTML = "";
+            thread.insertAdjacentHTML("beforeend", gcMessageHtml(m));
+            thread.scrollTop = thread.scrollHeight;
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes) return "";
+            if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+            return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+        }
+
+        function gcMessageHtml(m) {
+            const mine = m.senderId === myUserId;
+            const bodyHtml = m.attachment
+                ? `<div class="attachment-bubble">
+              <div class="ab-icon"><i class="fa ${ATTACHMENT_ICONS[m.attachment.mime] || (m.attachment.mime && m.attachment.mime.startsWith("image/") ? "fa-image" : "fa-file")}"></i></div>
+              <div>
+                <div class="ab-name">${escapeHtml(m.attachment.originalName)}</div>
+                <div class="ab-meta">${formatFileSize(m.attachment.size)} &middot; <a href="${UPLOADS}/chat/${m.attachment.filename}" target="_blank" rel="noopener" download>Download</a></div>
+              </div>
+            </div>
+            ${m.content ? `<div style="margin-top:6px;">${escapeHtml(m.content)}</div>` : ""}`
+                : escapeHtml(m.content || "");
+            return `<div class="chat-bubble ${mine ? "mine" : "theirs"}">${bodyHtml}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}</div></div>`;
+        }
+
+        async function markGcRoomRead(roomId) {
+            await apiRequest(`/chat-rooms/${roomId}/read`, { method: "POST" });
+        }
+
+        function onGcAttachmentSelected(input) {
+            const file = input.files[0];
+            gcPendingAttachment = file || null;
+            const chip = document.getElementById("gcAttachmentChip");
+            if (!file) {
+                chip.innerHTML = "";
+                return;
+            }
+            chip.innerHTML = `
+        <div class="gc-attachment-chip">
+          <i class="fa fa-paperclip"></i> ${escapeHtml(file.name)} (${formatFileSize(file.size)})
+          <button type="button" onclick="clearGcAttachment()"><i class="fa fa-xmark"></i></button>
+        </div>`;
+        }
+
+        function clearGcAttachment() {
+            gcPendingAttachment = null;
+            document.getElementById("gcAttachmentInput").value = "";
+            document.getElementById("gcAttachmentChip").innerHTML = "";
+        }
+
+        async function sendGcMessage() {
+            if (!gcActiveRoomId) return;
+            const input = document.getElementById("gcInput");
+            const content = input.value.trim();
+            if (!content && !gcPendingAttachment) return;
+
+            const formData = new FormData();
+            if (content) formData.append("content", content);
+            if (gcPendingAttachment) formData.append("attachment", gcPendingAttachment);
+
+            const result = await apiRequest(`/chat-rooms/${gcActiveRoomId}/messages`, {
+                method: "POST",
+                body: formData,
+            });
+            if (result) {
+                input.value = "";
+                clearGcAttachment();
+                appendGcMessage(result);
+                loadGcRoomList();
+            }
+        }
+
+        // ---- New Room (Master Trainer only) --------------------------------
+
+        async function openNewRoomModal() {
+            document.getElementById("newRoomForm").reset();
+            openModal("newRoomModal");
+            const roster = document.getElementById("newRoomRoster");
+            roster.innerHTML = '<div class="empty-state">Loading your Group...</div>';
+            const data = await apiRequest("/chat-rooms/roster");
+            if (!data) return;
+            if (!data.roster.length) {
+                roster.innerHTML = '<div class="empty-state">No one else in your Group yet.</div>';
+                return;
+            }
+            roster.innerHTML = data.roster.map((p) => `
+        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12.5px;">
+          <input type="checkbox" value="${p.id}" class="new-room-member-cb">
+          ${escapeHtml(p.fullName)} <span style="color:var(--muted);font-size:11px;">(${p.kind === "trainee" ? "Trainee" : "ToT"})</span>
+        </label>`).join("");
+        }
+
+        document.getElementById("newRoomForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("newRoomName").value.trim();
+            const memberIds = Array.from(document.querySelectorAll(".new-room-member-cb:checked")).map((cb) => Number(cb.value));
+            const result = await apiRequest("/chat-rooms", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, memberIds }),
+            });
+            if (result) {
+                closeModal("newRoomModal");
+                showSuccessNotification("Room Created", `"${name}" is ready -- start chatting with your team.`);
+                if (gcSocket) gcSocket.emit("joinRoom", result.id);
+                await loadGcRoomList();
+                openGcRoom(result.id);
+            }
+        });
+
+        // ---- Manage members (Master Trainer only, room creator only) ------
+
+        async function openManageMembersModal() {
+            if (!gcActiveRoomId) return;
+            openModal("manageMembersModal");
+            await renderGcMembers();
+        }
+
+        async function renderGcMembers() {
+            const currentEl = document.getElementById("gcCurrentMembers");
+            const candEl = document.getElementById("gcCandidateMembers");
+            currentEl.innerHTML = '<div class="empty-state">Loading...</div>';
+            candEl.innerHTML = "";
+
+            const [membersData, candData] = await Promise.all([
+                apiRequest(`/chat-rooms/${gcActiveRoomId}/members`),
+                apiRequest(`/chat-rooms/${gcActiveRoomId}/candidates`),
+            ]);
+
+            if (membersData) {
+                currentEl.innerHTML = membersData.members.map((m) => `
+            <div class="gc-member-row">
+              <span>${escapeHtml(m.fullName)} <span style="color:var(--muted);font-size:11px;">(${m.isOwner ? "Master Trainer" : m.kind === "trainee" ? "Trainee" : "ToT"})</span></span>
+              ${m.isOwner ? "" : `<button type="button" class="icon-btn danger" title="Remove" onclick="removeGcMember(${m.id})"><i class="fa fa-user-minus"></i></button>`}
+            </div>`).join("");
+            }
+
+            if (!candData) return;
+            candEl.innerHTML = candData.candidates.length
+                ? candData.candidates.map((c) => `
+            <div class="gc-member-row">
+              <span>${escapeHtml(c.fullName)} <span style="color:var(--muted);font-size:11px;">(${c.kind === "trainee" ? "Trainee" : "ToT"})</span></span>
+              <button type="button" class="btn btn-secondary" style="width:auto;height:30px;padding:0 10px;font-size:11.5px;" onclick="addGcMember(${c.id})">Add</button>
+            </div>`).join("")
+                : '<div class="empty-state">Everyone in your Group is already in this room.</div>';
+        }
+
+        async function removeGcMember(userId) {
+            const result = await apiRequest(`/chat-rooms/${gcActiveRoomId}/members/${userId}`, { method: "DELETE" });
+            if (result) {
+                await loadGcRoomList();
+                await renderGcMembers();
+            }
+        }
+
+        async function addGcMember(userId) {
+            const result = await apiRequest(`/chat-rooms/${gcActiveRoomId}/members`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId }),
+            });
+            if (result) {
+                await loadGcRoomList();
+                await renderGcMembers();
+                await openGcRoom(gcActiveRoomId);
+            }
+        }
+
+        function confirmDeleteRoom() {
+            if (!gcActiveRoomId) return;
+            const room = gcRooms.find((r) => r.id === gcActiveRoomId);
+            openConfirm(
+                "Delete this room?",
+                `"${room ? room.name : "This room"}" and all its messages will be permanently deleted for every member.`,
+                deleteGcRoom
+            );
+        }
+
+        async function deleteGcRoom() {
+            const result = await apiRequest(`/chat-rooms/${gcActiveRoomId}`, { method: "DELETE" });
+            if (result) {
+                gcActiveRoomId = null;
+                document.getElementById("gcThreadHeader").style.display = "none";
+                document.getElementById("gcThread").innerHTML = '<div class="empty-state">Select a room to start chatting.</div>';
+                await loadGcRoomList();
+            }
         }
 
         // ---- Assignments (group-wide, read-only) ----------------------------

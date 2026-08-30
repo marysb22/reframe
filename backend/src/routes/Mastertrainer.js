@@ -1,5 +1,5 @@
 const express = require("express");
-const { requireAuth, asyncRoute } = require("../middleware/auth");
+const { requireAuth, requireMasterTrainer, asyncRoute } = require("../middleware/auth");
 const { toRecord, toDocument, toMaterial, computeTrainingProgress } = require("../utils/serializers");
 const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
 
@@ -72,27 +72,9 @@ const router = express.Router();
      masterDashborad.html, 'in_training' -> Totdashboard.html.
    ========================================================================= */
 
+// requireMasterTrainer now lives in middleware/auth.js (shared with
+// chatRooms.js) -- was previously defined locally here.
 router.use(requireAuth, requireMasterTrainer);
-
-/** Loads the calling user's own Master Trainer row (must be supervisor_type='primary'),
- *  attaches req.masterTrainer = { id, groupId, fullName }, or responds 403/404. */
-async function requireMasterTrainer(req, res, next) {
-    try {
-        const db = req.db || require("../db").pool; // matches asyncRoute's db handoff below
-        const { rows } = await db.query(
-            `SELECT sup.id, sup.full_name, sup.group_id, sup.supervisor_type
-       FROM supervisors sup
-       WHERE sup.id = ?`, [req.user.id]
-        );
-        if (!rows.length || rows[0].supervisor_type !== "primary") {
-            return res.status(403).json({ error: "Master Trainer access only" });
-        }
-        req.masterTrainer = { id: rows[0].id, groupId: rows[0].group_id, fullName: rows[0].full_name };
-        next();
-    } catch (err) {
-        res.status(500).json({ error: "Internal server error" });
-    }
-}
 
 /** Every route below is already scoped to req.masterTrainer.groupId. If she has
  *  no group yet (Admin hasn't assigned one), we return empty results everywhere

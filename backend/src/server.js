@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const http = require("http");
 const config = require("./config");
 
 // Without these, any error that escapes a promise chain anywhere in the
@@ -67,6 +68,7 @@ app.use("/api/profile", require("./routes/profile"));
 app.use("/api/supervisor", require("./routes/supervisor"));
 app.use("/api/master-trainer", require("./routes/Mastertrainer"));
 app.use("/api/designer", require("./routes/designer"));
+app.use("/api/chat-rooms", require("./routes/chatRooms"));
 app.use("/api", require("./routes/public"));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
@@ -191,6 +193,17 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-app.listen(config.port, () => {
+// Group Chats' live delivery needs a real WebSocket server attached to the
+// same HTTP server Express already uses -- app.listen() would normally
+// create that HTTP server implicitly and hide it, so it's created
+// explicitly here instead purely to hand it to socket.io. Whether the
+// production host actually proxies WebSocket upgrades is unverified; the
+// frontend falls back to polling if a socket never connects, so this is
+// safe either way (see the Group Chats plan).
+const server = http.createServer(app);
+const io = require("./realtime/chatSocket").attach(server);
+app.set("io", io);
+
+server.listen(config.port, () => {
   console.log(`API listening on :${config.port}`);
 });
