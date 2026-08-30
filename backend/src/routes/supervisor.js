@@ -14,6 +14,7 @@ const { documentUpload, materialUpload, assignmentAttachmentUpload } = require("
 const { buildRecordsQuery, RECORD_TYPE_TABLES } = require("../utils/recordsQuery");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi } = require("../utils/assignmentsQuery");
+const { resolveWeekRange } = require("../utils/weekPeriod");
 
 const router = express.Router();
 
@@ -941,10 +942,12 @@ router.get(
   })
 );
 
-// GET /api/supervisor/activity
+// GET /api/supervisor/activity -- scoped to the current week (see
+// weekPeriod.js); feeds a small "Recent activity" teaser widget.
 router.get(
   "/activity",
   asyncRoute(async (req, res, db) => {
+    const { weekStart, weekEnd } = await resolveWeekRange(db, req.query.week);
     const { rows } = await db.query(
       `SELECT al.action, al.created_at, st.full_name AS student_name
        FROM audit_logs al
@@ -952,8 +955,9 @@ router.get(
        WHERE al.actor_id = ? AND al.entity_type IN (
          'attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation'
        )
-       ORDER BY al.created_at DESC LIMIT 15`,
-      [req.user.id]
+       AND al.created_at >= ? AND al.created_at < ?
+       ORDER BY al.created_at DESC LIMIT 500`,
+      [req.user.id, weekStart, weekEnd]
     );
     res.json({
       activity: rows.map((r) => ({ action: r.action, studentName: r.student_name, createdAt: r.created_at })),

@@ -437,6 +437,61 @@
             font-size: 13px;
         }
 
+        .notif-week-label {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .notif-footer {
+            padding: 10px 16px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .notif-footer button {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .notif-week-picker {
+            padding: 6px 0;
+        }
+
+        .notif-week-btn {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            background: none;
+            border: none;
+            text-align: left;
+            padding: 9px 16px;
+            font-size: 12.5px;
+            color: var(--text);
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .notif-week-btn:hover {
+            background: var(--surface-2);
+        }
+
+        .notif-week-btn .nwb-count {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .notif-week-btn .nwb-count.has-unread {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
         .profile-mini {
             display: flex;
             align-items: center;
@@ -2065,10 +2120,16 @@
                         </button>
                         <div class="notif-dropdown" id="notifDropdown">
                             <div class="notif-dropdown-header">
-                                <strong>Notifications</strong>
+                                <div>
+                                    <strong>Notifications</strong>
+                                    <div class="notif-week-label" id="notifWeekLabel">This Week</div>
+                                </div>
                                 <button type="button" class="notif-mark-all" id="notifMarkAllBtn" onclick="markAllNotifsRead()">Mark all read</button>
                             </div>
                             <div class="notif-list" id="notifList"><div class="notif-empty">Loading...</div></div>
+                            <div class="notif-footer" id="notifFooter">
+                                <button type="button" id="notifWeekToggle" onclick="toggleNotifWeekPicker()">Previous weeks</button>
+                            </div>
                         </div>
                     </div>
                     <div class="profile-mini">
@@ -2982,12 +3043,33 @@
         // ---- Notification Center ----
         let notifDropdownOpen = false;
         let notifPollTimer = null;
+        // null = viewing the current Friday->Thursday week (see
+        // weekPeriod.js on the backend); otherwise a 'YYYY-MM-DD' weekStart
+        // for a previously-selected past week.
+        let currentNotifWeek = null;
+
+        // Parses a bare 'YYYY-MM-DD' as a calendar date and formats it in
+        // UTC explicitly -- never through the browser's local timezone,
+        // which could otherwise shift the displayed day by one depending
+        // on the viewer's own offset (the backend takes the same care).
+        function formatWeekRange(weekStart, weekEndExclusive) {
+            const fmt = (s) => {
+                const [y, m, d] = s.split("-").map(Number);
+                return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+            };
+            const [y, m, d] = weekEndExclusive.split("-").map(Number);
+            const lastDay = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+            return `${fmt(weekStart)} – ${fmt(lastDay)}`;
+        }
 
         function toggleNotifDropdown() {
             notifDropdownOpen = !notifDropdownOpen;
             const panel = document.getElementById("notifDropdown");
             if (panel) panel.classList.toggle("open", notifDropdownOpen);
-            if (notifDropdownOpen) loadNotifList();
+            if (notifDropdownOpen) {
+                currentNotifWeek = null;
+                loadNotifList();
+            }
         }
 
         function closeNotifDropdown() {
@@ -2999,7 +3081,12 @@
         document.addEventListener("click", (e) => {
             if (!notifDropdownOpen) return;
             const wrap = document.querySelector(".notif-wrap");
-            if (wrap && !wrap.contains(e.target)) closeNotifDropdown();
+            // composedPath() reflects the DOM as it was when the click was
+            // dispatched -- e.target.closest()/wrap.contains(e.target) can
+            // wrongly report "outside" if a click handler inside the
+            // dropdown replaced its own innerHTML (e.g. the week picker),
+            // detaching the original target before this listener runs.
+            if (wrap && !e.composedPath().includes(wrap)) closeNotifDropdown();
         });
 
         async function loadNotifUnreadCount() {
@@ -3013,10 +3100,22 @@
             const list = document.getElementById("notifList");
             if (!list) return;
             list.innerHTML = '<div class="notif-empty">Loading...</div>';
-            const data = await apiRequest("/profile/notifications?limit=20");
+            const query = currentNotifWeek ? `?limit=50&week=${currentNotifWeek}` : "?limit=50";
+            const data = await apiRequest("/profile/notifications" + query);
             if (!data) return;
+
+            const label = document.getElementById("notifWeekLabel");
+            if (label) label.textContent = (currentNotifWeek ? "" : "This Week · ") + formatWeekRange(data.weekStart, data.weekEnd) + (currentNotifWeek ? " (past week)" : "");
+
+            const footer = document.getElementById("notifFooter");
+            if (footer) {
+                footer.innerHTML = currentNotifWeek
+                    ? `<button type="button" onclick="backToCurrentNotifWeek()">&larr; Back to this week</button>`
+                    : `<button type="button" id="notifWeekToggle" onclick="toggleNotifWeekPicker()">Previous weeks</button>`;
+            }
+
             if (!data.notifications.length) {
-                list.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
+                list.innerHTML = `<div class="notif-empty">${currentNotifWeek ? "No notifications that week." : "No new notifications this week — you're all caught up."}</div>`;
                 return;
             }
             list.innerHTML = data.notifications.map((n) => `
@@ -3031,10 +3130,40 @@
             `).join("");
         }
 
+        async function toggleNotifWeekPicker() {
+            const list = document.getElementById("notifList");
+            if (!list) return;
+            list.innerHTML = '<div class="notif-empty">Loading...</div>';
+            const data = await apiRequest("/profile/notifications/weeks");
+            if (!data) return;
+            list.innerHTML = `<div class="notif-week-picker">` + data.weeks.map((w) => `
+                <button type="button" class="notif-week-btn" onclick="selectNotifWeek('${w.weekStart}')">
+                    <span>${escapeHtml(w.label)}</span>
+                    <span class="nwb-count${w.unread ? " has-unread" : ""}">${w.total} ${w.total === 1 ? "notification" : "notifications"}${w.unread ? ` · ${w.unread} unread` : ""}</span>
+                </button>
+            `).join("") + `</div>`;
+            const footer = document.getElementById("notifFooter");
+            if (footer) footer.innerHTML = `<button type="button" onclick="loadNotifList()">&larr; Back to this week</button>`;
+        }
+
+        function selectNotifWeek(weekStart) {
+            currentNotifWeek = weekStart;
+            loadNotifList();
+        }
+
+        function backToCurrentNotifWeek() {
+            currentNotifWeek = null;
+            loadNotifList();
+        }
+
         async function markAllNotifsRead() {
             const btn = document.getElementById("notifMarkAllBtn");
             if (btn) btn.disabled = true;
-            await apiRequest("/profile/notifications/mark-all-read", { method: "POST" });
+            await apiRequest("/profile/notifications/mark-all-read", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(currentNotifWeek ? { week: currentNotifWeek } : {}),
+            });
             if (btn) btn.disabled = false;
             loadNotifList();
             loadNotifUnreadCount();
@@ -3164,7 +3293,7 @@
             const feed = document.getElementById("activityFeed");
             if (!data) return;
             if (!data.activity.length) {
-                feed.innerHTML = '<li class="empty-state">No recent activity yet.</li>';
+                feed.innerHTML = '<li class="empty-state">No activity yet this week.</li>';
                 return;
             }
             feed.innerHTML = data.activity

@@ -15,6 +15,7 @@ const { hashPassword, verifyPassword } = require("../utils/authUtils");
 const { photoUpload, cvUpload, submissionUpload } = require("../utils/uploads");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
 const { createNotification } = require("../utils/notifications");
+const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi } = require("../utils/assignmentsQuery");
 
 const router = express.Router();
@@ -429,13 +430,18 @@ router.get(
 // requireAuth, so it's the one place these live rather than duplicating
 // four copies across admin.js/supervisor.js/Mastertrainer.js/designer.js) --
 
-// GET /api/profile/notifications?unreadOnly=&limit=
+// GET /api/profile/notifications?unreadOnly=&limit=&week=YYYY-MM-DD
+// Defaults to the current Friday->Thursday week (see weekPeriod.js) --
+// pass `week` (a week's own weekStart, from GET .../weeks) to view an
+// older week instead. This is a display/query boundary only; nothing is
+// ever deleted, so history remains fully intact in the database.
 router.get(
   "/notifications",
   asyncRoute(async (req, res, db) => {
-    const limit = Math.min(Number(req.query.limit) || 30, 100);
-    const clauses = ["recipient_id = ?"];
-    const params = [req.user.id];
+    const limit = Math.min(Number(req.query.limit) || 30, 500);
+    const { weekStart, weekEnd } = await resolveWeekRange(db, req.query.week);
+    const clauses = ["recipient_id = ?", "created_at >= ?", "created_at < ?"];
+    const params = [req.user.id, weekStart, weekEnd];
     if (req.query.unreadOnly === "true") clauses.push("is_read = FALSE");
     const { rows } = await db.query(
       `SELECT id, notification_type, title, body, related_entity_type, related_entity_id, is_read, created_at
@@ -443,6 +449,8 @@ router.get(
       [...params, limit]
     );
     res.json({
+      weekStart,
+      weekEnd,
       notifications: rows.map((n) => ({
         id: n.id,
         type: n.notification_type,
@@ -457,13 +465,37 @@ router.get(
   })
 );
 
-// GET /api/profile/notifications/unread-count
+// GET /api/profile/notifications/weeks -- the last 8 Friday->Thursday
+// weeks (including the current one) with a total/unread count each, for
+// the "Previous weeks" picker. Only hit when a user explicitly opens that
+// picker, not on every page load.
+router.get(
+  "/notifications/weeks",
+  asyncRoute(async (req, res, db) => {
+    const { weekStart: currentWeekStart } = await resolveWeekRange(db);
+    const weeks = listRecentWeeks(currentWeekStart, 8);
+    for (const week of weeks) {
+      const { rows } = await db.query(
+        `SELECT COUNT(*) AS total, SUM(CASE WHEN is_read = FALSE THEN 1 ELSE 0 END) AS unread
+           FROM notifications WHERE recipient_id = ? AND created_at >= ? AND created_at < ?`,
+        [req.user.id, week.weekStart, week.weekEnd]
+      );
+      week.total = Number(rows[0].total);
+      week.unread = Number(rows[0].unread) || 0;
+    }
+    res.json({ weeks });
+  })
+);
+
+// GET /api/profile/notifications/unread-count -- scoped to the current
+// week only, so the bell badge stays meaningful (see weekPeriod.js).
 router.get(
   "/notifications/unread-count",
   asyncRoute(async (req, res, db) => {
+    const { weekStart, weekEnd } = await resolveWeekRange(db);
     const { rows } = await db.query(
-      "SELECT COUNT(*) AS count FROM notifications WHERE recipient_id = ? AND is_read = FALSE",
-      [req.user.id]
+      "SELECT COUNT(*) AS count FROM notifications WHERE recipient_id = ? AND is_read = FALSE AND created_at >= ? AND created_at < ?",
+      [req.user.id, weekStart, weekEnd]
     );
     res.json({ count: Number(rows[0].count) });
   })
@@ -482,13 +514,18 @@ router.patch(
   })
 );
 
-// POST /api/profile/notifications/mark-all-read
+// POST /api/profile/notifications/mark-all-read  { week?: 'YYYY-MM-DD' }
+// Scoped to one week (the current one by default) -- marking read while
+// viewing a previous week never touches the current week's rows, and
+// vice versa.
 router.post(
   "/notifications/mark-all-read",
   asyncRoute(async (req, res, db) => {
-    await db.query("UPDATE notifications SET is_read = TRUE WHERE recipient_id = ? AND is_read = FALSE", [
-      req.user.id,
-    ]);
+    const { weekStart, weekEnd } = await resolveWeekRange(db, (req.body || {}).week);
+    await db.query(
+      "UPDATE notifications SET is_read = TRUE WHERE recipient_id = ? AND is_read = FALSE AND created_at >= ? AND created_at < ?",
+      [req.user.id, weekStart, weekEnd]
+    );
     res.json({ success: true });
   })
 );
@@ -683,13 +720,16 @@ router.get(
   })
 );
 
-// GET /api/profile/activity
+// GET /api/profile/activity -- scoped to the current week (see
+// weekPeriod.js); this feeds a small "Recent activity" teaser widget, not
+// a full history page, so it always reflects just this week.
 router.get(
   "/activity",
   asyncRoute(async (req, res, db) => {
+    const { weekStart, weekEnd } = await resolveWeekRange(db, req.query.week);
     const { rows } = await db.query(
-      "SELECT action, created_at FROM audit_logs WHERE actor_id = ? ORDER BY created_at DESC LIMIT 20",
-      [req.user.id]
+      "SELECT action, created_at FROM audit_logs WHERE actor_id = ? AND created_at >= ? AND created_at < ? ORDER BY created_at DESC LIMIT 500",
+      [req.user.id, weekStart, weekEnd]
     );
     res.json(rows);
   })

@@ -1,6 +1,7 @@
 const express = require("express");
 const { requireAuth, asyncRoute } = require("../middleware/auth");
 const { toRecord, toDocument, toMaterial, computeTrainingProgress } = require("../utils/serializers");
+const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
 
 const router = express.Router();
 
@@ -1277,12 +1278,17 @@ router.get(
     })
 );
 
-// GET /api/master-trainer/activity — recent audit log entries for every ToT in the group
+// GET /api/master-trainer/activity?week=YYYY-MM-DD — audit log entries for
+// every ToT in the group, scoped to the current Friday->Thursday week by
+// default (see weekPeriod.js). This feeds both the Dashboard teaser widget
+// and the dedicated Activity section -- pass `week` (from .../activity/weeks)
+// to view an older week instead.
 router.get(
     "/activity",
     asyncRoute(async(req, res, db) => {
         const { groupId } = req.masterTrainer;
         if (!groupId) return noGroupResponse(res, { activity: [] });
+        const { weekStart, weekEnd } = await resolveWeekRange(db, req.query.week);
 
         const { rows } = await db.query(
             `SELECT al.action, al.created_at, sup.full_name AS trainer_name, st.full_name AS student_name
@@ -1291,10 +1297,13 @@ router.get(
        LEFT JOIN students st ON st.id = al.entity_id
          AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')
        WHERE sup.group_id = ?
+         AND al.created_at >= ? AND al.created_at < ?
        ORDER BY al.created_at DESC
-       LIMIT 40`, [groupId]
+       LIMIT 500`, [groupId, weekStart, weekEnd]
         );
         res.json({
+            weekStart,
+            weekEnd,
             activity: rows.map((r) => ({
                 action: r.action,
                 trainerName: r.trainer_name,
@@ -1302,6 +1311,30 @@ router.get(
                 createdAt: r.created_at,
             })),
         });
+    })
+);
+
+// GET /api/master-trainer/activity/weeks — the last 8 Friday->Thursday
+// weeks (including the current one) with an activity count each, for the
+// "Previous weeks" picker on the dedicated Activity section.
+router.get(
+    "/activity/weeks",
+    asyncRoute(async(req, res, db) => {
+        const { groupId } = req.masterTrainer;
+        if (!groupId) return noGroupResponse(res, { weeks: [] });
+        const { weekStart: currentWeekStart } = await resolveWeekRange(db);
+        const weeks = listRecentWeeks(currentWeekStart, 8);
+        for (const week of weeks) {
+            const { rows } = await db.query(
+                `SELECT COUNT(*) AS total FROM audit_logs al
+           JOIN supervisors sup ON sup.id = al.actor_id
+          WHERE sup.group_id = ? AND al.created_at >= ? AND al.created_at < ?
+            AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')`,
+                [groupId, week.weekStart, week.weekEnd]
+            );
+            week.total = Number(rows[0].total);
+        }
+        res.json({ weeks });
     })
 );
 
