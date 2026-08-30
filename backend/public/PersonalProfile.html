@@ -1096,7 +1096,194 @@
             text-decoration: none;
             font-size: 12.5px;
         }
-        
+
+        /* Compact Learning Materials list -- replaces the old large-card grid
+           (.material-grid/.material-card, still used elsewhere for milestones/
+           CVs and intentionally left untouched) with rows that stay usable at
+           hundreds/thousands of items: search + type filter + sort narrow the
+           list client-side, "Load more" renders it in small batches. */
+        .type-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .type-pill {
+            padding: 7px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+
+        .type-pill.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .material-section-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--faint);
+            margin: 18px 0 8px;
+        }
+
+        .material-section-label:first-child {
+            margin-top: 0;
+        }
+
+        .material-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .mrow-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 9px;
+            background: var(--surface);
+            border: 1px solid var(--border-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .mrow-body {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .mrow-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .mrow-meta {
+            font-size: 11.5px;
+            color: var(--faint);
+            margin-top: 2px;
+        }
+
+        .mrow-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .mrow-btn {
+            height: 32px;
+            padding: 0 13px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .mrow-btn:hover {
+            background: var(--border-soft);
+        }
+
+        .mrow-btn.primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .mrow-btn.primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .materials-load-more {
+            display: block;
+            margin: 14px auto 0;
+        }
+
+        .materials-empty {
+            text-align: center;
+            padding: 50px 20px;
+        }
+
+        .materials-empty i {
+            font-size: 30px;
+            color: var(--faint);
+            margin-bottom: 14px;
+            display: block;
+        }
+
+        .materials-empty h4 {
+            margin: 0 0 6px;
+            font-size: 15px;
+            color: var(--text);
+        }
+
+        .materials-empty p {
+            margin: 0;
+            color: var(--faint);
+            font-size: 13px;
+        }
+
+        .material-preview-body img {
+            max-width: 100%;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .material-preview-body iframe {
+            width: 100%;
+            height: 65vh;
+            border: 1px solid var(--border-soft);
+            border-radius: 10px;
+        }
+
+        .material-preview-body video {
+            width: 100%;
+            border-radius: 10px;
+        }
+
+        .material-preview-meta {
+            color: var(--faint);
+            font-size: 12.5px;
+            margin: 4px 0 16px;
+        }
+
+        @media (max-width: 640px) {
+            .material-row {
+                flex-wrap: wrap;
+            }
+            .mrow-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+
         .chat-thread {
             display: flex;
             flex-direction: column;
@@ -2057,12 +2244,33 @@
                         </div>
                     </div>
                     <p class="card-subtitle">Shared by your supervisor(s). Downloads only &mdash; you can't edit or remove these.</p>
-                    <div class="toolbar"><select id="materialsSupFilter" onchange="loadMaterials()"><option value="">All supervisors</option></select></div>
-                    <div class="material-grid" id="materialsGrid">
+                    <div class="toolbar">
+                        <input type="text" id="materialsSearch" placeholder="Search materials..." oninput="onMaterialsControlsChanged()">
+                        <select id="materialsSupFilter" onchange="loadMaterials()"><option value="">All supervisors</option></select>
+                        <select id="materialsSort" onchange="onMaterialsControlsChanged()">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="name">Name A&ndash;Z</option>
+                            <option value="type">Type</option>
+                        </select>
+                    </div>
+                    <div class="type-pills" id="materialsTypePills"></div>
+                    <div id="materialsListRoot" style="margin-top:14px;">
                         <div class="empty-state">Loading materials...</div>
                     </div>
+                    <button class="btn btn-secondary materials-load-more" id="materialsLoadMoreBtn" style="display:none;" onclick="materialsLoadMore()">Load more</button>
                 </section>
             </section>
+
+            <!-- MATERIAL PREVIEW MODAL -->
+            <div class="modal-overlay" id="materialPreviewModal">
+                <div class="modal-box wide">
+                    <button class="close-modal" onclick="closeModal('materialPreviewModal')">&times;</button>
+                    <h3 id="matPreviewTitle">&mdash;</h3>
+                    <div class="material-preview-meta" id="matPreviewMeta"></div>
+                    <div class="material-preview-body" id="matPreviewBody"></div>
+                </div>
+            </div>
 
             <!-- ============================================================= -->
             <!-- ASSIGNMENTS                                                    -->
@@ -2905,27 +3113,179 @@
             });
         }
 
-        async function loadMaterials() {
-            const data = await apiRequest("/profile/materials-feed" + supFilterQuery("materialsSupFilter"));
-            const grid = document.getElementById("materialsGrid");
-            if (!data) return;
-            if (!data.materials.length) {
-                grid.innerHTML = '<div class="empty-state">Nothing shared yet.</div>';
-                return;
+// ---- Learning materials: compact searchable/filterable/sortable list ----
+// (replaces the old large-card grid -- see .material-row/.type-pill CSS).
+// Everything below runs client-side over one fetched array; the backend
+// endpoint/response shape is unchanged.
+
+const MATERIAL_TYPE_GROUPS = {
+    document: "documents", image: "images", video: "videos",
+    assignment: "assignments", worksheet: "documents", reading: "documents",
+    audio: "other", link: "other",
+};
+const MATERIAL_GROUP_LABELS = {
+    all: "All", documents: "Documents", videos: "Videos",
+    images: "Images", assignments: "Assignments", other: "Other",
+};
+
+let materialsRaw = [];
+let materialsTypeFilter = "all";
+let materialsShownCount = 20;
+const MATERIALS_PAGE_SIZE = 20;
+
+function materialGroupOf(m) {
+    return MATERIAL_TYPE_GROUPS[m.materialType] || "other";
+}
+
+async function loadMaterials() {
+    const data = await apiRequest("/profile/materials-feed" + supFilterQuery("materialsSupFilter"));
+    if (!data) return;
+    materialsRaw = data.materials;
+    materialsTypeFilter = "all";
+    materialsShownCount = MATERIALS_PAGE_SIZE;
+    renderMaterialTypePills();
+    applyMaterialsFilters();
+}
+
+function renderMaterialTypePills() {
+    const present = new Set(materialsRaw.map(materialGroupOf));
+    const groups = ["all", "documents", "videos", "images", "assignments", "other"].filter(
+        (g) => g === "all" || present.has(g)
+    );
+    document.getElementById("materialsTypePills").innerHTML = groups
+        .map((g) => `<button type="button" class="type-pill${g === materialsTypeFilter ? " active" : ""}" onclick="setMaterialsTypeFilter('${g}')">${MATERIAL_GROUP_LABELS[g]}</button>`)
+        .join("");
+}
+
+function setMaterialsTypeFilter(group) {
+    materialsTypeFilter = group;
+    materialsShownCount = MATERIALS_PAGE_SIZE;
+    renderMaterialTypePills();
+    applyMaterialsFilters();
+}
+
+function onMaterialsControlsChanged() {
+    materialsShownCount = MATERIALS_PAGE_SIZE;
+    applyMaterialsFilters();
+}
+
+function applyMaterialsFilters() {
+    const search = (document.getElementById("materialsSearch").value || "").trim().toLowerCase();
+    const sort = document.getElementById("materialsSort").value;
+
+    let list = materialsRaw.filter((m) => {
+        if (materialsTypeFilter !== "all" && materialGroupOf(m) !== materialsTypeFilter) return false;
+        if (search) {
+            const hay = `${m.title || ""} ${m.description || ""}`.toLowerCase();
+            if (!hay.includes(search)) return false;
+        }
+        return true;
+    });
+
+    const groupByType = materialsTypeFilter === "all" && !search && sort === "newest";
+    const groupOrder = ["documents", "videos", "images", "assignments", "other"];
+
+    list.sort((a, b) => {
+        if (groupByType) {
+            const gDiff = groupOrder.indexOf(materialGroupOf(a)) - groupOrder.indexOf(materialGroupOf(b));
+            if (gDiff !== 0) return gDiff;
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        if (sort === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
+        if (sort === "name") return (a.title || "").localeCompare(b.title || "");
+        if (sort === "type") return materialGroupOf(a).localeCompare(materialGroupOf(b)) || (a.title || "").localeCompare(b.title || "");
+        return new Date(b.createdAt) - new Date(a.createdAt); // newest (default)
+    });
+
+    renderMaterialRows(list, groupByType);
+}
+
+function renderMaterialRows(list, groupByType) {
+    const root = document.getElementById("materialsListRoot");
+    const loadMoreBtn = document.getElementById("materialsLoadMoreBtn");
+
+    if (!list.length) {
+        root.innerHTML = `
+      <div class="materials-empty">
+        <i class="fa fa-book-open"></i>
+        <h4>No learning materials yet</h4>
+        <p>${materialsRaw.length ? "No materials match your search/filter." : "Your trainers haven't shared any learning materials with you yet."}</p>
+      </div>`;
+        loadMoreBtn.style.display = "none";
+        return;
+    }
+
+    const visible = list.slice(0, materialsShownCount);
+
+    let html = "";
+    let lastLabel = null;
+    visible.forEach((m) => {
+        if (groupByType) {
+            const label = MATERIAL_GROUP_LABELS[materialGroupOf(m)];
+            if (label !== lastLabel) {
+                html += `<div class="material-section-label">${escapeHtml(label)}</div>`;
+                lastLabel = label;
             }
-            grid.innerHTML = data.materials
-                .map((m) => `
-      <div class="material-card">
-        <div class="mtype"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i> ${escapeHtml(m.materialType)}</div>
-        <h4>${escapeHtml(m.title)}</h4>
-        ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ""}
-        ${m.externalUrl
-          ? `<a class="mlink" href="${escapeHtml(m.externalUrl)}" target="_blank" rel="noopener">Open link</a>`
-          : `<a class="mlink" href="${UPLOADS}/materials/${m.filename}" target="_blank" rel="noopener">Download ${escapeHtml(m.originalName || "")}</a>`}
-        <div class="rmeta" style="margin-top:8px;color:var(--faint);font-size:11px;">shared by ${escapeHtml(m.supervisorName)}</div>
+        }
+        html += materialRowHtml(m);
+    });
+    root.innerHTML = html;
+
+    loadMoreBtn.style.display = list.length > materialsShownCount ? "block" : "none";
+}
+
+function materialRowHtml(m) {
+    const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}`;
+    const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+    return `
+    <div class="material-row">
+      <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
+      <div class="mrow-body">
+        <div class="mrow-title">${escapeHtml(m.title)}</div>
+        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; Shared by ${escapeHtml(m.supervisorName)}${dateStr ? " &middot; " + dateStr : ""}</div>
       </div>
-    `)
-    .join("");
+      <div class="mrow-actions">
+        <button type="button" class="mrow-btn primary" onclick="openMaterialPreview(${m.id})"><i class="fa fa-eye"></i> Open</button>
+        <a class="mrow-btn" href="${fileHref}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+      </div>
+    </div>`;
+}
+
+function capitalize(str) {
+    return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
+}
+
+function materialsLoadMore() {
+    materialsShownCount += MATERIALS_PAGE_SIZE;
+    applyMaterialsFilters();
+}
+
+function openMaterialPreview(id) {
+    const m = materialsRaw.find((x) => x.id === id);
+    if (!m) return;
+    document.getElementById("matPreviewTitle").textContent = m.title;
+    const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
+    document.getElementById("matPreviewMeta").textContent =
+        `${capitalize(m.materialType)} · Shared by ${m.supervisorName}${dateStr ? " · " + dateStr : ""}${m.description ? " — " + m.description : ""}`;
+
+    const body = document.getElementById("matPreviewBody");
+    const fileUrl = m.externalUrl || `${UPLOADS}/materials/${m.filename}`;
+    if (m.materialType === "image") {
+        body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(m.title)}">`;
+    } else if (m.materialType === "video") {
+        body.innerHTML = `<video src="${escapeHtml(fileUrl)}" controls></video>`;
+    } else if (!m.externalUrl && m.filename && /\.pdf$/i.test(m.filename)) {
+        body.innerHTML = `<iframe src="${escapeHtml(fileUrl)}"></iframe>`;
+    } else {
+        body.innerHTML = `
+      <div style="text-align:center;padding:30px 10px;">
+        <i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}" style="font-size:34px;color:var(--faint);margin-bottom:14px;display:block;"></i>
+        <a class="mrow-btn primary" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" ${m.externalUrl ? "" : "download"}>
+          <i class="fa ${m.externalUrl ? "fa-arrow-up-right-from-square" : "fa-download"}"></i> ${m.externalUrl ? "Open link" : "Download " + escapeHtml(m.originalName || "")}
+        </a>
+      </div>`;
+    }
+    openModal("materialPreviewModal");
 }
 
 // ---- Assignments -----------------------------------------------------
