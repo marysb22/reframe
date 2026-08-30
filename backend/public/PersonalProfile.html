@@ -2011,6 +2011,10 @@
                         <div><label>Emergency contact name</label><input id="emergencyName"></div>
                         <div><label>Relationship</label><input id="emergencyRelationship"></div>
                         <div><label>Phone number</label><input id="emergencyPhone"></div>
+                        <div class="full" style="margin-top:6px;"><label style="font-size:13px;color:var(--text);">Second emergency contact (optional)</label></div>
+                        <div><label>Emergency contact name</label><input id="emergencyName2"></div>
+                        <div><label>Relationship</label><input id="emergencyRelationship2"></div>
+                        <div><label>Phone number</label><input id="emergencyPhone2"></div>
                     </div>
                     <label class="consent-row"><input type="checkbox" id="healthConsent">I understand why this information is collected and who can access it.</label>
                 </section>
@@ -2873,12 +2877,13 @@
             // edit mode active so the trainee doesn't lose what they typed.
         });
         // NOTE: the "Health & emergency information" fields (medicalConditions,
-        // emergencyName, emergencyRelationship, emergencyPhone, healthConsent) are
-        // NOT included in the save payload above -- the schema you shared has no
-        // columns for them on `users` (or any dedicated table), so there's
-        // currently nowhere for this data to be stored. Add the columns (or a
-        // separate `health_info` table gated the same way `payment_profiles` is)
-        // before wiring this section up for real; right now it's UI-only.
+        // emergencyName/Relationship/Phone, emergencyName2/Relationship2/Phone2,
+        // healthConsent) are NOT included in the save payload above -- still
+        // UI-only. The `student_health_info` table now exists in the schema
+        // with columns for the first contact (emergency_contact_name/
+        // relationship/phone) but not yet a second one -- add
+        // emergency_contact_2_name/relationship/phone columns plus a load/save
+        // route before wiring this section up for real.
 
         // ---- Learning materials (read-only) ------------------------------------
 
