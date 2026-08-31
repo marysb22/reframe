@@ -2968,7 +2968,6 @@
 
                     <div class="system-card">
                         <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-bell" style="color:var(--primary);"></i>Notification preferences</h2>
-                        <p class="card-subtitle" style="margin-top:4px;">Saved on this device for now &mdash; ask your backend team to wire this to a real endpoint when one exists.</p>
                         <div class="toggle-row">
                             <div><strong>New messages</strong><span>Get notified when your supervisor messages you.</span></div>
                             <label class="switch"><input type="checkbox" id="notifMessages" checked><span class="switch-track"></span></label>
@@ -4105,13 +4104,13 @@ function renderSessions() {
 document.getElementById("sessionSearch").addEventListener("input", renderSessions);
 document.getElementById("sessionTypeFilter").addEventListener("change", renderSessions);
 
-// ---- Meetings (read-only, backend gap flagged) --------------------------
+// ---- Meetings (read-only) -------------------------------------------------
 
 async function loadMeetings() {
   const wrap = document.getElementById("meetingsList");
   const data = await apiRequest("/profile/meetings" + supFilterQuery("meetingsSupFilter"));
   if (!data) {
-    wrap.innerHTML = '<div class="empty-state">Couldn\'t load meetings. This endpoint may not exist on the backend yet.</div>';
+    wrap.innerHTML = '<div class="empty-state">Couldn\'t load meetings.</div>';
     return;
   }
   const meetings = data.meetings || [];
@@ -4656,25 +4655,24 @@ document.getElementById("passwordForm").addEventListener("submit", async (e) => 
 // NOTE: same guessed /auth/change-password endpoint used on the Admin and
 // Supervisor dashboards -- confirm the real route with your backend team.
 
-const NOTIF_PREFS_KEY = "reframe_student_notif_prefs";
-function loadNotificationPrefs() {
-  try {
-    const raw = localStorage.getItem(NOTIF_PREFS_KEY);
-    if (!raw) return;
-    const prefs = JSON.parse(raw);
-    if (typeof prefs.messages === "boolean") document.getElementById("notifMessages").checked = prefs.messages;
-    if (typeof prefs.assignments === "boolean") document.getElementById("notifAssignments").checked = prefs.assignments;
-    if (typeof prefs.sessions === "boolean") document.getElementById("notifSessions").checked = prefs.sessions;
-  } catch (err) { /* ignore malformed local data */ }
+async function loadNotificationPrefs() {
+  const prefs = await apiRequest("/profile/notification-preferences");
+  if (!prefs) return;
+  document.getElementById("notifMessages").checked = prefs.notifyMessages;
+  document.getElementById("notifAssignments").checked = prefs.notifyAssignments;
+  document.getElementById("notifSessions").checked = prefs.notifySessions;
 }
-function saveNotificationPrefs() {
-  const prefs = {
-    messages: document.getElementById("notifMessages").checked,
-    assignments: document.getElementById("notifAssignments").checked,
-    sessions: document.getElementById("notifSessions").checked,
-  };
-  localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
-  showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
+async function saveNotificationPrefs() {
+  const result = await apiRequest("/profile/notification-preferences", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      notifyMessages: document.getElementById("notifMessages").checked,
+      notifyAssignments: document.getElementById("notifAssignments").checked,
+      notifySessions: document.getElementById("notifSessions").checked,
+    }),
+  });
+  if (result) showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
 }
     </script>
 </body>

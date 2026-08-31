@@ -2594,10 +2594,6 @@
                             <h2>Calendar</h2>
                         </div>
                     </div>
-                    <div class="notice-banner">
-                        <i class="fa fa-circle-info"></i>
-                        <span>This calendar is seeded from <code>/supervisor/schedule</code> (the API path itself is unchanged), which currently only returns today + near-term upcoming items rather than a full date range. Browsing to a month with nothing loaded yet will look empty even if sessions exist there &mdash; ask your backend team for a <code>?start=&amp;end=</code> range option on that endpoint for accurate month-to-month browsing.</span>
-                    </div>
                     <div class="cal-topbar">
                         <h3 class="cal-title" id="calTitle">&mdash;</h3>
                         <div class="cal-nav">
@@ -2773,10 +2769,6 @@
 
                     <div id="directChatPanel">
                         <p class="card-subtitle">One conversation per assigned trainee. Click a conversation to open the full thread.</p>
-                        <div class="notice-banner">
-                            <i class="fa fa-circle-info"></i>
-                            <span>This inbox is built by fetching each assigned trainee's message thread individually (there's no aggregate <code>/supervisor/conversations</code> endpoint yet). Fine for a normal caseload size; if you're training a very large number of trainees, ask your backend team for a single aggregate endpoint instead.</span>
-                        </div>
                         <ul class="inbox-list" id="chatInboxList">
                             <li class="empty-state">Loading conversations...</li>
                         </ul>
@@ -2896,7 +2888,6 @@
 
                     <div class="system-card" style="grid-column:1/-1;">
                         <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-bell" style="color:var(--primary);"></i>Notification preferences</h2>
-                        <p class="card-subtitle" style="margin-top:4px;">Saved on this device for now &mdash; ask your backend team to wire this to a real endpoint when one exists.</p>
                         <div class="toggle-row">
                             <div><strong>New messages</strong><span>Get notified when a trainee sends you a message.</span></div>
                             <label class="switch"><input type="checkbox" id="notifMessages" checked><span class="switch-track"></span></label>
@@ -4899,7 +4890,7 @@ async function loadMeetings() {
   wrap.innerHTML = '<div class="empty-state">Loading meetings...</div>';
   const data = await apiRequest("/supervisor/meetings");
   if (!data) {
-    wrap.innerHTML = '<div class="empty-state">Couldn\'t load meetings. This endpoint may not exist on the backend yet.</div>';
+    wrap.innerHTML = '<div class="empty-state">Couldn\'t load meetings.</div>';
     return;
   }
   allMeetings = data.meetings || [];
@@ -5443,27 +5434,31 @@ document.getElementById("passwordForm").addEventListener("submit", async (e) => 
   }
 });
 
-const NOTIF_PREFS_KEY = "reframe_supervisor_notif_prefs"; // storage key unchanged so existing saved prefs still load
-function loadNotificationPrefs() {
+const SHOW_PHOTO_KEY = "reframe_supervisor_show_photo"; // no settings column for this yet -- stays client-side only
+async function loadNotificationPrefs() {
+  const prefs = await apiRequest("/profile/notification-preferences");
+  if (prefs) {
+    document.getElementById("notifMessages").checked = prefs.notifyMessages;
+    document.getElementById("notifAssignments").checked = prefs.notifyAssignments;
+    document.getElementById("notifSessions").checked = prefs.notifySessions;
+  }
   try {
-    const raw = localStorage.getItem(NOTIF_PREFS_KEY);
-    if (!raw) return;
-    const prefs = JSON.parse(raw);
-    if (typeof prefs.messages === "boolean") document.getElementById("notifMessages").checked = prefs.messages;
-    if (typeof prefs.assignments === "boolean") document.getElementById("notifAssignments").checked = prefs.assignments;
-    if (typeof prefs.sessions === "boolean") document.getElementById("notifSessions").checked = prefs.sessions;
-    if (typeof prefs.showPhoto === "boolean") document.getElementById("privacyShowPhoto").checked = prefs.showPhoto;
+    const raw = localStorage.getItem(SHOW_PHOTO_KEY);
+    if (raw !== null) document.getElementById("privacyShowPhoto").checked = raw === "true";
   } catch (err) { /* ignore malformed local data */ }
 }
-function saveNotificationPrefs() {
-  const prefs = {
-    messages: document.getElementById("notifMessages").checked,
-    assignments: document.getElementById("notifAssignments").checked,
-    sessions: document.getElementById("notifSessions").checked,
-    showPhoto: document.getElementById("privacyShowPhoto").checked,
-  };
-  localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
-  showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
+async function saveNotificationPrefs() {
+  const result = await apiRequest("/profile/notification-preferences", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      notifyMessages: document.getElementById("notifMessages").checked,
+      notifyAssignments: document.getElementById("notifAssignments").checked,
+      notifySessions: document.getElementById("notifSessions").checked,
+    }),
+  });
+  localStorage.setItem(SHOW_PHOTO_KEY, document.getElementById("privacyShowPhoto").checked);
+  if (result) showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
 }
     </script>
 </body>
