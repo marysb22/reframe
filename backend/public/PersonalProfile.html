@@ -2422,6 +2422,22 @@
                 align-items: flex-start;
                 gap: 14px;
             }
+            /* .topbar switching to a column above means .top-right (and the
+               bell inside it) is no longer flush against the right edge --
+               it's left-aligned to its own content width wherever it lands.
+               The dropdown's desktop right:0 (anchored to the bell's own
+               wrapper) would then render mostly off-screen, so on mobile it
+               pins to the viewport itself instead, with even side margins;
+               its vertical offset is computed in JS from the bell's actual
+               position (positionNotifDropdownForViewport), since that shifts
+               depending on how much the header wraps. */
+            .notif-dropdown {
+                position: fixed;
+                left: 12px;
+                right: 12px;
+                width: auto;
+                max-width: none;
+            }
             table {
                 display: block;
                 overflow-x: auto;
@@ -2598,7 +2614,7 @@
                             <div style="color:var(--muted);font-size:12.5px;margin-top:2px;" id="profileSubline">&mdash;</div>
                         </div>
                     </div>
-                    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+                    <div class="kpi-grid">
                         <div class="kpi-card"><label>Cohort</label>
                             <h2 id="cohortValue" style="font-size:17px;">&mdash;</h2>
                         </div>
@@ -3247,17 +3263,48 @@
         function toggleNotifDropdown() {
             notifDropdownOpen = !notifDropdownOpen;
             const panel = document.getElementById("notifDropdown");
-            if (panel) panel.classList.toggle("open", notifDropdownOpen);
+            if (panel) {
+                panel.classList.toggle("open", notifDropdownOpen);
+                if (notifDropdownOpen) positionNotifDropdownForViewport(panel);
+            }
             if (notifDropdownOpen) {
                 currentNotifWeek = null; // always reopen on the current week
                 loadNotifList();
             }
         }
 
+        // Below the 700px breakpoint the dropdown becomes position:fixed
+        // with a viewport-relative left/right (see the mobile media query),
+        // but still needs an explicit top -- the bell's own vertical
+        // position isn't constant on mobile (the header wraps to a column,
+        // and how far down the bell lands depends on how much the title
+        // above it wraps), so this computes it from the bell's real
+        // rendered position each time the panel opens rather than guessing
+        // a fixed offset that would only work for one screen size.
+        function positionNotifDropdownForViewport(panel) {
+            if (window.innerWidth > 700) {
+                panel.style.top = "";
+                return;
+            }
+            const bell = document.querySelector(".bell-btn");
+            if (!bell) return;
+            const rect = bell.getBoundingClientRect();
+            panel.style.top = Math.round(rect.bottom + 10) + "px";
+        }
+
+        window.addEventListener("resize", () => {
+            if (!notifDropdownOpen) return;
+            const panel = document.getElementById("notifDropdown");
+            if (panel) positionNotifDropdownForViewport(panel);
+        });
+
         function closeNotifDropdown() {
             notifDropdownOpen = false;
             const panel = document.getElementById("notifDropdown");
-            if (panel) panel.classList.remove("open");
+            if (panel) {
+                panel.classList.remove("open");
+                panel.style.top = "";
+            }
         }
 
         document.addEventListener("click", (e) => {
@@ -4521,7 +4568,7 @@ function renderPaymentYearCard(entry) {
         </div>
       </div>
       <div class="year-card-body">
-        <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin:16px 0;">
+        <div class="kpi-grid" style="margin:16px 0;">
           <div class="kpi-card"><label>Total program fee</label><h2>${formatMoney(s.totalFee)}</h2></div>
           <div class="kpi-card"><label>Paid</label><h2>${formatMoney(s.paid)}</h2></div>
           <div class="kpi-card"><label>Remaining</label><h2>${formatMoney(s.remaining)}</h2></div>

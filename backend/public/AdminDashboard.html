@@ -72,6 +72,10 @@ h1,h2,h3,h4{font-family:"Lexend","Inter",sans-serif;letter-spacing:-.01em;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
 .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
+.kpi-grid-2{grid-template-columns:repeat(2,1fr);}
+.kpi-grid-4{grid-template-columns:repeat(4,1fr);}
+.tot-trainers-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;}
+.form-grid-4{display:grid;grid-template-columns:repeat(4,1fr);}
 .kpi-card{background:var(--surface);padding:18px 20px;border-radius:var(--radius-md);border:1px solid var(--border-soft);box-shadow:var(--shadow-card);}
 .kpi-card label{color:var(--muted);font-size:12px;font-weight:600;}
 .kpi-card h2{margin:6px 0 0;font-size:24px;font-weight:700;}
@@ -264,7 +268,8 @@ tr:hover td{background:var(--surface-2);}
 }
 
 @media(max-width:1080px){.create-grid{grid-template-columns:1fr;}.settings-grid{grid-template-columns:1fr;}}
-@media(max-width:900px){.kpi-grid{grid-template-columns:1fr;}}
+@media(max-width:900px){.kpi-grid{grid-template-columns:1fr;}.kpi-grid-4,.form-grid-4{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:700px){.kpi-grid-2,.kpi-grid-4,.tot-trainers-grid,.form-grid-4{grid-template-columns:1fr;}}
 @media(max-width:700px){
   .sidebar{transform:translateX(-100%);}
   .sidebar.mobile-open{transform:translateX(0);box-shadow:0 0 40px rgba(0,0,0,.35);}
@@ -578,11 +583,11 @@ tr:hover td{background:var(--surface-2);}
       </div>
 
       <div id="spPanel-academic" class="sp-panel" style="display:none;">
-        <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:18px;">
+        <div class="kpi-grid kpi-grid-2" style="margin-bottom:18px;">
           <div class="kpi-card"><label>Cohort</label><h2 id="spA_cohort" style="font-size:18px;">&mdash;</h2></div>
           <div class="kpi-card"><label>Program year</label><h2 id="spA_year" style="font-size:18px;">&mdash;</h2></div>
         </div>
-        <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+        <div class="kpi-grid kpi-grid-4" style="margin-bottom:18px;">
           <div class="kpi-card"><label>Clinical hours</label><h2 id="spA_hours" style="font-size:18px;">&mdash;</h2></div>
           <div class="kpi-card"><label>Attendance</label><h2 id="spA_attendance" style="font-size:18px;">&mdash;</h2></div>
           <div class="kpi-card"><label>Assignments</label><h2 id="spA_assignments" style="font-size:18px;">&mdash;</h2></div>
@@ -600,7 +605,7 @@ tr:hover td{background:var(--surface-2);}
         <div id="spMasterTrainerWrap" style="margin-bottom:22px;"></div>
 
         <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">ToT Trainers</h4>
-        <div id="spTotTrainersWrap" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;"></div>
+        <div id="spTotTrainersWrap" class="tot-trainers-grid"></div>
 
         <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Training Hours</h4>
         <p class="hint" style="margin:0 0 10px;">Hours each trainer has logged supervising this trainee, plus the trainee's own logged clinical training hours.</p>
@@ -619,7 +624,7 @@ tr:hover td{background:var(--surface-2);}
 
       <div id="spPanel-payments" class="sp-panel" style="display:none;">
         <p class="hint" style="margin:0 0 12px;">Showing <strong id="spP_yearLabel">Year 1</strong> (the current active period). This trainee's program is billed year by year -- see the <a href="#payments" onclick="showSection('payments')">Payments</a> section for the full 4-year breakdown.</p>
-        <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+        <div class="kpi-grid kpi-grid-4" style="margin-bottom:18px;">
           <div class="kpi-card"><label>Total Fee</label><h2 id="spP_total" style="font-size:18px;">&mdash;</h2></div>
           <div class="kpi-card"><label>Paid</label><h2 id="spP_paid" style="font-size:18px;">&mdash;</h2></div>
           <div class="kpi-card"><label>Remaining</label><h2 id="spP_remaining" style="font-size:18px;">&mdash;</h2></div>
@@ -2744,7 +2749,7 @@ function renderYearCard(entry) {
         </div>
       </div>
       <div class="year-card-body">
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;">
+        <div class="kpi-grid kpi-grid-4" style="gap:12px;margin:16px 0;">
           <div class="kpi-card"><label>Total Fee</label><h2>${formatMoney(s.totalFee)}</h2></div>
           <div class="kpi-card"><label>Paid</label><h2>${formatMoney(s.paid)}</h2></div>
           <div class="kpi-card"><label>Remaining</label><h2>${formatMoney(s.remaining)}</h2></div>
@@ -2768,7 +2773,7 @@ function renderYearCard(entry) {
         </form>
 
         <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Record a new payment for Year ${y}</h4>
-        <form onsubmit="submitYearPayment(event, ${y})" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:end;margin-bottom:16px;">
+        <form onsubmit="submitYearPayment(event, ${y})" class="form-grid-4" style="gap:10px;align-items:end;margin-bottom:16px;">
           <div><label>Amount ($)</label><input type="number" step="0.01" id="pay_amount_${y}" required></div>
           <div><label>Date</label><input type="date" id="pay_date_${y}" required></div>
           <div><label>Method</label><input type="text" id="pay_method_${y}" placeholder="Cash, transfer..."></div>
