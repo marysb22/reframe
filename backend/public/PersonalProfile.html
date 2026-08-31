@@ -1474,7 +1474,114 @@
 
         /* Group Chats -- Master Trainer-curated rooms, independent of this
            file's existing 1:1 chat above (whose .chat-thread/.chat-bubble
-           are reused as-is here). */
+           are reused as-is here). The rules below only ever apply to a
+           .chat-bubble nested inside .gc-msg-row/.gc-msg-col, so the 1:1
+           chat's own bare-.chat-bubble layout above is never affected. */
+        .gc-date-sep {
+            text-align: center;
+            margin: 16px 0 10px;
+        }
+
+        .gc-date-sep:first-child {
+            margin-top: 0;
+        }
+
+        .gc-date-sep span {
+            background: var(--surface-2);
+            color: var(--muted);
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 4px 13px;
+            border-radius: 20px;
+        }
+
+        .gc-msg-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .gc-msg-row.grouped {
+            margin-top: 2px;
+        }
+
+        .gc-msg-row.mine {
+            justify-content: flex-end;
+        }
+
+        .gc-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            font-size: 10.5px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .gc-avatar.spacer {
+            visibility: hidden;
+        }
+
+        .gc-msg-col {
+            display: flex;
+            flex-direction: column;
+            max-width: 68%;
+            min-width: 0;
+        }
+
+        .gc-msg-row.mine .gc-msg-col {
+            align-items: flex-end;
+        }
+
+        .gc-msg-col .chat-bubble {
+            max-width: 100%;
+            align-self: auto;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+        }
+
+        .gc-msg-col .chat-bubble.mine {
+            border-bottom-right-radius: 4px;
+        }
+
+        .gc-msg-col .chat-bubble.theirs {
+            border-bottom-left-radius: 4px;
+        }
+
+        .gc-msg-row.grouped .chat-bubble.mine {
+            border-top-right-radius: 4px;
+        }
+
+        .gc-msg-row.grouped .chat-bubble.theirs {
+            border-top-left-radius: 4px;
+        }
+
+        .gc-sender-name {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--muted);
+            margin: 0 3px 4px;
+        }
+
+        .gc-msg-text {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .gc-msg-time {
+            display: block;
+            text-align: right;
+            font-size: 9.5px;
+            opacity: .6;
+            margin-top: 4px;
+            white-space: nowrap;
+        }
+
         .gc-layout {
             display: grid;
             grid-template-columns: 240px 1fr;
@@ -4181,10 +4288,13 @@ async function openGcRoom(roomId) {
     await markGcRoomRead(roomId);
 }
 
+let gcLastRenderedMsg = null; // { senderId, dateKey, time } -- drives grouping/date-separator decisions across both a full reload and a single appended message
+
 async function loadGcThread(roomId) {
     const data = await apiRequest(`/chat-rooms/${roomId}/messages?limit=50`);
     if (!data) return;
     const thread = document.getElementById("gcThread");
+    gcLastRenderedMsg = null;
     if (!data.messages.length) {
         thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>';
         return;
@@ -4195,7 +4305,10 @@ async function loadGcThread(roomId) {
 
 function appendGcMessage(m) {
     const thread = document.getElementById("gcThread");
-    if (thread.querySelector(".empty-state")) thread.innerHTML = "";
+    if (thread.querySelector(".empty-state")) {
+        thread.innerHTML = "";
+        gcLastRenderedMsg = null;
+    }
     thread.insertAdjacentHTML("beforeend", gcMessageHtml(m));
     thread.scrollTop = thread.scrollHeight;
 }
@@ -4206,8 +4319,29 @@ function formatFileSize(bytes) {
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
+// Renders one message, deciding against gcLastRenderedMsg whether to show a
+// date separator (day changed) and whether to group with the bubble above
+// it (same sender, within 5 minutes) -- a real chat shouldn't repeat the
+// sender's name and full timestamp on every single line the way a flat
+// records list does. This is Group-Chats-only -- the Direct Messages tab
+// above has its own separate render path and is untouched.
 function gcMessageHtml(m) {
     const mine = m.senderId === myUserId;
+    const created = new Date(m.createdAt);
+    const dateKey = created.toDateString();
+    const prev = gcLastRenderedMsg;
+
+    let dateSepHtml = "";
+    if (!prev || prev.dateKey !== dateKey) {
+        const today = new Date().toDateString();
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        const label = dateKey === today ? "Today" : dateKey === yesterday ? "Yesterday" : created.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+        dateSepHtml = `<div class="gc-date-sep"><span>${escapeHtml(label)}</span></div>`;
+    }
+    const grouped = !!prev && !dateSepHtml && prev.senderId === m.senderId && (created - prev.time) < 5 * 60 * 1000;
+    gcLastRenderedMsg = { senderId: m.senderId, dateKey, time: created };
+
+    const time = created.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const bodyHtml = m.attachment
         ? `<div class="attachment-bubble">
           <div class="ab-icon"><i class="fa ${ATTACHMENT_ICONS[m.attachment.mime] || (m.attachment.mime && m.attachment.mime.startsWith("image/") ? "fa-image" : "fa-file")}"></i></div>
@@ -4216,9 +4350,20 @@ function gcMessageHtml(m) {
             <div class="ab-meta">${formatFileSize(m.attachment.size)} &middot; <a href="${UPLOADS}/chat/${m.attachment.filename}" target="_blank" rel="noopener" download>Download</a></div>
           </div>
         </div>
-        ${m.content ? `<div style="margin-top:6px;">${escapeHtml(m.content)}</div>` : ""}`
-        : escapeHtml(m.content || "");
-    return `<div class="chat-bubble ${mine ? "mine" : "theirs"}">${bodyHtml}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}</div></div>`;
+        ${m.content ? `<div class="gc-msg-text" style="margin-top:6px;">${escapeHtml(m.content)}</div>` : ""}`
+        : `<span class="gc-msg-text">${escapeHtml(m.content || "")}</span>`;
+    const initials = (m.senderName || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+
+    return `
+    ${dateSepHtml}
+    <div class="gc-msg-row ${mine ? "mine" : "theirs"} ${grouped ? "grouped" : ""}">
+      ${!mine ? `<div class="gc-avatar ${grouped ? "spacer" : ""}">${escapeHtml(initials)}</div>` : ""}
+      <div class="gc-msg-col">
+        ${!grouped && !mine ? `<div class="gc-sender-name">${escapeHtml(m.senderName)}</div>` : ""}
+        <div class="chat-bubble ${mine ? "mine" : "theirs"}">${bodyHtml}<span class="gc-msg-time">${time}</span></div>
+      </div>
+    </div>
+  `;
 }
 
 async function markGcRoomRead(roomId) {
