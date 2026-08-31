@@ -697,26 +697,45 @@ router.get(
   })
 );
 
-// GET /api/profile/payments — my own summary + history, read-only.
-// Restricted to the caller's own student_id by the WHERE clause itself
-// (there is no Row-Level Security in MySQL to lean on for this).
+// GET /api/profile/payments — my own summary + history for all 4 training
+// years, read-only. Restricted to the caller's own student_id by the WHERE
+// clause itself (there is no Row-Level Security in MySQL to lean on for
+// this). Each year is an independent fee agreement (see admin.js's
+// Payments section for the full rationale) -- a year with no `payments`
+// row yet simply hasn't been configured by the Admin and renders as a
+// $0/not-started placeholder rather than an error.
 router.get(
   "/payments",
   requireStudent,
   asyncRoute(async (req, res, db) => {
-    const { rows: paymentsRows } = await db.query("SELECT * FROM payments WHERE student_id = ?", [req.user.id]);
-    const { rows: transactions } = await db.query(
-      `SELECT pt.*, COALESCE(a.full_name, sup.full_name) AS added_by_name FROM payment_transactions pt
-       LEFT JOIN admin_users a ON a.id = pt.added_by
-       LEFT JOIN supervisors sup ON sup.id = pt.added_by
-       WHERE pt.student_id = ? ORDER BY pt.payment_date DESC, pt.created_at DESC`,
-      [req.user.id]
-    );
+    const years = [];
+    for (const trainingYear of [1, 2, 3, 4]) {
+      const { rows: paymentsRows } = await db.query(
+        "SELECT * FROM payments WHERE student_id = ? AND training_year = ?",
+        [req.user.id, trainingYear]
+      );
+      const paymentsRow = paymentsRows[0] || null;
+      let transactions = [];
+      if (paymentsRow) {
+        const { rows } = await db.query(
+          `SELECT pt.*, COALESCE(a.full_name, sup.full_name) AS added_by_name FROM payment_transactions pt
+           LEFT JOIN admin_users a ON a.id = pt.added_by
+           LEFT JOIN supervisors sup ON sup.id = pt.added_by
+           WHERE pt.payment_id = ? ORDER BY pt.payment_date DESC, pt.created_at DESC`,
+          [paymentsRow.id]
+        );
+        transactions = rows;
+      }
+      years.push({
+        trainingYear,
+        periodStatus: paymentsRow?.period_status || "active",
+        summary: toPaymentSummary({ id: req.user.id }, paymentsRow, transactions),
+        transactions: transactions.map(toPaymentTransaction),
+      });
+    }
+    const activeYear = years.find((y) => y.periodStatus !== "completed")?.trainingYear || 4;
 
-    res.json({
-      summary: toPaymentSummary({ id: req.user.id }, paymentsRows[0] || null, transactions),
-      transactions: transactions.map(toPaymentTransaction),
-    });
+    res.json({ activeYear, years });
   })
 );
 

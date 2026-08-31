@@ -126,7 +126,20 @@ tr:hover td{background:var(--surface-2);}
 .pill.active{background:var(--success-bg);color:var(--success);}
 .pill.suspended{background:var(--danger-bg);color:var(--danger);}
 .pill.pending{background:#fcf0dc;color:#b5730f;}
+.pill.completed{background:var(--surface-2);color:var(--muted);}
 .empty-state{text-align:center;padding:30px;color:var(--faint);font-size:13px;}
+
+.year-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius-md);margin-bottom:14px;overflow:hidden;}
+.year-card-header{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 18px;cursor:pointer;flex-wrap:wrap;}
+.year-card-header:hover{background:var(--surface-2);}
+.year-card-title{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;}
+.year-card-title i.fa-chevron-right{transition:transform .15s ease;color:var(--muted);font-size:12px;}
+.year-card.open .year-card-title i.fa-chevron-right{transform:rotate(90deg);}
+.year-card-mini{display:flex;gap:16px;font-size:12px;color:var(--muted);flex-wrap:wrap;}
+.year-card-mini strong{color:var(--text);}
+.year-card-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border-soft);}
+.year-card.open .year-card-body{display:block;}
+.month-group-label{font-size:12px;font-weight:700;color:var(--muted);margin:16px 0 6px;padding-bottom:5px;border-bottom:1px solid var(--border-soft);display:flex;justify-content:space-between;}
 .icon-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;margin-right:6px;color:var(--muted);}
 .icon-btn:hover{background:var(--surface-2);}
 .icon-btn.danger{color:var(--danger);}
@@ -605,6 +618,7 @@ tr:hover td{background:var(--surface-2);}
       </div>
 
       <div id="spPanel-payments" class="sp-panel" style="display:none;">
+        <p class="hint" style="margin:0 0 12px;">Showing <strong id="spP_yearLabel">Year 1</strong> (the current active period). This trainee's program is billed year by year -- see the <a href="#payments" onclick="showSection('payments')">Payments</a> section for the full 4-year breakdown.</p>
         <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
           <div class="kpi-card"><label>Total Fee</label><h2 id="spP_total" style="font-size:18px;">&mdash;</h2></div>
           <div class="kpi-card"><label>Paid</label><h2 id="spP_paid" style="font-size:18px;">&mdash;</h2></div>
@@ -746,8 +760,8 @@ tr:hover td{background:var(--surface-2);}
       </div>
 
       <table>
-        <thead><tr><th>Name</th><th>ID</th><th>Total Fee</th><th>Paid</th><th>Remaining</th><th>Status</th><th></th></tr></thead>
-        <tbody id="paymentsBody"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
+        <thead><tr><th>Name</th><th>ID</th><th>Active Year</th><th>Total Fee</th><th>Paid</th><th>Remaining</th><th>Status</th><th></th></tr></thead>
+        <tbody id="paymentsBody"><tr><td colspan="8" class="empty-state">Loading...</td></tr></tbody>
       </table>
 
       <div id="paymentDetailWrap" style="display:none;margin-top:20px;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:18px;">
@@ -755,36 +769,9 @@ tr:hover td{background:var(--surface-2);}
           <div><strong id="pdName">&mdash;</strong> <span style="color:var(--muted);font-size:12.5px;" id="pdMemberCode"></span></div>
           <button class="btn btn-secondary btn-sm" onclick="closePaymentDetail()">Close</button>
         </div>
+        <p class="hint" style="margin:0 0 16px;">The 4-year program is billed as four independent periods &mdash; each year has its own fee, ledger, and completion status. Nothing here mixes across years.</p>
 
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;">
-          <div class="kpi-card"><label>Total Fee</label><h2 id="pdTotalFee">&mdash;</h2></div>
-          <div class="kpi-card"><label>Paid</label><h2 id="pdPaid">&mdash;</h2></div>
-          <div class="kpi-card"><label>Remaining</label><h2 id="pdRemaining">&mdash;</h2></div>
-          <div class="kpi-card"><label>Status</label><h2 id="pdStatus">&mdash;</h2></div>
-        </div>
-
-        <form id="totalFeeForm" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:200px;">
-            <label>Set / update total program fee ($)</label>
-            <input type="number" step="0.01" min="0" id="totalFeeInput" required>
-          </div>
-          <button type="submit" class="btn" style="width:auto;margin-top:0;">Update</button>
-        </form>
-
-        <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Record a new payment</h4>
-        <form id="paymentForm" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:end;margin-bottom:20px;">
-          <div><label>Amount ($)</label><input type="number" step="0.01" id="paymentAmount" required></div>
-          <div><label>Date</label><input type="date" id="paymentDate" required></div>
-          <div><label>Method</label><input type="text" id="paymentMethod" placeholder="Cash, transfer..."></div>
-          <div><button type="submit" class="btn">Add payment</button></div>
-          <div style="grid-column:1/-1;"><label>Notes (optional)</label><input type="text" id="paymentNotes"></div>
-        </form>
-
-        <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Payment history</h4>
-        <table>
-          <thead><tr><th>Payment ID</th><th>Trainee ID</th><th>Date</th><th>Amount</th><th>Method</th><th>Added by</th><th>Notes</th></tr></thead>
-          <tbody id="paymentHistoryBody"><tr><td colspan="7" class="empty-state">No payments yet.</td></tr></tbody>
-        </table>
+        <div id="yearCardsWrap"></div>
       </div>
     </div>
 
@@ -2384,6 +2371,7 @@ function renderStudentProfile(data) {
 
   // Payments
   const pay = data.payment;
+  document.getElementById("spP_yearLabel").textContent = `Year ${data.paymentActiveYear?.trainingYear || 1}`;
   document.getElementById("spP_total").textContent = formatMoney(pay.totalFee);
   document.getElementById("spP_paid").textContent = formatMoney(pay.paid);
   document.getElementById("spP_remaining").textContent = formatMoney(pay.remaining);
@@ -2603,10 +2591,16 @@ function saveNotificationPrefs() {
   showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
 }
 
-// ---- Payments -----------------------------------------------------
+// ---- Payments -------------------------------------------------------
+// The 4-year program is billed as four independent fee periods (see
+// admin.js) -- the detail view below renders one collapsible card per
+// training year, each with its own totals, ledger, and complete/reopen
+// toggle. Nothing here assumes the years share a schedule.
 
 let allPayments = [];
 let currentPaymentUserId = null;
+let currentPaymentYears = [];
+let openYears = new Set();
 
 function formatMoney(amount) {
   return "$" + Number(amount).toFixed(2);
@@ -2627,7 +2621,7 @@ function renderPayments() {
 
   const body = document.getElementById("paymentsBody");
   if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="7" class="empty-state">No matching trainees.</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" class="empty-state">No matching trainees.</td></tr>';
     return;
   }
 
@@ -2637,6 +2631,7 @@ function renderPayments() {
     <tr>
       <td><strong>${escapeHtml(p.fullName)}</strong></td>
       <td>${escapeHtml(p.memberCode)}</td>
+      <td>Year ${p.activeYear}</td>
       <td>${formatMoney(p.totalFee)}</td>
       <td>${formatMoney(p.paid)}</td>
       <td>${formatMoney(p.remaining)}</td>
@@ -2654,7 +2649,11 @@ async function openPaymentDetail(userId) {
   currentPaymentUserId = userId;
   const data = await apiRequest(`/admin/payments/${userId}`);
   if (!data) return;
-  renderPaymentDetail(data);
+  currentPaymentYears = data.years;
+  openYears = new Set([data.activeYear]);
+  document.getElementById("pdName").textContent = data.fullName;
+  document.getElementById("pdMemberCode").textContent = data.memberCode;
+  renderYearCards();
   document.getElementById("paymentDetailWrap").style.display = "block";
   document.getElementById("paymentDetailWrap").scrollIntoView({ behavior: "smooth" });
 }
@@ -2662,77 +2661,196 @@ async function openPaymentDetail(userId) {
 function closePaymentDetail() {
   document.getElementById("paymentDetailWrap").style.display = "none";
   currentPaymentUserId = null;
+  currentPaymentYears = [];
+  openYears = new Set();
 }
 
-function renderPaymentDetail(data) {
-  const s = data.summary;
-  document.getElementById("pdName").textContent = s.fullName;
-  document.getElementById("pdMemberCode").textContent = s.memberCode;
-  document.getElementById("pdTotalFee").textContent = formatMoney(s.totalFee);
-  document.getElementById("pdPaid").textContent = formatMoney(s.paid);
-  document.getElementById("pdRemaining").textContent = formatMoney(s.remaining);
-  document.getElementById("pdStatus").textContent = s.status;
-  document.getElementById("totalFeeInput").value = s.totalFee;
-
-  const historyBody = document.getElementById("paymentHistoryBody");
-  if (!data.transactions.length) {
-    historyBody.innerHTML = '<tr><td colspan="7" class="empty-state">No payments yet.</td></tr>';
-  } else {
-    historyBody.innerHTML = data.transactions
-      .map(
-        (t) => `
-      <tr>
-        <td>${t.id != null ? escapeHtml(t.id) : "&mdash;"}</td>
-        <td>${escapeHtml(s.memberCode)}</td>
-        <td>${escapeHtml(t.date)}</td>
-        <td>${formatMoney(t.amount)}</td>
-        <td>${t.method ? escapeHtml(t.method) : "&mdash;"}</td>
-        <td>${escapeHtml(t.addedByName)}</td>
-        <td>${t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
-      </tr>
-    `
-      )
-      .join("");
+/** Groups a year's ledger by calendar month of payment_date, newest month
+ * first -- this IS the "monthly breakdown," derived straight from the
+ * existing transactions rather than a separately stored schedule, since
+ * years don't share a fixed number/amount of payments. */
+function groupPaymentsByMonth(transactions) {
+  const groups = new Map();
+  for (const t of transactions) {
+    const d = new Date(t.date + "T00:00:00");
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!groups.has(key)) {
+      groups.set(key, { label: d.toLocaleDateString("en-US", { month: "long", year: "numeric" }), transactions: [], subtotal: 0 });
+    }
+    const g = groups.get(key);
+    g.transactions.push(t);
+    g.subtotal += t.amount;
   }
+  return [...groups.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([, g]) => g);
 }
 
-document.getElementById("totalFeeForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+function renderYearCards() {
+  document.getElementById("yearCardsWrap").innerHTML = currentPaymentYears.map(renderYearCard).join("");
+}
+
+function toggleYearCard(year) {
+  if (openYears.has(year)) openYears.delete(year);
+  else openYears.add(year);
+  renderYearCards();
+}
+
+function renderYearCard(entry) {
+  const y = entry.trainingYear;
+  const s = entry.summary;
+  const isOpen = openYears.has(y);
+  const finPill = s.status === "paid" ? "active" : s.status === "unpaid" ? "" : "pending";
+  const isCompleted = entry.periodStatus === "completed";
+  const months = groupPaymentsByMonth(entry.transactions);
+
+  const historyHtml = entry.transactions.length
+    ? months
+        .map(
+          (g) => `
+      <div class="month-group-label"><span>${escapeHtml(g.label)}</span><span>${formatMoney(g.subtotal)}</span></div>
+      <table>
+        <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Added by</th><th>Notes</th></tr></thead>
+        <tbody>
+          ${g.transactions
+            .map(
+              (t) => `
+            <tr>
+              <td>${escapeHtml(t.date)}</td>
+              <td>${formatMoney(t.amount)}</td>
+              <td>${t.method ? escapeHtml(t.method) : "&mdash;"}</td>
+              <td>${escapeHtml(t.addedByName)}</td>
+              <td>${t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>`
+        )
+        .join("")
+    : '<p class="empty-state">No payments recorded for this year yet.</p>';
+
+  return `
+    <div class="year-card ${isOpen ? "open" : ""}" data-year="${y}">
+      <div class="year-card-header" onclick="toggleYearCard(${y})">
+        <div class="year-card-title">
+          <i class="fa fa-chevron-right"></i>
+          <span>Year ${y}</span>
+          <span class="pill ${isCompleted ? "completed" : "active"}">${isCompleted ? "Completed" : "Active"}</span>
+        </div>
+        <div class="year-card-mini">
+          <span>Total: <strong>${formatMoney(s.totalFee)}</strong></span>
+          <span>Paid: <strong>${formatMoney(s.paid)}</strong></span>
+          <span>Remaining: <strong>${formatMoney(s.remaining)}</strong></span>
+          <span class="pill ${finPill}">${escapeHtml(s.status)}</span>
+        </div>
+      </div>
+      <div class="year-card-body">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;">
+          <div class="kpi-card"><label>Total Fee</label><h2>${formatMoney(s.totalFee)}</h2></div>
+          <div class="kpi-card"><label>Paid</label><h2>${formatMoney(s.paid)}</h2></div>
+          <div class="kpi-card"><label>Remaining</label><h2>${formatMoney(s.remaining)}</h2></div>
+          <div class="kpi-card"><label>Status</label><h2>${escapeHtml(s.status)}</h2></div>
+        </div>
+
+        <form onsubmit="submitYearTotalFee(event, ${y})" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:160px;">
+            <label>Total program fee for Year ${y} ($)</label>
+            <input type="number" step="0.01" min="0" id="tf_total_${y}" value="${s.totalFee}" required>
+          </div>
+          <div style="flex:1;min-width:140px;">
+            <label>Discount ($)</label>
+            <input type="number" step="0.01" min="0" id="tf_discount_${y}" value="${s.discount || 0}">
+          </div>
+          <div style="flex:1;min-width:140px;">
+            <label>Next due date</label>
+            <input type="date" id="tf_due_${y}" value="${s.nextDueDate || ""}">
+          </div>
+          <button type="submit" class="btn btn-sm" style="margin-top:0;">Update Year ${y}</button>
+        </form>
+
+        <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Record a new payment for Year ${y}</h4>
+        <form onsubmit="submitYearPayment(event, ${y})" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:end;margin-bottom:16px;">
+          <div><label>Amount ($)</label><input type="number" step="0.01" id="pay_amount_${y}" required></div>
+          <div><label>Date</label><input type="date" id="pay_date_${y}" required></div>
+          <div><label>Method</label><input type="text" id="pay_method_${y}" placeholder="Cash, transfer..."></div>
+          <div><button type="submit" class="btn">Add payment</button></div>
+          <div style="grid-column:1/-1;"><label>Notes (optional)</label><input type="text" id="pay_notes_${y}"></div>
+        </form>
+
+        <button class="btn btn-secondary btn-sm" style="width:auto;" onclick="toggleYearStatus(${y}, '${isCompleted ? "active" : "completed"}')">
+          ${isCompleted ? `Reopen Year ${y}` : `Mark Year ${y} Complete`}
+        </button>
+
+        <h4 style="margin:20px 0 10px;font-size:13px;color:var(--muted);">Monthly payment history</h4>
+        ${historyHtml}
+      </div>
+    </div>
+  `;
+}
+
+async function submitYearTotalFee(event, year) {
+  event.preventDefault();
   if (!currentPaymentUserId) return;
-  const totalFee = Number(document.getElementById("totalFeeInput").value);
-  const result = await apiRequest(`/admin/payments/${currentPaymentUserId}/total-fee`, {
+  const totalFee = Number(document.getElementById(`tf_total_${year}`).value);
+  const discount = Number(document.getElementById(`tf_discount_${year}`).value) || 0;
+  const nextDueDate = document.getElementById(`tf_due_${year}`).value || null;
+
+  const result = await apiRequest(`/admin/payments/${currentPaymentUserId}/years/${year}/total-fee`, {
     method: "PUT",
-    body: JSON.stringify({ totalFee }),
+    body: JSON.stringify({ totalFee, discount, nextDueDate }),
   });
   if (result) {
-    showToast("Total fee updated", "success");
-    renderPaymentDetail(result);
+    showToast(`Year ${year} fee updated`, "success");
+    currentPaymentYears = result.years;
+    renderYearCards();
     loadPayments();
   }
-});
+}
 
-document.getElementById("paymentForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+async function submitYearPayment(event, year) {
+  event.preventDefault();
   if (!currentPaymentUserId) return;
 
   const payload = {
-    amount: Number(document.getElementById("paymentAmount").value),
-    date: document.getElementById("paymentDate").value,
-    method: document.getElementById("paymentMethod").value,
-    notes: document.getElementById("paymentNotes").value,
+    amount: Number(document.getElementById(`pay_amount_${year}`).value),
+    date: document.getElementById(`pay_date_${year}`).value,
+    method: document.getElementById(`pay_method_${year}`).value,
+    notes: document.getElementById(`pay_notes_${year}`).value,
   };
 
-  const result = await apiRequest(`/admin/payments/${currentPaymentUserId}/transactions`, {
+  const result = await apiRequest(`/admin/payments/${currentPaymentUserId}/years/${year}/transactions`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
   if (result) {
-    showToast("Payment recorded", "success");
-    renderPaymentDetail(result);
+    showToast(`Payment recorded for Year ${year}`, "success");
+    currentPaymentYears = result.years;
+    openYears.add(year);
+    renderYearCards();
     loadPayments();
-    document.getElementById("paymentForm").reset();
   }
-});
+}
+
+function toggleYearStatus(year, newStatus) {
+  const isCompleting = newStatus === "completed";
+  openConfirm(
+    isCompleting ? `Mark Year ${year} complete?` : `Reopen Year ${year}?`,
+    isCompleting
+      ? `This closes out Year ${year}'s payment period. Its full history stays exactly as-is -- it just moves out of the way as the active year. You can reopen it later if needed.`
+      : `This reopens Year ${year} and marks it active again.`,
+    async () => {
+      const result = await apiRequest(`/admin/payments/${currentPaymentUserId}/years/${year}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ periodStatus: newStatus }),
+      });
+      if (result) {
+        showToast(`Year ${year} ${isCompleting ? "marked complete" : "reopened"}`, "success");
+        currentPaymentYears = result.years;
+        renderYearCards();
+        loadPayments();
+      }
+    }
+  );
+}
 
 // ---- Events -------------------------------------------------------
 

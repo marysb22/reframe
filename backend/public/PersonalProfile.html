@@ -940,6 +940,69 @@
             color: var(--info);
         }
 
+        .year-card {
+            background: var(--surface);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md, 14px);
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+        .year-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            cursor: pointer;
+            flex-wrap: wrap;
+        }
+        .year-card-header:hover {
+            background: var(--surface-2);
+        }
+        .year-card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .year-card-title i.fa-chevron-right {
+            transition: transform .15s ease;
+            color: var(--muted);
+            font-size: 12px;
+        }
+        .year-card.open .year-card-title i.fa-chevron-right {
+            transform: rotate(90deg);
+        }
+        .year-card-mini {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--muted);
+            flex-wrap: wrap;
+        }
+        .year-card-mini strong {
+            color: var(--text);
+        }
+        .year-card-body {
+            display: none;
+            padding: 0 18px 18px;
+            border-top: 1px solid var(--border-soft);
+        }
+        .year-card.open .year-card-body {
+            display: block;
+        }
+        .month-group-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            margin: 16px 0 6px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border-soft);
+            display: flex;
+            justify-content: space-between;
+        }
+
         /* ===== Modal (matches Totdashboard.html/masterDashborad.html) ===== */
         .modal-overlay {
             display: none;
@@ -2765,43 +2828,10 @@
                         </div>
                     </div>
                     <div class="readonly-banner"><i class="fa fa-eye"></i><span>View only &mdash; payments are recorded exclusively by the Admin. Your supervisor has no access to this information.</span></div>
-                    <div class="notice-banner">
-                        <i class="fa fa-triangle-exclamation"></i>
-                        <span>Two backend gaps here: (1) there's currently no self-service read endpoint for a student's own payment record &mdash; the Admin Dashboard can only read <code>/admin/payments/:userId</code> as an admin, so this calls a new guessed <code>GET /profile/payments</code> that needs to exist and simply scope that same query to <code>req.user.id</code>. (2) "Next payment due date" has no column anywhere in <code>payment_profiles</code> or <code>payment_transactions</code> &mdash; that field will stay blank until a due-date column (or a computed rule) is added.</span>
+                    <p class="hint" style="margin:0 0 16px;">Your 4-year program is billed as four independent yearly periods &mdash; each year has its own total fee, ledger, and monthly breakdown. Nothing here mixes across years.</p>
+                    <div id="yearCardsWrap">
+                        <div class="empty-state">Loading...</div>
                     </div>
-                    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
-                        <div class="kpi-card"><label>Total program fee</label>
-                            <h2 id="payTotal">&mdash;</h2>
-                        </div>
-                        <div class="kpi-card"><label>Paid</label>
-                            <h2 id="payPaid">&mdash;</h2>
-                        </div>
-                        <div class="kpi-card"><label>Remaining</label>
-                            <h2 id="payRemaining">&mdash;</h2>
-                        </div>
-                        <div class="kpi-card"><label>Status</label>
-                            <h2 id="payStatus">&mdash;</h2>
-                        </div>
-                    </div>
-                    <p class="card-subtitle" style="margin-top:18px;">Next payment due: <strong id="payNextDue">Not available yet</strong></p>
-                    <h4 style="margin:20px 0 10px;font-size:13px;color:var(--muted);">Payment history</h4>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Payment ID</th>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Method</th>
-                                <th>Recorded by</th>
-                                <th>Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody id="paymentHistoryBody">
-                            <tr>
-                                <td colspan="6" class="empty-state">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </section>
             </section>
 
@@ -4266,39 +4296,112 @@ async function loadAnnouncements() {
     .join("");
 }
 
-// ---- Payments (read-only, backend gaps flagged) --------------------------
+// ---- Payments (read-only, one independent fee period per training year) --
+// The 4-year program is billed as four separate periods -- each year card
+// below is fully independent (own total fee, ledger, and monthly
+// breakdown). A year the Admin hasn't configured yet just renders as a
+// $0/not-started placeholder rather than an error.
+
+let paymentOpenYears = new Set();
+
+/** Groups a year's ledger by calendar month of payment_date, newest month
+ * first -- the "monthly breakdown" is derived straight from the ledger
+ * (years aren't assumed to share a fixed schedule). */
+function groupPaymentsByMonth(transactions) {
+  const groups = new Map();
+  for (const t of transactions) {
+    const d = new Date(t.date + "T00:00:00");
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!groups.has(key)) {
+      groups.set(key, { label: d.toLocaleDateString("en-US", { month: "long", year: "numeric" }), transactions: [], subtotal: 0 });
+    }
+    const g = groups.get(key);
+    g.transactions.push(t);
+    g.subtotal += t.amount;
+  }
+  return [...groups.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([, g]) => g);
+}
+
+function renderPaymentYearCard(entry) {
+  const y = entry.trainingYear;
+  const s = entry.summary;
+  const isOpen = paymentOpenYears.has(y);
+  const isCompleted = entry.periodStatus === "completed";
+  const months = groupPaymentsByMonth(entry.transactions);
+
+  const historyHtml = entry.transactions.length
+    ? months
+        .map(
+          (g) => `
+      <div class="month-group-label"><span>${escapeHtml(g.label)}</span><span>${formatMoney(g.subtotal)}</span></div>
+      <table>
+        <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Recorded by</th><th>Notes</th></tr></thead>
+        <tbody>
+          ${g.transactions
+            .map(
+              (t) => `
+            <tr>
+              <td>${escapeHtml(t.date)}</td>
+              <td>${formatMoney(t.amount)}</td>
+              <td>${escapeHtml(t.method || "\u2014")}</td>
+              <td>${escapeHtml(t.addedByName || "\u2014")}</td>
+              <td>${escapeHtml(t.notes || "\u2014")}</td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>`
+        )
+        .join("")
+    : '<p class="empty-state">No payments recorded for this year yet.</p>';
+
+  return `
+    <div class="year-card ${isOpen ? "open" : ""}" data-year="${y}">
+      <div class="year-card-header" onclick="togglePaymentYearCard(${y})">
+        <div class="year-card-title">
+          <i class="fa fa-chevron-right"></i>
+          <span>Year ${y}</span>
+          <span class="pill ${isCompleted ? "completed" : "active"}">${isCompleted ? "Completed" : "Active"}</span>
+        </div>
+        <div class="year-card-mini">
+          <span>Total: <strong>${formatMoney(s.totalFee)}</strong></span>
+          <span>Paid: <strong>${formatMoney(s.paid)}</strong></span>
+          <span>Remaining: <strong>${formatMoney(s.remaining)}</strong></span>
+          <span class="pill ${s.status || "unpaid"}">${escapeHtml(s.status || "unpaid")}</span>
+        </div>
+      </div>
+      <div class="year-card-body">
+        <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin:16px 0;">
+          <div class="kpi-card"><label>Total program fee</label><h2>${formatMoney(s.totalFee)}</h2></div>
+          <div class="kpi-card"><label>Paid</label><h2>${formatMoney(s.paid)}</h2></div>
+          <div class="kpi-card"><label>Remaining</label><h2>${formatMoney(s.remaining)}</h2></div>
+          <div class="kpi-card"><label>Status</label><h2>${escapeHtml(s.status || "unpaid")}</h2></div>
+        </div>
+        <p class="card-subtitle">Next payment due: <strong>${s.nextDueDate ? new Date(s.nextDueDate).toLocaleDateString() : "Not available yet"}</strong></p>
+        <h4 style="margin:16px 0 10px;font-size:13px;color:var(--muted);">Monthly payment history</h4>
+        ${historyHtml}
+      </div>
+    </div>
+  `;
+}
+
+function togglePaymentYearCard(year) {
+  if (paymentOpenYears.has(year)) paymentOpenYears.delete(year);
+  else paymentOpenYears.add(year);
+  document.querySelectorAll("#yearCardsWrap .year-card").forEach((card) => {
+    card.classList.toggle("open", paymentOpenYears.has(Number(card.dataset.year)));
+  });
+}
 
 async function loadPayments() {
+  const wrap = document.getElementById("yearCardsWrap");
   const data = await apiRequest("/profile/payments");
   if (!data) {
-    document.getElementById("paymentHistoryBody").innerHTML = '<tr><td colspan="6" class="empty-state">Couldn\'t load payment info. This endpoint may not exist on the backend yet.</td></tr>';
+    wrap.innerHTML = '<div class="empty-state">Couldn\'t load payment info.</div>';
     return;
   }
-  const s = data.summary || {};
-  document.getElementById("payTotal").textContent = formatMoney(s.totalFee);
-  document.getElementById("payPaid").textContent = formatMoney(s.paid);
-  document.getElementById("payRemaining").textContent = formatMoney(s.remaining);
-  document.getElementById("payStatus").innerHTML = `<span class="pill ${s.status || "unpaid"}">${escapeHtml(s.status || "unpaid")}</span>`;
-  document.getElementById("payNextDue").textContent = s.nextDueDate ? new Date(s.nextDueDate).toLocaleDateString() : "Not available yet";
-
-  const body = document.getElementById("paymentHistoryBody");
-  const transactions = data.transactions || [];
-  if (!transactions.length) {
-    body.innerHTML = '<tr><td colspan="6" class="empty-state">No payments recorded yet.</td></tr>';
-    return;
-  }
-  body.innerHTML = transactions
-    .map((t) => `
-      <tr>
-        <td>${escapeHtml(nc(t.id, "\u2014"))}</td>
-        <td>${escapeHtml(t.date)}</td>
-        <td>${formatMoney(t.amount)}</td>
-        <td>${escapeHtml(t.method || "\u2014")}</td>
-        <td>${escapeHtml(t.addedByName || "\u2014")}</td>
-        <td>${escapeHtml(t.notes || "\u2014")}</td>
-      </tr>
-    `)
-    .join("");
+  paymentOpenYears = new Set([data.activeYear]);
+  wrap.innerHTML = data.years.map(renderPaymentYearCard).join("");
 }
 
 // ---- Calendar -----------------------------------------------------------

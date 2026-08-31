@@ -1217,13 +1217,13 @@ router.get(
 
     const progress = await computeProgressSummary(db, id);
 
-    const paymentsRow = await getPaymentsRow(db, id);
-    const transactions = await getTransactions(db, id);
-    const payment = toPaymentSummary(
-      { id, full_name: profile.full_name, member_code: profile.memberCode },
-      paymentsRow,
-      transactions
+    const { years: paymentYears, activeYear: paymentActiveYear } = await getYearlyPayments(
+      db,
+      id,
+      profile.full_name,
+      profile.memberCode
     );
+    const activePaymentYear = paymentYears.find((y) => y.trainingYear === paymentActiveYear);
 
     const { masterTrainer, totTrainers, trainingHours } = await getTrainersAndHours(db, id, profile.full_name);
 
@@ -1232,8 +1232,9 @@ router.get(
       records,
       documents,
       progress,
-      payment,
-      paymentTransactions: transactions.map(toPaymentTransaction),
+      payment: activePaymentYear.summary,
+      paymentTransactions: activePaymentYear.transactions,
+      paymentActiveYear,
       masterTrainer,
       totTrainers,
       trainingHours,
@@ -1502,40 +1503,77 @@ router.delete(
   })
 );
 
-// ---- Payments (financial ledger, admin-managed) -------------------------
+// ---- Payments (financial ledger, admin-managed, one independent fee ----
+// agreement per training year 1-4) -------------------------------------
 // Authorization for these tables is enforced entirely at the Express
 // layer: this whole router requires requireAdmin (see `router.use` above)
 // -- there is no Row-Level Security in MySQL to lean on the way the
 // previous Postgres schema's (defense-in-depth, not the actual
 // enforcement point) RLS policies did.
+//
+// The 4-year program is billed as four independent periods (different
+// schedules, amounts, and payment counts are expected across years), so
+// `payments` now has one row per (student, training_year) instead of one
+// row per student, and every `payment_transactions` entry is tied to a
+// specific year's row via payment_id. A year with no `payments` row yet
+// simply hasn't been configured -- it still renders as a $0/not-started
+// placeholder rather than being treated as an error.
 
-async function getPaymentsRow(db, studentId) {
-  const { rows } = await db.query("SELECT * FROM payments WHERE student_id = ?", [studentId]);
+const TRAINING_YEARS = [1, 2, 3, 4];
+
+async function getPaymentsRow(db, studentId, trainingYear) {
+  const { rows } = await db.query("SELECT * FROM payments WHERE student_id = ? AND training_year = ?", [
+    studentId,
+    trainingYear,
+  ]);
   return rows[0] || null;
 }
-async function getTransactions(db, studentId) {
+async function getTransactionsForPayment(db, paymentId) {
+  if (!paymentId) return [];
   const { rows } = await db.query(
     `SELECT pt.*, uc.member_code AS added_by_code, COALESCE(a.full_name, sup.full_name) AS added_by_name
      FROM payment_transactions pt
      JOIN user_credentials uc ON uc.id = pt.added_by
      LEFT JOIN admin_users a ON a.id = pt.added_by
      LEFT JOIN supervisors sup ON sup.id = pt.added_by
-     WHERE pt.student_id = ?
+     WHERE pt.payment_id = ?
      ORDER BY pt.payment_date DESC, pt.created_at DESC`,
-    [studentId]
+    [paymentId]
   );
   return rows;
 }
-/** Keeps the stored payments.status column in sync with the live ledger total, for any other query that filters/sorts by it directly. */
-async function recomputeStoredStatus(db, studentId) {
-  const paymentsRow = await getPaymentsRow(db, studentId);
-  const transactions = await getTransactions(db, studentId);
+/** Keeps the stored payments.status column in sync with the live ledger total for this year's row, for any other query that filters/sorts by it directly. */
+async function recomputeStoredStatus(db, paymentId) {
+  const { rows } = await db.query("SELECT * FROM payments WHERE id = ?", [paymentId]);
+  const paymentsRow = rows[0];
+  const transactions = await getTransactionsForPayment(db, paymentId);
   const paidCents = transactions.reduce((sum, t) => sum + t.amount_cents, 0);
   const netFeeCents = Math.max((paymentsRow?.total_fee_cents || 0) - (paymentsRow?.discount_cents || 0), 0);
   const remaining = netFeeCents - paidCents;
   const status = paidCents > 0 && remaining <= 0 ? "paid" : paidCents > 0 ? "partial" : "unpaid";
-  await db.query("UPDATE payments SET status = ?, updated_at = NOW() WHERE student_id = ?", [status, studentId]);
+  await db.query("UPDATE payments SET status = ?, updated_at = NOW() WHERE id = ?", [status, paymentId]);
   return { paymentsRow: { ...paymentsRow, status }, transactions };
+}
+
+/** Builds all 4 training-year entries for a student and picks the "active"
+ * one -- the first year not yet marked completed (period_status is a
+ * separate, explicitly admin-set lifecycle flag, independent of whether
+ * the year's balance has reached zero, since a year's real close-out is
+ * an administrative decision, not something derivable from the ledger). */
+async function getYearlyPayments(db, studentId, fullName, memberCode) {
+  const years = [];
+  for (const trainingYear of TRAINING_YEARS) {
+    const paymentsRow = await getPaymentsRow(db, studentId, trainingYear);
+    const transactions = paymentsRow ? await getTransactionsForPayment(db, paymentsRow.id) : [];
+    years.push({
+      trainingYear,
+      periodStatus: paymentsRow?.period_status || "active",
+      summary: toPaymentSummary({ id: studentId, full_name: fullName, member_code: memberCode }, paymentsRow, transactions),
+      transactions: transactions.map(toPaymentTransaction),
+    });
+  }
+  const activeYear = years.find((y) => y.periodStatus !== "completed")?.trainingYear || 4;
+  return { years, activeYear };
 }
 
 // GET /api/admin/payments?search=
@@ -1559,18 +1597,16 @@ router.get(
 
     const summaries = [];
     for (const s of studentRows) {
-      const paymentsRow = await getPaymentsRow(db, s.id);
-      const transactions = await getTransactions(db, s.id);
-      summaries.push(
-        toPaymentSummary({ id: s.id, full_name: s.full_name, member_code: s.member_code }, paymentsRow, transactions)
-      );
+      const { years, activeYear } = await getYearlyPayments(db, s.id, s.full_name, s.member_code);
+      const active = years.find((y) => y.trainingYear === activeYear);
+      summaries.push({ ...active.summary, activeYear });
     }
 
     res.json({ payments: summaries });
   })
 );
 
-// GET /api/admin/payments/:studentId
+// GET /api/admin/payments/:studentId — all 4 years
 router.get(
   "/payments/:studentId",
   asyncRoute(async (req, res, db) => {
@@ -1583,22 +1619,20 @@ router.get(
     );
     if (!rows.length) return res.status(404).json({ error: "Trainee not found" });
 
-    const paymentsRow = await getPaymentsRow(db, studentId);
-    const transactions = await getTransactions(db, studentId);
+    const { years, activeYear } = await getYearlyPayments(db, studentId, rows[0].full_name, rows[0].member_code);
 
-    res.json({
-      summary: toPaymentSummary({ id: rows[0].id, full_name: rows[0].full_name, member_code: rows[0].member_code }, paymentsRow, transactions),
-      transactions: transactions.map(toPaymentTransaction),
-    });
+    res.json({ fullName: rows[0].full_name, memberCode: rows[0].member_code, activeYear, years });
   })
 );
 
-// PUT /api/admin/payments/:studentId/total-fee  { totalFee, discount?, paymentPlan?, nextDueDate? }
+// PUT /api/admin/payments/:studentId/years/:year/total-fee  { totalFee, discount?, paymentPlan?, nextDueDate? }
 router.put(
-  "/payments/:studentId/total-fee",
+  "/payments/:studentId/years/:year/total-fee",
   asyncRoute(async (req, res, db) => {
     const studentId = parseIdParam(req.params.studentId);
+    const trainingYear = Number(req.params.year);
     if (!studentId) return res.status(400).json({ error: "Invalid student id" });
+    if (!TRAINING_YEARS.includes(trainingYear)) return res.status(400).json({ error: "year must be 1-4" });
 
     const { rows: studentRows } = await db.query("SELECT id FROM students WHERE id = ?", [studentId]);
     if (!studentRows.length) return res.status(404).json({ error: "Trainee not found" });
@@ -1614,44 +1648,43 @@ router.put(
       : null;
     const nextDueDate = req.body?.nextDueDate || null;
 
-    const existing = await getPaymentsRow(db, studentId);
+    const existing = await getPaymentsRow(db, studentId, trainingYear);
+    let paymentId;
     if (existing) {
       await db.query(
         `UPDATE payments SET total_fee_cents = ?, discount_cents = ?, payment_plan = ?, next_due_date = ?, updated_at = NOW()
-         WHERE student_id = ?`,
-        [totalFeeCents, discountCents, paymentPlan, nextDueDate, studentId]
+         WHERE id = ?`,
+        [totalFeeCents, discountCents, paymentPlan, nextDueDate, existing.id]
       );
+      paymentId = existing.id;
     } else {
-      await db.query(
-        `INSERT INTO payments (student_id, total_fee_cents, discount_cents, payment_plan, next_due_date)
-         VALUES (?, ?, ?, ?, ?)`,
-        [studentId, totalFeeCents, discountCents, paymentPlan, nextDueDate]
+      const { insertId } = await db.query(
+        `INSERT INTO payments (student_id, training_year, total_fee_cents, discount_cents, payment_plan, next_due_date)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [studentId, trainingYear, totalFeeCents, discountCents, paymentPlan, nextDueDate]
       );
+      paymentId = insertId;
     }
 
-    const { paymentsRow, transactions } = await recomputeStoredStatus(db, studentId);
+    await recomputeStoredStatus(db, paymentId);
     const { rows: nameRows } = await db.query(
       "SELECT uc.member_code, st.full_name FROM user_credentials uc JOIN students st ON st.id = uc.id WHERE uc.id = ?",
       [studentId]
     );
+    const { years, activeYear } = await getYearlyPayments(db, studentId, nameRows[0].full_name, nameRows[0].member_code);
 
-    res.json({
-      summary: toPaymentSummary(
-        { id: studentId, full_name: nameRows[0].full_name, member_code: nameRows[0].member_code },
-        paymentsRow,
-        transactions
-      ),
-      transactions: transactions.map(toPaymentTransaction),
-    });
+    res.json({ fullName: nameRows[0].full_name, memberCode: nameRows[0].member_code, activeYear, years });
   })
 );
 
-// POST /api/admin/payments/:studentId/transactions  { amount, date, method, notes }
+// POST /api/admin/payments/:studentId/years/:year/transactions  { amount, date, method, notes }
 router.post(
-  "/payments/:studentId/transactions",
+  "/payments/:studentId/years/:year/transactions",
   asyncRoute(async (req, res, db) => {
     const studentId = parseIdParam(req.params.studentId);
+    const trainingYear = Number(req.params.year);
     if (!studentId) return res.status(400).json({ error: "Invalid student id" });
+    if (!TRAINING_YEARS.includes(trainingYear)) return res.status(400).json({ error: "year must be 1-4" });
 
     const { rows: studentRows } = await db.query("SELECT id FROM students WHERE id = ?", [studentId]);
     if (!studentRows.length) return res.status(404).json({ error: "Trainee not found" });
@@ -1664,14 +1697,26 @@ router.post(
     if (!date) return res.status(400).json({ error: "date is required" });
     const amountCents = Math.round(numericAmount * 100);
 
-    // Duplicate-submission guard (same student/amount/date/method within
+    // A year's payments row may not exist yet if the admin records a
+    // payment before ever setting a total fee for it -- create it with a
+    // $0 fee so the ledger entry always has a year to attach to.
+    let paymentsRow = await getPaymentsRow(db, studentId, trainingYear);
+    if (!paymentsRow) {
+      await db.query("INSERT INTO payments (student_id, training_year, total_fee_cents) VALUES (?, ?, 0)", [
+        studentId,
+        trainingYear,
+      ]);
+      paymentsRow = await getPaymentsRow(db, studentId, trainingYear);
+    }
+
+    // Duplicate-submission guard (same year/amount/date/method within
     // the last 10 seconds) -- catches accidental double-clicks without
     // blocking legitimate repeat payments made later.
     const { rows: dupeRows } = await db.query(
       `SELECT id FROM payment_transactions
-       WHERE student_id = ? AND amount_cents = ? AND payment_date = ? AND COALESCE(method,'') = COALESCE(?,'')
+       WHERE payment_id = ? AND amount_cents = ? AND payment_date = ? AND COALESCE(method,'') = COALESCE(?,'')
          AND created_at >= NOW() - INTERVAL 10 SECOND`,
-      [studentId, amountCents, date, method || null]
+      [paymentsRow.id, amountCents, date, method || null]
     );
     if (dupeRows.length) {
       return res.status(409).json({
@@ -1680,29 +1725,77 @@ router.post(
     }
 
     await db.query(
-      `INSERT INTO payment_transactions (student_id, amount_cents, transaction_type, payment_date, method, added_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [studentId, amountCents, amountCents < 0 ? "refund" : "payment", date, method || null, req.user.id, notes || null]
+      `INSERT INTO payment_transactions (student_id, payment_id, amount_cents, transaction_type, payment_date, method, added_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        studentId,
+        paymentsRow.id,
+        amountCents,
+        amountCents < 0 ? "refund" : "payment",
+        date,
+        method || null,
+        req.user.id,
+        notes || null,
+      ]
     );
     await db.query(
       "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'payment_recorded', 'payment_transactions', ?, ?)",
-      [req.user.id, studentId, JSON.stringify({ amountCents, date, method })]
+      [req.user.id, studentId, JSON.stringify({ amountCents, date, method, trainingYear })]
     );
 
-    const { paymentsRow, transactions } = await recomputeStoredStatus(db, studentId);
+    await recomputeStoredStatus(db, paymentsRow.id);
     const { rows: nameRows } = await db.query(
       "SELECT uc.member_code, st.full_name FROM user_credentials uc JOIN students st ON st.id = uc.id WHERE uc.id = ?",
       [studentId]
     );
+    const { years, activeYear } = await getYearlyPayments(db, studentId, nameRows[0].full_name, nameRows[0].member_code);
 
-    res.status(201).json({
-      summary: toPaymentSummary(
-        { id: studentId, full_name: nameRows[0].full_name, member_code: nameRows[0].member_code },
-        paymentsRow,
-        transactions
-      ),
-      transactions: transactions.map(toPaymentTransaction),
-    });
+    res.status(201).json({ fullName: nameRows[0].full_name, memberCode: nameRows[0].member_code, activeYear, years });
+  })
+);
+
+// PUT /api/admin/payments/:studentId/years/:year/status  { periodStatus: 'active'|'completed' }
+router.put(
+  "/payments/:studentId/years/:year/status",
+  asyncRoute(async (req, res, db) => {
+    const studentId = parseIdParam(req.params.studentId);
+    const trainingYear = Number(req.params.year);
+    if (!studentId) return res.status(400).json({ error: "Invalid student id" });
+    if (!TRAINING_YEARS.includes(trainingYear)) return res.status(400).json({ error: "year must be 1-4" });
+
+    const periodStatus = req.body?.periodStatus;
+    if (!["active", "completed"].includes(periodStatus)) {
+      return res.status(400).json({ error: "periodStatus must be 'active' or 'completed'" });
+    }
+
+    const { rows: studentRows } = await db.query("SELECT id FROM students WHERE id = ?", [studentId]);
+    if (!studentRows.length) return res.status(404).json({ error: "Trainee not found" });
+
+    const existing = await getPaymentsRow(db, studentId, trainingYear);
+    if (existing) {
+      await db.query("UPDATE payments SET period_status = ?, updated_at = NOW() WHERE id = ?", [
+        periodStatus,
+        existing.id,
+      ]);
+    } else {
+      await db.query("INSERT INTO payments (student_id, training_year, total_fee_cents, period_status) VALUES (?, ?, 0, ?)", [
+        studentId,
+        trainingYear,
+        periodStatus,
+      ]);
+    }
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'payment_year_status_changed', 'payments', ?, ?)",
+      [req.user.id, studentId, JSON.stringify({ trainingYear, periodStatus })]
+    );
+
+    const { rows: nameRows } = await db.query(
+      "SELECT uc.member_code, st.full_name FROM user_credentials uc JOIN students st ON st.id = uc.id WHERE uc.id = ?",
+      [studentId]
+    );
+    const { years, activeYear } = await getYearlyPayments(db, studentId, nameRows[0].full_name, nameRows[0].member_code);
+
+    res.json({ fullName: nameRows[0].full_name, memberCode: nameRows[0].member_code, activeYear, years });
   })
 );
 

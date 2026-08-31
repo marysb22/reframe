@@ -620,17 +620,20 @@ CREATE TABLE calendar_events (
 
 CREATE TABLE payments (
   id               BIGINT AUTO_INCREMENT PRIMARY KEY,
-  student_id       BIGINT NOT NULL UNIQUE,
+  student_id       BIGINT NOT NULL,
+  training_year    TINYINT UNSIGNED NOT NULL DEFAULT 1 CHECK (training_year BETWEEN 1 AND 4),
   total_fee_cents  INT NOT NULL DEFAULT 0 CHECK (total_fee_cents >= 0),
   discount_cents   INT NOT NULL DEFAULT 0 CHECK (discount_cents >= 0),
   payment_plan     VARCHAR(20) CHECK (payment_plan IN ('full', 'installment', 'custom')),
   next_due_date    DATE,
   status           VARCHAR(20) NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'partial', 'paid')),
+  period_status    VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (period_status IN ('active', 'completed')),
   created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_payments_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+  CONSTRAINT fk_payments_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT uq_payments_student_year UNIQUE (student_id, training_year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='One fee agreement per student. status and remaining balance are recomputed by the application whenever payment_transactions changes for this student (SUM(amount_cents) vs total_fee_cents - discount_cents).';
+  COMMENT='One fee agreement per student PER TRAINING YEAR (1-4) -- the 4-year program is billed as four independent periods, never one continuous balance. status and remaining balance are recomputed by the application whenever payment_transactions changes for this row (SUM(amount_cents) vs total_fee_cents - discount_cents). period_status is a separate, admin-set lifecycle flag (active/completed) -- a year can be marked complete independently of whether its balance has reached zero.';
 
 CREATE TABLE invoices (
   id              BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -649,6 +652,7 @@ CREATE TABLE invoices (
 CREATE TABLE payment_transactions (
   id                BIGINT AUTO_INCREMENT PRIMARY KEY,
   student_id        BIGINT NOT NULL,
+  payment_id        BIGINT NOT NULL,            -- which year's fee agreement (payments row) this ledger entry belongs to
   invoice_id        BIGINT,
   amount_cents      INT NOT NULL,               -- negative = refund/adjustment, per append-only ledger convention
   transaction_type  VARCHAR(20) NOT NULL DEFAULT 'payment' CHECK (transaction_type IN ('payment', 'refund', 'adjustment')),
@@ -658,10 +662,13 @@ CREATE TABLE payment_transactions (
   notes             TEXT,
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_paytx_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_paytx_payment FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE CASCADE,
   CONSTRAINT fk_paytx_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE SET NULL,
   CONSTRAINT fk_paytx_added_by FOREIGN KEY (added_by) REFERENCES user_credentials(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='Append-only ledger -- never UPDATE or DELETE a transaction. Corrections are new rows with transaction_type = refund/adjustment and an explanatory note, preserving full financial history permanently.';
+  COMMENT='Append-only ledger -- never UPDATE or DELETE a transaction. Corrections are new rows with transaction_type = refund/adjustment and an explanatory note, preserving full financial history permanently. Scoped to one training year via payment_id.';
+
+CREATE INDEX idx_paytx_payment ON payment_transactions(payment_id);
 
 
 -- =============================================================================
