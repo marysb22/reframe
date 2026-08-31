@@ -205,15 +205,10 @@ module.exports = {
   assignmentAttachmentUpload,
   chatAttachmentUpload,
   requireValidFileContent,
-  // Ready-made per-upload-type content checks, matching each config's own
-  // fileFilter allowed-type list above -- insert right after the matching
-  // upload middleware in every route that accepts a file.
-  checkEventImageContent: requireValidFileContent(["image"]),
-  checkPhotoContent: requireValidFileContent(["image"]),
-  checkCvContent: requireValidFileContent(["pdf"]),
-  checkDocumentContent: requireValidFileContent(["pdf", "office", "image"]),
-  checkMaterialContent: requireValidFileContent(["pdf", "office", "image", "media"]),
-  checkSubmissionContent: requireValidFileContent(["pdf", "office", "image"]),
-  checkAssignmentAttachmentContent: requireValidFileContent(["pdf", "office", "image"]),
+  // Only chatRooms.js's multipart middleware chain is array-based, so
+  // that's the only route that consumes a ready-made middleware here.
+  // Every other upload route (admin/designer/profile/supervisor) uses
+  // multer's callback style instead and calls checkFileContent(...)
+  // directly inline -- see those routes for the equivalent check.
   checkChatAttachmentContent: requireValidFileContent(["pdf", "office", "image", "zip"]),
 };

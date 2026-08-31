@@ -4780,6 +4780,26 @@ function openGradeModal(id) {
     <div style="color:var(--muted);font-size:12.5px;margin-top:2px;">${escapeHtml(a.studentName)} &middot; due ${a.dueDate ? escapeHtml(String(a.dueDate).slice(0, 10)) : "no date"}</div>
   `;
   const s = a.submission;
+  // A resubmission never overwrites a prior attempt -- each is its own row,
+  // with its own grade/feedback if it was graded before the trainee
+  // resubmitted. Surface those here so grading a new attempt isn't done
+  // blind to what was already given last time.
+  const priorSubmissions = (a.submissions || []).filter((x) => !x.isCurrent);
+  const previousAttemptsHtml = priorSubmissions.length
+    ? `<div style="margin-top:10px;">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;">Previous attempts (${priorSubmissions.length})</div>
+        ${priorSubmissions.slice().reverse().map((p) => `
+          <div class="record-item" style="opacity:.8;margin-bottom:6px;">
+            <div>
+              <a href="${UPLOADS}/submissions/${p.filename}${TOKEN_Q}" target="_blank" rel="noopener"><i class="fa fa-file-arrow-down"></i> ${escapeHtml(p.originalName)}</a>
+              <div class="rmeta">Submitted ${new Date(p.submittedAt).toLocaleString()}</div>
+              ${p.notes ? `<div class="rcontent">${escapeHtml(p.notes)}</div>` : ""}
+              ${p.status === "graded" ? `<div class="rmeta">Graded: ${p.score != null ? p.score : "&mdash;"}${a.maxScore ? ` / ${a.maxScore}` : ""}${p.feedback ? ` &middot; ${escapeHtml(p.feedback)}` : ""}</div>` : ""}
+            </div>
+            <span class="pill ${p.status === "graded" ? "completed" : "scheduled"}">${escapeHtml(ASSIGNMENT_STATUS_LABEL[p.status] || p.status)}</span>
+          </div>`).join("")}
+      </div>`
+    : "";
   document.getElementById("gradeSubmissionInfo").innerHTML = `
     <div class="record-item">
       <div>
@@ -4789,6 +4809,7 @@ function openGradeModal(id) {
       </div>
       <span class="pill ${s.status === "graded" ? "completed" : "scheduled"}">${escapeHtml(ASSIGNMENT_STATUS_LABEL[s.status] || s.status)}</span>
     </div>
+    ${previousAttemptsHtml}
   `;
   document.getElementById("gradeScore").value = nc(s.score, "");
   document.getElementById("gradeFeedback").value = s.feedback || "";
@@ -5196,6 +5217,12 @@ async function openGcRoom(roomId) {
 }
 
 let gcLastRenderedMsg = null; // { senderId, dateKey, time } -- drives grouping/date-separator decisions across both a full reload and a single appended message
+// The backend's message-history endpoint is already cursor-paginated
+// (?before=<id>&limit=, capped at 100) -- these two track what's needed to
+// actually call it for anything past the first page, which nothing in the
+// UI did before.
+let gcOldestMessageId = null;
+let gcHasMoreHistory = false;
 
 async function loadGcThread(roomId) {
   const data = await apiRequest(`/chat-rooms/${roomId}/messages?limit=50`);
@@ -5204,10 +5231,61 @@ async function loadGcThread(roomId) {
   gcLastRenderedMsg = null;
   if (!data.messages.length) {
     thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>';
+    gcOldestMessageId = null;
+    gcHasMoreHistory = false;
     return;
   }
   thread.innerHTML = data.messages.map(gcMessageHtml).join("");
+  gcOldestMessageId = data.messages[0].id;
+  gcHasMoreHistory = data.hasMore;
+  renderGcLoadMoreButton(thread);
   thread.scrollTop = thread.scrollHeight;
+}
+
+function renderGcLoadMoreButton(thread) {
+  const existing = document.getElementById("gcLoadMoreBtn");
+  if (existing) existing.remove();
+  if (!gcHasMoreHistory) return;
+  const btn = document.createElement("button");
+  btn.id = "gcLoadMoreBtn";
+  btn.type = "button";
+  btn.className = "btn btn-secondary btn-sm";
+  btn.style.cssText = "display:block;margin:4px auto 10px;";
+  btn.textContent = "Load older messages";
+  btn.addEventListener("click", loadOlderGcMessages);
+  thread.insertBefore(btn, thread.firstChild);
+}
+
+async function loadOlderGcMessages() {
+  if (!gcOldestMessageId) return;
+  const thread = document.getElementById("gcThread");
+  const btn = document.getElementById("gcLoadMoreBtn");
+  if (btn) btn.textContent = "Loading...";
+  const data = await apiRequest(`/chat-rooms/${gcActiveRoomId}/messages?before=${gcOldestMessageId}&limit=50`);
+  if (!data) return;
+  if (!data.messages.length) {
+    gcHasMoreHistory = false;
+    if (btn) btn.remove();
+    return;
+  }
+  const previousScrollHeight = thread.scrollHeight;
+  const previousScrollTop = thread.scrollTop;
+  // This older batch groups/date-separates against itself, not the newer
+  // batch already on screen -- saved and restored so a live message
+  // appended afterward still groups correctly against the newest message.
+  const savedLastRendered = gcLastRenderedMsg;
+  gcLastRenderedMsg = null;
+  const html = data.messages.map(gcMessageHtml).join("");
+  gcLastRenderedMsg = savedLastRendered;
+  if (btn) btn.remove();
+  thread.insertAdjacentHTML("afterbegin", html);
+  gcOldestMessageId = data.messages[0].id;
+  gcHasMoreHistory = data.hasMore;
+  renderGcLoadMoreButton(thread);
+  // Preserve the reader's scroll position -- prepending content above the
+  // viewport would otherwise yank the view down to match the new, taller
+  // scrollHeight.
+  thread.scrollTop = previousScrollTop + (thread.scrollHeight - previousScrollHeight);
 }
 
 function appendGcMessage(m) {

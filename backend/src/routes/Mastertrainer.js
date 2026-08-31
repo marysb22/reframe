@@ -196,6 +196,13 @@ router.get(
             });
         }
 
+        // assignments_overdue excludes 'submitted' as well as 'completed' --
+        // once a trainee has turned something in, it's no longer overdue
+        // from their side (the ball is in the trainer's court to grade it).
+        // This must match assignmentsQuery.js's definition exactly (the one
+        // the Trainee's and Trainer's own assignment views already use), or
+        // the same assignment shows as "Submitted" on one screen and
+        // "Overdue" on this dashboard for no real reason.
         const { rows } = await db.query(
             `SELECT
         (SELECT COUNT(*) FROM sessions s JOIN supervisors sup ON sup.id = s.supervisor_id
@@ -209,7 +216,7 @@ router.get(
         (SELECT COUNT(*) FROM assignments a JOIN supervisors sup ON sup.id = a.supervisor_id
            WHERE sup.group_id = ? AND a.status = 'completed') AS assignments_completed,
         (SELECT COUNT(*) FROM assignments a JOIN supervisors sup ON sup.id = a.supervisor_id
-           WHERE sup.group_id = ? AND a.due_date < CURRENT_DATE AND a.status NOT IN ('completed')) AS assignments_overdue,
+           WHERE sup.group_id = ? AND a.due_date < CURRENT_DATE AND a.status NOT IN ('completed', 'submitted')) AS assignments_overdue,
         (SELECT COUNT(*) FROM learning_materials lm JOIN supervisors sup ON sup.id = lm.supervisor_id
            WHERE sup.group_id = ? AND lm.created_at >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)) AS materials_week,
         (SELECT COUNT(*) FROM attendance att JOIN supervisors sup ON sup.id = att.supervisor_id
@@ -942,7 +949,13 @@ router.get(
             overdue = 0;
         const assignments = rows.map((r) => {
             const isCompleted = r.status === "completed";
-            const isOverdue = !isCompleted && r.due_date && String(r.due_date).slice(0, 10) < todayStr;
+            const isSubmitted = r.status === "submitted";
+            // Once a trainee has turned something in, it's no longer overdue
+            // from their side -- must match assignmentsQuery.js's definition
+            // exactly (the one the Trainee's and Trainer's own assignment
+            // views already use), or the same assignment shows as
+            // "Submitted" on one screen and "Overdue" here for no reason.
+            const isOverdue = !isCompleted && !isSubmitted && r.due_date && String(r.due_date).slice(0, 10) < todayStr;
             if (isCompleted) completed++;
             else if (isOverdue) overdue++;
             return {
@@ -950,7 +963,7 @@ router.get(
                 title: r.title,
                 dueDate: r.due_date,
                 maxScore: r.max_score,
-                status: isCompleted ? "completed" : isOverdue ? "overdue" : "pending",
+                status: isCompleted ? "completed" : isSubmitted ? "submitted" : isOverdue ? "overdue" : "pending",
                 studentName: r.student_name,
                 totId: r.tot_id,
                 trainerName: r.trainer_name,
@@ -982,14 +995,17 @@ router.get(
 async function computeNeedsAttentionItems(db, groupId) {
     const items = [];
 
-    // Rule: overdue assignment (due_date < today, not completed) -- same
-    // live-computed definition used everywhere else in this router.
+    // Rule: overdue assignment (due_date < today, not completed, not
+    // submitted) -- must match assignmentsQuery.js's definition exactly
+    // (the one the Trainee's and Trainer's own assignment views already
+    // use). A trainee who already turned something in isn't the one who
+    // needs to act next, so this shouldn't flag them as behind.
     const { rows: overdueAssignments } = await db.query(
         `SELECT a.id, a.title, a.due_date, st.id AS student_id, st.full_name AS student_name
      FROM assignments a
      JOIN students st ON st.id = a.student_id
      JOIN supervisors sup ON sup.id = a.supervisor_id
-     WHERE sup.group_id = ? AND a.due_date < CURRENT_DATE AND a.status NOT IN ('completed')
+     WHERE sup.group_id = ? AND a.due_date < CURRENT_DATE AND a.status NOT IN ('completed', 'submitted')
      ORDER BY a.due_date ASC`, [groupId]
     );
     overdueAssignments.forEach((a) => {
@@ -1561,23 +1577,38 @@ router.get(
         if (!groupId) return noGroupResponse(res, { activity: [] });
         const { weekStart, weekEnd } = await resolveWeekRange(db, req.query.week);
 
+        // actor_id is NULL for a system action, or can belong to an Admin
+        // rather than a Supervisor -- the previous INNER JOIN to
+        // `supervisors` silently dropped every one of those rows from this
+        // feed instead of showing them. Fixed with a LEFT JOIN, but a
+        // non-supervisor action can only be safely scoped to THIS group
+        // when its entity_id/entity_type resolves to one of this group's
+        // own trainees via the same already-established convention the
+        // sibling Activity queries use (st.group_id) -- never by inventing
+        // a group association the data doesn't actually provide. A
+        // non-supervisor action on an entity_type outside that resolvable
+        // set (e.g. an Admin editing a `trainer_groups` row directly) has
+        // no safe way to know which group it belongs to and is still
+        // correctly excluded here, not guessed at.
         const { rows } = await db.query(
-            `SELECT al.action, al.created_at, sup.full_name AS trainer_name, st.full_name AS student_name
+            `SELECT al.action, al.created_at, al.actor_id, sup.full_name AS trainer_name,
+                    actor_uc.role AS actor_role, st.full_name AS student_name
        FROM audit_logs al
-       JOIN supervisors sup ON sup.id = al.actor_id
+       LEFT JOIN supervisors sup ON sup.id = al.actor_id
+       LEFT JOIN user_credentials actor_uc ON actor_uc.id = al.actor_id
        LEFT JOIN students st ON st.id = al.entity_id
          AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')
-       WHERE sup.group_id = ?
+       WHERE (sup.group_id = ? OR (sup.id IS NULL AND st.group_id = ?))
          AND al.created_at >= ? AND al.created_at < ?
        ORDER BY al.created_at DESC
-       LIMIT 500`, [groupId, weekStart, weekEnd]
+       LIMIT 500`, [groupId, groupId, weekStart, weekEnd]
         );
         res.json({
             weekStart,
             weekEnd,
             activity: rows.map((r) => ({
                 action: r.action,
-                trainerName: r.trainer_name,
+                trainerName: r.trainer_name || (r.actor_id === null ? "System" : r.actor_role === "admin" ? "Admin" : "Unknown"),
                 studentName: r.student_name,
                 createdAt: r.created_at,
             })),
@@ -1596,12 +1627,17 @@ router.get(
         const { weekStart: currentWeekStart } = await resolveWeekRange(db);
         const weeks = listRecentWeeks(currentWeekStart, 8);
         for (const week of weeks) {
+            // Same actor/group scoping as GET /activity above -- must count
+            // the same set of rows that route actually returns.
             const { rows } = await db.query(
                 `SELECT COUNT(*) AS total FROM audit_logs al
-           JOIN supervisors sup ON sup.id = al.actor_id
-          WHERE sup.group_id = ? AND al.created_at >= ? AND al.created_at < ?
+           LEFT JOIN supervisors sup ON sup.id = al.actor_id
+           LEFT JOIN students st ON st.id = al.entity_id
+             AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')
+          WHERE (sup.group_id = ? OR (sup.id IS NULL AND st.group_id = ?))
+            AND al.created_at >= ? AND al.created_at < ?
             AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')`,
-                [groupId, week.weekStart, week.weekEnd]
+                [groupId, groupId, week.weekStart, week.weekEnd]
             );
             week.total = Number(rows[0].total);
         }

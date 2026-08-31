@@ -970,6 +970,14 @@ CREATE INDEX idx_attendance_student_date ON attendance(student_id, attendance_da
 CREATE INDEX idx_training_hours_student ON training_hours(student_id, hour_date DESC);
 CREATE INDEX idx_supervision_hours_student ON supervision_hours(student_id, hour_date DESC);
 
+-- Supervisor-side equivalent of the three student-side indexes just above
+-- (see migrations/008_supervisor_date_indexes.sql) -- every Trainer-facing
+-- dashboard/report query filters these tables by supervisor_id + a date
+-- range too; sessions already had both sides indexed, these three didn't.
+CREATE INDEX idx_attendance_supervisor_date ON attendance(supervisor_id, attendance_date DESC);
+CREATE INDEX idx_training_hours_supervisor_date ON training_hours(supervisor_id, hour_date DESC);
+CREATE INDEX idx_supervision_hours_supervisor_date ON supervision_hours(supervisor_id, hour_date DESC);
+
 CREATE INDEX idx_assignments_student ON assignments(student_id, due_date);
 CREATE INDEX idx_assignments_supervisor ON assignments(supervisor_id);
 CREATE INDEX idx_assignment_submissions_assignment ON assignment_submissions(assignment_id);

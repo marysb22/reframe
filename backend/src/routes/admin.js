@@ -392,7 +392,10 @@ router.put(
     // "target group needs an active Master Trainer" business rule this
     // route has no reason to duplicate). `groupId: null` unassigns.
     let effectiveGroupId;
+    let groupActuallyChanged = false;
     if (existing.role === "trainee" && groupId !== undefined) {
+      const { rows: priorRows } = await db.query("SELECT group_id FROM students WHERE id = ?", [id]);
+      const previousGroupId = priorRows[0] ? priorRows[0].group_id : null;
       const newGroupId = groupId ? Number(groupId) : null;
       if (newGroupId) {
         const { rows: groupRows } = await db.query("SELECT id FROM trainer_groups WHERE id = ?", [newGroupId]);
@@ -400,6 +403,7 @@ router.put(
       }
       await db.query("UPDATE students SET group_id = ?, updated_at = NOW() WHERE id = ?", [newGroupId, id]);
       effectiveGroupId = newGroupId;
+      groupActuallyChanged = newGroupId !== previousGroupId;
     } else if (existing.role === "trainee") {
       const { rows: currentRows } = await db.query("SELECT group_id FROM students WHERE id = ?", [id]);
       effectiveGroupId = currentRows[0] ? currentRows[0].group_id : null;
@@ -479,6 +483,39 @@ router.put(
            ON DUPLICATE KEY UPDATE assigned_at = assigned_at`,
           [supId, id, req.user.id]
         );
+      }
+    } else if (existing.role === "trainee" && groupActuallyChanged) {
+      // Defensive hardening, not currently reachable through the Admin UI
+      // (the "Edit Member" form always sends supervisorIds together with
+      // groupId -- see the block above). A direct API caller moving a
+      // trainee between Groups without also specifying supervisorIds would
+      // otherwise leave the caseload silently pointing at the OLD group's
+      // Trainers/Master Trainer. Auto-sync to the same convention used
+      // when a Group is first created: the new Group's Master Trainer is
+      // auto-linked, and any link to a supervisor outside the new Group is
+      // dropped. A Trainer (ToT) assignment is a separate, explicit choice
+      // (made via supervisorIds) and is intentionally not re-guessed here.
+      if (effectiveGroupId) {
+        await db.query(
+          `DELETE ss FROM supervisor_students ss
+           JOIN supervisors sup ON sup.id = ss.supervisor_id
+           WHERE ss.student_id = ? AND (sup.group_id IS NULL OR sup.group_id != ?)`,
+          [id, effectiveGroupId]
+        );
+        const { rows: mtRows } = await db.query(
+          "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'primary'",
+          [effectiveGroupId]
+        );
+        if (mtRows.length) {
+          await db.query(
+            `INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE assigned_at = assigned_at`,
+            [mtRows[0].id, id, req.user.id]
+          );
+        }
+      } else {
+        // Unassigned from every Group -- no Master Trainer to link to.
+        await db.query("DELETE FROM supervisor_students WHERE student_id = ?", [id]);
       }
     }
 
@@ -638,11 +675,18 @@ router.delete(
       await db.query("DELETE FROM user_credentials WHERE id = ?", [id]);
     } catch (err) {
       if (err.code === "ER_ROW_IS_REFERENCED_2" || err.errno === 1451) {
-        return res.status(409).json({
-          error: force
-            ? "This account still has protected history that can't be force-deleted. Suspend it instead."
-            : "This account has recorded history (sessions, hours, payments, or messages) and can't be deleted. Suspend it instead, or use permanent delete if you specifically need to erase this trainee's data.",
-        });
+        // Permanent delete (force) is only ever offered for trainees (see
+        // the check above) -- telling a blocked supervisor/admin deletion
+        // to "use permanent delete" would point at an option that route
+        // explicitly refuses for their role, and calling their own records
+        // "this trainee's data" is simply wrong.
+        const message =
+          targetRole === "trainee"
+            ? force
+              ? "This account still has protected history that can't be force-deleted. Suspend it instead."
+              : "This account has recorded history (sessions, hours, payments, or messages) and can't be deleted. Suspend it instead, or use permanent delete if you specifically need to erase this trainee's data."
+            : "This account has recorded history (sessions, meetings, materials, or other records tied to trainees) and can't be permanently deleted. Suspend it instead.";
+        return res.status(409).json({ error: message });
       }
       throw err;
     }
@@ -962,6 +1006,47 @@ router.patch(
     );
 
     res.json({ id, name });
+  })
+);
+
+// DELETE /api/admin/groups/:id -- only when fully emptied. Nothing about a
+// Group's cascade behavior is safe to guess: trainer_groups.id is
+// ON DELETE SET NULL from both supervisors.group_id and students.group_id,
+// so deleting a Group with real members would silently detach them from
+// their MT/Group instead of erroring -- exactly the kind of silent data
+// loss the rest of this app goes out of its way to prevent. Retiring a
+// Group is therefore only ever offered once every member has already been
+// moved out or removed, never as a cascading action.
+router.delete(
+  "/groups/:id",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid group id" });
+
+    const { rows: existingRows } = await db.query("SELECT id, name FROM trainer_groups WHERE id = ?", [id]);
+    if (!existingRows.length) return res.status(404).json({ error: "Group not found" });
+
+    const { rows: memberRows } = await db.query(
+      `SELECT
+         (SELECT COUNT(*) FROM supervisors WHERE group_id = ?) AS supervisor_count,
+         (SELECT COUNT(*) FROM students WHERE group_id = ?) AS student_count`,
+      [id, id]
+    );
+    const supervisorCount = Number(memberRows[0].supervisor_count);
+    const studentCount = Number(memberRows[0].student_count);
+    if (supervisorCount > 0 || studentCount > 0) {
+      return res.status(409).json({
+        error: `This Group still has ${supervisorCount} Trainer(s) and ${studentCount} Trainee(s). Reassign or remove every member before deleting the Group.`,
+      });
+    }
+
+    await db.query("DELETE FROM trainer_groups WHERE id = ?", [id]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, 'group_deleted', 'trainer_groups', ?, ?)",
+      [req.user.id, id, JSON.stringify(existingRows[0])]
+    );
+
+    res.json({ success: true });
   })
 );
 

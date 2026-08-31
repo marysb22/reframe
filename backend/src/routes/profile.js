@@ -1,5 +1,7 @@
 const express = require("express");
 const fs = require("fs");
+const path = require("path");
+const config = require("../config");
 const { requireAuth, asyncRoute } = require("../middleware/auth");
 const {
   toProfileResponse,
@@ -18,7 +20,7 @@ const { checkFileContent } = require("../utils/fileTypeCheck");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
 const { createNotification } = require("../utils/notifications");
 const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
-const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi } = require("../utils/assignmentsQuery");
+const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi, attachSubmissionHistories } = require("../utils/assignmentsQuery");
 
 const router = express.Router();
 
@@ -233,10 +235,17 @@ router.post("/photo", requireAuth, (req, res) => {
 
     const table = profileTableForRole(req.user.role);
     const { pool } = require("../db");
+    const { rows: prevRows } = await pool.query(`SELECT photo FROM ${table} WHERE id = ?`, [req.user.id]);
     await pool.query(`UPDATE ${table} SET photo = ?, updated_at = NOW() WHERE id = ?`, [
       req.file.filename,
       req.user.id,
     ]);
+    const previousPhoto = prevRows[0] && prevRows[0].photo;
+    if (previousPhoto && previousPhoto !== req.file.filename) {
+      fs.unlink(path.join(config.uploadsDir, "photos", previousPhoto), (err) => {
+        if (err && err.code !== "ENOENT") console.error("Failed to delete previous photo file:", err);
+      });
+    }
 
     res.json({ success: true, photo: req.file.filename });
   });
@@ -254,10 +263,17 @@ router.post("/cv", requireStudent, (req, res) => {
     }
 
     const { pool } = require("../db");
+    const { rows: prevRows } = await pool.query("SELECT cv_file FROM students WHERE id = ?", [req.user.id]);
     await pool.query("UPDATE students SET cv_file = ?, updated_at = NOW() WHERE id = ?", [
       req.file.filename,
       req.user.id,
     ]);
+    const previousCv = prevRows[0] && prevRows[0].cv_file;
+    if (previousCv && previousCv !== req.file.filename) {
+      fs.unlink(path.join(config.uploadsDir, "cv", previousCv), (err) => {
+        if (err && err.code !== "ENOENT") console.error("Failed to delete previous CV file:", err);
+      });
+    }
 
     res.json({ success: true, cvFile: req.file.filename });
   });
@@ -385,6 +401,31 @@ router.get(
   })
 );
 
+// GET /api/profile/milestones -- this Trainee's own progress against every
+// active milestone. Mirrors supervisor.js's GET
+// /students/:studentId/milestones exactly (LEFT JOIN so an untouched
+// milestone still appears, as not_started, rather than being silently
+// missing) -- that route already gave a Trainer this per-trainee view;
+// this is the same thing for the Trainee looking at their own record,
+// which had no endpoint at all before. Read-only: marking progress stays
+// the Trainer's action, on supervisor.js.
+router.get(
+  "/milestones",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      `SELECT tm.id AS milestone_id, tm.code, tm.name_en, tm.name_ar, tm.sort_order,
+              COALESCE(tmp.status, 'not_started') AS status, tmp.completed_at, tmp.notes, tmp.updated_at
+         FROM training_milestones tm
+         LEFT JOIN trainee_milestone_progress tmp ON tmp.milestone_id = tm.id AND tmp.student_id = ?
+        WHERE tm.is_active = TRUE
+        ORDER BY tm.sort_order ASC`,
+      [req.user.id]
+    );
+    res.json({ milestones: rows });
+  })
+);
+
 // GET /api/profile/documents
 router.get(
   "/documents",
@@ -425,6 +466,7 @@ router.get(
     );
     let items = rows.map(assignmentRowToApi);
     if (req.query.status) items = items.filter((i) => i.status === req.query.status);
+    await attachSubmissionHistories(db, items);
     res.json({ assignments: items });
   })
 );
@@ -439,7 +481,9 @@ router.get(
       req.user.id,
     ]);
     if (!rows.length) return res.status(404).json({ error: "Assignment not found" });
-    res.json(assignmentRowToApi(rows[0]));
+    const item = assignmentRowToApi(rows[0]);
+    await attachSubmissionHistories(db, [item]);
+    res.json(item);
   })
 );
 

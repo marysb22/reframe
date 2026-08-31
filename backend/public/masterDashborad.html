@@ -3942,6 +3942,10 @@
         // pattern already used for CVs elsewhere in this app.
 
         let currentReportWeek = null;
+        // The real current week (today's), independent of whichever week's
+        // report is being viewed -- used to flag Recommendations as
+        // reflecting today's state, not that past week's, when they differ.
+        let currentActualWeek = null;
 
         async function initWeeklyReports() {
             const toolbar = document.getElementById("reportHistoryToolbar");
@@ -3963,6 +3967,7 @@
             });
 
             const current = data.weeks.find((w) => w.isCurrent) || data.weeks[0];
+            currentActualWeek = current ? current.week : null;
             if (current) loadWeeklyReport(current.week);
         }
 
@@ -4048,6 +4053,15 @@
             <div class="record-item"><div><strong>${escapeHtml(r.entityName)}</strong><div class="rcontent">${escapeHtml(r.detail)}</div></div>
               <span class="pill ${r.severity === "high" ? "absent" : "pending"}">${escapeHtml(r.severity)}</span></div>`).join("")}</div>`
                 : '<p class="empty-state">Nothing needs follow-up right now.</p>';
+            // Recommendations are always computed from today's state, not
+            // the state as of the week being viewed (the schema has no
+            // historical status tracking to reconstruct that from). Say so
+            // plainly whenever a past week's report is open, so this list
+            // is never read as a historical snapshot of that week.
+            const isViewingCurrentWeek = d.week === currentActualWeek;
+            const recommendationsSubtitle = isViewingCurrentWeek
+                ? "Derived from real, current data -- not a diagnosis, just measurable items worth a follow-up."
+                : "Reflects today's outstanding items, not a historical record of this past week -- current data only, not a diagnosis.";
 
             container.innerHTML = `
         <section class="system-card report-card">
@@ -4089,8 +4103,8 @@
         </section>
 
         <section class="system-card report-card">
-          <h3 style="margin:0 0 4px;"><i class="fa fa-list-check"></i> Recommendations / Follow-up</h3>
-          <p class="card-subtitle">Derived from real, current data -- not a diagnosis, just measurable items worth a follow-up.</p>
+          <h3 style="margin:0 0 4px;"><i class="fa fa-list-check"></i> Recommendations / Follow-up${isViewingCurrentWeek ? "" : ' <span class="pill pending" style="font-size:10.5px;vertical-align:middle;">Today, not this week</span>'}</h3>
+          <p class="card-subtitle">${recommendationsSubtitle}</p>
           ${recommendationsList}
         </section>
       `;
@@ -4693,6 +4707,12 @@
         }
 
         let gcLastRenderedMsg = null; // { senderId, dateKey, time } -- drives grouping/date-separator decisions across both a full reload and a single appended message
+        // The backend's message-history endpoint is already cursor-paginated
+        // (?before=<id>&limit=, capped at 100) -- these two track what's
+        // needed to actually call it for anything past the first page,
+        // which nothing in the UI did before.
+        let gcOldestMessageId = null;
+        let gcHasMoreHistory = false;
 
         async function loadGcThread(roomId) {
             const data = await apiRequest(`/chat-rooms/${roomId}/messages?limit=50`);
@@ -4701,10 +4721,62 @@
             gcLastRenderedMsg = null;
             if (!data.messages.length) {
                 thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>';
+                gcOldestMessageId = null;
+                gcHasMoreHistory = false;
                 return;
             }
             thread.innerHTML = data.messages.map(gcMessageHtml).join("");
+            gcOldestMessageId = data.messages[0].id;
+            gcHasMoreHistory = data.hasMore;
+            renderGcLoadMoreButton(thread);
             thread.scrollTop = thread.scrollHeight;
+        }
+
+        function renderGcLoadMoreButton(thread) {
+            const existing = document.getElementById("gcLoadMoreBtn");
+            if (existing) existing.remove();
+            if (!gcHasMoreHistory) return;
+            const btn = document.createElement("button");
+            btn.id = "gcLoadMoreBtn";
+            btn.type = "button";
+            btn.className = "btn btn-secondary btn-sm";
+            btn.style.cssText = "display:block;margin:4px auto 10px;";
+            btn.textContent = "Load older messages";
+            btn.addEventListener("click", loadOlderGcMessages);
+            thread.insertBefore(btn, thread.firstChild);
+        }
+
+        async function loadOlderGcMessages() {
+            if (!gcOldestMessageId) return;
+            const thread = document.getElementById("gcThread");
+            const btn = document.getElementById("gcLoadMoreBtn");
+            if (btn) btn.textContent = "Loading...";
+            const data = await apiRequest(`/chat-rooms/${gcActiveRoomId}/messages?before=${gcOldestMessageId}&limit=50`);
+            if (!data) return;
+            if (!data.messages.length) {
+                gcHasMoreHistory = false;
+                if (btn) btn.remove();
+                return;
+            }
+            const previousScrollHeight = thread.scrollHeight;
+            const previousScrollTop = thread.scrollTop;
+            // This older batch groups/date-separates against itself, not the
+            // newer batch already on screen -- saved and restored so a live
+            // message appended afterward still groups correctly against the
+            // newest message.
+            const savedLastRendered = gcLastRenderedMsg;
+            gcLastRenderedMsg = null;
+            const html = data.messages.map(gcMessageHtml).join("");
+            gcLastRenderedMsg = savedLastRendered;
+            if (btn) btn.remove();
+            thread.insertAdjacentHTML("afterbegin", html);
+            gcOldestMessageId = data.messages[0].id;
+            gcHasMoreHistory = data.hasMore;
+            renderGcLoadMoreButton(thread);
+            // Preserve the reader's scroll position -- prepending content
+            // above the viewport would otherwise yank the view down to
+            // match the new, taller scrollHeight.
+            thread.scrollTop = previousScrollTop + (thread.scrollHeight - previousScrollHeight);
         }
 
         function appendGcMessage(m) {

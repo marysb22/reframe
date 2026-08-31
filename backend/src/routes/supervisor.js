@@ -1,5 +1,7 @@
 const express = require("express");
 const fs = require("fs");
+const path = require("path");
+const config = require("../config");
 const { requireAuth, requireSupervisor, asyncRoute } = require("../middleware/auth");
 const {
   toStudentSummary,
@@ -15,7 +17,7 @@ const { documentUpload, materialUpload, assignmentAttachmentUpload } = require("
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { buildRecordsQuery, RECORD_TYPE_TABLES, buildHoursBreakdownQuery, buildTotHoursBreakdownQuery } = require("../utils/recordsQuery");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
-const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi } = require("../utils/assignmentsQuery");
+const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi, attachSubmissionHistories } = require("../utils/assignmentsQuery");
 const { resolveWeekRange } = require("../utils/weekPeriod");
 
 const router = express.Router();
@@ -362,6 +364,19 @@ router.put(
       [req.user.id, existing.student_id]
     );
     if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
+    // Sharing caseload access to a trainee (e.g. two ToTs, or a ToT and
+    // their Master Trainer, both linked via supervisor_students) is not
+    // the same as owning a specific record about that trainee -- every
+    // table behind RECORD_TYPE_TABLES has its own supervisor_id tracking
+    // who actually created it. Without this check, any supervisor sharing
+    // the trainee could silently overwrite or delete another supervisor's
+    // session/assignment/note/evaluation. Master Trainer gets no special
+    // case here: their existing oversight of a ToT's trainee-facing
+    // records is deliberately read-only (see Mastertrainer.js), and this
+    // route doesn't extend that into write access.
+    if (existing.supervisor_id !== req.user.id) {
+      return res.status(403).json({ error: "You can only edit records you created" });
+    }
 
     const { date, time, durationMinutes, status, title, content, score, attendanceStatus } = req.body || {};
 
@@ -450,6 +465,13 @@ router.delete(
       [req.user.id, existing.student_id]
     );
     if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
+    // Same author-only rule as the PUT above -- shared caseload access
+    // isn't ownership of a specific record. No Master Trainer exception:
+    // their oversight of a ToT's trainee-facing records is deliberately
+    // read-only elsewhere in the app.
+    if (existing.supervisor_id !== req.user.id) {
+      return res.status(403).json({ error: "You can only delete records you created" });
+    }
 
     if (recordType === "training_session" || recordType === "supervision_session") {
       // Attendance is 1:1 with its session going forward (created together
@@ -460,6 +482,12 @@ router.delete(
       await db.query("DELETE FROM attendance WHERE session_id = ?", [recordId]);
     }
     await db.query(`DELETE FROM ${meta.table} WHERE id = ?`, [recordId]);
+    if (recordType === "assignment" && existing.attachment_filename) {
+      const filePath = path.join(config.uploadsDir, "assignments", existing.attachment_filename);
+      fs.unlink(filePath, (err) => {
+        if (err && err.code !== "ENOENT") console.error("Failed to delete assignment attachment file:", err);
+      });
+    }
     await db.query(
       "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, ?, ?, ?, ?)",
       [req.user.id, `${recordType.replace(/_/g, " ")} deleted`, recordType, recordId, JSON.stringify(existing)]
@@ -835,6 +863,7 @@ router.get(
 
     let items = rows.map(assignmentRowToApi);
     if (req.query.status) items = items.filter((i) => i.status === req.query.status);
+    await attachSubmissionHistories(db, items);
 
     res.json({ assignments: items });
   })
@@ -849,7 +878,9 @@ router.get(
       req.user.id,
     ]);
     if (!rows.length) return res.status(404).json({ error: "Assignment not found" });
-    res.json(assignmentRowToApi(rows[0]));
+    const item = assignmentRowToApi(rows[0]);
+    await attachSubmissionHistories(db, [item]);
+    res.json(item);
   })
 );
 
@@ -1096,6 +1127,12 @@ router.delete(
     if (!existingRows.length) return res.status(404).json({ error: "Material not found" });
 
     await db.query("DELETE FROM learning_materials WHERE id = ?", [req.params.materialId]);
+    if (existingRows[0].filename) {
+      const filePath = path.join(config.uploadsDir, "materials", existingRows[0].filename);
+      fs.unlink(filePath, (err) => {
+        if (err && err.code !== "ENOENT") console.error("Failed to delete material file:", err);
+      });
+    }
     await db.query(
       "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, 'material deleted', 'learning_materials', ?, ?)",
       [req.user.id, req.params.materialId, JSON.stringify(existingRows[0])]
