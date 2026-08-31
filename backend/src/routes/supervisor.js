@@ -11,7 +11,7 @@ const {
   computeProgressSummary,
 } = require("../utils/serializers");
 const { documentUpload, materialUpload, assignmentAttachmentUpload } = require("../utils/uploads");
-const { buildRecordsQuery, RECORD_TYPE_TABLES } = require("../utils/recordsQuery");
+const { buildRecordsQuery, RECORD_TYPE_TABLES, buildHoursBreakdownQuery, buildTotHoursBreakdownQuery } = require("../utils/recordsQuery");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi } = require("../utils/assignmentsQuery");
 const { resolveWeekRange } = require("../utils/weekPeriod");
@@ -179,7 +179,7 @@ router.post(
     const student = await loadAssignedStudent(db, req.user.id, studentId, res);
     if (!student) return;
 
-    const { recordType, date, time, durationMinutes, status, title, content, score } = req.body || {};
+    const { recordType, date, time, durationMinutes, status, attendanceStatus, title, content, score } = req.body || {};
     if (!RECORD_TYPES.includes(recordType)) {
       return res.status(400).json({ error: `recordType must be one of: ${RECORD_TYPES.join(", ")}` });
     }
@@ -188,37 +188,38 @@ router.post(
     switch (recordType) {
       case "training_session":
       case "supervision_session": {
-        const sessionType = recordType === "training_session" ? "training" : "supervision";
-        const insert = await db.query(
-          `INSERT INTO sessions (student_id, supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes)
-           VALUES (?,?,?,?,?,?,?,?)`,
-          [studentId, req.user.id, sessionType, title || null, date || null, time || null, durationMinutes || null, content || null]
-        );
-        insertedId = insert.insertId;
-        break;
-      }
-      case "attendance": {
-        if (!["present", "absent", "excused"].includes(status)) {
-          return res.status(400).json({ error: "attendance requires status: present, absent, or excused" });
+        // Hours are never a typed number anymore -- they're derived from
+        // this session's duration + its attendance status, so attendance
+        // is captured in the SAME request that logs the session (atomic,
+        // via asyncRoute's transaction) rather than as a separate,
+        // unlinked action. See computeProgressSummary for the formula.
+        if (!["present", "absent", "excused"].includes(attendanceStatus)) {
+          return res.status(400).json({ error: "attendanceStatus is required and must be present, absent, or excused" });
         }
-        const insert = await db.query(
-          `INSERT INTO attendance (student_id, supervisor_id, attendance_date, status, notes, recorded_by)
-           VALUES (?,?,?,?,?,?)`,
-          [studentId, req.user.id, date || null, status, content || null, req.user.id]
+        if (!Number.isFinite(Number(durationMinutes)) || Number(durationMinutes) < 0) {
+          return res.status(400).json({ error: "durationMinutes is required and must be a non-negative number" });
+        }
+        const sessionType = recordType === "training_session" ? "training" : "supervision";
+        const sessionInsert = await db.query(
+          `INSERT INTO sessions (student_id, supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes, status)
+           VALUES (?,?,?,?,?,?,?,?,'completed')`,
+          [studentId, req.user.id, sessionType, title || null, date || null, time || null, Number(durationMinutes), content || null]
         );
-        insertedId = insert.insertId;
+        insertedId = sessionInsert.insertId;
+        await db.query(
+          `INSERT INTO attendance (student_id, supervisor_id, session_id, attendance_date, status, recorded_by)
+           VALUES (?,?,?,?,?,?)`,
+          [studentId, req.user.id, insertedId, date || null, attendanceStatus, req.user.id]
+        );
         break;
       }
+      case "attendance":
       case "training_hours":
       case "supervision_hours": {
-        const table = recordType;
-        const hours = durationMinutes ? Number(durationMinutes) / 60 : 0;
-        const insert = await db.query(
-          `INSERT INTO ${table} (student_id, supervisor_id, hours, hour_date, description) VALUES (?,?,?,?,?)`,
-          [studentId, req.user.id, hours, date || null, content || null]
-        );
-        insertedId = insert.insertId;
-        break;
+        return res.status(400).json({
+          error:
+            "Standalone attendance/hours entries are no longer supported -- record attendance together with its training/supervision session, or use a manual hour adjustment for an exception.",
+        });
       }
       case "assignment": {
         const insert = await db.query(
@@ -278,7 +279,7 @@ router.post(
       await createNotification(db, {
         recipientId: studentId,
         type: "session",
-        title: `New ${recordType === "training_session" ? "training" : "supervision"} session scheduled`,
+        title: `New ${recordType === "training_session" ? "training" : "supervision"} session logged`,
         body: title || null,
         relatedEntityType: "session",
         relatedEntityId: insertedId,
@@ -297,7 +298,11 @@ router.post(
     const freshRq = buildRecordsQuery(studentId, recordType);
     const { rows: freshRows } = await db.query(freshRq.sql, freshRq.params);
     const [withName] = await attachSupervisorNames(db, freshRows.filter((r) => r.id === insertedId));
-    res.status(201).json(toRecord(withName || freshRows.find((r) => r.id === insertedId)));
+    const responseBody = toRecord(withName || freshRows.find((r) => r.id === insertedId));
+    if (recordType === "training_session" || recordType === "supervision_session") {
+      responseBody.attendanceStatus = attendanceStatus;
+    }
+    res.status(201).json(responseBody);
   })
 );
 
@@ -388,12 +393,193 @@ router.delete(
     );
     if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
 
+    if (recordType === "training_session" || recordType === "supervision_session") {
+      // Attendance is 1:1 with its session going forward (created together
+      // by POST /records) -- deleting the session without its attendance
+      // row would otherwise leave an orphaned attendance record (the FK is
+      // ON DELETE SET NULL, not CASCADE, precisely so a legacy unlinked
+      // attendance row is never silently destroyed by an unrelated delete).
+      await db.query("DELETE FROM attendance WHERE session_id = ?", [recordId]);
+    }
     await db.query(`DELETE FROM ${meta.table} WHERE id = ?`, [recordId]);
     await db.query(
       "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, ?, ?, ?, ?)",
       [req.user.id, `${recordType.replace(/_/g, " ")} deleted`, recordType, recordId, JSON.stringify(existing)]
     );
     res.json({ success: true });
+  })
+);
+
+// ---- Trainee hour adjustments (audited manual exceptions) ----------------
+// Append-only, exactly like payment_transactions -- never UPDATE/DELETE.
+// Gated by the same supervisor_students caseload check as every other
+// record above, so authorization exactly matches "who can already record
+// for this trainee today" -- a Master Trainer (auto-linked to every
+// trainee in their group at group-creation time) can adjust any of their
+// group's trainees; a ToT only their explicitly assigned ones.
+
+// POST /api/supervisor/students/:studentId/hour-adjustments  { hourType, hours, reason, notes? }
+router.post(
+  "/students/:studentId/hour-adjustments",
+  asyncRoute(async (req, res, db) => {
+    const studentId = Number(req.params.studentId);
+    const student = await loadAssignedStudent(db, req.user.id, studentId, res);
+    if (!student) return;
+
+    const { hourType, hours, reason, notes } = req.body || {};
+    if (!["training", "supervision"].includes(hourType)) {
+      return res.status(400).json({ error: "hourType must be training or supervision" });
+    }
+    const numericHours = Number(hours);
+    if (!Number.isFinite(numericHours) || numericHours === 0) {
+      return res.status(400).json({ error: "hours must be a non-zero number (negative to correct a prior adjustment)" });
+    }
+    if (!reason || !String(reason).trim()) {
+      return res.status(400).json({ error: "reason is required" });
+    }
+
+    const insert = await db.query(
+      `INSERT INTO trainee_hour_adjustments (student_id, hour_type, hours, reason, notes, added_by) VALUES (?,?,?,?,?,?)`,
+      [studentId, hourType, numericHours, reason, notes || null, req.user.id]
+    );
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'hour_adjustment_added', 'trainee_hour_adjustments', ?, ?)",
+      [req.user.id, insert.insertId, JSON.stringify({ studentId, hourType, hours: numericHours, reason })]
+    );
+
+    const progress = await computeProgressSummary(db, studentId);
+    res.status(201).json({ id: insert.insertId, progress });
+  })
+);
+
+// GET /api/supervisor/students/:studentId/hour-adjustments
+router.get(
+  "/students/:studentId/hour-adjustments",
+  asyncRoute(async (req, res, db) => {
+    const studentId = Number(req.params.studentId);
+    const student = await loadAssignedStudent(db, req.user.id, studentId, res);
+    if (!student) return;
+
+    const { rows } = await db.query(
+      `SELECT tha.*, COALESCE(a.full_name, sup.full_name) AS added_by_name
+       FROM trainee_hour_adjustments tha
+       LEFT JOIN admin_users a ON a.id = tha.added_by
+       LEFT JOIN supervisors sup ON sup.id = tha.added_by
+       WHERE tha.student_id = ? ORDER BY tha.created_at DESC`,
+      [studentId]
+    );
+    res.json({ adjustments: rows });
+  })
+);
+
+// GET /api/supervisor/students/:studentId/hours-breakdown -- the full
+// transparency drill-down behind the total (spec: "where did this hour
+// come from?" must always be answerable).
+router.get(
+  "/students/:studentId/hours-breakdown",
+  asyncRoute(async (req, res, db) => {
+    const studentId = Number(req.params.studentId);
+    const student = await loadAssignedStudent(db, req.user.id, studentId, res);
+    if (!student) return;
+
+    const rq = buildHoursBreakdownQuery(studentId);
+    const { rows } = await db.query(rq.sql, rq.params);
+    res.json({ breakdown: rows });
+  })
+);
+
+// ---- A ToT's own hours (received from their Master Trainer, delivered to
+// their trainees) -- reachable only here, not Mastertrainer.js, since both
+// a Master Trainer and a ToT log in with role='supervisor' but only a ToT
+// can call this meaningfully; Mastertrainer.js is gated to supervisor_type
+// = 'primary' only. Structurally separate tables (tot_training_sessions
+// keyed by tot_id vs the trainee-facing sessions keyed by supervisor_id)
+// mean "received" and "delivered" can never overlap or double-count. -----
+
+// GET /api/supervisor/me/training-received
+router.get(
+  "/me/training-received",
+  asyncRoute(async (req, res, db) => {
+    const totId = req.user.id;
+    const [hoursRes, attendanceRes] = await Promise.all([
+      db.query(
+        `SELECT
+           COALESCE((
+             SELECT SUM(ts.duration_minutes) / 60 FROM tot_training_sessions ts
+             JOIN tot_training_attendance ta ON ta.session_id = ts.id AND ta.status = 'present'
+             WHERE ts.tot_id = ? AND ts.status != 'cancelled'
+           ), 0) AS session_hours,
+           COALESCE((SELECT SUM(hours) FROM tot_hour_adjustments WHERE tot_id = ?), 0) AS adjustment_hours`,
+        [totId, totId]
+      ),
+      db.query(
+        `SELECT COUNT(CASE WHEN status = 'present' THEN 1 END) AS present, COUNT(*) AS total
+         FROM tot_training_attendance WHERE tot_id = ?`,
+        [totId]
+      ),
+    ]);
+    const h = hoursRes.rows[0];
+    const a = attendanceRes.rows[0];
+    const sessionHours = Number(h.session_hours);
+    const adjustmentHours = Number(h.adjustment_hours);
+
+    res.json({
+      totalHours: sessionHours + adjustmentHours,
+      sessionHours,
+      adjustmentHours,
+      sessionsAttended: Number(a.present),
+      sessionsMissed: Number(a.total) - Number(a.present),
+      attendanceRate: Number(a.total) > 0 ? Math.round((Number(a.present) / Number(a.total)) * 100) : null,
+    });
+  })
+);
+
+// GET /api/supervisor/me/training-received/breakdown
+router.get(
+  "/me/training-received/breakdown",
+  asyncRoute(async (req, res, db) => {
+    const rq = buildTotHoursBreakdownQuery(req.user.id);
+    const { rows } = await db.query(rq.sql, rq.params);
+    res.json({ breakdown: rows });
+  })
+);
+
+// GET /api/supervisor/me/training-delivered -- aggregate across every
+// trainee currently assigned to this ToT (supervisor_students caseload),
+// using the exact same attendance-derived formula as computeProgressSummary.
+router.get(
+  "/me/training-delivered",
+  asyncRoute(async (req, res, db) => {
+    const supervisorId = req.user.id;
+    const [hoursRes, attendanceRes, traineeRes] = await Promise.all([
+      db.query(
+        `SELECT COALESCE(SUM(s.duration_minutes) / 60, 0) AS hours
+         FROM sessions s
+         JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+         WHERE s.supervisor_id = ? AND s.status != 'cancelled'`,
+        [supervisorId]
+      ),
+      db.query(
+        `SELECT COUNT(CASE WHEN status = 'present' THEN 1 END) AS present, COUNT(*) AS total
+         FROM attendance WHERE supervisor_id = ?`,
+        [supervisorId]
+      ),
+      db.query(
+        `SELECT COUNT(DISTINCT student_id) AS trainee_count, COUNT(*) AS session_count
+         FROM sessions WHERE supervisor_id = ? AND status != 'cancelled'`,
+        [supervisorId]
+      ),
+    ]);
+    const h = hoursRes.rows[0];
+    const a = attendanceRes.rows[0];
+    const t = traineeRes.rows[0];
+
+    res.json({
+      totalHours: Number(h.hours),
+      sessionsConducted: Number(t.session_count),
+      traineesTrained: Number(t.trainee_count),
+      traineeAttendanceRate: Number(a.total) > 0 ? Math.round((Number(a.present) / Number(a.total)) * 100) : null,
+    });
   })
 );
 

@@ -2,6 +2,7 @@ const express = require("express");
 const { requireAuth, requireMasterTrainer, asyncRoute } = require("../middleware/auth");
 const { toRecord, toDocument, toMaterial, computeTrainingProgress } = require("../utils/serializers");
 const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
+const { buildTotHoursBreakdownQuery } = require("../utils/recordsQuery");
 
 const router = express.Router();
 
@@ -50,13 +51,20 @@ const router = express.Router();
       automatically; if they don't yet, add them with a small migration
       and no route code here needs to change.
 
-   6. This router is READ-ONLY by design. Section 6/10 of the brief asks
-      the Master Trainer to "monitor" her ToTs, not manage their trainees,
-      records, uploads, etc. — those stay exclusively on
-      routes/supervisor.js, untouched. If you also want her to message a
-      ToT/trainee or post group-wide announcements, that's a small,
-      separate addition — flag it and I'll add explicit write endpoints
-      rather than silently expanding scope here.
+   6. This router is READ-ONLY for everything trainee-related. Section
+      6/10 of the brief asks the Master Trainer to "monitor" her ToTs, not
+      manage their trainees, records, uploads, etc. — those stay
+      exclusively on routes/supervisor.js, untouched.
+      The one deliberate exception (added for the Trainer/ToT Hours
+      feature): the Master Trainer DOES write here for training she
+      personally delivers TO a ToT (tot_training_sessions/
+      tot_training_attendance/tot_hour_adjustments, see "Training sessions
+      the Master Trainer conducts FOR a ToT" below) — a ToT is a
+      `supervisors` row, not a `students` row, so supervisor.js's
+      trainee-caseload-scoped record system structurally cannot represent
+      that relationship, and requireMasterTrainer + loadGroupTot already
+      give exactly the right "only MY ToTs" scoping for it. Everything
+      else stays read-only as before.
 
    INTEGRATION STEPS:
    - Mounted in server.js as app.use("/api/master-trainer", require("./routes/Mastertrainer")).
@@ -286,8 +294,28 @@ router.get(
               (SELECT COUNT(*) FROM documents d
                  JOIN supervisor_students ss2 ON ss2.student_id = d.student_id
                  WHERE ss2.supervisor_id = sup.id) AS document_count,
-              (SELECT COALESCE(SUM(th.hours), 0) FROM training_hours th WHERE th.supervisor_id = sup.id) AS training_hours,
-              (SELECT COALESCE(SUM(sh.hours), 0) FROM supervision_hours sh WHERE sh.supervisor_id = sup.id) AS supervision_hours,
+              -- "Hours delivered": legacy typed rows (frozen) + attendance-derived
+              -- session hours (the source of truth going forward) + adjustments
+              -- this ToT personally authored for their own trainees -- same
+              -- three-part formula as computeProgressSummary, aggregated across
+              -- this ToT's whole caseload instead of one trainee.
+              ((SELECT COALESCE(SUM(th.hours), 0) FROM training_hours th WHERE th.supervisor_id = sup.id) +
+               (SELECT COALESCE(SUM(s.duration_minutes) / 60, 0) FROM sessions s
+                  JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+                  WHERE s.supervisor_id = sup.id AND s.session_type = 'training' AND s.status != 'cancelled') +
+               (SELECT COALESCE(SUM(tha.hours), 0) FROM trainee_hour_adjustments tha
+                  WHERE tha.hour_type = 'training' AND tha.added_by = sup.id)) AS training_hours,
+              ((SELECT COALESCE(SUM(sh.hours), 0) FROM supervision_hours sh WHERE sh.supervisor_id = sup.id) +
+               (SELECT COALESCE(SUM(s.duration_minutes) / 60, 0) FROM sessions s
+                  JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+                  WHERE s.supervisor_id = sup.id AND s.session_type = 'supervision' AND s.status != 'cancelled') +
+               (SELECT COALESCE(SUM(tha.hours), 0) FROM trainee_hour_adjustments tha
+                  WHERE tha.hour_type = 'supervision' AND tha.added_by = sup.id)) AS supervision_hours,
+              (SELECT COALESCE((
+                 SELECT SUM(ts.duration_minutes) / 60 FROM tot_training_sessions ts
+                 JOIN tot_training_attendance ta ON ta.session_id = ts.id AND ta.status = 'present'
+                 WHERE ts.tot_id = sup.id AND ts.status != 'cancelled'
+               ), 0) + COALESCE((SELECT SUM(hours) FROM tot_hour_adjustments WHERE tot_id = sup.id), 0)) AS training_received_hours,
               (SELECT MAX(al.created_at) FROM audit_logs al WHERE al.actor_id = sup.id) AS last_activity_at,
               (SELECT COUNT(*) FROM assignments a WHERE a.supervisor_id = sup.id) AS assignments_total,
               (SELECT COUNT(*) FROM assignments a WHERE a.supervisor_id = sup.id AND a.status = 'completed') AS assignments_completed,
@@ -330,15 +358,48 @@ router.get(
             `SELECT
         (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND session_type = 'training') AS training_sessions,
         (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND session_type = 'supervision') AS supervision_sessions,
-        (SELECT COALESCE(SUM(hours), 0) FROM training_hours WHERE supervisor_id = ?) AS training_hours,
-        (SELECT COALESCE(SUM(hours), 0) FROM supervision_hours WHERE supervisor_id = ?) AS supervision_hours,
+        ((SELECT COALESCE(SUM(hours), 0) FROM training_hours WHERE supervisor_id = ?) +
+         (SELECT COALESCE(SUM(s.duration_minutes) / 60, 0) FROM sessions s
+            JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+            WHERE s.supervisor_id = ? AND s.session_type = 'training' AND s.status != 'cancelled') +
+         (SELECT COALESCE(SUM(hours), 0) FROM trainee_hour_adjustments WHERE hour_type = 'training' AND added_by = ?)) AS training_hours,
+        ((SELECT COALESCE(SUM(hours), 0) FROM supervision_hours WHERE supervisor_id = ?) +
+         (SELECT COALESCE(SUM(s.duration_minutes) / 60, 0) FROM sessions s
+            JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+            WHERE s.supervisor_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled') +
+         (SELECT COALESCE(SUM(hours), 0) FROM trainee_hour_adjustments WHERE hour_type = 'supervision' AND added_by = ?)) AS supervision_hours,
         (SELECT COUNT(*) FROM assignments WHERE supervisor_id = ?) AS assignments_total,
         (SELECT COUNT(*) FROM assignments WHERE supervisor_id = ? AND status = 'completed') AS assignments_completed,
         (SELECT COUNT(*) FROM evaluations WHERE supervisor_id = ?) AS evaluation_count,
         (SELECT COUNT(*) FROM meetings WHERE supervisor_id = ?) AS meeting_count,
         (SELECT COUNT(*) FROM learning_materials WHERE supervisor_id = ?) AS material_count`,
-            Array(9).fill(totId)
+            Array(15).fill(totId)
         );
+
+        // "Training received" -- hours this ToT received FROM the calling
+        // Master Trainer, kept structurally separate from the "delivered"
+        // stats above (disjoint tables, see tot_training_sessions).
+        const { rows: receivedRows } = await db.query(
+            `SELECT
+        COALESCE((
+          SELECT SUM(ts.duration_minutes) / 60 FROM tot_training_sessions ts
+          JOIN tot_training_attendance ta ON ta.session_id = ts.id AND ta.status = 'present'
+          WHERE ts.tot_id = ? AND ts.status != 'cancelled'
+        ), 0) AS session_hours,
+        COALESCE((SELECT SUM(hours) FROM tot_hour_adjustments WHERE tot_id = ?), 0) AS adjustment_hours,
+        (SELECT COUNT(CASE WHEN status = 'present' THEN 1 END) FROM tot_training_attendance WHERE tot_id = ?) AS sessions_attended,
+        (SELECT COUNT(*) FROM tot_training_attendance WHERE tot_id = ?) AS sessions_total`,
+            Array(4).fill(totId)
+        );
+        const r = receivedRows[0];
+        const trainingReceived = {
+            sessionHours: Number(r.session_hours),
+            adjustmentHours: Number(r.adjustment_hours),
+            totalHours: Number(r.session_hours) + Number(r.adjustment_hours),
+            sessionsAttended: Number(r.sessions_attended),
+            sessionsMissed: Number(r.sessions_total) - Number(r.sessions_attended),
+            attendanceRate: Number(r.sessions_total) > 0 ? Math.round((Number(r.sessions_attended) / Number(r.sessions_total)) * 100) : null,
+        };
 
         const recentRecords = await recentRecordsForSupervisor(db, totId, 20);
         const recentActivity = await recentActivityForActor(db, totId, 15);
@@ -350,6 +411,7 @@ router.get(
             trainer: tot,
             students,
             stats: statRows[0],
+            trainingReceived,
             recentRecords: recentRecords.map(toRecord),
             recentActivity,
             documents: documents.map(toDocument),
@@ -404,6 +466,211 @@ router.get(
             specialization: tot.specialization,
             status: tot.status,
         });
+    })
+);
+
+// ---- Training sessions the Master Trainer conducts FOR a ToT ------------
+// The one deliberate write capability on this otherwise read-only router
+// (see the file header): a ToT is a `supervisors` row, not a `students`
+// row, so routes/supervisor.js's student-caseload-scoped record system
+// structurally cannot represent "MT trained this ToT" -- requireMasterTrainer
+// + loadGroupTot already give exactly the right scoping ("only MY ToTs")
+// for this, so it lives here rather than bolting a parallel ToT-ownership
+// check onto supervisor.js.
+//
+// Session + attendance are always created together (never freeform,
+// mirroring the same redesign applied to the trainee-facing records in
+// supervisor.js) so hours are always derivable, never a typed number.
+
+// POST /api/master-trainer/tots/:totId/sessions  { date, time, durationMinutes, title, notes, attendanceStatus }
+router.post(
+    "/tots/:totId/sessions",
+    asyncRoute(async(req, res, db) => {
+        const { groupId, id: masterTrainerId } = req.masterTrainer;
+        const totId = Number(req.params.totId);
+        const tot = await loadGroupTot(db, groupId, totId, res);
+        if (!tot) return;
+
+        const { date, time, durationMinutes, title, notes, attendanceStatus } = req.body || {};
+        if (!date) return res.status(400).json({ error: "date is required" });
+        if (!Number.isFinite(Number(durationMinutes)) || Number(durationMinutes) < 0) {
+            return res.status(400).json({ error: "durationMinutes is required and must be a non-negative number" });
+        }
+        if (!["present", "absent", "excused"].includes(attendanceStatus)) {
+            return res.status(400).json({ error: "attendanceStatus is required and must be present, absent, or excused" });
+        }
+
+        const sessionInsert = await db.query(
+            `INSERT INTO tot_training_sessions (tot_id, master_trainer_id, title, session_date, session_time, duration_minutes, notes, status)
+       VALUES (?,?,?,?,?,?,?,'completed')`,
+            [totId, masterTrainerId, title || null, date, time || null, Number(durationMinutes), notes || null]
+        );
+        const sessionId = sessionInsert.insertId;
+        await db.query(
+            `INSERT INTO tot_training_attendance (session_id, tot_id, status, recorded_by) VALUES (?,?,?,?)`,
+            [sessionId, totId, attendanceStatus, masterTrainerId]
+        );
+        await db.query(
+            "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'tot_training_session_added', 'tot_training_sessions', ?, ?)",
+            [masterTrainerId, sessionId, JSON.stringify({ totId, durationMinutes: Number(durationMinutes), attendanceStatus, date })]
+        );
+
+        res.status(201).json({ id: sessionId, totId, date, time: time || null, durationMinutes: Number(durationMinutes), title: title || null, notes: notes || null, attendanceStatus });
+    })
+);
+
+// GET /api/master-trainer/tots/:totId/sessions — history feed
+router.get(
+    "/tots/:totId/sessions",
+    asyncRoute(async(req, res, db) => {
+        const { groupId } = req.masterTrainer;
+        const totId = Number(req.params.totId);
+        const tot = await loadGroupTot(db, groupId, totId, res);
+        if (!tot) return;
+
+        const { rows } = await db.query(
+            `SELECT ts.id, ts.session_date, ts.session_time, ts.duration_minutes, ts.title, ts.notes, ts.status,
+              ta.status AS attendance_status, ts.created_at
+       FROM tot_training_sessions ts
+       LEFT JOIN tot_training_attendance ta ON ta.session_id = ts.id
+       WHERE ts.tot_id = ? ORDER BY ts.session_date DESC, ts.created_at DESC`,
+            [totId]
+        );
+        res.json({ sessions: rows });
+    })
+);
+
+// PUT /api/master-trainer/tots/:totId/sessions/:sessionId — correct a mistake
+router.put(
+    "/tots/:totId/sessions/:sessionId",
+    asyncRoute(async(req, res, db) => {
+        const { groupId, id: masterTrainerId } = req.masterTrainer;
+        const totId = Number(req.params.totId);
+        const sessionId = Number(req.params.sessionId);
+        const tot = await loadGroupTot(db, groupId, totId, res);
+        if (!tot) return;
+
+        const { rows: existingRows } = await db.query(
+            "SELECT * FROM tot_training_sessions WHERE id = ? AND tot_id = ?", [sessionId, totId]
+        );
+        if (!existingRows.length) return res.status(404).json({ error: "Session not found" });
+        const existing = existingRows[0];
+
+        const { date, time, durationMinutes, title, notes, attendanceStatus, status } = req.body || {};
+        await db.query(
+            `UPDATE tot_training_sessions SET
+        session_date = COALESCE(?, session_date), session_time = COALESCE(?, session_time),
+        duration_minutes = COALESCE(?, duration_minutes), title = COALESCE(?, title),
+        notes = COALESCE(?, notes), status = COALESCE(?, status), updated_at = NOW()
+       WHERE id = ?`,
+            [date ?? null, time ?? null, durationMinutes ?? null, title ?? null, notes ?? null, status ?? null, sessionId]
+        );
+        if (attendanceStatus) {
+            if (!["present", "absent", "excused"].includes(attendanceStatus)) {
+                return res.status(400).json({ error: "attendanceStatus must be present, absent, or excused" });
+            }
+            await db.query("UPDATE tot_training_attendance SET status = ? WHERE session_id = ?", [attendanceStatus, sessionId]);
+        }
+        await db.query(
+            "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, 'tot_training_session_updated', 'tot_training_sessions', ?, ?)",
+            [masterTrainerId, sessionId, JSON.stringify(existing)]
+        );
+        res.json({ success: true });
+    })
+);
+
+// DELETE /api/master-trainer/tots/:totId/sessions/:sessionId
+router.delete(
+    "/tots/:totId/sessions/:sessionId",
+    asyncRoute(async(req, res, db) => {
+        const { groupId, id: masterTrainerId } = req.masterTrainer;
+        const totId = Number(req.params.totId);
+        const sessionId = Number(req.params.sessionId);
+        const tot = await loadGroupTot(db, groupId, totId, res);
+        if (!tot) return;
+
+        const { rows: existingRows } = await db.query(
+            "SELECT * FROM tot_training_sessions WHERE id = ? AND tot_id = ?", [sessionId, totId]
+        );
+        if (!existingRows.length) return res.status(404).json({ error: "Session not found" });
+
+        // tot_training_attendance's FK is ON DELETE CASCADE (unlike the
+        // legacy trainee-facing attendance table), so no separate delete
+        // is needed here -- there is no historical unlinked-attendance
+        // case to protect for this brand-new table.
+        await db.query("DELETE FROM tot_training_sessions WHERE id = ?", [sessionId]);
+        await db.query(
+            "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, 'tot_training_session_deleted', 'tot_training_sessions', ?, ?)",
+            [masterTrainerId, sessionId, JSON.stringify(existingRows[0])]
+        );
+        res.json({ success: true });
+    })
+);
+
+// ---- Manual hour adjustments for a ToT (audited, append-only) -----------
+
+// POST /api/master-trainer/tots/:totId/hour-adjustments  { hours, reason, notes? }
+router.post(
+    "/tots/:totId/hour-adjustments",
+    asyncRoute(async(req, res, db) => {
+        const { groupId, id: masterTrainerId } = req.masterTrainer;
+        const totId = Number(req.params.totId);
+        const tot = await loadGroupTot(db, groupId, totId, res);
+        if (!tot) return;
+
+        const { hours, reason, notes } = req.body || {};
+        const numericHours = Number(hours);
+        if (!Number.isFinite(numericHours) || numericHours === 0) {
+            return res.status(400).json({ error: "hours must be a non-zero number (negative to correct a prior adjustment)" });
+        }
+        if (!reason || !String(reason).trim()) {
+            return res.status(400).json({ error: "reason is required" });
+        }
+
+        const insert = await db.query(
+            "INSERT INTO tot_hour_adjustments (tot_id, hours, reason, notes, added_by) VALUES (?,?,?,?,?)",
+            [totId, numericHours, reason, notes || null, masterTrainerId]
+        );
+        await db.query(
+            "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'tot_hour_adjustment_added', 'tot_hour_adjustments', ?, ?)",
+            [masterTrainerId, insert.insertId, JSON.stringify({ totId, hours: numericHours, reason })]
+        );
+        res.status(201).json({ id: insert.insertId });
+    })
+);
+
+// GET /api/master-trainer/tots/:totId/hour-adjustments
+router.get(
+    "/tots/:totId/hour-adjustments",
+    asyncRoute(async(req, res, db) => {
+        const { groupId } = req.masterTrainer;
+        const totId = Number(req.params.totId);
+        const tot = await loadGroupTot(db, groupId, totId, res);
+        if (!tot) return;
+
+        const { rows } = await db.query(
+            `SELECT tha.*, a.full_name AS added_by_name
+       FROM tot_hour_adjustments tha
+       LEFT JOIN supervisors a ON a.id = tha.added_by
+       WHERE tha.tot_id = ? ORDER BY tha.created_at DESC`,
+            [totId]
+        );
+        res.json({ adjustments: rows });
+    })
+);
+
+// GET /api/master-trainer/tots/:totId/hours-breakdown — full drill-down
+router.get(
+    "/tots/:totId/hours-breakdown",
+    asyncRoute(async(req, res, db) => {
+        const { groupId } = req.masterTrainer;
+        const totId = Number(req.params.totId);
+        const tot = await loadGroupTot(db, groupId, totId, res);
+        if (!tot) return;
+
+        const rq = buildTotHoursBreakdownQuery(totId);
+        const { rows } = await db.query(rq.sql, rq.params);
+        res.json({ breakdown: rows });
     })
 );
 

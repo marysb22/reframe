@@ -69,12 +69,25 @@ function buildRecordsQuery(studentId, recordType) {
       SELECT ev.id, ev.student_id, ev.supervisor_id, 'evaluation' AS record_type,
              ev.evaluation_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), ev.title, ev.content, ev.score, ev.created_at
       FROM evaluations ev WHERE ev.student_id = ?
+
+      UNION ALL
+
+      -- Manual hour adjustments (trainee_hour_adjustments) -- append-only,
+      -- deliberately absent from RECORD_TYPE_TABLES below so the generic
+      -- PUT/DELETE record routes can never edit or delete one, mirroring
+      -- payment_transactions' "never UPDATE or DELETE" ledger convention.
+      -- status carries hour_type ('training'/'supervision') here since
+      -- this record_type has no attendance-style status of its own.
+      SELECT tha.id, tha.student_id, tha.added_by, 'hour_adjustment' AS record_type,
+             DATE(tha.created_at), CAST(NULL AS TIME), CAST(ROUND(tha.hours * 60) AS SIGNED) AS duration_minutes,
+             tha.hour_type, tha.reason, tha.notes, CAST(NULL AS DECIMAL(5,2)), tha.created_at
+      FROM trainee_hour_adjustments tha WHERE tha.student_id = ?
     ) combined
     ${recordType ? "WHERE record_type = ?" : ""}
     ORDER BY record_date DESC, created_at DESC
   `;
 
-  const params = new Array(7).fill(studentId);
+  const params = new Array(8).fill(studentId);
   if (recordType) params.push(recordType);
   return { sql, params };
 }
@@ -91,4 +104,75 @@ const RECORD_TYPE_TABLES = {
   evaluation: { table: "evaluations", dateCol: "evaluation_date" },
 };
 
-module.exports = { buildRecordsQuery, RECORD_TYPE_TABLES };
+/**
+ * The transparency drill-down behind a trainee's hours total: every row
+ * that contributed hours, tagged with exactly where it came from, so
+ * "where did this hour come from?" always has a concrete answer --
+ * `Session + Attendance + Duration + Role + Adjustment = Final Hours`,
+ * never a hidden or trusted-cached number. Three sources, newest first:
+ *   'session'    -- a sessions row with its linked attendance row (the
+ *                   only source of NEW hours going forward). hours is 0
+ *                   whenever attendance isn't 'present' or the session was
+ *                   cancelled, even though the row still shows up here so
+ *                   an absence is visibly accounted for, not just missing.
+ *   'legacy'     -- a training_hours/supervision_hours row typed directly
+ *                   before this redesign (frozen, never re-derived).
+ *   'adjustment' -- a trainee_hour_adjustments manual entry.
+ */
+function buildHoursBreakdownQuery(studentId) {
+  const sql = `
+    SELECT * FROM (
+      SELECT s.session_date AS hour_date, s.title AS title, s.session_type AS hour_type,
+             s.duration_minutes AS duration_minutes, a.status AS attendance_status,
+             CASE WHEN a.status = 'present' AND s.status != 'cancelled' THEN ROUND(s.duration_minutes / 60, 2) ELSE 0 END AS hours,
+             'session' AS source, s.created_at
+      FROM sessions s
+      JOIN attendance a ON a.session_id = s.id
+      WHERE s.student_id = ?
+
+      UNION ALL
+
+      SELECT th.hour_date, th.description, 'training', ROUND(th.hours * 60), CAST(NULL AS CHAR), th.hours, 'legacy', th.created_at
+      FROM training_hours th WHERE th.student_id = ?
+
+      UNION ALL
+
+      SELECT sh.hour_date, sh.description, 'supervision', ROUND(sh.hours * 60), CAST(NULL AS CHAR), sh.hours, 'legacy', sh.created_at
+      FROM supervision_hours sh WHERE sh.student_id = ?
+
+      UNION ALL
+
+      SELECT DATE(tha.created_at), tha.reason, tha.hour_type, CAST(NULL AS SIGNED), CAST(NULL AS CHAR), tha.hours, 'adjustment', tha.created_at
+      FROM trainee_hour_adjustments tha WHERE tha.student_id = ?
+    ) combined
+    ORDER BY hour_date DESC, created_at DESC
+  `;
+  return { sql, params: [studentId, studentId, studentId, studentId] };
+}
+
+/** Same shape as buildHoursBreakdownQuery, for a ToT's own hours *received*
+ * from their Master Trainer (tot_training_sessions/tot_training_attendance
+ * + tot_hour_adjustments -- structurally separate tables from the trainee
+ * ones above, so this can never overlap with what a ToT *delivers*). */
+function buildTotHoursBreakdownQuery(totId) {
+  const sql = `
+    SELECT * FROM (
+      SELECT ts.session_date AS hour_date, ts.title AS title,
+             ts.duration_minutes AS duration_minutes, ta.status AS attendance_status,
+             CASE WHEN ta.status = 'present' AND ts.status != 'cancelled' THEN ROUND(ts.duration_minutes / 60, 2) ELSE 0 END AS hours,
+             'session' AS source, ts.created_at
+      FROM tot_training_sessions ts
+      JOIN tot_training_attendance ta ON ta.session_id = ts.id
+      WHERE ts.tot_id = ?
+
+      UNION ALL
+
+      SELECT DATE(tha.created_at), tha.reason, CAST(NULL AS SIGNED), CAST(NULL AS CHAR), tha.hours, 'adjustment', tha.created_at
+      FROM tot_hour_adjustments tha WHERE tha.tot_id = ?
+    ) combined
+    ORDER BY hour_date DESC, created_at DESC
+  `;
+  return { sql, params: [totId, totId] };
+}
+
+module.exports = { buildRecordsQuery, RECORD_TYPE_TABLES, buildHoursBreakdownQuery, buildTotHoursBreakdownQuery };

@@ -1259,17 +1259,34 @@ async function getTrainersAndHours(db, studentId, studentFullName) {
     [studentId]
   );
 
+  // Same three-part formula as computeProgressSummary (legacy typed rows +
+  // attendance-derived session hours + audited manual adjustments), just
+  // grouped per supervisor instead of summed for the whole trainee, so
+  // this card never disagrees with the trainee's own total shown elsewhere.
   const { rows: hoursRows } = await db.query(
-    `SELECT supervisor_id, COALESCE(SUM(hours), 0) AS hours
-     FROM supervision_hours WHERE student_id = ? GROUP BY supervisor_id`,
-    [studentId]
+    `SELECT supervisor_id, COALESCE(SUM(hours), 0) AS hours FROM (
+       SELECT supervisor_id, hours FROM supervision_hours WHERE student_id = ?
+       UNION ALL
+       SELECT s.supervisor_id, s.duration_minutes / 60 AS hours FROM sessions s
+         JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+         WHERE s.student_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled'
+       UNION ALL
+       SELECT added_by AS supervisor_id, hours FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'supervision'
+     ) combined GROUP BY supervisor_id`,
+    [studentId, studentId, studentId]
   );
   const hoursBySupervisor = {};
   hoursRows.forEach((r) => (hoursBySupervisor[r.supervisor_id] = Number(r.hours)));
 
   const { rows: traineeHoursRows } = await db.query(
-    "SELECT COALESCE(SUM(hours), 0) AS hours FROM training_hours WHERE student_id = ?",
-    [studentId]
+    `SELECT
+       COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id = ?), 0) +
+       COALESCE((SELECT SUM(s.duration_minutes) / 60 FROM sessions s
+         JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+         WHERE s.student_id = ? AND s.session_type = 'training' AND s.status != 'cancelled'), 0) +
+       COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'training'), 0)
+     AS hours`,
+    [studentId, studentId, studentId]
   );
   const traineeHours = Number(traineeHoursRows[0].hours);
 

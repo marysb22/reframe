@@ -289,6 +289,14 @@ function toStudentSummary(row) {
  * SQL aggregates against the normalized tables, rather than fetching every
  * row and reducing in JS like the old flexible-table version did.
  */
+// Hours = attendance-derived session hours (the source of truth going
+// forward) + frozen legacy training_hours/supervision_hours rows (typed
+// directly before this redesign, never re-derived, never deleted) +
+// trainee_hour_adjustments (the new audited manual-exception ledger). A
+// session only contributes hours when it has a linked, present attendance
+// row and isn't cancelled -- absent/excused/cancelled always contribute 0.
+// Nothing here is cached; every read recomputes from source rows, so an
+// attendance correction changes the total on the very next read.
 async function computeProgressSummary(db, studentId) {
   // MySQL has no FILTER (WHERE ...) clause (Postgres-only) -- every
   // COUNT(*) FILTER (WHERE cond) below becomes COUNT(CASE WHEN cond THEN 1 END),
@@ -296,9 +304,21 @@ async function computeProgressSummary(db, studentId) {
   const [hoursRes, attendanceRes, sessionsRes, assignmentsRes, evalRes] = await Promise.all([
     db.query(
       `SELECT
-         COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id = ?), 0) AS training,
-         COALESCE((SELECT SUM(hours) FROM supervision_hours WHERE student_id = ?), 0) AS supervision`,
-      [studentId, studentId]
+         COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id = ?), 0) AS legacy_training,
+         COALESCE((SELECT SUM(hours) FROM supervision_hours WHERE student_id = ?), 0) AS legacy_supervision,
+         COALESCE((
+           SELECT SUM(s.duration_minutes) / 60 FROM sessions s
+           JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+           WHERE s.student_id = ? AND s.session_type = 'training' AND s.status != 'cancelled'
+         ), 0) AS derived_training,
+         COALESCE((
+           SELECT SUM(s.duration_minutes) / 60 FROM sessions s
+           JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+           WHERE s.student_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled'
+         ), 0) AS derived_supervision,
+         COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'training'), 0) AS adj_training,
+         COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'supervision'), 0) AS adj_supervision`,
+      [studentId, studentId, studentId, studentId, studentId, studentId]
     ),
     db.query(
       `SELECT
@@ -330,8 +350,14 @@ async function computeProgressSummary(db, studentId) {
   const assignments = assignmentsRes.rows[0];
   const avgScore = evalRes.rows[0].avg_score;
 
+  const trainingHours = Number(hours.legacy_training) + Number(hours.derived_training) + Number(hours.adj_training);
+  const supervisionHours =
+    Number(hours.legacy_supervision) + Number(hours.derived_supervision) + Number(hours.adj_supervision);
+
   return {
-    clinicalHours: Number(hours.training) + Number(hours.supervision),
+    clinicalHours: trainingHours + supervisionHours,
+    trainingHours,
+    supervisionHours,
     attendanceRate: Number(attendance.total) > 0 ? Math.round((Number(attendance.present) / Number(attendance.total)) * 100) : null,
     trainingSessions: Number(sessions.training_sessions),
     supervisionSessions: Number(sessions.supervision_sessions),

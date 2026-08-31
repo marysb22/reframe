@@ -1579,6 +1579,28 @@
             color: white;
         }
         
+        .record-form {
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .record-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .record-form label {
+            margin-top: 0;
+        }
+
+        .record-form .full {
+            grid-column: 1/-1;
+        }
+
         .record-list {
             list-style: none;
             padding: 0;
@@ -1587,7 +1609,7 @@
             flex-direction: column;
             gap: 9px;
         }
-        
+
         .record-item {
             background: var(--surface-2);
             border: 1px solid var(--border-soft);
@@ -2423,7 +2445,8 @@
                                 <th>ID</th>
                                 <th>Trainees</th>
                                 <th>Sessions</th>
-                                <th>Hours</th>
+                                <th>Hours delivered</th>
+                                <th>Hours received</th>
                                 <th>Completion</th>
                                 <th>Attendance</th>
                                 <th>Status</th>
@@ -3452,11 +3475,11 @@
             const filtered = allTots.filter((t) => (t.full_name || "").toLowerCase().includes(search) || (t.member_code || "").toLowerCase().includes(search));
             const body = document.getElementById("totsBody");
             if (!allTots.length) {
-                body.innerHTML = '<tr><td colspan="9" class="empty-state">No Trainers in Training in your Group yet.</td></tr>';
+                body.innerHTML = '<tr><td colspan="10" class="empty-state">No Trainers in Training in your Group yet.</td></tr>';
                 return;
             }
             if (!filtered.length) {
-                body.innerHTML = '<tr><td colspan="9" class="empty-state">No trainers match your search.</td></tr>';
+                body.innerHTML = '<tr><td colspan="10" class="empty-state">No trainers match your search.</td></tr>';
                 return;
             }
             body.innerHTML = filtered.map((t) => `
@@ -3466,6 +3489,7 @@
           <td>${t.trainee_count}</td>
           <td>${t.session_count}</td>
           <td>${Math.round((Number(t.training_hours || 0) + Number(t.supervision_hours || 0)) * 10) / 10}</td>
+          <td>${Math.round(Number(t.training_received_hours || 0) * 10) / 10}</td>
           <td>${fmtPct(t.completion_pct)}</td>
           <td>${fmtPct(t.attendance_rate)}</td>
           <td><span class="pill ${t.status}">${escapeHtml(t.status)}</span></td>
@@ -3482,12 +3506,14 @@
             document.getElementById("totMeta").textContent = `${data.trainer.member_code} \u00b7 ${data.trainer.email || "No email"} \u00b7 ${data.trainer.phone || "No phone"}`;
 
             const s = data.stats;
+            const r = data.trainingReceived || {};
             document.getElementById("totProgress").innerHTML = [
                 ["Trainees", data.students.length],
                 ["Training sessions", s.training_sessions],
                 ["Supervision sessions", s.supervision_sessions],
-                ["Training hours", s.training_hours],
-                ["Supervision hours", s.supervision_hours],
+                ["Hours delivered (training)", s.training_hours],
+                ["Hours delivered (supervision)", s.supervision_hours],
+                ["Hours received (from me)", Math.round((r.totalHours || 0) * 10) / 10],
                 ["Assignments", `${s.assignments_completed}/${s.assignments_total}`],
                 ["Evaluations", s.evaluation_count],
                 ["Meetings", s.meeting_count],
@@ -3502,6 +3528,7 @@
         function renderTotTabs() {
             const tabs = [
                 ["trainees", "Trainees"],
+                ["training", "Training I gave"],
                 ["records", "Recent records"],
                 ["documents", "Documents"],
                 ["materials", "Materials"],
@@ -3532,6 +3559,10 @@
             <td>${escapeHtml(s.cohort_name || "&mdash;")}</td><td>${s.current_year ? "Year " + s.current_year : "&mdash;"}</td>
             <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td></tr>`).join("")}</tbody></table>`
                     : '<p class="empty-state">No trainees assigned to this trainer yet.</p>';
+                return;
+            }
+            if (totActiveTab === "training") {
+                renderTotTrainingPanel(c);
                 return;
             }
             if (totActiveTab === "records") {
@@ -3586,6 +3617,139 @@
             }
             if (totActiveTab === "cv") {
                 c.innerHTML = renderCvCard(currentTot.trainer);
+            }
+        }
+
+        // The one write-capable tab in this otherwise read-only modal: I
+        // train my own ToTs directly, so this logs a training session +
+        // its attendance together (hours are computed from these, never
+        // typed), plus an audited manual-adjustment ledger for exceptions.
+        async function renderTotTrainingPanel(c) {
+            c.innerHTML = '<div class="empty-state">Loading...</div>';
+            const [sessionsRes, adjRes] = await Promise.all([
+                apiRequest(`/master-trainer/tots/${currentTot.trainer.id}/sessions`),
+                apiRequest(`/master-trainer/tots/${currentTot.trainer.id}/hour-adjustments`),
+            ]);
+            const sessions = (sessionsRes && sessionsRes.sessions) || [];
+            const adjustments = (adjRes && adjRes.adjustments) || [];
+
+            c.innerHTML = `
+        <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Log a training session</h4>
+        <form class="record-form" id="totSessionForm">
+          <div class="record-form-grid">
+            <div><label>Date</label><input type="date" id="tsf_date" required></div>
+            <div><label>Time</label><input type="time" id="tsf_time"></div>
+            <div><label>Duration (minutes)</label><input type="number" min="0" id="tsf_duration" required></div>
+            <div><label>Attendance</label><select id="tsf_attendance" required>
+              <option value="">Select...</option>
+              <option value="present">Present</option>
+              <option value="absent">Absent</option>
+              <option value="excused">Excused</option>
+            </select></div>
+            <div class="full"><label>Title</label><input type="text" id="tsf_title"></div>
+            <div class="full"><label>Notes (optional)</label><textarea id="tsf_notes"></textarea></div>
+          </div>
+          <div class="modal-actions"><button type="submit" class="btn">Log session</button></div>
+        </form>
+
+        <h4 style="margin:20px 0 10px;font-size:13px;color:var(--muted);">Add manual hours (exception only -- never changes past attendance)</h4>
+        <form class="record-form" id="totAdjForm">
+          <div class="record-form-grid">
+            <div><label>Hours (negative to correct)</label><input type="number" step="0.25" id="taf_hours" required></div>
+            <div class="full"><label>Reason</label><input type="text" id="taf_reason" required></div>
+            <div class="full"><label>Notes (optional)</label><textarea id="taf_notes"></textarea></div>
+          </div>
+          <div class="modal-actions"><button type="submit" class="btn">Add adjustment</button></div>
+        </form>
+
+        <h4 style="margin:20px 0 10px;font-size:13px;color:var(--muted);">Session history</h4>
+        <ul class="record-list">
+          ${sessions.length ? sessions.map((s) => `
+            <li class="record-item">
+              <div>
+                <strong>${escapeHtml(s.title || "Training session")}</strong>
+                <div class="rmeta">${escapeHtml(s.session_date)} ${s.session_time ? escapeHtml(s.session_time) : ""} &middot; ${s.duration_minutes} min &middot; <span class="pill ${s.attendance_status || ""}">${escapeHtml(s.attendance_status || "—")}</span> ${s.status === "cancelled" ? '<span class="pill absent">cancelled</span>' : ""}</div>
+                ${s.notes ? `<div class="rcontent">${escapeHtml(s.notes)}</div>` : ""}
+              </div>
+              <div class="row-actions">
+                ${s.status !== "cancelled" ? `<button class="icon-btn danger" title="Cancel session" onclick="cancelTotSession(${s.id})"><i class="fa fa-ban"></i></button>` : ""}
+              </div>
+            </li>`).join("") : '<li class="empty-state">No sessions logged yet.</li>'}
+        </ul>
+
+        <h4 style="margin:20px 0 10px;font-size:13px;color:var(--muted);">Manual adjustments</h4>
+        <ul class="record-list">
+          ${adjustments.length ? adjustments.map((a) => `
+            <li class="record-item"><div>
+              <strong>${Number(a.hours) > 0 ? "+" : ""}${a.hours}h &mdash; ${escapeHtml(a.reason)}</strong>
+              <div class="rmeta">${escapeHtml((a.created_at || "").slice(0, 10))} &middot; added by ${escapeHtml(a.added_by_name || "—")}</div>
+              ${a.notes ? `<div class="rcontent">${escapeHtml(a.notes)}</div>` : ""}
+            </div></li>`).join("") : '<li class="empty-state">No manual adjustments yet.</li>'}
+        </ul>
+      `;
+
+            document.getElementById("totSessionForm").addEventListener("submit", submitTotSession);
+            document.getElementById("totAdjForm").addEventListener("submit", submitTotAdjustment);
+        }
+
+        async function submitTotSession(e) {
+            e.preventDefault();
+            const payload = {
+                date: document.getElementById("tsf_date").value,
+                time: document.getElementById("tsf_time").value || undefined,
+                durationMinutes: Number(document.getElementById("tsf_duration").value),
+                attendanceStatus: document.getElementById("tsf_attendance").value,
+                title: document.getElementById("tsf_title").value || undefined,
+                notes: document.getElementById("tsf_notes").value || undefined,
+            };
+            const result = await apiRequest(`/master-trainer/tots/${currentTot.trainer.id}/sessions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            if (result) {
+                showToast("Session logged", "success");
+                await openTot(currentTot.trainer.id);
+                totActiveTab = "training";
+                renderTotTabs();
+                renderTotPanel();
+                await loadDashboardHours();
+            }
+        }
+
+        async function submitTotAdjustment(e) {
+            e.preventDefault();
+            const payload = {
+                hours: Number(document.getElementById("taf_hours").value),
+                reason: document.getElementById("taf_reason").value,
+                notes: document.getElementById("taf_notes").value || undefined,
+            };
+            const result = await apiRequest(`/master-trainer/tots/${currentTot.trainer.id}/hour-adjustments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            if (result) {
+                showToast("Adjustment added", "success");
+                await openTot(currentTot.trainer.id);
+                totActiveTab = "training";
+                renderTotTabs();
+                renderTotPanel();
+                await loadDashboardHours();
+            }
+        }
+
+        async function cancelTotSession(sessionId) {
+            if (!confirm("Cancel this session? It will be excluded from hours but kept for the record.")) return;
+            const result = await apiRequest(`/master-trainer/tots/${currentTot.trainer.id}/sessions/${sessionId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "cancelled" }),
+            });
+            if (result) {
+                showToast("Session cancelled", "success");
+                renderTotTrainingPanel(document.getElementById("totPanels"));
+                await loadDashboardHours();
             }
         }
 

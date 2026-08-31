@@ -2397,6 +2397,29 @@
                 <section class="widget-row">
                     <div class="widget">
                         <div class="widget-title">
+                            <h3><i class="fa fa-graduation-cap"></i>Training received (from my Master Trainer)</h3>
+                        </div>
+                        <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:10px;">
+                            <div class="kpi-card"><label>Total hours</label><h2 id="trReceivedTotal">&mdash;</h2></div>
+                            <div class="kpi-card"><label>Attendance</label><h2 id="trReceivedAttendance">&mdash;</h2></div>
+                        </div>
+                        <p class="hint" style="margin:0;">Attended: <strong id="trReceivedAttended">&mdash;</strong> &middot; Missed: <strong id="trReceivedMissed">&mdash;</strong> &middot; Manual adjustments: <strong id="trReceivedAdj">&mdash;</strong>h</p>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-title">
+                            <h3><i class="fa fa-chalkboard-user"></i>Training delivered (to my trainees)</h3>
+                        </div>
+                        <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:10px;">
+                            <div class="kpi-card"><label>Total hours</label><h2 id="trDeliveredTotal">&mdash;</h2></div>
+                            <div class="kpi-card"><label>Trainee attendance</label><h2 id="trDeliveredAttendance">&mdash;</h2></div>
+                        </div>
+                        <p class="hint" style="margin:0;">Sessions conducted: <strong id="trDeliveredSessions">&mdash;</strong> &middot; Trainees trained: <strong id="trDeliveredTrainees">&mdash;</strong></p>
+                    </div>
+                </section>
+
+                <section class="widget-row">
+                    <div class="widget">
+                        <div class="widget-title">
                             <h3><i class="fa fa-calendar-day"></i>Today &amp; upcoming sessions</h3><span class="tag" id="schedCount">&mdash;</span></div>
                         <ul class="sched-list" id="scheduleList">
                             <li class="empty-state">Loading schedule...</li>
@@ -3046,29 +3069,25 @@
             attendance: {
                 label: "Attendance",
                 icon: "fa-calendar-check",
-                fields: ["date", "status", "content"],
+                fields: ["status", "content"],
                 statusOptions: ["present", "absent", "excused"]
             },
             training_session: {
                 label: "Training sessions",
                 icon: "fa-chalkboard-user",
-                fields: ["date", "time", "duration", "title", "content"]
+                fields: ["date", "time", "duration", "title", "attendanceStatus", "content"]
             },
             supervision_session: {
                 label: "Supervision sessions",
                 icon: "fa-user-doctor",
-                fields: ["date", "time", "duration", "title", "content"]
+                fields: ["date", "time", "duration", "title", "attendanceStatus", "content"]
             },
-            training_hours: {
-                label: "Training hours",
-                icon: "fa-stopwatch",
-                fields: ["date", "duration", "content"]
-            },
-            supervision_hours: {
-                label: "Supervision hours",
-                icon: "fa-stopwatch",
-                fields: ["date", "duration", "content"]
-            },
+            // Hours are no longer a typed number -- they're computed from a
+            // session's duration + its attendance. These two tabs are now the
+            // audited manual-adjustment ledger for genuine exceptions only
+            // (see renderHourAdjustmentPanel), never freeform entry.
+            training_hours: { label: "Training hours", icon: "fa-stopwatch", hourType: "training" },
+            supervision_hours: { label: "Supervision hours", icon: "fa-stopwatch", hourType: "supervision" },
             assignment: {
                 label: "Assignments",
                 icon: "fa-list-check",
@@ -3446,7 +3465,32 @@
             allStudents = data.students;
             renderStudents();
             loadKpis();
+            loadTrainingHoursSummary();
             populateStudentPickers();
+        }
+
+        // "Received" (from my Master Trainer) and "delivered" (to my
+        // trainees) are deliberately shown as two separate numbers, never
+        // combined -- they come from structurally disjoint tables so they
+        // can never double-count each other.
+        async function loadTrainingHoursSummary() {
+            const [received, delivered] = await Promise.all([
+                apiRequest("/supervisor/me/training-received"),
+                apiRequest("/supervisor/me/training-delivered"),
+            ]);
+            if (received) {
+                document.getElementById("trReceivedTotal").textContent = Math.round(received.totalHours * 10) / 10;
+                document.getElementById("trReceivedAttendance").textContent = received.attendanceRate != null ? received.attendanceRate + "%" : "—";
+                document.getElementById("trReceivedAttended").textContent = received.sessionsAttended;
+                document.getElementById("trReceivedMissed").textContent = received.sessionsMissed;
+                document.getElementById("trReceivedAdj").textContent = (received.adjustmentHours > 0 ? "+" : "") + received.adjustmentHours;
+            }
+            if (delivered) {
+                document.getElementById("trDeliveredTotal").textContent = Math.round(delivered.totalHours * 10) / 10;
+                document.getElementById("trDeliveredAttendance").textContent = delivered.traineeAttendanceRate != null ? delivered.traineeAttendanceRate + "%" : "—";
+                document.getElementById("trDeliveredSessions").textContent = delivered.sessionsConducted;
+                document.getElementById("trDeliveredTrainees").textContent = delivered.traineesTrained;
+            }
         }
 
         function populateStudentPickers() {
@@ -3727,19 +3771,66 @@
       .map((o) => `<option value="${o}" ${o === value ? "selected" : ""}>${o}</option>`)
       .join("")}</select></div>`;
   }
+  if (field === "attendanceStatus") {
+    return `<div><label>Attendance</label><select id="rf_attendance" required>
+      <option value="">Select...</option>
+      <option value="present" ${value === "present" ? "selected" : ""}>Present</option>
+      <option value="absent" ${value === "absent" ? "selected" : ""}>Absent</option>
+      <option value="excused" ${value === "excused" ? "selected" : ""}>Excused</option>
+    </select></div>`;
+  }
   if (field === "content") return `<div class="full"><label>Notes</label><textarea id="rf_content">${escapeHtml(value)}</textarea></div>`;
   return "";
 }
 
 function renderRecordPanel(container, type) {
   const config = RECORD_TYPES[type];
+
+  // Training/Supervision hours: no longer a freeform number, now the
+  // audited manual-adjustment ledger fed by /hour-adjustments.
+  if (config.hourType) {
+    renderHourAdjustmentPanel(container, config.hourType);
+    return;
+  }
+
   const records = currentStudentData.records.filter((r) => r.recordType === type);
   const editing = editingRecordId ? records.find((r) => r.id === editingRecordId) : null;
+
+  // Attendance is now created together with its session (see
+  // training_session/supervision_session's attendanceStatus field) --
+  // standalone creation is retired, but an existing row can still be
+  // corrected (Present -> Absent etc.) via its own edit button below.
+  if (type === "attendance") {
+    container.innerHTML = `
+      <div class="notice-banner"><i class="fa fa-circle-info"></i><span>Attendance is recorded together with its training/supervision session now (see those tabs), so hours are always traceable to a real session. You can still correct an existing entry below.</span></div>
+      ${editing ? `
+      <form class="record-form" id="recordForm">
+        <div class="record-form-grid">
+          ${fieldInput(type, "status", editing.status || "")}
+          ${fieldInput(type, "content", editing.content || "")}
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="cancelEditRecord()">Cancel edit</button>
+          <button type="submit" class="btn">Save changes</button>
+        </div>
+      </form>` : ""}
+      <ul class="record-list" id="recordList">
+        ${records.length ? records.map((r) => recordItemHtml(type, r)).join("") : '<li class="empty-state">No entries yet.</li>'}
+      </ul>
+    `;
+    if (editing) document.getElementById("recordForm").addEventListener("submit", (e) => submitRecordForm(e, type));
+    return;
+  }
+
+  // training_session/supervision_session don't let you change WHO attended
+  // through this generic form once created (that's the Attendance tab's
+  // job) -- only at creation time, alongside the session itself.
+  const fields = editing ? config.fields.filter((f) => f !== "attendanceStatus") : config.fields;
 
   container.innerHTML = `
     <form class="record-form" id="recordForm">
       <div class="record-form-grid">
-        ${config.fields.map((f) => fieldInput(type, f, editing ? mapEditValue(editing, f) : "")).join("")}
+        ${fields.map((f) => fieldInput(type, f, editing ? mapEditValue(editing, f) : "")).join("")}
       </div>
       <div class="modal-actions">
         ${editing ? '<button type="button" class="btn btn-secondary" onclick="cancelEditRecord()">Cancel edit</button>' : ""}
@@ -3752,6 +3843,55 @@ function renderRecordPanel(container, type) {
   `;
 
   document.getElementById("recordForm").addEventListener("submit", (e) => submitRecordForm(e, type));
+}
+
+async function renderHourAdjustmentPanel(container, hourType) {
+  container.innerHTML = '<div class="empty-state">Loading...</div>';
+  const data = await apiRequest(`/supervisor/students/${currentStudentId}/hour-adjustments`);
+  const adjustments = ((data && data.adjustments) || []).filter((a) => a.hour_type === hourType);
+
+  container.innerHTML = `
+    <div class="notice-banner"><i class="fa fa-circle-info"></i><span>Hours are calculated automatically from sessions and attendance. Use this only to add or correct hours for a genuine exception -- it never changes past attendance or session records.</span></div>
+    <form class="record-form" id="hourAdjForm">
+      <div class="record-form-grid">
+        <div><label>Hours (negative to correct a prior entry)</label><input type="number" step="0.25" id="haf_hours" required></div>
+        <div class="full"><label>Reason</label><input type="text" id="haf_reason" required></div>
+        <div class="full"><label>Notes (optional)</label><textarea id="haf_notes"></textarea></div>
+      </div>
+      <div class="modal-actions"><button type="submit" class="btn">Add adjustment</button></div>
+    </form>
+    <ul class="record-list" id="recordList">
+      ${adjustments.length ? adjustments.map((a) => `
+        <li class="record-item">
+          <div>
+            <strong>${Number(a.hours) > 0 ? "+" : ""}${a.hours}h &mdash; ${escapeHtml(a.reason)}</strong>
+            <div class="rmeta">${escapeHtml((a.created_at || "").slice(0, 10))} &middot; added by ${escapeHtml(a.added_by_name || "—")}</div>
+            ${a.notes ? `<div class="rcontent">${escapeHtml(a.notes)}</div>` : ""}
+          </div>
+        </li>`).join("") : '<li class="empty-state">No manual adjustments yet.</li>'}
+    </ul>
+  `;
+  document.getElementById("hourAdjForm").addEventListener("submit", (e) => submitHourAdjustment(e, hourType));
+}
+
+async function submitHourAdjustment(e, hourType) {
+  e.preventDefault();
+  const payload = {
+    hourType,
+    hours: Number(document.getElementById("haf_hours").value),
+    reason: document.getElementById("haf_reason").value,
+    notes: document.getElementById("haf_notes").value || undefined,
+  };
+  const result = await apiRequest(`/supervisor/students/${currentStudentId}/hour-adjustments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (result) {
+    showToast("Adjustment added", "success");
+    await refreshCurrentStudent();
+    renderRecordPanel(document.getElementById("sdPanels"), activeTab);
+  }
 }
 
 function mapEditValue(record, field) {
@@ -3806,6 +3946,7 @@ async function submitRecordForm(e, type) {
   if (get("rf_title")) payload.title = get("rf_title");
   if (get("rf_score")) payload.score = Number(get("rf_score"));
   if (get("rf_status")) payload.status = get("rf_status");
+  if (get("rf_attendance")) payload.attendanceStatus = get("rf_attendance");
   if (get("rf_content")) payload.content = get("rf_content");
 
   // FIX (rename pass): type-scoped URL to match the real backend.
