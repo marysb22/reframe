@@ -3013,6 +3013,10 @@
 
         const token = localStorage.getItem("token") || localStorage.getItem("reframe_token");
         if (!token) window.location.href = "login.html";
+        // Every /uploads/* file (except event images) now requires a valid
+        // session -- <img src>/<a href> can't send an Authorization header,
+        // so the same token is carried as a query param instead.
+        const TOKEN_Q = "?token=" + encodeURIComponent(token);
 
         let currentProfile = null;
         let mySupervisors = [];
@@ -3425,7 +3429,7 @@
                 `${data.memberCode || ""} \u00b7 ${data.cohort || "No cohort"} \u00b7 ${data.currentYear ? "Year " + data.currentYear : "No year set"}`;
 
             if (data.photo) {
-                const imgHtml = `<img src="${UPLOADS}/photos/${data.photo}" alt="">`;
+                const imgHtml = `<img src="${UPLOADS}/photos/${data.photo}${TOKEN_Q}" alt="">`;
                 document.getElementById("topbarAvatar").innerHTML = imgHtml;
                 document.getElementById("profileAvatarPreview").innerHTML = imgHtml + '<button class="photo-btn" id="photoBtn" title="Change photo"><i class="fa fa-camera"></i></button>';
                 attachPhotoButton();
@@ -3603,7 +3607,7 @@
                 // hadn't been saved yet. Only update the avatar images instead, and
                 // leave the rest of the form exactly as the user left it.
                 if (data.photo) {
-                    const imgHtml = `<img src="${UPLOADS}/photos/${data.photo}" alt="">`;
+                    const imgHtml = `<img src="${UPLOADS}/photos/${data.photo}${TOKEN_Q}" alt="">`;
                     document.getElementById("topbarAvatar").innerHTML = imgHtml;
                     document.getElementById("profileAvatarPreview").innerHTML =
                         imgHtml + '<button class="photo-btn" id="photoBtn" title="Change photo"><i class="fa fa-camera"></i></button>';
@@ -3830,7 +3834,7 @@ function renderMaterialRows(list, groupByType) {
 }
 
 function materialRowHtml(m) {
-    const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}`;
+    const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
     const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
     return `
     <div class="material-row">
@@ -3877,7 +3881,7 @@ async function openMaterialPreview(id) {
         `${capitalize(m.materialType)} · Shared by ${m.supervisorName}${dateStr ? " · " + dateStr : ""}${m.description ? " — " + m.description : ""}`;
 
     const body = document.getElementById("matPreviewBody");
-    const fileUrl = m.externalUrl || `${UPLOADS}/materials/${m.filename}`;
+    const fileUrl = m.externalUrl || `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
     if (m.materialType === "image") {
         body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(m.title)}">`;
     } else if (m.materialType === "video") {
@@ -4023,7 +4027,7 @@ function openAssignmentDetail(id) {
   })() : "";
 
   const attachmentSection = a.attachmentFilename
-    ? `<a class="content-preview-link" href="${UPLOADS}/assignments/${a.attachmentFilename}" target="_blank" rel="noopener">
+    ? `<a class="content-preview-link" href="${UPLOADS}/assignments/${a.attachmentFilename}${TOKEN_Q}" target="_blank" rel="noopener">
          <span class="cp-icon"><i class="fa fa-file-arrow-down"></i></span>
          <div><strong>Download attachment</strong></div>
        </a>`
@@ -4042,7 +4046,7 @@ function openAssignmentDetail(id) {
           <span class="pill ${s.status === "graded" ? "completed" : "submitted"}">${escapeHtml((ASSIGNMENT_STATUS_LABEL[s.status] || s.status))}</span>
         </div>
         ${s.notes ? `<div class="acontent">${escapeHtml(s.notes)}</div>` : ""}
-        <a href="${UPLOADS}/submissions/${s.filename}" target="_blank" rel="noopener" style="font-size:12.5px;font-weight:600;color:var(--primary);text-decoration:none;">
+        <a href="${UPLOADS}/submissions/${s.filename}${TOKEN_Q}" target="_blank" rel="noopener" style="font-size:12.5px;font-weight:600;color:var(--primary);text-decoration:none;">
           <i class="fa fa-download"></i> View my submitted file
         </a>
       </div>
@@ -4396,7 +4400,7 @@ function gcMessageHtml(m) {
           <div class="ab-icon"><i class="fa ${ATTACHMENT_ICONS[m.attachment.mime] || (m.attachment.mime && m.attachment.mime.startsWith("image/") ? "fa-image" : "fa-file")}"></i></div>
           <div>
             <div class="ab-name">${escapeHtml(m.attachment.originalName)}</div>
-            <div class="ab-meta">${formatFileSize(m.attachment.size)} &middot; <a href="${UPLOADS}/chat/${m.attachment.filename}" target="_blank" rel="noopener" download>Download</a></div>
+            <div class="ab-meta">${formatFileSize(m.attachment.size)} &middot; <a href="${UPLOADS}/chat/${m.attachment.filename}${TOKEN_Q}" target="_blank" rel="noopener" download>Download</a></div>
           </div>
         </div>
         ${m.content ? `<div class="gc-msg-text" style="margin-top:6px;">${escapeHtml(m.content)}</div>` : ""}`
@@ -4471,7 +4475,7 @@ async function loadDocuments() {
   if (!data.documents.length) { list.innerHTML = '<li class="empty-state">No documents shared yet.</li>'; return; }
   list.innerHTML = data.documents
     .map((d) => `<li class="doc-item">
-      <div><a href="${UPLOADS}/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
+      <div><a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
       <div class="rmeta" style="color:var(--faint);font-size:11px;margin-top:2px;">from ${escapeHtml(d.uploadedByName)}</div></div>
     </li>`)
     .join("");

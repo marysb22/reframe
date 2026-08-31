@@ -1,4 +1,5 @@
 const express = require("express");
+const fs = require("fs");
 const { requireAuth, asyncRoute } = require("../middleware/auth");
 const {
   toProfileResponse,
@@ -13,6 +14,7 @@ const {
 } = require("../utils/serializers");
 const { hashPassword, verifyPassword } = require("../utils/authUtils");
 const { photoUpload, cvUpload, submissionUpload } = require("../utils/uploads");
+const { checkFileContent } = require("../utils/fileTypeCheck");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
 const { createNotification } = require("../utils/notifications");
 const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
@@ -223,6 +225,11 @@ router.post("/photo", requireAuth, (req, res) => {
   photoUpload.single("photo")(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No photo uploaded" });
+    const check = checkFileContent(req.file.path, ["image"]);
+    if (!check.safe) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: check.reason });
+    }
 
     const table = profileTableForRole(req.user.role);
     const { pool } = require("../db");
@@ -240,6 +247,11 @@ router.post("/cv", requireStudent, (req, res) => {
   cvUpload.single("cv")(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No CV uploaded" });
+    const check = checkFileContent(req.file.path, ["pdf"]);
+    if (!check.safe) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: check.reason });
+    }
 
     const { pool } = require("../db");
     await pool.query("UPDATE students SET cv_file = ?, updated_at = NOW() WHERE id = ?", [
@@ -263,6 +275,11 @@ router.post("/records/:id/submission", requireStudent, (req, res) => {
   submissionUpload.single("submission")(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
+    if (!check.safe) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: check.reason });
+    }
 
     const { pool } = require("../db");
     const assignmentId = req.params.id;
@@ -599,12 +616,30 @@ async function getOrCreateChat(db, supervisorId, studentId) {
   return created.insertId;
 }
 
+// Every other trainee sub-resource in this file (documents, materials,
+// announcements, meetings) is scoped to the caller's own supervisor_students
+// caseload -- messaging must be too, or a trainee could contact (and the
+// backend would happily create a permanent chat thread with) any
+// supervisor account platform-wide, not just their own assigned one.
+async function requireAssignedSupervisor(db, studentId, supervisorId, res) {
+  const { rows } = await db.query(
+    "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
+    [supervisorId, studentId]
+  );
+  if (!rows.length) {
+    res.status(403).json({ error: "This supervisor is not assigned to you" });
+    return false;
+  }
+  return true;
+}
+
 // GET /api/profile/messages/:supervisorId
 router.get(
   "/messages/:supervisorId",
   requireStudent,
   asyncRoute(async (req, res, db) => {
     const supervisorId = Number(req.params.supervisorId);
+    if (!(await requireAssignedSupervisor(db, req.user.id, supervisorId, res))) return;
     const chatId = await getOrCreateChat(db, supervisorId, req.user.id);
     const { rows } = await db.query(
       `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM messages m
@@ -630,6 +665,7 @@ router.post(
 
     const { rows: supRows } = await db.query("SELECT id FROM supervisors WHERE id = ?", [supervisorId]);
     if (!supRows.length) return res.status(404).json({ error: "Supervisor not found" });
+    if (!(await requireAssignedSupervisor(db, req.user.id, supervisorId, res))) return;
 
     const chatId = await getOrCreateChat(db, supervisorId, req.user.id);
     const insert = await db.query(

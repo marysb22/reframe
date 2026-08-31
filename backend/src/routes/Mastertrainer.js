@@ -1,7 +1,7 @@
 const express = require("express");
 const { requireAuth, requireMasterTrainer, asyncRoute } = require("../middleware/auth");
 const { toRecord, toDocument, toMaterial, computeTrainingProgress } = require("../utils/serializers");
-const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
+const { resolveWeekRange, getCurrentWeekRange, listRecentWeeks, shiftDate } = require("../utils/weekPeriod");
 const { buildTotHoursBreakdownQuery } = require("../utils/recordsQuery");
 
 const router = express.Router();
@@ -496,20 +496,44 @@ router.post(
         if (!Number.isFinite(Number(durationMinutes)) || Number(durationMinutes) < 0) {
             return res.status(400).json({ error: "durationMinutes is required and must be a non-negative number" });
         }
-        if (!["present", "absent", "excused"].includes(attendanceStatus)) {
-            return res.status(400).json({ error: "attendanceStatus is required and must be present, absent, or excused" });
+        // A future-dated session is being scheduled ahead of time, when
+        // attendance can't be known yet -- created as 'scheduled' with no
+        // attendance row, completed later via PUT once it happens. A
+        // session dated today or earlier already happened, so attendance
+        // is required now (same rule as the trainee-facing session route).
+        const { rows: todayRows } = await db.query("SELECT CURDATE() AS today");
+        const isFuture = date > todayRows[0].today;
+        if (!isFuture && !["present", "absent", "excused"].includes(attendanceStatus)) {
+            return res.status(400).json({ error: "attendanceStatus is required for a session dated today or earlier" });
+        }
+
+        // Duplicate-submission guard, same as the trainee-facing session
+        // route -- a double-click or client retry should not double a
+        // ToT's certified training-received hours.
+        const { rows: dupeSessionRows } = await db.query(
+            `SELECT id FROM tot_training_sessions
+       WHERE tot_id = ? AND master_trainer_id = ? AND session_date = ? AND duration_minutes = ?
+         AND created_at >= NOW() - INTERVAL 10 SECOND`,
+            [totId, masterTrainerId, date, Number(durationMinutes)]
+        );
+        if (dupeSessionRows.length) {
+            return res.status(409).json({
+                error: "This looks like a duplicate of a session just logged. Refresh and check the history before retrying.",
+            });
         }
 
         const sessionInsert = await db.query(
             `INSERT INTO tot_training_sessions (tot_id, master_trainer_id, title, session_date, session_time, duration_minutes, notes, status)
-       VALUES (?,?,?,?,?,?,?,'completed')`,
-            [totId, masterTrainerId, title || null, date, time || null, Number(durationMinutes), notes || null]
+       VALUES (?,?,?,?,?,?,?,?)`,
+            [totId, masterTrainerId, title || null, date, time || null, Number(durationMinutes), notes || null, isFuture ? "scheduled" : "completed"]
         );
         const sessionId = sessionInsert.insertId;
-        await db.query(
-            `INSERT INTO tot_training_attendance (session_id, tot_id, status, recorded_by) VALUES (?,?,?,?)`,
-            [sessionId, totId, attendanceStatus, masterTrainerId]
-        );
+        if (!isFuture) {
+            await db.query(
+                `INSERT INTO tot_training_attendance (session_id, tot_id, status, recorded_by) VALUES (?,?,?,?)`,
+                [sessionId, totId, attendanceStatus, masterTrainerId]
+            );
+        }
         await db.query(
             "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'tot_training_session_added', 'tot_training_sessions', ?, ?)",
             [masterTrainerId, sessionId, JSON.stringify({ totId, durationMinutes: Number(durationMinutes), attendanceStatus, date })]
@@ -569,7 +593,19 @@ router.put(
             if (!["present", "absent", "excused"].includes(attendanceStatus)) {
                 return res.status(400).json({ error: "attendanceStatus must be present, absent, or excused" });
             }
-            await db.query("UPDATE tot_training_attendance SET status = ? WHERE session_id = ?", [attendanceStatus, sessionId]);
+            // Completing a previously-scheduled session: it has no
+            // attendance row yet (none is created at scheduling time), so
+            // this upserts rather than assuming UPDATE will match a row.
+            const { rows: attRows } = await db.query("SELECT id FROM tot_training_attendance WHERE session_id = ?", [sessionId]);
+            if (attRows.length) {
+                await db.query("UPDATE tot_training_attendance SET status = ? WHERE session_id = ?", [attendanceStatus, sessionId]);
+            } else {
+                await db.query(
+                    "INSERT INTO tot_training_attendance (session_id, tot_id, status, recorded_by) VALUES (?, ?, ?, ?)",
+                    [sessionId, totId, attendanceStatus, masterTrainerId]
+                );
+            }
+            await db.query("UPDATE tot_training_sessions SET status = 'completed' WHERE id = ? AND status = 'scheduled'", [sessionId]);
         }
         await db.query(
             "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, 'tot_training_session_updated', 'tot_training_sessions', ?, ?)",
@@ -1165,37 +1201,22 @@ router.get(
 );
 
 // ---- Weekly Training Reports ---------------------------------------------
-// Computed on demand for any ISO week, no snapshot table -- every fact (a
+// Computed on demand for any week, no snapshot table -- every fact (a
 // session, an assignment, an audit row) is timestamped and re-queried live,
 // so a report for a past week always reflects the current state of that
 // week's data (e.g. if a ToT corrects a session's date afterward, the
 // report reflects the correction, not a frozen wrong snapshot).
-
-/** ISO 8601 week string ("2026-W34") for the given Date, in UTC. */
-function isoWeekOf(date) {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
-}
-
-/** Monday-Sunday date range (YYYY-MM-DD strings) for an ISO week string. */
-function isoWeekToDateRange(weekStr) {
-    const [yearStr, wStr] = String(weekStr).split("-W");
-    const year = Number(yearStr);
-    const week = Number(wStr);
-    const jan4 = new Date(Date.UTC(year, 0, 4));
-    const jan4Day = jan4.getUTCDay() || 7;
-    const week1Monday = new Date(jan4);
-    week1Monday.setUTCDate(jan4.getUTCDate() - jan4Day + 1);
-    const monday = new Date(week1Monday);
-    monday.setUTCDate(week1Monday.getUTCDate() + (week - 1) * 7);
-    const sunday = new Date(monday);
-    sunday.setUTCDate(monday.getUTCDate() + 6);
-    return { start: monday.toISOString().slice(0, 10), end: sunday.toISOString().slice(0, 10) };
-}
+//
+// Weeks here use the exact same Friday->Thursday, MySQL-clock convention as
+// Activity (see weekPeriod.js) -- this used to be a separate Monday-Sunday
+// ISO week computed from Node's own clock (isoWeekOf(new Date())), which
+// could silently disagree with Activity's week boundary (a different week
+// definition entirely, and a different clock if the app server and DB
+// server's local time ever drift), making a session look like it belongs
+// to one week in Reports and a different week in Activity even though
+// nothing about the underlying data was wrong. The "week" identifier is
+// now a weekStart date string (e.g. "2026-08-28"), exactly like Activity's
+// own ?week= param -- not an ISO "YYYY-Www" string.
 
 // GET /api/master-trainer/reports/weekly/history — last N weeks with a
 // lightweight session-activity count each, to populate the report picker
@@ -1207,15 +1228,14 @@ router.get(
         if (!groupId) return noGroupResponse(res, { weeks: [] });
 
         const weeksBack = Math.min(Number(req.query.count) || 8, 26);
-        const currentWeek = isoWeekOf(new Date());
-        const weeks = [];
-        const cursor = new Date();
-        for (let i = 0; i < weeksBack; i++) {
-            const weekStr = isoWeekOf(cursor);
-            const { start, end } = isoWeekToDateRange(weekStr);
-            weeks.push({ week: weekStr, start, end, isCurrent: weekStr === currentWeek });
-            cursor.setUTCDate(cursor.getUTCDate() - 7);
-        }
+        const { weekStart: currentWeekStart } = await getCurrentWeekRange(db);
+        const weeks = listRecentWeeks(currentWeekStart, weeksBack).map((w) => ({
+            week: w.weekStart,
+            start: w.weekStart,
+            end: shiftDate(w.weekEnd, -1),
+            label: w.label,
+            isCurrent: w.weekStart === currentWeekStart,
+        }));
 
         const earliestStart = weeks[weeks.length - 1].start;
         const { rows } = await db.query(
@@ -1253,8 +1273,10 @@ router.get(
         };
         if (!groupId) return noGroupResponse(res, emptyShape);
 
-        const week = (req.query.week && String(req.query.week)) || isoWeekOf(new Date());
-        const { start, end } = isoWeekToDateRange(week);
+        const { weekStart, weekEnd } = await resolveWeekRange(db, req.query.week);
+        const week = weekStart;
+        const start = weekStart;
+        const end = shiftDate(weekEnd, -1); // BETWEEN below needs an inclusive last day, weekEnd is exclusive
         const startDT = `${start} 00:00:00`;
         const endDT = `${end} 23:59:59`;
 
@@ -1652,10 +1674,20 @@ async function attachSupervisorNamesLocal(db, rows) {
 }
 
 async function recentActivityForActor(db, actorId, limit) {
+    // entity_id only means "a student's id" for this specific set of
+    // entity_types (see supervisor.js's record-creation audit insert) --
+    // for every other entity_type (meetings, documents, materials, hour
+    // adjustments, tot sessions, ...) entity_id is that record's own
+    // primary key in an unrelated auto-increment sequence. Without this
+    // same filter the other Activity queries already apply, this LEFT
+    // JOIN could attach a coincidentally-matching student's name to an
+    // activity row that has nothing to do with them -- wrong attribution,
+    // not just a missing name.
     const { rows } = await db.query(
         `SELECT al.action, al.created_at, st.full_name AS student_name
      FROM audit_logs al
      LEFT JOIN students st ON st.id = al.entity_id
+       AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')
      WHERE al.actor_id = ?
      ORDER BY al.created_at DESC
      LIMIT ?`, [actorId, limit]

@@ -3175,6 +3175,10 @@
 
         const token = localStorage.getItem("token") || localStorage.getItem("reframe_token");
         if (!token) window.location.href = "login.html";
+        // Every /uploads/* file (except event images) now requires a valid
+        // session -- <img src>/<a href> can't send an Authorization header,
+        // so the same token is carried as a query param instead.
+        const TOKEN_Q = "?token=" + encodeURIComponent(token);
 
         let currentStudentId = null;
         let currentStudentData = null;
@@ -3419,8 +3423,8 @@
                 document.getElementById("settingsBio").value = me.bio || "";
                 document.getElementById("settingsAvatarPreview").textContent = initials(me.full_name);
                 if (me.photo) {
-                    document.getElementById("supervisorInitials").innerHTML = `<img src="${UPLOADS}/photos/${me.photo}" alt="">`;
-                    document.getElementById("settingsAvatarPreview").innerHTML = `<img src="${UPLOADS}/photos/${me.photo}" alt="">`;
+                    document.getElementById("supervisorInitials").innerHTML = `<img src="${UPLOADS}/photos/${me.photo}${TOKEN_Q}" alt="">`;
+                    document.getElementById("settingsAvatarPreview").innerHTML = `<img src="${UPLOADS}/photos/${me.photo}${TOKEN_Q}" alt="">`;
                 }
             }
         }
@@ -3925,8 +3929,8 @@
       .join("")}</select></div>`;
   }
   if (field === "attendanceStatus") {
-    return `<div><label>Attendance</label><select id="rf_attendance" required>
-      <option value="">Select...</option>
+    return `<div><label>Attendance (leave blank to schedule a future session)</label><select id="rf_attendance">
+      <option value="">Select... (required if the date is today or earlier)</option>
       <option value="present" ${value === "present" ? "selected" : ""}>Present</option>
       <option value="absent" ${value === "absent" ? "selected" : ""}>Absent</option>
       <option value="excused" ${value === "excused" ? "selected" : ""}>Excused</option>
@@ -4161,7 +4165,7 @@ function renderDocumentsPanel(container) {
       ${docs.length ? docs.map((d) => `
         <li class="doc-item">
           <div>
-            <a href="${UPLOADS}/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
+            <a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
             <div class="rmeta">uploaded by ${escapeHtml(d.uploadedByName)}</div>
           </div>
         </li>
@@ -4371,7 +4375,7 @@ function renderMaterialRows(list, groupByType) {
 }
 
 function materialRowHtml(m) {
-  const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}`;
+  const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
   const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
   return `
     <div class="material-row">
@@ -4422,7 +4426,7 @@ async function openMaterialPreview(id) {
     `${capitalize(m.materialType)}${dateStr ? " · " + dateStr : ""}${m.description ? " — " + m.description : ""}`;
 
   const body = document.getElementById("matPreviewBody");
-  const fileUrl = m.externalUrl || `${UPLOADS}/materials/${m.filename}`;
+  const fileUrl = m.externalUrl || `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
   if (m.materialType === "image") {
     body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(m.title)}">`;
   } else if (m.materialType === "video") {
@@ -4639,7 +4643,7 @@ function renderAssignments() {
     .map((a) => {
       const displayStatus = assignmentDisplayStatus(a);
       const contentBits = [];
-      if (a.attachmentFilename) contentBits.push(`<a href="${UPLOADS}/assignments/${a.attachmentFilename}" target="_blank" rel="noopener" title="Attachment"><i class="fa fa-paperclip"></i></a>`);
+      if (a.attachmentFilename) contentBits.push(`<a href="${UPLOADS}/assignments/${a.attachmentFilename}${TOKEN_Q}" target="_blank" rel="noopener" title="Attachment"><i class="fa fa-paperclip"></i></a>`);
       if (a.contentUrl) contentBits.push(`<a href="${escapeHtml(a.contentUrl)}" target="_blank" rel="noopener" title="Video/resource link"><i class="fa fa-play-circle"></i></a>`);
       const canReview = a.submission != null;
       return `
@@ -4779,7 +4783,7 @@ function openGradeModal(id) {
   document.getElementById("gradeSubmissionInfo").innerHTML = `
     <div class="record-item">
       <div>
-        <a href="${UPLOADS}/submissions/${s.filename}" target="_blank" rel="noopener"><i class="fa fa-file-arrow-down"></i> ${escapeHtml(s.originalName)}</a>
+        <a href="${UPLOADS}/submissions/${s.filename}${TOKEN_Q}" target="_blank" rel="noopener"><i class="fa fa-file-arrow-down"></i> ${escapeHtml(s.originalName)}</a>
         <div class="rmeta">Submitted ${new Date(s.submittedAt).toLocaleString()}</div>
         ${s.notes ? `<div class="rcontent">${escapeHtml(s.notes)}</div>` : ""}
       </div>
@@ -5250,7 +5254,7 @@ function gcMessageHtml(m) {
         <div class="ab-icon"><i class="fa ${ATTACHMENT_ICONS[m.attachment.mime] || (m.attachment.mime && m.attachment.mime.startsWith("image/") ? "fa-image" : "fa-file")}"></i></div>
         <div>
           <div class="ab-name">${escapeHtml(m.attachment.originalName)}</div>
-          <div class="ab-meta">${formatFileSize(m.attachment.size)} &middot; <a href="${UPLOADS}/chat/${m.attachment.filename}" target="_blank" rel="noopener" download>Download</a></div>
+          <div class="ab-meta">${formatFileSize(m.attachment.size)} &middot; <a href="${UPLOADS}/chat/${m.attachment.filename}${TOKEN_Q}" target="_blank" rel="noopener" download>Download</a></div>
         </div>
       </div>
       ${m.content ? `<div class="gc-msg-text" style="margin-top:6px;">${escapeHtml(m.content)}</div>` : ""}`
@@ -5343,7 +5347,7 @@ async function loadAllDocuments() {
     .map((d) => `
       <li class="doc-item">
         <div>
-          <a href="${UPLOADS}/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
+          <a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
           <div class="rmeta">${escapeHtml(d.studentName)} (${escapeHtml(d.studentCode)}) &middot; uploaded by ${escapeHtml(d.uploadedByName)}</div>
         </div>
       </li>
@@ -5440,8 +5444,8 @@ document.getElementById("settingsPhotoFile").addEventListener("change", async ()
       throw new Error((body && body.error) || "Upload failed");
     }
     const data = await response.json();
-    document.getElementById("settingsAvatarPreview").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}" alt="">`;
-    document.getElementById("supervisorInitials").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}" alt="">`;
+    document.getElementById("settingsAvatarPreview").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}${TOKEN_Q}" alt="">`;
+    document.getElementById("supervisorInitials").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}${TOKEN_Q}" alt="">`;
     showSuccessNotification("Profile Updated", "Your profile photo has been updated successfully.");
   } catch (err) {
     showToast(err.message, "error");

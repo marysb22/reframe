@@ -1,7 +1,9 @@
 const express = require("express");
+const fs = require("fs");
 const { requireAuth, requireDesigner, asyncRoute } = require("../middleware/auth");
 const { toArray, toPublicEvent, toEventDetail } = require("../utils/serializers");
 const { eventImageUpload } = require("../utils/uploads");
+const { checkFileContent } = require("../utils/fileTypeCheck");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 
 const router = express.Router();
@@ -22,6 +24,11 @@ router.post("/events/upload-image", (req, res) => {
   eventImageUpload.single("image")(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const check = checkFileContent(req.file.path, ["image"]);
+    if (!check.safe) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: check.reason });
+    }
     res.status(201).json({ url: `/uploads/events/${req.file.filename}` });
   });
 });

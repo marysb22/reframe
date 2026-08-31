@@ -1,4 +1,5 @@
 const express = require("express");
+const fs = require("fs");
 const { requireAuth, requireSupervisor, asyncRoute } = require("../middleware/auth");
 const {
   toStudentSummary,
@@ -11,6 +12,7 @@ const {
   computeProgressSummary,
 } = require("../utils/serializers");
 const { documentUpload, materialUpload, assignmentAttachmentUpload } = require("../utils/uploads");
+const { checkFileContent } = require("../utils/fileTypeCheck");
 const { buildRecordsQuery, RECORD_TYPE_TABLES, buildHoursBreakdownQuery, buildTotHoursBreakdownQuery } = require("../utils/recordsQuery");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi } = require("../utils/assignmentsQuery");
@@ -94,7 +96,7 @@ router.post(
     }
 
     const { rows: studentRows } = await db.query(
-      `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.current_year, c.name AS cohort_name
+      `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.current_year, st.group_id, c.name AS cohort_name
        FROM user_credentials uc JOIN students st ON st.id = uc.id LEFT JOIN cohorts c ON c.id = st.cohort_id
        WHERE uc.member_code = ?`,
       [String(studentCode).trim().toUpperCase()]
@@ -103,6 +105,17 @@ router.post(
       return res.status(404).json({ error: "This Trainee ID does not exist. Please contact the Administrator." });
     }
     const student = studentRows[0];
+
+    // A supervisor may only self-assign to a trainee already in their own
+    // Group -- without this, any supervisor could add themself to any
+    // trainee system-wide just by knowing (or guessing, since codes are
+    // sequential) their ID, bypassing every Group/caseload boundary the
+    // rest of the app enforces.
+    const { rows: callerRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
+    const callerGroupId = callerRows[0] && callerRows[0].group_id;
+    if (!callerGroupId || student.group_id !== callerGroupId) {
+      return res.status(403).json({ error: "This trainee is not in your Group. Ask your Master Trainer or Admin to assign you." });
+    }
 
     await db.query(
       `INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)
@@ -189,28 +202,54 @@ router.post(
       case "training_session":
       case "supervision_session": {
         // Hours are never a typed number anymore -- they're derived from
-        // this session's duration + its attendance status, so attendance
-        // is captured in the SAME request that logs the session (atomic,
-        // via asyncRoute's transaction) rather than as a separate,
-        // unlinked action. See computeProgressSummary for the formula.
-        if (!["present", "absent", "excused"].includes(attendanceStatus)) {
-          return res.status(400).json({ error: "attendanceStatus is required and must be present, absent, or excused" });
-        }
+        // this session's duration + its attendance status. A session dated
+        // today or earlier already happened, so attendance is required and
+        // captured in the SAME request (atomic, via asyncRoute's
+        // transaction) -- see computeProgressSummary for the formula. A
+        // future-dated session is being scheduled ahead of time, when
+        // attendance can't be known yet: it's created with
+        // status='scheduled' and no attendance row, to be completed later
+        // via PUT (below) once it actually happens.
+        if (!date) return res.status(400).json({ error: "date is required" });
         if (!Number.isFinite(Number(durationMinutes)) || Number(durationMinutes) < 0) {
           return res.status(400).json({ error: "durationMinutes is required and must be a non-negative number" });
+        }
+        const { rows: todayRows } = await db.query("SELECT CURDATE() AS today");
+        const isFuture = date > todayRows[0].today;
+        if (!isFuture && !["present", "absent", "excused"].includes(attendanceStatus)) {
+          return res.status(400).json({ error: "attendanceStatus is required for a session dated today or earlier" });
+        }
+        // Duplicate-submission guard (same student/type/date/duration
+        // within the last 10 seconds) -- catches a double-click or a
+        // client retry without blocking a legitimate second session
+        // logged for the same trainee later. Same pattern already used
+        // for payments (admin.js); sessions had no equivalent guard even
+        // though their duration directly drives certified training hours.
+        const { rows: dupeSessionRows } = await db.query(
+          `SELECT id FROM sessions
+           WHERE student_id = ? AND supervisor_id = ? AND session_type = ? AND session_date = ?
+             AND duration_minutes = ? AND created_at >= NOW() - INTERVAL 10 SECOND`,
+          [studentId, req.user.id, recordType === "training_session" ? "training" : "supervision", date, Number(durationMinutes)]
+        );
+        if (dupeSessionRows.length) {
+          return res.status(409).json({
+            error: "This looks like a duplicate of a session just logged. Refresh and check the history before retrying.",
+          });
         }
         const sessionType = recordType === "training_session" ? "training" : "supervision";
         const sessionInsert = await db.query(
           `INSERT INTO sessions (student_id, supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes, status)
-           VALUES (?,?,?,?,?,?,?,?,'completed')`,
-          [studentId, req.user.id, sessionType, title || null, date || null, time || null, Number(durationMinutes), content || null]
+           VALUES (?,?,?,?,?,?,?,?,?)`,
+          [studentId, req.user.id, sessionType, title || null, date, time || null, Number(durationMinutes), content || null, isFuture ? "scheduled" : "completed"]
         );
         insertedId = sessionInsert.insertId;
-        await db.query(
-          `INSERT INTO attendance (student_id, supervisor_id, session_id, attendance_date, status, recorded_by)
-           VALUES (?,?,?,?,?,?)`,
-          [studentId, req.user.id, insertedId, date || null, attendanceStatus, req.user.id]
-        );
+        if (!isFuture) {
+          await db.query(
+            `INSERT INTO attendance (student_id, supervisor_id, session_id, attendance_date, status, recorded_by)
+             VALUES (?,?,?,?,?,?)`,
+            [studentId, req.user.id, insertedId, date, attendanceStatus, req.user.id]
+          );
+        }
         break;
       }
       case "attendance":
@@ -324,7 +363,7 @@ router.put(
     );
     if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
 
-    const { date, time, durationMinutes, status, title, content, score } = req.body || {};
+    const { date, time, durationMinutes, status, title, content, score, attendanceStatus } = req.body || {};
 
     if (recordType === "training_session" || recordType === "supervision_session") {
       await db.query(
@@ -335,6 +374,25 @@ router.put(
          WHERE id = ?`,
         [date ?? null, time ?? null, durationMinutes ?? null, title ?? null, content ?? null, recordId]
       );
+      // Completing a previously-scheduled session: it may not have an
+      // attendance row yet (none is created at scheduling time, since
+      // attendance can't be known in advance -- see the POST handler
+      // above), so this upserts rather than assuming UPDATE will match a
+      // row. Also flips the session's own lifecycle status to 'completed'
+      // now that attendance -- and therefore its hours -- are known.
+      if (["present", "absent", "excused"].includes(attendanceStatus)) {
+        const { rows: attRows } = await db.query("SELECT id FROM attendance WHERE session_id = ?", [recordId]);
+        if (attRows.length) {
+          await db.query("UPDATE attendance SET status = ? WHERE session_id = ?", [attendanceStatus, recordId]);
+        } else {
+          await db.query(
+            `INSERT INTO attendance (student_id, supervisor_id, session_id, attendance_date, status, recorded_by)
+             VALUES (?, ?, ?, (SELECT session_date FROM sessions WHERE id = ?), ?, ?)`,
+            [existing.student_id, req.user.id, recordId, recordId, attendanceStatus, req.user.id]
+          );
+        }
+        await db.query("UPDATE sessions SET status = 'completed' WHERE id = ? AND status = 'scheduled'", [recordId]);
+      }
     } else if (recordType === "attendance") {
       await db.query(
         `UPDATE attendance SET attendance_date = COALESCE(?, attendance_date), status = COALESCE(?, status), notes = COALESCE(?, notes) WHERE id = ?`,
@@ -741,6 +799,13 @@ router.post("/assignments", (req, res) => {
   if (contentType.includes("multipart/form-data")) {
     assignmentAttachmentUpload.single("attachment")(req, res, async (err) => {
       if (err) return res.status(400).json({ error: err.message });
+      if (req.file) {
+        const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
+        if (!check.safe) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(400).json({ error: check.reason });
+        }
+      }
       try {
         await handle(req.file ? req.file.filename : null);
       } catch (err) {
@@ -839,6 +904,11 @@ router.post("/students/:studentId/documents", (req, res) => {
   documentUpload.single("document")(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
+    if (!check.safe) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: check.reason });
+    }
 
     const { pool } = require("../db");
     const studentId = Number(req.params.studentId);
@@ -974,6 +1044,11 @@ router.post("/materials", (req, res) => {
       const { title, description, materialType, studentId } = req.body || {};
       if (!title || !materialType) return res.status(400).json({ error: "title and materialType are required" });
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      const check = checkFileContent(req.file.path, ["pdf", "office", "image", "media"]);
+      if (!check.safe) {
+        fs.unlink(req.file.path, () => {});
+        return res.status(400).json({ error: check.reason });
+      }
 
       const insert = await pool.query(
         `INSERT INTO learning_materials (supervisor_id, student_id, title, description, material_type, filename, original_name)
@@ -1146,6 +1221,8 @@ router.get(
       [req.user.id, weekStart, weekEnd]
     );
     res.json({
+      weekStart,
+      weekEnd,
       activity: rows.map((r) => ({ action: r.action, studentName: r.student_name, createdAt: r.created_at })),
     });
   })
@@ -1249,6 +1326,18 @@ router.put(
     if (!existingRows.length) return res.status(404).json({ error: "Meeting not found" });
 
     const { title, studentId, platform, meetingUrl, scheduledAt, durationMinutes } = req.body || {};
+
+    // Same caseload check POST enforces -- without it, a meeting could be
+    // retargeted to a trainee outside the caller's caseload, silently
+    // taking it away from its original (correctly authorized) recipient.
+    if (studentId) {
+      const { rows: assignRows } = await db.query(
+        "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
+        [req.user.id, studentId]
+      );
+      if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
+    }
+
     await db.query(
       `UPDATE meetings SET
         title = COALESCE(?, title), student_id = ?, platform = COALESCE(?, platform),

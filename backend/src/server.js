@@ -59,7 +59,17 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/uploads", express.static(config.uploadsDir));
+// Event images are shown on the public marketing site, which requires no
+// login at all, so that one subfolder stays a plain static mount. Every
+// other upload subfolder (documents, CVs, chat attachments, submissions,
+// materials, assignment attachments, profile photos) previously lived
+// under this same unauthenticated mount -- meaning anyone who obtained a
+// URL (a leaked link, browser history, a screenshot) had permanent,
+// unrevocable access to a private file with no login check at all. Those
+// now go through routes/files.js instead, which requires a valid session
+// and checks per-file ownership/caseload before serving anything.
+app.use("/uploads/events", express.static(path.join(config.uploadsDir, "events")));
+app.use("/uploads", require("./routes/files"));
 app.use(express.static(path.join(__dirname, "../public")));
 
 app.use("/api/auth", require("./routes/auth"));

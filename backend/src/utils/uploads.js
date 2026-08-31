@@ -3,6 +3,31 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const config = require("../config");
+const { checkFileContent } = require("./fileTypeCheck");
+
+/**
+ * Express middleware factory: run AFTER a multer upload middleware in the
+ * same route (so `req.file`/`req.files` already point at bytes actually on
+ * disk), BEFORE the route's own handler. multer's own fileFilter only ever
+ * sees the client-supplied Content-Type header, which is trivially
+ * spoofable -- this reads the real file and rejects anything whose content
+ * doesn't match one of `categories` (see fileTypeCheck.js), deleting the
+ * now-rejected file rather than leaving it on disk with no DB row pointing
+ * at it. A route with an optional attachment (no req.file) is a no-op.
+ */
+function requireValidFileContent(categories) {
+  return (req, res, next) => {
+    const files = req.file ? [req.file] : Array.isArray(req.files) ? req.files : [];
+    for (const file of files) {
+      const result = checkFileContent(file.path, categories);
+      if (!result.safe) {
+        fs.unlink(file.path, () => {});
+        return res.status(400).json({ error: result.reason });
+      }
+    }
+    next();
+  };
+}
 
 // multer's diskStorage never creates its destination folder -- it just
 // fails the upload with ENOENT if it doesn't already exist. That bit
@@ -179,4 +204,16 @@ module.exports = {
   submissionUpload,
   assignmentAttachmentUpload,
   chatAttachmentUpload,
+  requireValidFileContent,
+  // Ready-made per-upload-type content checks, matching each config's own
+  // fileFilter allowed-type list above -- insert right after the matching
+  // upload middleware in every route that accepts a file.
+  checkEventImageContent: requireValidFileContent(["image"]),
+  checkPhotoContent: requireValidFileContent(["image"]),
+  checkCvContent: requireValidFileContent(["pdf"]),
+  checkDocumentContent: requireValidFileContent(["pdf", "office", "image"]),
+  checkMaterialContent: requireValidFileContent(["pdf", "office", "image", "media"]),
+  checkSubmissionContent: requireValidFileContent(["pdf", "office", "image"]),
+  checkAssignmentAttachmentContent: requireValidFileContent(["pdf", "office", "image"]),
+  checkChatAttachmentContent: requireValidFileContent(["pdf", "office", "image", "zip"]),
 };

@@ -3096,6 +3096,10 @@
 
         const token = localStorage.getItem("token") || localStorage.getItem("reframe_token");
         if (!token) window.location.href = "login.html";
+        // Every /uploads/* file (except event images) now requires a valid
+        // session -- <img src>/<a href> can't send an Authorization header,
+        // so the same token is carried as a query param instead.
+        const TOKEN_Q = "?token=" + encodeURIComponent(token);
 
         let allTots = [];
         let allTrainees = [];
@@ -3296,7 +3300,7 @@
             document.getElementById("mtName").textContent = p.full_name;
             document.getElementById("mtInitials").textContent = initials(p.full_name);
             if (p.photo) {
-                document.getElementById("mtInitials").innerHTML = `<img src="${UPLOADS}/photos/${p.photo}" alt="">`;
+                document.getElementById("mtInitials").innerHTML = `<img src="${UPLOADS}/photos/${p.photo}${TOKEN_Q}" alt="">`;
             }
             document.getElementById("settingsName").value = p.full_name || "";
             document.getElementById("settingsEmail").value = p.email || "";
@@ -3712,7 +3716,7 @@
             if (totActiveTab === "documents") {
                 c.innerHTML = currentTot.documents.length ? `
           <ul class="doc-list">${currentTot.documents.map((d) => `
-            <li class="doc-item"><div><a href="${UPLOADS}/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName || d.original_name)}</a></div></li>`).join("")}</ul>`
+            <li class="doc-item"><div><a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName || d.original_name)}</a></div></li>`).join("")}</ul>`
                     : '<p class="empty-state">No documents yet.</p>';
                 return;
             }
@@ -3722,7 +3726,7 @@
             <div class="material-card"><div class="mtype">${escapeHtml(m.materialType || m.material_type)}</div>
               <h4>${escapeHtml(m.title)}</h4>
               ${m.externalUrl || m.external_url ? `<a class="mlink" href="${escapeHtml(m.externalUrl || m.external_url)}" target="_blank" rel="noopener">Open link</a>`
-                    : `<a class="mlink" href="${UPLOADS}/materials/${m.filename}" target="_blank" rel="noopener">Download</a>`}
+                    : `<a class="mlink" href="${UPLOADS}/materials/${m.filename}${TOKEN_Q}" target="_blank" rel="noopener">Download</a>`}
             </div>`).join("")}</div>`
                     : '<p class="empty-state">No materials shared yet.</p>';
                 return;
@@ -3773,8 +3777,8 @@
             <div><label>Date</label><input type="date" id="tsf_date" required></div>
             <div><label>Time</label><input type="time" id="tsf_time"></div>
             <div><label>Duration (minutes)</label><input type="number" min="0" id="tsf_duration" required></div>
-            <div><label>Attendance</label><select id="tsf_attendance" required>
-              <option value="">Select...</option>
+            <div><label>Attendance (leave blank to schedule a future session)</label><select id="tsf_attendance">
+              <option value="">Select... (required if the date is today or earlier)</option>
               <option value="present">Present</option>
               <option value="absent">Absent</option>
               <option value="excused">Excused</option>
@@ -3947,7 +3951,7 @@
 
             toolbar.innerHTML = data.weeks.map((w) => `
         <button type="button" class="btn btn-secondary btn-sm week-pick ${w.isCurrent ? "active" : ""}" data-week="${w.week}">
-          ${w.week}${w.isCurrent ? " (current)" : ""} <span style="opacity:.65;">&middot; ${w.sessionsCount}</span>
+          ${w.label}${w.isCurrent ? " (current)" : ""} <span style="opacity:.65;">&middot; ${w.sessionsCount}</span>
         </button>`).join("");
 
             document.querySelectorAll(".week-pick").forEach((btn) => {
@@ -4047,7 +4051,7 @@
 
             container.innerHTML = `
         <section class="system-card report-card">
-          <h2 style="margin:0 0 4px;">Week ${d.week.split("-W")[1]} &mdash; ${d.range.start} to ${d.range.end}</h2>
+          <h2 style="margin:0 0 4px;">Week of ${d.range.start} to ${d.range.end}</h2>
           <p class="card-subtitle">Executive Summary</p>
           <div class="kpi-grid">${summaryTiles}</div>
         </section>
@@ -4228,7 +4232,7 @@
             if (trActiveTab === "documents") {
                 c.innerHTML = currentTrainee.documents.length ? `
           <ul class="doc-list">${currentTrainee.documents.map((d) => `
-            <li class="doc-item"><div><a href="${UPLOADS}/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName || d.original_name)}</a></div></li>`).join("")}</ul>`
+            <li class="doc-item"><div><a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName || d.original_name)}</a></div></li>`).join("")}</ul>`
                     : '<p class="empty-state">No documents yet.</p>';
             }
         }
@@ -4425,7 +4429,7 @@
         }
 
         function materialRowHtml(m) {
-            const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}`;
+            const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
             const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
             return `
     <div class="material-row">
@@ -4470,7 +4474,7 @@
                 `${capitalize(m.materialType)} · Shared by ${m.supervisorName || ""}${dateStr ? " · " + dateStr : ""}${m.description ? " — " + m.description : ""}`;
 
             const body = document.getElementById("matPreviewBody");
-            const fileUrl = m.externalUrl || `${UPLOADS}/materials/${m.filename}`;
+            const fileUrl = m.externalUrl || `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
             if (m.materialType === "image") {
                 body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(m.title)}">`;
             } else if (m.materialType === "video") {
@@ -4500,7 +4504,7 @@
             }
             list.innerHTML = data.documents.map((d) => `
         <li class="doc-item"><div>
-          <a href="${UPLOADS}/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName || d.original_name)}</a>
+          <a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName || d.original_name)}</a>
           <div class="rmeta">${escapeHtml(d.student_name || "")} &middot; uploaded by ${escapeHtml(d.uploadedByName || d.uploaded_by_name || "")}</div>
         </div></li>`).join("");
         }
@@ -4746,7 +4750,7 @@
               <div class="ab-icon"><i class="fa ${ATTACHMENT_ICONS[m.attachment.mime] || (m.attachment.mime && m.attachment.mime.startsWith("image/") ? "fa-image" : "fa-file")}"></i></div>
               <div>
                 <div class="ab-name">${escapeHtml(m.attachment.originalName)}</div>
-                <div class="ab-meta">${formatFileSize(m.attachment.size)} &middot; <a href="${UPLOADS}/chat/${m.attachment.filename}" target="_blank" rel="noopener" download>Download</a></div>
+                <div class="ab-meta">${formatFileSize(m.attachment.size)} &middot; <a href="${UPLOADS}/chat/${m.attachment.filename}${TOKEN_Q}" target="_blank" rel="noopener" download>Download</a></div>
               </div>
             </div>
             ${m.content ? `<div class="gc-msg-text" style="margin-top:6px;">${escapeHtml(m.content)}</div>` : ""}`

@@ -18,6 +18,7 @@ const {
   computeProgressSummary,
 } = require("../utils/serializers");
 const { eventImageUpload } = require("../utils/uploads");
+const { checkFileContent } = require("../utils/fileTypeCheck");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
 
@@ -591,14 +592,46 @@ router.delete(
       });
     }
 
-    if (force && targetRole === "trainee") {
+    if (targetRole === "trainee") {
+      // Every trainee-owned table (sessions, attendance, hours, hour
+      // adjustments, assignments, submissions, documents, evaluations,
+      // payment_transactions, invoices) FKs to students(id) ON DELETE
+      // CASCADE -- the DELETE below erases all of it unconditionally,
+      // force flag or not, since MySQL applies CASCADE regardless of which
+      // application-level query params were sent. Without this check, a
+      // plain (non-force) delete of a trainee with real training or
+      // financial history would silently destroy that history exactly as
+      // completely as "force" does, defeating the entire point of having
+      // a separate force flow. So: history existing on for this trainee
+      // is what actually gates force, not just the target's role.
+      const { rows: historyRows } = await db.query(
+        `SELECT 1 FROM sessions WHERE student_id = ?
+         UNION ALL SELECT 1 FROM attendance WHERE student_id = ?
+         UNION ALL SELECT 1 FROM training_hours WHERE student_id = ?
+         UNION ALL SELECT 1 FROM supervision_hours WHERE student_id = ?
+         UNION ALL SELECT 1 FROM trainee_hour_adjustments WHERE student_id = ?
+         UNION ALL SELECT 1 FROM assignments WHERE student_id = ?
+         UNION ALL SELECT 1 FROM assignment_submissions WHERE student_id = ?
+         UNION ALL SELECT 1 FROM documents WHERE student_id = ?
+         UNION ALL SELECT 1 FROM evaluations WHERE student_id = ?
+         UNION ALL SELECT 1 FROM payment_transactions WHERE student_id = ?
+         UNION ALL SELECT 1 FROM invoices WHERE student_id = ?
+         LIMIT 1`,
+        [id, id, id, id, id, id, id, id, id, id, id]
+      );
+      if (historyRows.length && !force) {
+        return res.status(409).json({
+          error:
+            "This trainee has recorded training and/or financial history (sessions, hours, assignments, documents, evaluations, or payments). Deleting will permanently erase all of it. Suspend the account instead, or confirm permanent delete if you specifically intend to erase this trainee's data.",
+        });
+      }
+
       // Trainees can send chat messages (messages.sender_id has no
-      // cascade), which is the one realistic blocker for a trainee
-      // account. Everything else about a trainee (sessions, attendance,
-      // hours, assignments, documents, payments, evaluations, notes) is
-      // already ON DELETE CASCADE via student_id and will be removed
-      // automatically by the DELETE below.
-      await db.query("DELETE FROM messages WHERE sender_id = ?", [id]);
+      // cascade), the one realistic remaining blocker once force is
+      // actually confirmed. Everything else cascades via student_id.
+      if (force) {
+        await db.query("DELETE FROM messages WHERE sender_id = ?", [id]);
+      }
     }
 
     try {
@@ -1358,6 +1391,11 @@ router.post("/events/upload-image", (req, res) => {
   eventImageUpload.single("image")(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const check = checkFileContent(req.file.path, ["image"]);
+    if (!check.safe) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: check.reason });
+    }
     res.status(201).json({ url: `/uploads/events/${req.file.filename}` });
   });
 });

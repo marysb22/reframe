@@ -978,6 +978,10 @@ const API_BASE = window.API_BASE;
 const API = API_BASE + "/api";
 const token = localStorage.getItem("token") || localStorage.getItem("reframe_token");
 if (!token) window.location.href = "login.html";
+// Every /uploads/* file (except event images) now requires a valid
+// session -- <img src>/<a href> can't send an Authorization header, so
+// the same token is carried as a query param instead.
+const TOKEN_Q = "?token=" + encodeURIComponent(token);
 
 async function apiRequest(url, options = {}) {
   try {
@@ -2083,7 +2087,7 @@ function renderCvDetail() {
 
   const isSupervisor = d.role === "supervisor";
   const meta = cvRoleMeta(d);
-  const photoSrc = d.photo ? `${API_BASE}/uploads/photos/${d.photo}` : "";
+  const photoSrc = d.photo ? `${API_BASE}/uploads/photos/${d.photo}${TOKEN_Q}` : "";
 
   const personalFields = [
     cvFieldRow("Email", d.email, "email"),
@@ -2124,7 +2128,7 @@ function renderCvDetail() {
   if (!cvEditing) {
     rightActions.push(`<button class="btn btn-secondary btn-sm no-print" onclick="printCv()"><i class="fa fa-print"></i> Print</button>`);
     if (!isSupervisor && d.cvFile) {
-      rightActions.push(`<a class="btn btn-secondary btn-sm no-print" href="${API_BASE}/uploads/cv/${d.cvFile}" target="_blank" rel="noopener"><i class="fa fa-download"></i> Download CV</a>`);
+      rightActions.push(`<a class="btn btn-secondary btn-sm no-print" href="${API_BASE}/uploads/cv/${d.cvFile}${TOKEN_Q}" target="_blank" rel="noopener"><i class="fa fa-download"></i> Download CV</a>`);
     }
     rightActions.push(`<button class="btn btn-sm no-print" onclick="startCvEdit()"><i class="fa fa-pen"></i> Edit</button>`);
   } else {
@@ -2322,7 +2326,7 @@ function renderStudentProfile(data) {
   document.getElementById("spMeta").textContent = `${p.memberCode} · ${p.cohort || "No cohort"} · Registered ${new Date(p.created_at).toLocaleDateString()}`;
   const initials = (p.full_name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("");
   document.getElementById("spPhoto").innerHTML = p.photo
-    ? `<img src="${API_BASE}/uploads/photos/${p.photo}" style="width:100%;height:100%;object-fit:cover;">`
+    ? `<img src="${API_BASE}/uploads/photos/${p.photo}${TOKEN_Q}" style="width:100%;height:100%;object-fit:cover;">`
     : initials;
 
   // Personal
@@ -2411,7 +2415,7 @@ function renderSpDocuments(documents) {
     .map(
       (d) => `
     <tr>
-      <td><a href="${API_BASE}/uploads/documents/${d.filename}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a></td>
+      <td><a href="${API_BASE}/uploads/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a></td>
       <td>${d.uploadedByName ? escapeHtml(d.uploadedByName) : "&mdash;"}</td>
       <td>${new Date(d.createdAt).toLocaleDateString()}</td>
       <td><button class="icon-btn danger" title="Delete document" onclick="confirmDeleteDocument(${d.id})"><i class="fa fa-trash"></i></button></td>
