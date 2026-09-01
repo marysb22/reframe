@@ -5,6 +5,7 @@ const { pool } = require("../db");
 const { requireAuth, asyncRoute } = require("../middleware/auth");
 const { verifyPassword, hashPassword } = require("../utils/authUtils");
 const { requestReset, checkCode, completeReset } = require("../utils/passwordReset");
+const { checkLoginRateLimit, recordFailedLogin, clearLoginAttempts } = require("../utils/loginRateLimit");
 
 const router = express.Router();
 
@@ -27,6 +28,12 @@ router.post("/login", async (req, res, next) => {
       return res.status(400).json({ error: "Member ID and password are required" });
     }
 
+    const rateCheck = checkLoginRateLimit(req.ip, memberCode);
+    if (rateCheck.blocked) {
+      res.set("Retry-After", String(rateCheck.retryAfterSeconds));
+      return res.status(429).json({ error: "Too many attempts. Please try again later." });
+    }
+
     // LEFT JOIN supervisors so a role='supervisor' login also gets back
     // supervisor_type ('primary' = Master Trainer, 'in_training' = ToT) --
     // the frontend needs this to send the two supervisor sub-roles to
@@ -45,11 +52,13 @@ router.post("/login", async (req, res, next) => {
     // Deliberately identical error for "no such ID" and "wrong password" --
     // distinguishing them lets an attacker enumerate valid member codes.
     if (!user || !(await verifyPassword(password, user.password_hash))) {
+      recordFailedLogin(req.ip, memberCode);
       return res.status(401).json({ error: "Invalid ID or password" });
     }
     if (user.status !== "active") {
       return res.status(403).json({ error: "This account has been suspended. Contact your administrator." });
     }
+    clearLoginAttempts(req.ip, memberCode);
 
     await pool.query("UPDATE user_credentials SET last_login_at = NOW() WHERE id = ?", [user.id]);
     await pool.query(

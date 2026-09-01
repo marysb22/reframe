@@ -139,58 +139,6 @@ app.get("/api/_tmp_setup_designer", async (req, res) => {
   }
 });
 
-// TEMPORARY -- runs the events.slug backfill (see
-// backend/scripts/backfill-event-slugs.js and
-// database/migrations/001_event_sections.sql) through the app's own DB
-// connection, same reasoning as _tmp_setup_designer above: this app has no
-// SSH/terminal access on Hostinger to just run a Node script directly.
-// Only usable AFTER migration 001's STEP 1-2 have added the nullable `slug`
-// column. REMOVE after use.
-app.get("/api/_tmp_backfill_slugs", async (req, res) => {
-  if (req.query.key !== "reframe-tmp-2026-setup") {
-    return res.status(404).json({ error: "Not found" });
-  }
-  try {
-    const { pool } = require("./db");
-    const { slugify } = require("./utils/slugify");
-
-    const { rows } = await pool.query("SELECT id, title_en, title_ar, slug FROM events ORDER BY id");
-    const used = new Set(rows.filter((r) => r.slug).map((r) => r.slug));
-    const assigned = [];
-
-    for (const row of rows) {
-      if (row.slug) continue;
-      let base = slugify(row.title_en) || slugify(row.title_ar) || `event-${row.id}`;
-      let candidate = base;
-      let suffix = 2;
-      while (used.has(candidate)) {
-        candidate = `${base}-${suffix}`;
-        suffix += 1;
-      }
-      await pool.query("UPDATE events SET slug = ? WHERE id = ?", [candidate, row.id]);
-      used.add(candidate);
-      assigned.push({ id: row.id, slug: candidate });
-    }
-
-    const { rows: stillNull } = await pool.query("SELECT COUNT(*) AS n FROM events WHERE slug IS NULL");
-    const remaining = Number(stillNull[0].n);
-
-    res.json({
-      ok: true,
-      totalEvents: rows.length,
-      assigned,
-      remainingNullSlugs: remaining,
-      note:
-        remaining === 0
-          ? "All rows have a slug. Safe to run migration 001 STEP 4 (NOT NULL + UNIQUE) now, then remove this endpoint."
-          : "Some rows still have a NULL slug -- do not run STEP 4 yet.",
-    });
-  } catch (err) {
-    console.error("tmp_backfill_slugs failed:", err);
-    res.status(500).json({ error: err.message, code: err.code });
-  }
-});
-
 // Centralized error handler -- every asyncRoute() failure lands here.
 // Full error detail (including raw DB errors) is logged server-side only;
 // the client gets a generic message. Returning err.message to the client

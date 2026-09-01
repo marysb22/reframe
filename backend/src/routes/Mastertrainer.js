@@ -933,6 +933,14 @@ router.get(
             params.push(Number(totId));
         }
 
+        // A hard ceiling, not real pagination -- this endpoint's own
+        // summary block below is computed from this same result set, so
+        // capping it low enough to actually matter for a real group would
+        // silently under-count completed/overdue/total. 2000 is well
+        // beyond any group's realistic assignment volume even after years
+        // of use; it exists purely to stop a pathological case (a bug, or
+        // a group active for a decade) from pulling in literally every
+        // row ever created.
         const { rows } = await db.query(
             `SELECT a.id, a.title, a.due_date, a.status, a.max_score,
               st.full_name AS student_name, sup.id AS tot_id, sup.full_name AS trainer_name
@@ -940,7 +948,8 @@ router.get(
        JOIN students st ON st.id = a.student_id
        JOIN supervisors sup ON sup.id = a.supervisor_id
        WHERE ${clauses.join(" AND ")}
-       ORDER BY a.due_date ASC`,
+       ORDER BY a.due_date ASC
+       LIMIT 2000`,
             params
         );
 

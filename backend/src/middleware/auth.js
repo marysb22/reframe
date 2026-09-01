@@ -90,12 +90,35 @@ async function requireMasterTrainer(req, res, next) {
 function asyncRoute(handler) {
   return async (req, res, next) => {
     let client;
+    // Every handler calls res.json(...) directly as part of doing its
+    // work -- previously that sent the HTTP response immediately, with
+    // commitAndRelease() only running afterward. That left a real (if
+    // narrow, sub-millisecond-to-a-few-ms) window where a client could be
+    // told "success" and immediately read back stale data, because the
+    // transaction hadn't actually committed yet. Intercepting res.json
+    // here holds the real send until after commit succeeds, making
+    // "the client is told it worked" and "it's actually durable" atomic,
+    // with no change needed in any individual route handler. This also
+    // fixes a second latent bug for free: if commitAndRelease() itself
+    // threw, the old code had already sent a success response, so the
+    // catch block's next(err) would crash with ERR_HTTP_HEADERS_SENT
+    // instead of the client ever seeing the failure.
+    const originalJson = res.json.bind(res);
+    let pendingBody;
+    let responded = false;
+    res.json = (body) => {
+      pendingBody = body;
+      responded = true;
+      return res;
+    };
     try {
       client = await getRequestClient();
       await handler(req, res, client);
       await commitAndRelease(client);
+      if (responded) originalJson(pendingBody);
     } catch (err) {
       if (client) await rollbackAndRelease(client);
+      res.json = originalJson;
       next(err);
     }
   };

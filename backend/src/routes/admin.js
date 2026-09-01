@@ -119,6 +119,10 @@ async function resolveCohortId(db, cohortName) {
 async function resolveMemberCode(db, manualCode, prefix) {
   if (manualCode && String(manualCode).trim()) {
     const code = String(manualCode).trim().toUpperCase();
+    // member_code is VARCHAR(20) -- without this, a longer manual code
+    // passes every check here and then fails at INSERT with a raw,
+    // unhandled "Data too long for column" error.
+    if (code.length > 20) return { conflict: "ID must be 20 characters or fewer" };
     const { rows } = await db.query("SELECT id FROM user_credentials WHERE member_code = ?", [code]);
     if (rows.length) return { conflict: `ID "${code}" is already in use` };
     return { code };
@@ -226,6 +230,12 @@ router.post(
     let memberCode;
     if (manualCode && String(manualCode).trim()) {
       memberCode = String(manualCode).trim().toUpperCase();
+      // member_code is VARCHAR(20) -- without this check, a longer manual
+      // code passes every application-level check and then fails at
+      // INSERT with a raw, unhandled "Data too long for column" error.
+      if (memberCode.length > 20) {
+        return res.status(400).json({ error: "ID must be 20 characters or fewer" });
+      }
       const taken = await db.query("SELECT id FROM user_credentials WHERE member_code = ?", [memberCode]);
       if (taken.rows.length) return res.status(409).json({ error: `ID "${memberCode}" is already in use` });
     } else {
@@ -237,11 +247,26 @@ router.post(
       tempPassword && String(tempPassword).length >= 8 ? tempPassword : generateTempPassword();
     const passwordHash = await hashPassword(plainTempPassword);
 
-    const credInsert = await db.query(
-      `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password)
-       VALUES (?, ?, ?, TRUE)`,
-      [memberCode, passwordHash, finalRole]
-    );
+    // The SELECT above only catches a duplicate manual code sequentially --
+    // two genuinely concurrent requests reusing the same one could both
+    // pass it before either INSERTs (only the auto-generated path,
+    // idGenerator.js, is race-safe via row locking). member_code's own
+    // UNIQUE constraint still prevents real duplicate data either way;
+    // this only turns the loser's failure into a clean 409 instead of a
+    // raw, unhandled crash.
+    let credInsert;
+    try {
+      credInsert = await db.query(
+        `INSERT INTO user_credentials (member_code, password_hash, role, must_change_password)
+         VALUES (?, ?, ?, TRUE)`,
+        [memberCode, passwordHash, finalRole]
+      );
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(409).json({ error: `ID "${memberCode}" is already in use` });
+      }
+      throw err;
+    }
     const newId = credInsert.insertId;
 
     if (finalRole === "trainee") {
@@ -893,7 +918,21 @@ router.post(
     const trainerHash = await hashPassword(trainerPlainPassword);
     const traineeHash = await hashPassword(traineePlainPassword);
 
-    const groupInsert = await db.query("INSERT INTO trainer_groups (name) VALUES (?)", [name]);
+    // The SELECT above only catches a duplicate name sequentially -- two
+    // concurrent "create group" requests with the same name could both
+    // pass it before either INSERTs. trainer_groups.name's own UNIQUE
+    // constraint still prevents two groups actually ending up with the
+    // same name; this only turns the loser's failure into a clean 409
+    // instead of a raw, unhandled crash.
+    let groupInsert;
+    try {
+      groupInsert = await db.query("INSERT INTO trainer_groups (name) VALUES (?)", [name]);
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(409).json({ error: `A group named "${name}" already exists` });
+      }
+      throw err;
+    }
     const group = { id: groupInsert.insertId, name };
 
     const masterTrainer = await insertSupervisorAccount(db, {
@@ -999,7 +1038,17 @@ router.patch(
     );
     if (nameRows.length) return res.status(409).json({ error: `A group named "${name}" already exists` });
 
-    await db.query("UPDATE trainer_groups SET name = ? WHERE id = ?", [name, id]);
+    // Same race as group creation -- the SELECT above only catches a
+    // sequential conflict; the UNIQUE constraint on name still prevents
+    // real duplicates, this just avoids a raw crash for the loser.
+    try {
+      await db.query("UPDATE trainer_groups SET name = ? WHERE id = ?", [name, id]);
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(409).json({ error: `A group named "${name}" already exists` });
+      }
+      throw err;
+    }
     await db.query(
       "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'group_updated', 'trainer_groups', ?)",
       [req.user.id, id]
@@ -1328,7 +1377,7 @@ router.get(
       `SELECT d.*, COALESCE(a.full_name, sup.full_name) AS uploaded_by_name FROM documents d
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE d.student_id = ? ORDER BY d.created_at DESC`,
+       WHERE d.student_id = ? ORDER BY d.created_at DESC LIMIT 500`,
       [id]
     );
     const documents = documentRows.map(toDocument);
@@ -1798,12 +1847,42 @@ router.put(
       );
       paymentId = existing.id;
     } else {
-      const { insertId } = await db.query(
-        `INSERT INTO payments (student_id, training_year, total_fee_cents, discount_cents, payment_plan, next_due_date)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [studentId, trainingYear, totalFeeCents, discountCents, paymentPlan, nextDueDate]
-      );
-      paymentId = insertId;
+      // Two genuinely concurrent "set the fee for this year" requests (the
+      // first ever for this student+year) can both see "no row yet" before
+      // either commits -- payments(student_id, training_year) has its own
+      // UNIQUE constraint (uq_payments_student_year), so the loser's INSERT
+      // fails there. Falling back to UPDATE on that row (rather than just
+      // re-fetching and discarding this request's values) means whichever
+      // request actually finishes last still wins, matching normal
+      // last-write-wins semantics instead of silently dropping it.
+      try {
+        const { insertId } = await db.query(
+          `INSERT INTO payments (student_id, training_year, total_fee_cents, discount_cents, payment_plan, next_due_date)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [studentId, trainingYear, totalFeeCents, discountCents, paymentPlan, nextDueDate]
+        );
+        paymentId = insertId;
+      } catch (err) {
+        if (err.code !== "ER_DUP_ENTRY") throw err;
+        // The race winner's row exists and is committed, but under
+        // REPEATABLE READ (MySQL's default) a plain SELECT in this
+        // transaction is still bound to the snapshot taken by the
+        // getPaymentsRow call above -- before the winner committed -- and
+        // would return nothing even though the row is really there now.
+        // Updating by (student_id, training_year) directly, rather than
+        // first fetching the id via another plain SELECT, sidesteps that
+        // stale-snapshot trap entirely.
+        await db.query(
+          `UPDATE payments SET total_fee_cents = ?, discount_cents = ?, payment_plan = ?, next_due_date = ?, updated_at = NOW()
+           WHERE student_id = ? AND training_year = ?`,
+          [totalFeeCents, discountCents, paymentPlan, nextDueDate, studentId, trainingYear]
+        );
+        const { rows: raceWinnerRows } = await db.query(
+          "SELECT id FROM payments WHERE student_id = ? AND training_year = ? FOR UPDATE",
+          [studentId, trainingYear]
+        );
+        paymentId = raceWinnerRows[0].id;
+      }
     }
 
     await recomputeStoredStatus(db, paymentId);
@@ -1839,23 +1918,62 @@ router.post(
 
     // A year's payments row may not exist yet if the admin records a
     // payment before ever setting a total fee for it -- create it with a
-    // $0 fee so the ledger entry always has a year to attach to.
+    // $0 fee so the ledger entry always has a year to attach to. Two
+    // genuinely concurrent first-ever-payment requests for the same
+    // student+year can both see "no row yet" before either commits;
+    // payments(student_id, training_year) has its own UNIQUE constraint
+    // (uq_payments_student_year), so the loser's INSERT fails there --
+    // caught here and treated as "someone else just created it", not an
+    // error, since that's exactly what happened.
     let paymentsRow = await getPaymentsRow(db, studentId, trainingYear);
     if (!paymentsRow) {
-      await db.query("INSERT INTO payments (student_id, training_year, total_fee_cents) VALUES (?, ?, 0)", [
-        studentId,
-        trainingYear,
-      ]);
-      paymentsRow = await getPaymentsRow(db, studentId, trainingYear);
+      try {
+        await db.query("INSERT INTO payments (student_id, training_year, total_fee_cents) VALUES (?, ?, 0)", [
+          studentId,
+          trainingYear,
+        ]);
+        paymentsRow = await getPaymentsRow(db, studentId, trainingYear);
+      } catch (err) {
+        if (err.code !== "ER_DUP_ENTRY") throw err;
+        // The race winner's row exists and is committed, but under
+        // REPEATABLE READ (MySQL's default) a plain SELECT in this
+        // transaction is still bound to the snapshot from the getPaymentsRow
+        // call above -- taken before the winner committed -- and would
+        // return NULL again even though the row is really there now. A
+        // locking read forces a fresh read of the latest committed data
+        // instead of that stale snapshot.
+        const { rows: raceWinnerRows } = await db.query(
+          "SELECT * FROM payments WHERE student_id = ? AND training_year = ? FOR UPDATE",
+          [studentId, trainingYear]
+        );
+        paymentsRow = raceWinnerRows[0];
+      }
     }
+
+    // Locks this payment year's row for the rest of the transaction --
+    // without it, the duplicate check below is a plain SELECT-then-INSERT
+    // with no lock, so two genuinely concurrent requests (not just a
+    // sequential double-click) could both pass the check before either
+    // commits. Every transaction for this student+year attaches to this
+    // one payments row, so locking it serializes concurrent attempts to
+    // record one, the same way id_counters (idGenerator.js) uses
+    // SELECT ... FOR UPDATE to serialize concurrent ID generation.
+    await db.query("SELECT id FROM payments WHERE id = ? FOR UPDATE", [paymentsRow.id]);
 
     // Duplicate-submission guard (same year/amount/date/method within
     // the last 10 seconds) -- catches accidental double-clicks without
-    // blocking legitimate repeat payments made later.
+    // blocking legitimate repeat payments made later. FOR UPDATE here
+    // isn't just about locking: under REPEATABLE READ (MySQL's default),
+    // a plain SELECT stays bound to this transaction's snapshot from
+    // BEFORE the FOR UPDATE above unblocked it, so it would miss a
+    // concurrent request's transaction that just committed -- only a
+    // locking read forces MySQL to fetch the latest committed data
+    // instead of that stale snapshot.
     const { rows: dupeRows } = await db.query(
       `SELECT id FROM payment_transactions
        WHERE payment_id = ? AND amount_cents = ? AND payment_date = ? AND COALESCE(method,'') = COALESCE(?,'')
-         AND created_at >= NOW() - INTERVAL 10 SECOND`,
+         AND created_at >= NOW() - INTERVAL 10 SECOND
+       FOR UPDATE`,
       [paymentsRow.id, amountCents, date, method || null]
     );
     if (dupeRows.length) {

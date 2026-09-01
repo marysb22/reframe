@@ -422,7 +422,13 @@ router.get(
         ORDER BY tm.sort_order ASC`,
       [req.user.id]
     );
-    res.json({ milestones: rows });
+    // Previously only ever computed as a Group-wide aggregate
+    // (Mastertrainer.js's /milestones), never for one Trainee.
+    const completedCount = rows.filter((r) => r.status === "completed").length;
+    res.json({
+      milestones: rows,
+      completionPct: rows.length > 0 ? Math.round((completedCount / rows.length) * 1000) / 10 : null,
+    });
   })
 );
 
@@ -444,7 +450,7 @@ router.get(
        JOIN user_credentials uc ON uc.id = d.uploaded_by
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE d.student_id = ? ${filter} ORDER BY d.created_at DESC`,
+       WHERE d.student_id = ? ${filter} ORDER BY d.created_at DESC LIMIT 500`,
       params
     );
     res.json({ documents: rows.map(toDocument) });
@@ -460,8 +466,14 @@ router.get(
   "/assignments",
   requireStudent,
   asyncRoute(async (req, res, db) => {
+    // A hard ceiling, not real pagination -- `status` here is a live-
+    // computed field (assignmentRowToApi), not a raw column, so it has to
+    // be filtered in JS after the query rather than in SQL; the cap
+    // applies before that filter, same tradeoff as supervisor.js's
+    // sibling GET /assignments. 500 is far beyond one trainee's realistic
+    // assignment volume even after years of training.
     const { rows } = await db.query(
-      `${ASSIGNMENT_WITH_SUBMISSION_SELECT} WHERE a.student_id = ? ORDER BY a.due_date IS NULL, a.due_date ASC`,
+      `${ASSIGNMENT_WITH_SUBMISSION_SELECT} WHERE a.student_id = ? ORDER BY a.due_date IS NULL, a.due_date ASC LIMIT 500`,
       [req.user.id]
     );
     let items = rows.map(assignmentRowToApi);

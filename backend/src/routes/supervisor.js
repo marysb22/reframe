@@ -169,7 +169,7 @@ router.get(
       `SELECT d.*, COALESCE(a.full_name, sup.full_name) AS uploaded_by_name FROM documents d
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE d.student_id = ? ORDER BY d.created_at DESC`,
+       WHERE d.student_id = ? ORDER BY d.created_at DESC LIMIT 500`,
       [studentId]
     );
 
@@ -707,7 +707,15 @@ router.get(
         ORDER BY tm.sort_order ASC`,
       [studentId]
     );
-    res.json({ milestones: rows });
+    // This one Trainee's own completion percentage -- previously only
+    // ever computed as a Group-wide aggregate (Mastertrainer.js's
+    // /milestones), never per-trainee, on either this Trainer-facing view
+    // or the Trainee's own.
+    const completedCount = rows.filter((r) => r.status === "completed").length;
+    res.json({
+      milestones: rows,
+      completionPct: rows.length > 0 ? Math.round((completedCount / rows.length) * 1000) / 10 : null,
+    });
   })
 );
 
@@ -719,6 +727,20 @@ router.put(
     const milestoneId = Number(req.params.milestoneId);
     const student = await loadAssignedStudent(db, req.user.id, studentId, res);
     if (!student) return;
+
+    // A Master Trainer is auto-linked to every trainee in their Group for
+    // oversight (supervisor_students), which would otherwise let them pass
+    // the caseload check above and mark milestone progress for a trainee
+    // who is actually being trained day-to-day by one of their ToTs. That
+    // contradicts this app's own documented "Master Trainer is read-only
+    // for Trainee data" design elsewhere (Mastertrainer.js) -- milestone
+    // marking is a ToT's action, not group-wide oversight.
+    const { rows: callerTypeRows } = await db.query("SELECT supervisor_type FROM supervisors WHERE id = ?", [
+      req.user.id,
+    ]);
+    if (callerTypeRows[0] && callerTypeRows[0].supervisor_type === "primary") {
+      return res.status(403).json({ error: "Master Trainers have read-only access to trainee milestones" });
+    }
 
     const { status, notes } = req.body || {};
     if (!["not_started", "in_progress", "completed"].includes(status)) {
@@ -856,8 +878,13 @@ router.get(
       clauses.push("a.student_id = ?");
       params.push(Number(req.query.studentId));
     }
+    // A hard ceiling, not real pagination -- `status` here is a live-
+    // computed field (assignmentRowToApi), not a raw column, so it has to
+    // be filtered in JS after the query rather than in SQL. 500 is far
+    // beyond one Trainer's realistic assignment volume across their whole
+    // caseload even after years of training.
     const { rows } = await db.query(
-      `${ASSIGNMENT_WITH_SUBMISSION_SELECT} WHERE ${clauses.join(" AND ")} ORDER BY a.due_date IS NULL, a.due_date ASC`,
+      `${ASSIGNMENT_WITH_SUBMISSION_SELECT} WHERE ${clauses.join(" AND ")} ORDER BY a.due_date IS NULL, a.due_date ASC LIMIT 500`,
       params
     );
 
@@ -1018,6 +1045,10 @@ router.post(
 );
 
 // ---- Learning materials --------------------------------------------------
+// Mirrors learning_materials.material_type's own CHECK constraint (schema),
+// minus 'link' -- that value only ever goes through the externalUrl branch
+// below, never the file-upload one this list validates.
+const MATERIAL_TYPES = ["document", "image", "video", "audio", "assignment", "worksheet", "reading"];
 
 router.get(
   "/materials",
@@ -1030,7 +1061,8 @@ router.get(
                 ORDER BY a.id DESC LIMIT 1) AS matched_assignment_id
        FROM learning_materials lm
        WHERE lm.supervisor_id = ?
-       ORDER BY lm.created_at DESC`,
+       ORDER BY lm.created_at DESC
+       LIMIT 200`,
       [req.user.id]
     );
     res.json({ materials: rows.map((r) => toMaterial({ ...r, supervisor_name: req.user.member_code })) });
@@ -1074,6 +1106,14 @@ router.post("/materials", (req, res) => {
       if (err) return res.status(400).json({ error: err.message });
       const { title, description, materialType, studentId } = req.body || {};
       if (!title || !materialType) return res.status(400).json({ error: "title and materialType are required" });
+      // The schema's own CHECK constraint on learning_materials.material_type
+      // is silently unenforced on MySQL below 8.0.16 (its own header
+      // comment says so) -- this route never validated independently, so a
+      // bad value would either fail with a raw DB error on a version that
+      // does enforce it, or corrupt the column silently on one that doesn't.
+      if (!MATERIAL_TYPES.includes(materialType)) {
+        return res.status(400).json({ error: `materialType must be one of: ${MATERIAL_TYPES.join(", ")}` });
+      }
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
       const check = checkFileContent(req.file.path, ["pdf", "office", "image", "media"]);
       if (!check.safe) {
@@ -1296,12 +1336,29 @@ router.get(
   })
 );
 
+/** True for a real, absolute http(s) URL -- a plain string like "call me"
+ *  or a bare word was previously accepted here and rendered directly as a
+ *  clickable "Join" link, which resolves as a broken relative path (e.g.
+ *  https://app.example.com/call%20me) when clicked instead of failing
+ *  validation up front. */
+function isValidMeetingUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 // POST /api/supervisor/meetings  { title, studentId, platform, meetingUrl, scheduledAt, durationMinutes }
 router.post(
   "/meetings",
   asyncRoute(async (req, res, db) => {
     const { title, studentId, platform, meetingUrl, scheduledAt, durationMinutes } = req.body || {};
     if (!title || !meetingUrl) return res.status(400).json({ error: "title and meetingUrl are required" });
+    if (!isValidMeetingUrl(meetingUrl)) {
+      return res.status(400).json({ error: "meetingUrl must be a valid http:// or https:// link" });
+    }
     if (!["zoom", "teams", "meet", "other"].includes(platform)) {
       return res.status(400).json({ error: "platform must be one of: zoom, teams, meet, other" });
     }
@@ -1363,6 +1420,9 @@ router.put(
     if (!existingRows.length) return res.status(404).json({ error: "Meeting not found" });
 
     const { title, studentId, platform, meetingUrl, scheduledAt, durationMinutes } = req.body || {};
+    if (meetingUrl && !isValidMeetingUrl(meetingUrl)) {
+      return res.status(400).json({ error: "meetingUrl must be a valid http:// or https:// link" });
+    }
 
     // Same caseload check POST enforces -- without it, a meeting could be
     // retargeted to a trainee outside the caller's caseload, silently
