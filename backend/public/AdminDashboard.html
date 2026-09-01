@@ -475,12 +475,6 @@ tr:hover td{background:var(--surface-2);}
         </select>
         <div class="field-hint" id="tcGroupHint">A Trainer (ToT) must be assigned to a group that already has an active Master Trainer.</div>
 
-        <div id="tcTotWrap" style="display:none;">
-          <label>Trainer(s) in Training (ToT)</label>
-          <select id="tcTot" multiple size="4"></select>
-          <div class="field-hint">Only Trainers (ToT) belonging to the selected group are listed. Optional, and more than one can be selected (hold Ctrl/Cmd to pick several) -- a Trainee can be assigned a ToT later.</div>
-        </div>
-
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div><label>ID (optional)</label><input type="text" id="tcId" placeholder="Auto-generate"></div>
           <div><label>Temp password</label><input type="text" id="tcPassword" value="password123"></div>
@@ -920,9 +914,7 @@ tr:hover td{background:var(--surface-2);}
     <form id="addTraineeCreateForm">
       <label style="margin-top:0;">Full name</label>
       <input type="text" id="atrName" required placeholder="Full name">
-      <label>Trainer(s) (ToT)</label>
-      <select id="atrTot" multiple size="4"></select>
-      <div class="field-hint">Optional, and more than one can be selected (hold Ctrl/Cmd to pick several) -- only this Group's Trainers are listed. The Trainee stays visible to the Master Trainer regardless.</div>
+      <div class="field-hint">The Trainee will automatically be linked to this Group's whole training team (Master Trainer + every Trainer/ToT).</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div><label>ID (optional)</label><input type="text" id="atrId" placeholder="Auto-generate"></div>
         <div><label>Temp password</label><input type="text" id="atrPassword" value="password123"></div>
@@ -951,12 +943,6 @@ tr:hover td{background:var(--surface-2);}
           <option value="">Unassigned</option>
         </select>
         <div class="field-hint" id="emGroupHint"></div>
-      </div>
-
-      <div id="emTotWrap" style="display:none;">
-        <label>Trainer(s) in Training (ToT)</label>
-        <select id="emTot" multiple size="4"></select>
-        <div class="field-hint">Only Trainers belonging to the selected Group are listed. More than one can be selected (hold Ctrl/Cmd to pick several), or none.</div>
       </div>
 
       <div class="modal-actions">
@@ -1231,33 +1217,13 @@ function addTraineeRow(name = "", memberCode = "") {
   const wrap = document.getElementById("grpTraineesList");
   const row = document.createElement("div");
   row.className = "grpTraineeRow";
-  row.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;";
+  row.style.cssText = "display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;";
   row.innerHTML = `
     <div><label style="margin-top:0;">Trainee name</label><input type="text" class="grpTraineeName" value="${escapeHtml(name)}" placeholder="Full name"></div>
     <div><label style="margin-top:0;">ID (optional)</label><input type="text" class="grpTraineeId" value="${escapeHtml(memberCode)}" placeholder="Auto-generate"></div>
-    <div><label style="margin-top:0;">Trainer(s) (ToT)</label><select class="grpTraineeTot" multiple size="3"></select></div>
     <button type="button" class="icon-btn danger" style="margin-bottom:0;" onclick="this.closest('.grpTraineeRow').remove()"><i class="fa fa-trash"></i></button>
   `;
   wrap.appendChild(row);
-  refreshGrpTraineeTotOptions();
-}
-
-// Rebuilds every trainee row's ToT multi-select from the Trainer rows that
-// exist right now (referenced by position, since new Trainers don't have
-// a real id yet -- see POST /groups' totIndexes handling). Preserves each
-// row's current selections (any number of them) when that position still
-// exists.
-function refreshGrpTraineeTotOptions() {
-  const trainerNames = Array.from(document.querySelectorAll("#grpTrainersList .grpTrainerRow .grpTrainerName")).map(
-    (el) => el.value.trim()
-  );
-  document.querySelectorAll("#grpTraineesList .grpTraineeRow .grpTraineeTot").forEach((select) => {
-    const current = Array.from(select.selectedOptions).map((o) => o.value);
-    select.innerHTML = trainerNames.map((n, i) => `<option value="${i}">${escapeHtml(n || `Trainer ${i + 1}`)}</option>`).join("");
-    Array.from(select.options).forEach((opt) => {
-      if (current.includes(opt.value)) opt.selected = true;
-    });
-  });
 }
 
 // Any number of rows (including zero) is valid -- unlike trainees, a group
@@ -1268,12 +1234,11 @@ function addTrainerRow(name = "", memberCode = "") {
   row.className = "grpTrainerRow";
   row.style.cssText = "display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;";
   row.innerHTML = `
-    <div><label style="margin-top:0;">Trainer name</label><input type="text" class="grpTrainerName" value="${escapeHtml(name)}" placeholder="Full name" oninput="refreshGrpTraineeTotOptions()"></div>
+    <div><label style="margin-top:0;">Trainer name</label><input type="text" class="grpTrainerName" value="${escapeHtml(name)}" placeholder="Full name"></div>
     <div><label style="margin-top:0;">ID (optional)</label><input type="text" class="grpTrainerId" value="${escapeHtml(memberCode)}" placeholder="Auto-generate"></div>
-    <button type="button" class="icon-btn danger" style="margin-bottom:0;" onclick="this.closest('.grpTrainerRow').remove(); refreshGrpTraineeTotOptions();"><i class="fa fa-trash"></i></button>
+    <button type="button" class="icon-btn danger" style="margin-bottom:0;" onclick="this.closest('.grpTrainerRow').remove();"><i class="fa fa-trash"></i></button>
   `;
   wrap.appendChild(row);
-  refreshGrpTraineeTotOptions();
 }
 
 function initials(name) {
@@ -1390,13 +1355,12 @@ function renderGroupDetail() {
     <tr>
       <td>${escapeHtml(t.full_name)}</td>
       <td>${escapeHtml(t.member_code)}</td>
-      <td>${(t.tots || []).length ? escapeHtml(t.tots.map((x) => x.full_name).join(", ")) : '<span class="hint" style="margin:0;">Unassigned</span>'}</td>
       <td><span class="pill ${t.status}">${escapeHtml(t.status)}</span></td>
       <td>${memberActions(t, "trainee")}</td>
     </tr>`
         )
         .join("")
-    : '<tr><td colspan="5" class="empty-state">No trainees.</td></tr>';
+    : '<tr><td colspan="4" class="empty-state">No trainees.</td></tr>';
 
   wrap.innerHTML = `
     <div class="group-header">
@@ -1429,7 +1393,7 @@ function renderGroupDetail() {
       <button class="btn btn-sm" style="width:auto;margin-top:0;" onclick="openAddTraineeModal(${g.id})"><i class="fa fa-plus"></i> Add Trainee</button>
     </div>
     <table>
-      <thead><tr><th>Name</th><th>ID</th><th>Trainer(s) (ToT)</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>ID</th><th>Status</th><th></th></tr></thead>
       <tbody>${traineesRows}</tbody>
     </table>
   `;
@@ -1510,13 +1474,8 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
   document.querySelectorAll("#grpTraineesList .grpTraineeRow").forEach((row) => {
     const fullName = row.querySelector(".grpTraineeName").value.trim();
     const memberCode = row.querySelector(".grpTraineeId").value.trim();
-    const totIndexes = Array.from(row.querySelector(".grpTraineeTot").selectedOptions).map((o) => Number(o.value));
     if (fullName) {
-      trainees.push({
-        fullName,
-        memberCode: memberCode || undefined,
-        totIndexes: totIndexes.length ? totIndexes : undefined,
-      });
+      trainees.push({ fullName, memberCode: memberCode || undefined });
     }
   });
 
@@ -1541,7 +1500,7 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
       <div class="result-row"><span>Master Trainer</span><strong>${escapeHtml(result.masterTrainer.fullName)} (${escapeHtml(result.masterTrainer.memberCode)})</strong></div>
       ${result.trainers.map((t) => `<div class="result-row"><span>Trainer (ToT)</span><strong>${escapeHtml(t.fullName)} (${escapeHtml(t.memberCode)})</strong></div>`).join("")}
       <div class="result-row"><span>Trainer password</span><strong>${escapeHtml(result.trainerPassword)}</strong> <button class="copy-btn" onclick="copyText('${result.trainerPassword}')">Copy</button></div>
-      ${result.trainees.map((t) => `<div class="result-row"><span>Trainee</span><strong>${escapeHtml(t.fullName)} (${escapeHtml(t.memberCode)})${t.tots && t.tots.length ? ` &rarr; ${t.tots.map((x) => escapeHtml(x.fullName)).join(", ")}` : ""}</strong></div>`).join("")}
+      ${result.trainees.map((t) => `<div class="result-row"><span>Trainee</span><strong>${escapeHtml(t.fullName)} (${escapeHtml(t.memberCode)})</strong></div>`).join("")}
       <div class="result-row"><span>Trainee password</span><strong>${escapeHtml(result.traineePassword)}</strong> <button class="copy-btn" onclick="copyText('${result.traineePassword}')">Copy</button></div>
       <button class="btn btn-secondary btn-sm" style="width:auto;margin-top:10px;" onclick="document.getElementById('grpJustCreatedBox').classList.remove('show')">Dismiss</button>
     `;
@@ -1559,13 +1518,12 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
 // action, and the Add-Trainer modal opened from a Group's detail view --
 // wrapping POST /admin/trainers and PATCH /admin/trainers/:id/group.
 
-async function createTrainer({ fullName, role, groupId, totIds, memberCode, tempPassword }) {
+async function createTrainer({ fullName, role, groupId, memberCode, tempPassword }) {
   return apiRequest("/admin/trainers", {
     method: "POST",
     body: JSON.stringify({
       fullName, role,
       groupId: groupId || undefined,
-      totIds: totIds && totIds.length ? totIds : undefined,
       memberCode: memberCode || undefined,
       tempPassword: tempPassword || undefined,
     }),
@@ -1653,49 +1611,34 @@ function openReassignTrainer(trainerId, name, existingGroupId) {
 document.getElementById("trainerSearch").addEventListener("input", renderTrainersList);
 document.getElementById("trainerRoleFilter").addEventListener("change", renderTrainersList);
 
-// The form's meaning of "group" and whether a ToT sub-selector applies
-// changes per role -- Master Trainer/Trainer keep the existing behavior
-// exactly; Trainee is the new addition (Create Member's whole point).
+// The form's meaning of "group" changes per role -- Master Trainer/Trainer
+// keep the existing behavior exactly; Trainee is the new addition (Create
+// Member's whole point). A Trainee is automatically linked to their Group's
+// whole training team -- there is no per-trainee Trainer (ToT) selection.
 function updateTrainerCreateFormForRole() {
   const role = document.getElementById("tcRole").value;
   const groupLabel = document.getElementById("tcGroupLabel");
   const groupHint = document.getElementById("tcGroupHint");
   const groupSelect = document.getElementById("tcGroup");
-  const totWrap = document.getElementById("tcTotWrap");
 
   if (role === "trainee") {
     groupLabel.textContent = "Group";
     groupHint.textContent = "A Trainee must belong to a Group.";
     groupSelect.querySelector('option[value=""]').textContent = "Select a group...";
-    totWrap.style.display = "block";
-    populateTcTotOptions();
   } else {
     groupLabel.textContent = "Assign to group";
     groupHint.textContent = "A Trainer (ToT) must be assigned to a group that already has an active Master Trainer.";
     groupSelect.querySelector('option[value=""]').textContent = "Leave unassigned";
-    totWrap.style.display = "none";
   }
 }
 
-function populateTcTotOptions() {
-  const groupId = Number(document.getElementById("tcGroup").value) || null;
-  const group = groupId ? allGroups.find((g) => g.id === groupId) : null;
-  const select = document.getElementById("tcTot");
-  const tots = group ? group.trainers : [];
-  select.innerHTML = tots.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
-}
-
 document.getElementById("tcRole").addEventListener("change", updateTrainerCreateFormForRole);
-document.getElementById("tcGroup").addEventListener("change", () => {
-  if (document.getElementById("tcRole").value === "trainee") populateTcTotOptions();
-});
 
 document.getElementById("trainerCreateForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const fullName = document.getElementById("tcName").value.trim();
   const role = document.getElementById("tcRole").value;
   const groupId = document.getElementById("tcGroup").value || null;
-  const totIds = Array.from(document.getElementById("tcTot").selectedOptions).map((o) => Number(o.value));
   const memberCode = document.getElementById("tcId").value.trim();
   const tempPassword = document.getElementById("tcPassword").value.trim();
 
@@ -1708,7 +1651,7 @@ document.getElementById("trainerCreateForm").addEventListener("submit", async (e
     return;
   }
 
-  const result = await createTrainer({ fullName, role, groupId, totIds, memberCode, tempPassword });
+  const result = await createTrainer({ fullName, role, groupId, memberCode, tempPassword });
   if (!result) return;
 
   const roleLabel = role === "trainee" ? "Trainee" : role === "primary" ? "Master Trainer" : "Trainer (ToT)";
@@ -1805,10 +1748,6 @@ function openAddTraineeModal(groupId) {
   const group = allGroups.find((g) => g.id === groupId);
   document.getElementById("addTraineeModalHint").textContent = group ? `Adding to "${group.name}"` : "";
 
-  const select = document.getElementById("atrTot");
-  const tots = group ? group.trainers : [];
-  select.innerHTML = tots.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
-
   document.getElementById("addTraineeModal").classList.add("show");
 }
 
@@ -1820,11 +1759,10 @@ function closeAddTraineeModal() {
 document.getElementById("addTraineeCreateForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const fullName = document.getElementById("atrName").value.trim();
-  const totIds = Array.from(document.getElementById("atrTot").selectedOptions).map((o) => Number(o.value));
   const memberCode = document.getElementById("atrId").value.trim();
   const tempPassword = document.getElementById("atrPassword").value.trim();
 
-  const result = await createTrainer({ fullName, role: "trainee", groupId: addTraineeGroupId, totIds, memberCode, tempPassword });
+  const result = await createTrainer({ fullName, role: "trainee", groupId: addTraineeGroupId, memberCode, tempPassword });
   if (!result) return;
 
   showSuccessNotification("Trainee Added", `ID ${result.memberCode}, temp password ${result.tempPassword}. The trainee has been added to the group successfully.`, 6000);
@@ -1867,17 +1805,6 @@ async function openEditMemberModal(id) {
     ? "Changing the Group requires the new Group to already have an active Master Trainer."
     : "";
 
-  document.getElementById("emTotWrap").style.display = isTrainee ? "block" : "none";
-  if (isTrainee) {
-    populateEmTotOptions();
-    const currentTotIds = (profile.supervisors || [])
-      .filter((s) => s.supervisor_type === "in_training")
-      .map((s) => String(s.id));
-    Array.from(document.getElementById("emTot").options).forEach((opt) => {
-      opt.selected = currentTotIds.includes(opt.value);
-    });
-  }
-
   document.getElementById("editMemberModal").classList.add("show");
 }
 
@@ -1885,18 +1812,6 @@ function closeEditMemberModal() {
   document.getElementById("editMemberModal").classList.remove("show");
   editMemberData = null;
 }
-
-function populateEmTotOptions() {
-  const groupId = Number(document.getElementById("emGroup").value) || null;
-  const group = groupId ? allGroups.find((g) => g.id === groupId) : null;
-  const select = document.getElementById("emTot");
-  const tots = group ? group.trainers : [];
-  select.innerHTML = tots.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
-}
-
-document.getElementById("emGroup").addEventListener("change", () => {
-  if (editMemberData && editMemberData.role === "trainee") populateEmTotOptions();
-});
 
 document.getElementById("editMemberForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -1908,23 +1823,14 @@ document.getElementById("editMemberForm").addEventListener("submit", async (e) =
   const isTrainee = editMemberData.role === "trainee";
   const isSupervisor = editMemberData.role === "supervisor";
   const groupChanged = newGroupId !== (editMemberData.groupId || null);
-  let totChanged = false;
 
   if (isTrainee) {
-    const newGroup = newGroupId ? allGroups.find((g) => g.id === newGroupId) : null;
-    const totIds = Array.from(document.getElementById("emTot").selectedOptions).map((o) => Number(o.value));
-    const previousTotIds = (editMemberData.supervisors || [])
-      .filter((s) => s.supervisor_type === "in_training")
-      .map((s) => s.id)
-      .sort();
-    totChanged = JSON.stringify(previousTotIds) !== JSON.stringify([...totIds].sort());
-    const supervisorIds = [];
-    if (newGroup && newGroup.masterTrainer) supervisorIds.push(newGroup.masterTrainer.id);
-    supervisorIds.push(...totIds);
-
+    // Moving a Trainee to a new Group automatically re-links them to that
+    // Group's whole training team server-side -- there is no per-trainee
+    // Trainer (ToT) selection to send here.
     const result = await apiRequest(`/admin/users/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ fullName, groupId: newGroupId, supervisorIds }),
+      body: JSON.stringify({ fullName, groupId: newGroupId }),
     });
     if (!result) return;
   } else if (isSupervisor) {
@@ -1942,9 +1848,7 @@ document.getElementById("editMemberForm").addEventListener("submit", async (e) =
 
   // Pick the most specific confirmation for what actually changed, per the
   // named examples -- a plain name edit still just says "Changes Saved."
-  if (isTrainee && totChanged && !groupChanged) {
-    showSuccessNotification("Trainer Assignment Updated", "The trainee has been successfully assigned to the selected Trainer.");
-  } else if (groupChanged) {
+  if (groupChanged) {
     showSuccessNotification("Assignment Updated", "The member's group assignment has been updated successfully.");
   } else {
     showSuccessNotification("Changes Saved", "The member information was updated successfully.");
