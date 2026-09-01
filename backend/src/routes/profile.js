@@ -17,6 +17,7 @@ const {
 const { hashPassword, verifyPassword } = require("../utils/authUtils");
 const { photoUpload, cvUpload, submissionUpload } = require("../utils/uploads");
 const { checkFileContent } = require("../utils/fileTypeCheck");
+const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
 const { createNotification } = require("../utils/notifications");
 const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
@@ -232,6 +233,7 @@ router.post("/photo", requireAuth, (req, res) => {
       fs.unlink(req.file.path, () => {});
       return res.status(400).json({ error: check.reason });
     }
+    await optimizeImageIfPossible(req.file.path, { maxDimension: 500 });
 
     const table = profileTableForRole(req.user.role);
     const { pool } = require("../db");
@@ -296,6 +298,7 @@ router.post("/records/:id/submission", requireStudent, (req, res) => {
       fs.unlink(req.file.path, () => {});
       return res.status(400).json({ error: check.reason });
     }
+    await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
 
     const { pool } = require("../db");
     const assignmentId = req.params.id;

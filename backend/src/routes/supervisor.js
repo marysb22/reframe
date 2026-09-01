@@ -14,6 +14,7 @@ const {
   computeProgressSummary,
 } = require("../utils/serializers");
 const { documentUpload, materialUpload, assignmentAttachmentUpload } = require("../utils/uploads");
+const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { buildRecordsQuery, RECORD_TYPE_TABLES, buildHoursBreakdownQuery, buildTotHoursBreakdownQuery } = require("../utils/recordsQuery");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
@@ -855,6 +856,7 @@ router.post("/assignments", (req, res) => {
           fs.unlink(req.file.path, () => {});
           return res.status(400).json({ error: check.reason });
         }
+        await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
       }
       try {
         await handle(req.file ? req.file.filename : null);
@@ -967,6 +969,7 @@ router.post("/students/:studentId/documents", (req, res) => {
       fs.unlink(req.file.path, () => {});
       return res.status(400).json({ error: check.reason });
     }
+    await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
 
     const { pool } = require("../db");
     const studentId = Number(req.params.studentId);
@@ -1120,6 +1123,7 @@ router.post("/materials", (req, res) => {
         fs.unlink(req.file.path, () => {});
         return res.status(400).json({ error: check.reason });
       }
+      await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
 
       const insert = await pool.query(
         `INSERT INTO learning_materials (supervisor_id, student_id, title, description, material_type, filename, original_name)

@@ -4,6 +4,33 @@ const fs = require("fs");
 const crypto = require("crypto");
 const config = require("../config");
 const { checkFileContent } = require("./fileTypeCheck");
+const { optimizeImageIfPossible } = require("./imageOptimize");
+
+/**
+ * Express middleware factory: run AFTER a file-content check has already
+ * confirmed the upload is safe, BEFORE the route creates its DB row. If the
+ * uploaded file turns out to be a JPEG/PNG/WEBP, resizes it down to
+ * `maxDimension` and recompresses it in place; anything else (a PDF, an
+ * animated GIF, a video/audio material) is left untouched. Updates
+ * `file.size` to match so a route that stores it (e.g. chat attachments)
+ * doesn't record a stale pre-optimization size.
+ */
+function optimizeUploadedImage(maxDimension) {
+  return async (req, res, next) => {
+    const files = req.file ? [req.file] : Array.isArray(req.files) ? req.files : [];
+    for (const file of files) {
+      try {
+        const newSize = await optimizeImageIfPossible(file.path, { maxDimension });
+        if (newSize != null) file.size = newSize;
+      } catch (err) {
+        // Optimization is a nice-to-have, not a correctness requirement --
+        // the original, already-validated file is still perfectly servable.
+        console.error("[uploads] image optimization failed, keeping original:", err);
+      }
+    }
+    next();
+  };
+}
 
 /**
  * Express middleware factory: run AFTER a multer upload middleware in the
@@ -205,10 +232,12 @@ module.exports = {
   assignmentAttachmentUpload,
   chatAttachmentUpload,
   requireValidFileContent,
+  optimizeUploadedImage,
   // Only chatRooms.js's multipart middleware chain is array-based, so
   // that's the only route that consumes a ready-made middleware here.
   // Every other upload route (admin/designer/profile/supervisor) uses
   // multer's callback style instead and calls checkFileContent(...)
   // directly inline -- see those routes for the equivalent check.
   checkChatAttachmentContent: requireValidFileContent(["pdf", "office", "image", "zip"]),
+  optimizeChatAttachmentImage: optimizeUploadedImage(1600),
 };

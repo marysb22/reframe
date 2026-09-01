@@ -171,6 +171,12 @@ router.get("/:subfolder/:filename", authenticateForFile, async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 
+  // "private" (not "public") so only the requesting browser's own cache may
+  // store this response -- it still skips re-downloading the same file on
+  // every view within a day, without letting a shared/proxy cache serve one
+  // user's private file to a different user who happens to guess the URL.
+  res.set("Cache-Control", "private, max-age=86400");
+
   const filePath = path.join(config.uploadsDir, subfolder, filename);
   res.sendFile(filePath, (err) => {
     if (err && !res.headersSent) res.status(404).json({ error: "File not found" });

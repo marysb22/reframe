@@ -9,6 +9,12 @@
     <meta name="description" data-translate-content="page_description_home" content="Professional mental health services and training programs across the Middle East. Unlocking potential and resilience." />
 
     <!-- ====== STYLES ====== -->
+    <!-- Preloaded ahead of the stylesheet so the browser starts fetching
+         these above-the-fold images immediately during HTML parsing,
+         instead of waiting for CSS to load before it even discovers the
+         <img> tags that need them. -->
+    <link rel="preload" as="image" href="logos/logo.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="photos/pro3.jpg" fetchpriority="high" />
     <link rel="stylesheet" href="styles/main.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -24,7 +30,7 @@
             <!-- Logo -->
             <div class="nav-logo">
                 <a href="index.html">
-                    <img src="logos/logo.gif" alt="Company Logo" width="220" />
+                    <img src="logos/logo.webp" alt="Company Logo" width="220" height="81" />
                 </a>
             </div>
 
@@ -90,10 +96,10 @@
     <!-- ================= HERO ================= -->
     <section class="hero">
         <div class="bento-grid">
-            <img src="photos/pro3.jpg" alt="photo 1" class="bento-item large" />
-            <img src="photos/pro1.jpg" alt="photo 2" class="bento-item tall" />
-            <img src="photos/pro3.jpg" alt="photo 3" class="bento-item small" />
-            <img src="photos/PRO4.jpeg" alt="photo 4" class="bento-item wide" />
+            <img src="photos/pro3.jpg" srcset="photos/pro3-mobile.jpg 800w, photos/pro3.jpg 1920w" sizes="(max-width: 768px) 50vw, 960px" alt="photo 1" class="bento-item large" loading="eager" fetchpriority="high" decoding="async" />
+            <img src="photos/pro1.jpg" srcset="photos/pro1-mobile.jpg 800w, photos/pro1.jpg 1920w" sizes="(max-width: 768px) 50vw, 480px" alt="photo 2" class="bento-item tall" loading="eager" fetchpriority="high" decoding="async" />
+            <img src="photos/pro3.jpg" srcset="photos/pro3-mobile.jpg 800w, photos/pro3.jpg 1920w" sizes="(max-width: 768px) 50vw, 480px" alt="photo 3" class="bento-item small" loading="eager" decoding="async" />
+            <img src="photos/PRO4.jpeg" alt="photo 4" class="bento-item wide" loading="eager" decoding="async" />
         </div>
 
         <div class="hero-overlay">
@@ -303,15 +309,15 @@
 
             <div class="partners-carousel">
                 <div class="carousel-track" id="carousel-track">
-                    <div class="partner-item"><img src="logos/FCDC.jpg" alt="FCDC"></div>
-                    <div class="partner-item"><img src="logos/E1.png" alt="Mental Health Foundation"></div>
-                    <div class="partner-item"><img src="logos/z.jpeg" alt="Regional University"></div>
-                    <div class="partner-item"><img src="logos/kl.jpeg" alt="NGO Consortium"></div>
-                    <div class="partner-item"><img src="logos/hr.png" alt="Corporate Wellness"></div>
-                    <div class="partner-item"><img src="logos/p.png" alt="Premiere"></div>
-                    <div class="partner-item"><img src="logos/forum.jpeg" alt="Forum"></div>
-                    <div class="partner-item"><img src="logos/e3.jpeg" alt="Caritas Lebanon"><span>Caritas Lebanon</span></div>
-                    <div class="partner-item"><img src="logos/immap.jpeg" alt="IMMAP"></div>
+                    <div class="partner-item"><img src="logos/FCDC.jpg" alt="FCDC" loading="lazy" decoding="async"></div>
+                    <div class="partner-item"><img src="logos/E1.webp" alt="Mental Health Foundation" loading="lazy" decoding="async"></div>
+                    <div class="partner-item"><img src="logos/z.jpeg" alt="Regional University" loading="lazy" decoding="async"></div>
+                    <div class="partner-item"><img src="logos/kl.jpeg" alt="NGO Consortium" loading="lazy" decoding="async"></div>
+                    <div class="partner-item"><img src="logos/hr.png" alt="Corporate Wellness" loading="lazy" decoding="async"></div>
+                    <div class="partner-item"><img src="logos/p.png" alt="Premiere" loading="lazy" decoding="async"></div>
+                    <div class="partner-item"><img src="logos/forum.jpeg" alt="Forum" loading="lazy" decoding="async"></div>
+                    <div class="partner-item"><img src="logos/e3.jpeg" alt="Caritas Lebanon" loading="lazy" decoding="async"><span>Caritas Lebanon</span></div>
+                    <div class="partner-item"><img src="logos/immap.jpeg" alt="IMMAP" loading="lazy" decoding="async"></div>
                 </div>
             </div>
         </div>

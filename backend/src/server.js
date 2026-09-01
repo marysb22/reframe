@@ -68,9 +68,15 @@ app.use((req, res, next) => {
 // unrevocable access to a private file with no login check at all. Those
 // now go through routes/files.js instead, which requires a valid session
 // and checks per-file ownership/caseload before serving anything.
-app.use("/uploads/events", express.static(path.join(config.uploadsDir, "events")));
+// A 1-day cache lets a repeat visitor's browser skip re-downloading the
+// same event photo or site asset on every page view, without risking a
+// stale image sticking around for long if a designer replaces one --
+// these filenames aren't content-hashed, so an aggressive/immutable
+// cache would risk serving an old image under an unchanged URL.
+const STATIC_CACHE_OPTIONS = { maxAge: "1d" };
+app.use("/uploads/events", express.static(path.join(config.uploadsDir, "events"), STATIC_CACHE_OPTIONS));
 app.use("/uploads", require("./routes/files"));
-app.use(express.static(path.join(__dirname, "../public")));
+app.use(express.static(path.join(__dirname, "../public"), STATIC_CACHE_OPTIONS));
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/admin", require("./routes/admin"));

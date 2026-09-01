@@ -18,6 +18,7 @@ const {
   computeProgressSummary,
 } = require("../utils/serializers");
 const { eventImageUpload } = require("../utils/uploads");
+const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
@@ -1538,7 +1539,7 @@ router.delete(
 // ---- Events (public site management) -----------------------------------
 
 router.post("/events/upload-image", (req, res) => {
-  eventImageUpload.single("image")(req, res, (err) => {
+  eventImageUpload.single("image")(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     const check = checkFileContent(req.file.path, ["image"]);
@@ -1546,6 +1547,7 @@ router.post("/events/upload-image", (req, res) => {
       fs.unlink(req.file.path, () => {});
       return res.status(400).json({ error: check.reason });
     }
+    await optimizeImageIfPossible(req.file.path, { maxDimension: 1600 });
     res.status(201).json({ url: `/uploads/events/${req.file.filename}` });
   });
 });

@@ -7,7 +7,7 @@
 const express = require("express");
 const { requireAuth, requireMasterTrainer, asyncRoute } = require("../middleware/auth");
 const { pool } = require("../db");
-const { chatAttachmentUpload, checkChatAttachmentContent } = require("../utils/uploads");
+const { chatAttachmentUpload, checkChatAttachmentContent, optimizeChatAttachmentImage } = require("../utils/uploads");
 const { broadcastMessage, evictMember } = require("../realtime/chatSocket");
 
 const router = express.Router();
@@ -316,6 +316,7 @@ router.post(
     });
   },
   checkChatAttachmentContent,
+  optimizeChatAttachmentImage,
   asyncRoute(async (req, res, db) => {
     const roomId = Number(req.params.id);
     const room = await loadMemberRoom(db, roomId, req.user.id);
