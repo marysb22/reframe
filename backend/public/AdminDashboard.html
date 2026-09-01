@@ -2617,7 +2617,8 @@ function renderYearCards() {
     <div class="payment-years-summary">${renderPaymentYearsSummary()}</div>
     <div class="payment-manage-section">
       <h4>Manage a program year</h4>
-      <div class="tabs" id="programYearTabs"></div>
+      <label style="margin-top:0;">Select program year</label>
+      <select id="programYearSelect" onchange="selectProgramYear(Number(this.value))"></select>
       <div class="payment-manage-panel" id="programYearPanel"></div>
     </div>
     <div class="payment-history-section">
@@ -2627,7 +2628,7 @@ function renderYearCards() {
       <div id="paymentRecordDetails"></div>
     </div>`;
 
-  renderProgramYearTabs();
+  renderProgramYearSelect();
   renderProgramYearPanel();
   renderPaymentRecordSelect();
 }
@@ -2657,18 +2658,19 @@ function renderPaymentYearsSummary() {
     </table>`;
 }
 
-function renderProgramYearTabs() {
-  document.getElementById("programYearTabs").innerHTML = currentPaymentYears
+function renderProgramYearSelect() {
+  const select = document.getElementById("programYearSelect");
+  select.innerHTML = currentPaymentYears
     .map((entry) => {
       const y = entry.trainingYear;
-      return `<button type="button" class="tab-btn ${y === selectedProgramYear ? "active" : ""}" onclick="selectProgramYear(${y})">Year ${y}${entry.periodStatus === "completed" ? " ✓" : ""}</button>`;
+      return `<option value="${y}">Year ${y}${entry.periodStatus === "completed" ? " (Completed)" : ""}</option>`;
     })
     .join("");
+  select.value = selectedProgramYear;
 }
 
 function selectProgramYear(year) {
   selectedProgramYear = year;
-  renderProgramYearTabs();
   renderProgramYearPanel();
 }
 
