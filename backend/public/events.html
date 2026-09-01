@@ -1107,11 +1107,23 @@
         document.body.style.overflow = "";
       }
 
+      // Deep-link support: ?event=<slug> opens that event's detail modal
+      // directly on load -- this is how the Home Page's "View on Event"
+      // button and calendar indicator reach a specific event without a
+      // separate per-event page or route.
+      function openEventFromQueryString() {
+        const slug = new URLSearchParams(window.location.search).get("event");
+        if (!slug) return;
+        const match = cmsEvents.find((event) => event.slug === slug);
+        if (match) openDetails(match);
+      }
+
       fetch(EVENTS_API)
         .then((res) => res.json())
         .then((data) => {
           cmsEvents = Array.isArray(data.events) ? data.events : [];
           renderEvents();
+          openEventFromQueryString();
         })
         .catch((err) => console.error("Events API error:", err));
 

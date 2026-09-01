@@ -186,6 +186,7 @@
                                     <a href="events.html" class="view-all-btn" data-translate="events_view_all">View All Events</a>
                                     <h4 data-translate="events_this_month">This Month's Events</h4>
                                 </div>
+                                <div class="upcoming-events-list"></div>
                             </div>
                         </div>
                     </div>
@@ -378,6 +379,7 @@
         </div>
     </footer>
 
+    <script src="scripts/api-config.js"></script>
     <script src="scripts/translations.js"></script>
     <script src="scripts/main.js"></script>
 
@@ -721,7 +723,108 @@
             color: var(--secondary-color);
             font-weight: 600;
         }
-        
+
+        /* Each calendar cell becomes a small column (day number + an
+           optional green event badge) instead of a bare number, so a real
+           event on that date is unmistakable at a glance. */
+        .cal-day-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 3px;
+            text-align: center;
+            padding: 8px 3px 6px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+
+        .cal-day-cell:hover {
+            background: #4D9794;
+            color: white;
+        }
+
+        .cal-day-cell:hover .event-badge {
+            filter: brightness(1.1);
+        }
+
+        .event-badge {
+            display: inline-block;
+            font-size: 0.6rem;
+            font-weight: 700;
+            line-height: 1;
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: #1E8E3E;
+            color: #fff;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+        }
+
+        .upcoming-events-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .upcoming-event-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #F5F9F8;
+            border: 1px solid rgba(77, 151, 148, 0.18);
+            border-radius: 10px;
+        }
+
+        .upcoming-event-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .upcoming-event-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--primary-color, #1e3f5a);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .upcoming-event-date {
+            font-size: 0.78rem;
+            color: #5B6B69;
+        }
+
+        .view-event-btn {
+            flex-shrink: 0;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #fff;
+            background: var(--secondary-color, #4D9794);
+            padding: 7px 14px;
+            border-radius: 999px;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .view-event-btn:hover {
+            opacity: 0.88;
+        }
+
+        .no-upcoming-events {
+            text-align: center;
+            color: #8B9795;
+            font-size: 0.85rem;
+            padding: 6px 0 0;
+        }
+
         .upcoming-events h4 {
             text-align: center;
             font-size: clamp(1.2rem, 0.9rem + 1.2vw, 1.6rem);
@@ -1673,31 +1776,111 @@
             });
         });
 
-        // --- Calendar widget ---
+        // --- Calendar widget --- Reads real events from the same public
+        // /api/events endpoint events.html already uses (Designer-created
+        // events land here automatically -- no separate wiring needed).
+        // Mirrors events.html's own date-matching/status-filtering rules
+        // exactly, so both calendars agree on what counts as a real event
+        // on a given day.
         document.addEventListener("DOMContentLoaded", function() {
             const monthLabel = document.querySelector(".calendar-month-label");
             const datesContainer = document.querySelector(".calendar-dates");
             const prevBtn = document.querySelector(".prev-month");
             const nextBtn = document.querySelector(".next-month");
-
-            const eventDates = [3, 30]; // event days for the current demo month
+            const upcomingList = document.querySelector(".upcoming-events-list");
 
             let currentDate = new Date();
+            let homeEvents = [];
 
             const monthNamesByLang = {
                 en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
                 ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
             };
 
+            const eventCopy = {
+                en: { viewOnEvent: "View on Event", noEvents: "No events scheduled this month.", more: "more" },
+                ar: { viewOnEvent: "View on Event", noEvents: "لا توجد فعاليات هذا الشهر.", more: "أخرى" }
+            };
+            function lang() { return document.documentElement.lang === "ar" ? "ar" : "en"; }
+
+            function normalizeEventDate(dateString) {
+                if (!dateString) return null;
+                const d = new Date(dateString);
+                return isNaN(d.getTime()) ? null : d;
+            }
+
+            // Same rule events.html's own calendar uses: a concluded event
+            // no longer counts as "on" the calendar.
+            function getEventsForDate(year, month, day) {
+                return homeEvents.filter((event) => {
+                    const eventDate = normalizeEventDate(event.date);
+                    if (!eventDate) return false;
+                    return (
+                        eventDate.getFullYear() === year &&
+                        eventDate.getMonth() === month &&
+                        eventDate.getDate() === day &&
+                        event.status !== "concluded"
+                    );
+                });
+            }
+
+            function eventTitle(event) {
+                const l = lang() === "ar" ? "arabic" : "english";
+                return (event[l] && event[l].title) || (event.english && event.english.title) || "";
+            }
+
+            function eventHref(event) {
+                return `events.html?event=${encodeURIComponent(event.slug)}`;
+            }
+
+            function formatEventDate(dateString) {
+                const d = normalizeEventDate(dateString);
+                if (!d) return "";
+                return d.toLocaleDateString(lang() === "ar" ? "ar" : "en-US", { month: "short", day: "numeric", year: "numeric" });
+            }
+
+            function renderUpcomingList(year, month) {
+                if (!upcomingList) return;
+                const c = eventCopy[lang()];
+                const monthEvents = homeEvents
+                    .filter((event) => {
+                        const d = normalizeEventDate(event.date);
+                        return d && d.getFullYear() === year && d.getMonth() === month && event.status !== "concluded";
+                    })
+                    .sort((a, b) => normalizeEventDate(a.date) - normalizeEventDate(b.date))
+                    .slice(0, 5);
+
+                if (!monthEvents.length) {
+                    upcomingList.innerHTML = `<p class="no-upcoming-events">${c.noEvents}</p>`;
+                    return;
+                }
+
+                upcomingList.innerHTML = monthEvents.map((event) => `
+                    <div class="upcoming-event-item">
+                        <div class="upcoming-event-info">
+                            <span class="upcoming-event-title">${escapeHtml(eventTitle(event))}</span>
+                            <span class="upcoming-event-date">${escapeHtml(formatEventDate(event.date))}</span>
+                        </div>
+                        <a class="view-event-btn" href="${eventHref(event)}">${c.viewOnEvent}</a>
+                    </div>
+                `).join("");
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement("div");
+                div.textContent = str == null ? "" : String(str);
+                return div.innerHTML;
+            }
+
             function renderCalendar() {
                 const year = currentDate.getFullYear();
                 const month = currentDate.getMonth();
-                const lang = document.documentElement.lang === "ar" ? "ar" : "en";
+                const l = lang();
 
                 const firstDay = new Date(year, month, 1).getDay();
                 const lastDate = new Date(year, month + 1, 0).getDate();
 
-                monthLabel.textContent = `${monthNamesByLang[lang][month]} ${year}`;
+                monthLabel.textContent = `${monthNamesByLang[l][month]} ${year}`;
 
                 datesContainer.innerHTML = "";
 
@@ -1708,21 +1891,57 @@
                 const today = new Date();
 
                 for (let day = 1; day <= lastDate; day++) {
-                    const dayEl = document.createElement("span");
-                    dayEl.textContent = day;
+                    const dayEvents = getEventsForDate(year, month, day);
+                    const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
-                    if (eventDates.includes(day)) {
-                        dayEl.classList.add("event-date");
+                    const cell = document.createElement("div");
+                    cell.className = "cal-day-cell";
+
+                    const numEl = document.createElement("span");
+                    numEl.className = "cal-day-num";
+                    numEl.textContent = day;
+                    if (isToday) {
+                        numEl.style.background = "#4D9794";
+                        numEl.style.color = "white";
+                        numEl.style.fontWeight = "600";
+                        numEl.style.borderRadius = "50%";
+                        numEl.style.width = "1.6em";
+                        numEl.style.height = "1.6em";
+                        numEl.style.display = "inline-flex";
+                        numEl.style.alignItems = "center";
+                        numEl.style.justifyContent = "center";
+                    }
+                    cell.appendChild(numEl);
+
+                    if (dayEvents.length > 0) {
+                        cell.classList.add("event-date");
+                        const badge = document.createElement("span");
+                        badge.className = "event-badge";
+                        badge.textContent = dayEvents.length > 1 ? `Event +${dayEvents.length - 1}` : "Event";
+                        badge.title = dayEvents.map(eventTitle).filter(Boolean).join(", ");
+                        cell.appendChild(badge);
+                        cell.addEventListener("click", () => {
+                            window.location.href = eventHref(dayEvents[0]);
+                        });
                     }
 
-                    if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-                        dayEl.style.background = "#4D9794";
-                        dayEl.style.color = "white";
-                        dayEl.style.fontWeight = "600";
-                    }
-
-                    datesContainer.appendChild(dayEl);
+                    datesContainer.appendChild(cell);
                 }
+
+                renderUpcomingList(year, month);
+            }
+
+            async function loadHomeEvents() {
+                try {
+                    const base = window.API_BASE || "";
+                    const res = await fetch(base + "/api/events");
+                    const data = await res.json();
+                    homeEvents = Array.isArray(data.events) ? data.events : [];
+                } catch (err) {
+                    console.error("Could not load events for the home page calendar", err);
+                    homeEvents = [];
+                }
+                renderCalendar();
             }
 
             prevBtn.addEventListener("click", () => {
@@ -1735,7 +1954,7 @@
                 renderCalendar();
             });
 
-            renderCalendar();
+            loadHomeEvents();
 
             // Re-render month labels when language changes
             document.querySelectorAll(".lang-btn").forEach(btn => {
