@@ -699,6 +699,19 @@ router.delete(
       }
     }
 
+    // Anyone -- trainee, supervisor, or admin -- can have sent chat
+    // messages, and sender_id has no cascade on either messages table for
+    // any role. A chat message isn't training/compliance history like
+    // sessions or materials are, so clearing an account's own sent
+    // messages before deletion doesn't touch the protections above: a
+    // supervisor/admin with real history (sessions, materials, meetings,
+    // evaluations) still hits the FK below and gets blocked exactly as
+    // before, since none of those tables are touched here.
+    if (targetRole !== "trainee") {
+      await db.query("DELETE FROM messages WHERE sender_id = ?", [id]);
+      await db.query("DELETE FROM chat_room_messages WHERE sender_id = ?", [id]);
+    }
+
     try {
       await db.query("DELETE FROM user_credentials WHERE id = ?", [id]);
     } catch (err) {
