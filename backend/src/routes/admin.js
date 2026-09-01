@@ -688,11 +688,14 @@ router.delete(
         });
       }
 
-      // Trainees can send chat messages (messages.sender_id has no
-      // cascade), the one realistic remaining blocker once force is
-      // actually confirmed. Everything else cascades via student_id.
+      // Trainees can send messages in two separate systems -- the
+      // original 1:1 supervisor chat (messages.sender_id) and Group Chats
+      // (chat_room_messages.sender_id) -- and neither has a cascade from
+      // user_credentials, so both are real remaining blockers once force
+      // is actually confirmed. Everything else cascades via student_id.
       if (force) {
         await db.query("DELETE FROM messages WHERE sender_id = ?", [id]);
+        await db.query("DELETE FROM chat_room_messages WHERE sender_id = ?", [id]);
       }
     }
 
