@@ -133,17 +133,18 @@ tr:hover td{background:var(--surface-2);}
 .pill.completed{background:var(--surface-2);color:var(--muted);}
 .empty-state{text-align:center;padding:30px;color:var(--faint);font-size:13px;}
 
-.year-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius-md);margin-bottom:14px;overflow:hidden;}
-.year-card-header{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 18px;cursor:pointer;flex-wrap:wrap;}
-.year-card-header:hover{background:var(--surface-2);}
-.year-card-title{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;}
-.year-card-title i.fa-chevron-right{transition:transform .15s ease;color:var(--muted);font-size:12px;}
-.year-card.open .year-card-title i.fa-chevron-right{transform:rotate(90deg);}
-.year-card-mini{display:flex;gap:16px;font-size:12px;color:var(--muted);flex-wrap:wrap;}
-.year-card-mini strong{color:var(--text);}
-.year-card-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border-soft);}
-.year-card.open .year-card-body{display:block;}
-.month-group-label{font-size:12px;font-weight:700;color:var(--muted);margin:16px 0 6px;padding-bottom:5px;border-bottom:1px solid var(--border-soft);display:flex;justify-content:space-between;}
+/* Payments: Year -> Month -> table (no cards) */
+.payment-years-summary{margin-bottom:24px;overflow-x:auto;}
+.payment-years-summary table{min-width:640px;}
+.payment-manage-section,.payment-history-section{margin-bottom:28px;}
+.payment-manage-section h4,.payment-history-section h4{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--muted);}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;}
+.tab-btn{background:var(--surface-2);border:1px solid var(--border-soft);padding:7px 15px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:background .15s ease,color .15s ease;}
+.tab-btn:hover{background:var(--surface);}
+.tab-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.tab-btn.has-data:not(.active)::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--primary);margin-inline-start:7px;vertical-align:middle;}
+.payment-month-table{overflow-x:auto;}
+.payment-manage-panel{background:var(--surface-2);border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:18px;}
 .icon-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;margin-right:6px;color:var(--muted);}
 .icon-btn:hover{background:var(--surface-2);}
 .icon-btn.danger{color:var(--danger);}
@@ -2609,7 +2610,15 @@ function saveNotificationPrefs() {
 let allPayments = [];
 let currentPaymentUserId = null;
 let currentPaymentYears = [];
-let openYears = new Set();
+let selectedProgramYear = null; // 1-4 -- which program year's fee/ledger form is open
+let paymentAllTransactions = []; // flattened ledger across all 4 program years, for the Year/Month browser
+let selectedPaymentYear = null; // a real calendar year, e.g. 2026
+let selectedPaymentMonth = null; // 1-12
+
+const PAYMENT_MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 function formatMoney(amount) {
   return "$" + Number(amount).toFixed(2);
@@ -2659,7 +2668,9 @@ async function openPaymentDetail(userId) {
   const data = await apiRequest(`/admin/payments/${userId}`);
   if (!data) return;
   currentPaymentYears = data.years;
-  openYears = new Set([data.activeYear]);
+  selectedProgramYear = data.activeYear;
+  selectedPaymentYear = null;
+  selectedPaymentMonth = null;
   document.getElementById("pdName").textContent = data.fullName;
   document.getElementById("pdMemberCode").textContent = data.memberCode;
   renderYearCards();
@@ -2671,137 +2682,247 @@ function closePaymentDetail() {
   document.getElementById("paymentDetailWrap").style.display = "none";
   currentPaymentUserId = null;
   currentPaymentYears = [];
-  openYears = new Set();
 }
 
-/** Groups a year's ledger by calendar month of payment_date, newest month
- * first -- this IS the "monthly breakdown," derived straight from the
- * existing transactions rather than a separately stored schedule, since
- * years don't share a fixed number/amount of payments. */
-function groupPaymentsByMonth(transactions) {
-  const groups = new Map();
-  for (const t of transactions) {
-    const d = new Date(t.date + "T00:00:00");
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    if (!groups.has(key)) {
-      groups.set(key, { label: d.toLocaleDateString("en-US", { month: "long", year: "numeric" }), transactions: [], subtotal: 0 });
-    }
-    const g = groups.get(key);
-    g.transactions.push(t);
-    g.subtotal += t.amount;
-  }
-  return [...groups.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([, g]) => g);
+/** `dateStr` is a plain "YYYY-MM-DD" string (the DB connection uses
+ * dateStrings:true) -- splitting it directly, instead of routing it
+ * through `new Date(dateStr)` (which parses as UTC and can shift the
+ * calendar date by a day depending on the browser's timezone), is what
+ * keeps a payment made near midnight from ever landing in the wrong
+ * month here. */
+function paymentDateParts(dateStr) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return { year, month, day };
+}
+
+function formatPaymentDate(dateStr) {
+  const { year, month, day } = paymentDateParts(dateStr);
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+}
+
+/** `createdAt` is "YYYY-MM-DD HH:MM:SS" (also dateStrings:true) -- the only
+ * real time-of-day this ledger stores is when the transaction row was
+ * recorded (payment_date itself is date-only, no time component). */
+function formatPaymentTime(createdAt) {
+  if (!createdAt) return "&mdash;";
+  const d = new Date(createdAt.replace(" ", "T"));
+  if (isNaN(d.getTime())) return "&mdash;";
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function pillClassForTransactionType(type) {
+  if (type === "payment") return "active";
+  if (type === "refund") return "suspended";
+  return "pending";
 }
 
 function renderYearCards() {
-  document.getElementById("yearCardsWrap").innerHTML = currentPaymentYears.map(renderYearCard).join("");
+  paymentAllTransactions = currentPaymentYears.flatMap((y) => y.transactions.map((t) => ({ ...t, trainingYear: y.trainingYear })));
+
+  document.getElementById("yearCardsWrap").innerHTML = `
+    <div class="payment-years-summary">${renderPaymentYearsSummary()}</div>
+    <div class="payment-manage-section">
+      <h4>Manage a program year</h4>
+      <div class="tabs" id="programYearTabs"></div>
+      <div class="payment-manage-panel" id="programYearPanel"></div>
+    </div>
+    <div class="payment-history-section">
+      <h4>Payment History</h4>
+      <div class="tabs" id="paymentYearTabs"></div>
+      <div class="tabs" id="paymentMonthTabs"></div>
+      <div id="paymentMonthTable"></div>
+    </div>`;
+
+  renderProgramYearTabs();
+  renderProgramYearPanel();
+  renderPaymentYearTabs();
+  renderPaymentMonthTabs();
+  renderPaymentMonthTable();
 }
 
-function toggleYearCard(year) {
-  if (openYears.has(year)) openYears.delete(year);
-  else openYears.add(year);
-  renderYearCards();
+function renderPaymentYearsSummary() {
+  const rows = currentPaymentYears
+    .map((entry) => {
+      const y = entry.trainingYear;
+      const s = entry.summary;
+      const isCompleted = entry.periodStatus === "completed";
+      const finPill = s.status === "paid" ? "active" : s.status === "unpaid" ? "" : "pending";
+      return `
+      <tr>
+        <td><strong>Year ${y}</strong> <span class="pill ${isCompleted ? "completed" : "active"}" style="margin-inline-start:6px;">${isCompleted ? "Completed" : "Active"}</span></td>
+        <td>${formatMoney(s.totalFee)}</td>
+        <td>${formatMoney(s.paid)}</td>
+        <td>${formatMoney(s.remaining)}</td>
+        <td><span class="pill ${finPill}">${escapeHtml(s.status)}</span></td>
+        <td>${s.nextDueDate ? formatPaymentDate(s.nextDueDate) : "&mdash;"}</td>
+      </tr>`;
+    })
+    .join("");
+  return `
+    <table>
+      <thead><tr><th>Program Year</th><th>Total Fee</th><th>Paid</th><th>Remaining</th><th>Status</th><th>Next Due</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
-function renderYearCard(entry) {
+function renderProgramYearTabs() {
+  document.getElementById("programYearTabs").innerHTML = currentPaymentYears
+    .map((entry) => {
+      const y = entry.trainingYear;
+      return `<button type="button" class="tab-btn ${y === selectedProgramYear ? "active" : ""}" onclick="selectProgramYear(${y})">Year ${y}${entry.periodStatus === "completed" ? " ✓" : ""}</button>`;
+    })
+    .join("");
+}
+
+function selectProgramYear(year) {
+  selectedProgramYear = year;
+  renderProgramYearTabs();
+  renderProgramYearPanel();
+}
+
+function renderProgramYearPanel() {
+  const entry = currentPaymentYears.find((e) => e.trainingYear === selectedProgramYear);
+  const panel = document.getElementById("programYearPanel");
+  if (!entry) {
+    panel.innerHTML = '<p class="empty-state">Select a program year above.</p>';
+    return;
+  }
   const y = entry.trainingYear;
   const s = entry.summary;
-  const isOpen = openYears.has(y);
-  const finPill = s.status === "paid" ? "active" : s.status === "unpaid" ? "" : "pending";
   const isCompleted = entry.periodStatus === "completed";
-  const months = groupPaymentsByMonth(entry.transactions);
 
-  const historyHtml = entry.transactions.length
-    ? months
-        .map(
-          (g) => `
-      <div class="month-group-label"><span>${escapeHtml(g.label)}</span><span>${formatMoney(g.subtotal)}</span></div>
-      <table>
-        <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Added by</th><th>Notes</th></tr></thead>
-        <tbody>
-          ${g.transactions
-            .map(
-              (t) => `
-            <tr>
-              <td>${escapeHtml(t.date)}</td>
-              <td>${formatMoney(t.amount)}</td>
-              <td>${t.method ? escapeHtml(t.method) : "&mdash;"}</td>
-              <td>${escapeHtml(t.addedByName)}</td>
-              <td>${t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
-            </tr>`
-            )
-            .join("")}
-        </tbody>
-      </table>`
-        )
-        .join("")
-    : '<p class="empty-state">No payments recorded for this year yet.</p>';
-
-  return `
-    <div class="year-card ${isOpen ? "open" : ""}" data-year="${y}">
-      <div class="year-card-header" onclick="toggleYearCard(${y})">
-        <div class="year-card-title">
-          <i class="fa fa-chevron-right"></i>
-          <span>Year ${y}</span>
-          <span class="pill ${isCompleted ? "completed" : "active"}">${isCompleted ? "Completed" : "Active"}</span>
-        </div>
-        <div class="year-card-mini">
-          <span>Total: <strong>${formatMoney(s.totalFee)}</strong></span>
-          <span>Paid: <strong>${formatMoney(s.paid)}</strong></span>
-          <span>Remaining: <strong>${formatMoney(s.remaining)}</strong></span>
-          <span class="pill ${finPill}">${escapeHtml(s.status)}</span>
-        </div>
-      </div>
-      <div class="year-card-body">
-        <div class="kpi-grid kpi-grid-4" style="gap:12px;margin:16px 0;">
-          <div class="kpi-card"><label>Total Fee</label><h2>${formatMoney(s.totalFee)}</h2></div>
-          <div class="kpi-card"><label>Paid</label><h2>${formatMoney(s.paid)}</h2></div>
-          <div class="kpi-card"><label>Remaining</label><h2>${formatMoney(s.remaining)}</h2></div>
-          <div class="kpi-card"><label>Status</label><h2>${escapeHtml(s.status)}</h2></div>
-        </div>
-
-        <form onsubmit="submitYearTotalFee(event, ${y})" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:160px;">
-            <label>Total program fee for Year ${y} ($)</label>
-            <input type="number" step="0.01" min="0" id="tf_total_${y}" value="${s.totalFee}" required>
-          </div>
-          <div style="flex:1;min-width:140px;">
-            <label>Discount ($)</label>
-            <input type="number" step="0.01" min="0" id="tf_discount_${y}" value="${s.discount || 0}">
-          </div>
-          <div style="flex:1;min-width:140px;">
-            <label>Next due date</label>
-            <input type="date" id="tf_due_${y}" value="${s.nextDueDate || ""}">
-          </div>
-          <button type="submit" class="btn btn-sm" style="margin-top:0;">Update Year ${y}</button>
-        </form>
-
-        <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Record a new payment for Year ${y}</h4>
-        <form onsubmit="submitYearPayment(event, ${y})" class="form-grid-4" style="gap:10px;align-items:end;margin-bottom:16px;">
-          <div><label>Amount ($)</label><input type="number" step="0.01" id="pay_amount_${y}" required></div>
-          <div><label>Date</label><input type="date" id="pay_date_${y}" required></div>
-          <div><label>Method</label><input type="text" id="pay_method_${y}" placeholder="Cash, transfer..."></div>
-          <div><button type="submit" class="btn">Add payment</button></div>
-          <div style="grid-column:1/-1;"><label>Notes (optional)</label><input type="text" id="pay_notes_${y}"></div>
-        </form>
-
-        <button class="btn btn-secondary btn-sm" style="width:auto;" onclick="toggleYearStatus(${y}, '${isCompleted ? "active" : "completed"}')">
-          ${isCompleted ? `Reopen Year ${y}` : `Mark Year ${y} Complete`}
-        </button>
-
-        <h4 style="margin:20px 0 10px;font-size:13px;color:var(--muted);">Monthly payment history</h4>
-        ${historyHtml}
-      </div>
+  panel.innerHTML = `
+    <div class="kpi-grid kpi-grid-4" style="gap:12px;margin-bottom:20px;">
+      <div class="kpi-card"><label>Total Fee</label><h2>${formatMoney(s.totalFee)}</h2></div>
+      <div class="kpi-card"><label>Paid</label><h2>${formatMoney(s.paid)}</h2></div>
+      <div class="kpi-card"><label>Remaining</label><h2>${formatMoney(s.remaining)}</h2></div>
+      <div class="kpi-card"><label>Status</label><h2>${escapeHtml(s.status)}</h2></div>
     </div>
-  `;
+
+    <form onsubmit="submitYearTotalFee(event, ${y})" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:160px;">
+        <label>Total program fee for Year ${y} ($)</label>
+        <input type="number" step="0.01" min="0" id="tf_total" value="${s.totalFee}" required>
+      </div>
+      <div style="flex:1;min-width:140px;">
+        <label>Discount ($)</label>
+        <input type="number" step="0.01" min="0" id="tf_discount" value="${s.discount || 0}">
+      </div>
+      <div style="flex:1;min-width:140px;">
+        <label>Next due date</label>
+        <input type="date" id="tf_due" value="${s.nextDueDate || ""}">
+      </div>
+      <button type="submit" class="btn btn-sm" style="margin-top:0;">Update Year ${y}</button>
+    </form>
+
+    <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Record a new payment for Year ${y}</h4>
+    <form onsubmit="submitYearPayment(event, ${y})" class="form-grid-4" style="gap:10px;align-items:end;margin-bottom:16px;">
+      <div><label>Amount ($)</label><input type="number" step="0.01" id="pay_amount" required></div>
+      <div><label>Date</label><input type="date" id="pay_date" required></div>
+      <div><label>Method</label><input type="text" id="pay_method" placeholder="Cash, transfer..."></div>
+      <div><button type="submit" class="btn">Add payment</button></div>
+      <div style="grid-column:1/-1;"><label>Notes (optional)</label><input type="text" id="pay_notes"></div>
+    </form>
+
+    <button class="btn btn-secondary btn-sm" style="width:auto;" onclick="toggleYearStatus(${y}, '${isCompleted ? "active" : "completed"}')">
+      ${isCompleted ? `Reopen Year ${y}` : `Mark Year ${y} Complete`}
+    </button>`;
+}
+
+function renderPaymentYearTabs() {
+  const years = [...new Set(paymentAllTransactions.map((t) => paymentDateParts(t.date).year))];
+  const currentCalendarYear = new Date().getFullYear();
+  if (!years.includes(currentCalendarYear)) years.push(currentCalendarYear);
+  years.sort((a, b) => b - a);
+
+  if (!years.includes(selectedPaymentYear)) selectedPaymentYear = years[0];
+
+  document.getElementById("paymentYearTabs").innerHTML = years
+    .map((y) => `<button type="button" class="tab-btn ${y === selectedPaymentYear ? "active" : ""}" onclick="selectPaymentYear(${y})">${y}</button>`)
+    .join("");
+}
+
+function selectPaymentYear(year) {
+  selectedPaymentYear = year;
+  selectedPaymentMonth = null;
+  renderPaymentYearTabs();
+  renderPaymentMonthTabs();
+  renderPaymentMonthTable();
+}
+
+function renderPaymentMonthTabs() {
+  const monthsWithData = new Set(
+    paymentAllTransactions
+      .filter((t) => paymentDateParts(t.date).year === selectedPaymentYear)
+      .map((t) => paymentDateParts(t.date).month)
+  );
+
+  if (selectedPaymentMonth == null) {
+    const today = new Date();
+    if (selectedPaymentYear === today.getFullYear()) selectedPaymentMonth = today.getMonth() + 1;
+    else if (monthsWithData.size) selectedPaymentMonth = Math.max(...monthsWithData);
+    else selectedPaymentMonth = 1;
+  }
+
+  document.getElementById("paymentMonthTabs").innerHTML = PAYMENT_MONTH_NAMES.map((name, idx) => {
+    const m = idx + 1;
+    const hasData = monthsWithData.has(m);
+    return `<button type="button" class="tab-btn ${m === selectedPaymentMonth ? "active" : ""} ${hasData ? "has-data" : ""}" onclick="selectPaymentMonth(${m})">${name}</button>`;
+  }).join("");
+}
+
+function selectPaymentMonth(month) {
+  selectedPaymentMonth = month;
+  renderPaymentMonthTabs();
+  renderPaymentMonthTable();
+}
+
+function renderPaymentMonthTable() {
+  const wrap = document.getElementById("paymentMonthTable");
+  const monthTransactions = paymentAllTransactions
+    .filter((t) => {
+      const { year, month } = paymentDateParts(t.date);
+      return year === selectedPaymentYear && month === selectedPaymentMonth;
+    })
+    .sort((a, b) => (a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1));
+
+  const heading = `<h4>${PAYMENT_MONTH_NAMES[selectedPaymentMonth - 1]} ${selectedPaymentYear}</h4>`;
+
+  if (!monthTransactions.length) {
+    wrap.innerHTML = heading + '<p class="empty-state">No payments recorded for this month.</p>';
+    return;
+  }
+
+  const rows = monthTransactions
+    .map(
+      (t) => `
+    <tr>
+      <td>${formatPaymentDate(t.date)}</td>
+      <td>${formatPaymentTime(t.createdAt)}</td>
+      <td>${formatMoney(t.amount)}</td>
+      <td><span class="pill ${pillClassForTransactionType(t.transactionType)}">${escapeHtml(t.transactionType)}</span></td>
+      <td>${t.method ? escapeHtml(t.method) : "&mdash;"}</td>
+      <td>${escapeHtml(t.addedByName)}</td>
+      <td>${t.invoiceId ? "Invoice #" + t.invoiceId : t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
+    </tr>`
+    )
+    .join("");
+
+  wrap.innerHTML = `${heading}
+    <div class="payment-month-table">
+      <table>
+        <thead><tr><th>Date</th><th>Time</th><th>Amount</th><th>Type</th><th>Method</th><th>Added by</th><th>Reference / Notes</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 async function submitYearTotalFee(event, year) {
   event.preventDefault();
   if (!currentPaymentUserId) return;
-  const totalFee = Number(document.getElementById(`tf_total_${year}`).value);
-  const discount = Number(document.getElementById(`tf_discount_${year}`).value) || 0;
-  const nextDueDate = document.getElementById(`tf_due_${year}`).value || null;
+  const totalFee = Number(document.getElementById("tf_total").value);
+  const discount = Number(document.getElementById("tf_discount").value) || 0;
+  const nextDueDate = document.getElementById("tf_due").value || null;
 
   const result = await apiRequest(`/admin/payments/${currentPaymentUserId}/years/${year}/total-fee`, {
     method: "PUT",
@@ -2820,10 +2941,10 @@ async function submitYearPayment(event, year) {
   if (!currentPaymentUserId) return;
 
   const payload = {
-    amount: Number(document.getElementById(`pay_amount_${year}`).value),
-    date: document.getElementById(`pay_date_${year}`).value,
-    method: document.getElementById(`pay_method_${year}`).value,
-    notes: document.getElementById(`pay_notes_${year}`).value,
+    amount: Number(document.getElementById("pay_amount").value),
+    date: document.getElementById("pay_date").value,
+    method: document.getElementById("pay_method").value,
+    notes: document.getElementById("pay_notes").value,
   };
 
   const result = await apiRequest(`/admin/payments/${currentPaymentUserId}/years/${year}/transactions`, {
@@ -2833,7 +2954,6 @@ async function submitYearPayment(event, year) {
   if (result) {
     showToast(`Payment recorded for Year ${year}`, "success");
     currentPaymentYears = result.years;
-    openYears.add(year);
     renderYearCards();
     loadPayments();
   }
