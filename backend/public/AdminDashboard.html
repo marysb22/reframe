@@ -133,16 +133,6 @@ tr:hover td{background:var(--surface-2);}
 .pill.completed{background:var(--surface-2);color:var(--muted);}
 .empty-state{text-align:center;padding:30px;color:var(--faint);font-size:13px;}
 
-/* Payments: Year -> Month -> table (no cards) */
-.payment-years-summary{margin-bottom:24px;overflow-x:auto;}
-.payment-years-summary table{min-width:640px;}
-.payment-manage-section,.payment-history-section{margin-bottom:28px;}
-.payment-manage-section h4,.payment-history-section h4{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--muted);}
-.tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;}
-.tab-btn{background:var(--surface-2);border:1px solid var(--border-soft);padding:7px 15px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:background .15s ease,color .15s ease;}
-.tab-btn:hover{background:var(--surface);}
-.tab-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
-.payment-manage-panel{background:var(--surface-2);border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:18px;}
 .icon-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;margin-right:6px;color:var(--muted);}
 .icon-btn:hover{background:var(--surface-2);}
 .icon-btn.danger{color:var(--danger);}
@@ -2511,9 +2501,12 @@ function saveNotificationPrefs() {
 let allPayments = [];
 let currentPaymentUserId = null;
 let currentPaymentYears = [];
-let selectedProgramYear = null; // 1-4 -- which program year's fee/ledger form is open
-let paymentAllTransactions = []; // flattened ledger across all 4 program years, for the payment-record picker
-let selectedPaymentRecordId = null; // id of the transaction currently shown in the Payment History details card
+let paymentAllTransactions = []; // flattened ledger across all 4 program years, for the single payment-period picker
+// The one Select's current value: either a transaction id (number, as a
+// string) or "year-N" for a program year that has no payments recorded
+// yet -- this is also what determines which year the fee/payment/
+// complete-toggle actions below the Select apply to.
+let selectedPaymentRecordValue = null;
 
 function formatMoney(amount) {
   return "$" + Number(amount).toFixed(2);
@@ -2563,8 +2556,7 @@ async function openPaymentDetail(userId) {
   const data = await apiRequest(`/admin/payments/${userId}`);
   if (!data) return;
   currentPaymentYears = data.years;
-  selectedProgramYear = data.activeYear;
-  selectedPaymentRecordId = null;
+  selectedPaymentRecordValue = null;
   document.getElementById("pdName").textContent = data.fullName;
   document.getElementById("pdMemberCode").textContent = data.memberCode;
   renderYearCards();
@@ -2610,107 +2602,38 @@ function pillClassForTransactionType(type) {
   return "pending";
 }
 
+// The ENTIRE Payments detail view is driven by exactly one Select: its
+// options are every recorded payment (most recent first) plus, for any of
+// the 4 program years that has no payment yet, a single "no payments
+// recorded yet" placeholder entry for that year -- so all 4 years stay
+// reachable without a second "which year" control. Whichever option is
+// picked also determines which year the fee-update/record-payment/
+// mark-complete actions below apply to.
 function renderYearCards() {
   paymentAllTransactions = currentPaymentYears.flatMap((y) => y.transactions.map((t) => ({ ...t, trainingYear: y.trainingYear })));
 
   document.getElementById("yearCardsWrap").innerHTML = `
-    <div class="payment-years-summary">${renderPaymentYearsSummary()}</div>
-    <div class="payment-manage-section">
-      <h4>Manage a program year</h4>
-      <label style="margin-top:0;">Select program year</label>
-      <select id="programYearSelect" onchange="selectProgramYear(Number(this.value))"></select>
-      <div class="payment-manage-panel" id="programYearPanel"></div>
-    </div>
-    <div class="payment-history-section">
-      <h4>Payment History</h4>
-      <label style="margin-top:0;">Select payment period</label>
-      <select id="paymentRecordSelect" onchange="selectPaymentRecord(this.value)"></select>
-      <div id="paymentRecordDetails"></div>
-    </div>`;
+    <label style="margin-top:0;">Select payment period</label>
+    <select id="paymentRecordSelect" onchange="selectPaymentRecord(this.value)"></select>
+    <div id="paymentRecordDetails"></div>
 
-  renderProgramYearSelect();
-  renderProgramYearPanel();
-  renderPaymentRecordSelect();
-}
-
-function renderPaymentYearsSummary() {
-  const rows = currentPaymentYears
-    .map((entry) => {
-      const y = entry.trainingYear;
-      const s = entry.summary;
-      const isCompleted = entry.periodStatus === "completed";
-      const finPill = s.status === "paid" ? "active" : s.status === "unpaid" ? "" : "pending";
-      return `
-      <tr>
-        <td><strong>Year ${y}</strong> <span class="pill ${isCompleted ? "completed" : "active"}" style="margin-inline-start:6px;">${isCompleted ? "Completed" : "Active"}</span></td>
-        <td>${formatMoney(s.totalFee)}</td>
-        <td>${formatMoney(s.paid)}</td>
-        <td>${formatMoney(s.remaining)}</td>
-        <td><span class="pill ${finPill}">${escapeHtml(s.status)}</span></td>
-        <td>${s.nextDueDate ? formatPaymentDate(s.nextDueDate) : "&mdash;"}</td>
-      </tr>`;
-    })
-    .join("");
-  return `
-    <table>
-      <thead><tr><th>Program Year</th><th>Total Fee</th><th>Paid</th><th>Remaining</th><th>Status</th><th>Next Due</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-}
-
-function renderProgramYearSelect() {
-  const select = document.getElementById("programYearSelect");
-  select.innerHTML = currentPaymentYears
-    .map((entry) => {
-      const y = entry.trainingYear;
-      return `<option value="${y}">Year ${y}${entry.periodStatus === "completed" ? " (Completed)" : ""}</option>`;
-    })
-    .join("");
-  select.value = selectedProgramYear;
-}
-
-function selectProgramYear(year) {
-  selectedProgramYear = year;
-  renderProgramYearPanel();
-}
-
-function renderProgramYearPanel() {
-  const entry = currentPaymentYears.find((e) => e.trainingYear === selectedProgramYear);
-  const panel = document.getElementById("programYearPanel");
-  if (!entry) {
-    panel.innerHTML = '<p class="empty-state">Select a program year above.</p>';
-    return;
-  }
-  const y = entry.trainingYear;
-  const s = entry.summary;
-  const isCompleted = entry.periodStatus === "completed";
-
-  panel.innerHTML = `
-    <div class="kpi-grid kpi-grid-4" style="gap:12px;margin-bottom:20px;">
-      <div class="kpi-card"><label>Total Fee</label><h2>${formatMoney(s.totalFee)}</h2></div>
-      <div class="kpi-card"><label>Paid</label><h2>${formatMoney(s.paid)}</h2></div>
-      <div class="kpi-card"><label>Remaining</label><h2>${formatMoney(s.remaining)}</h2></div>
-      <div class="kpi-card"><label>Status</label><h2>${escapeHtml(s.status)}</h2></div>
-    </div>
-
-    <form onsubmit="submitYearTotalFee(event, ${y})" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:160px;">
-        <label>Total program fee for Year ${y} ($)</label>
-        <input type="number" step="0.01" min="0" id="tf_total" value="${s.totalFee}" required>
+    <form onsubmit="submitYearTotalFee(event)" style="display:flex;gap:10px;align-items:flex-end;margin:20px 0 14px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:150px;">
+        <label style="margin-top:0;">Total fee for this year ($)</label>
+        <input type="number" step="0.01" min="0" id="tf_total" required>
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <label style="margin-top:0;">Discount ($)</label>
+        <input type="number" step="0.01" min="0" id="tf_discount">
       </div>
       <div style="flex:1;min-width:140px;">
-        <label>Discount ($)</label>
-        <input type="number" step="0.01" min="0" id="tf_discount" value="${s.discount || 0}">
+        <label style="margin-top:0;">Next due date</label>
+        <input type="date" id="tf_due">
       </div>
-      <div style="flex:1;min-width:140px;">
-        <label>Next due date</label>
-        <input type="date" id="tf_due" value="${s.nextDueDate || ""}">
-      </div>
-      <button type="submit" class="btn btn-sm" style="margin-top:0;">Update Year ${y}</button>
+      <button type="submit" class="btn btn-sm" style="margin-top:0;">Update fee</button>
     </form>
 
-    <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Record a new payment for Year ${y}</h4>
-    <form onsubmit="submitYearPayment(event, ${y})" class="form-grid-4" style="gap:10px;align-items:end;margin-bottom:16px;">
+    <form onsubmit="submitYearPayment(event)" class="form-grid-4" style="gap:10px;align-items:end;margin-bottom:14px;">
       <div><label>Amount ($)</label><input type="number" step="0.01" id="pay_amount" required></div>
       <div><label>Date</label><input type="date" id="pay_date" required></div>
       <div><label>Method</label><input type="text" id="pay_method" placeholder="Cash, transfer..."></div>
@@ -2718,77 +2641,113 @@ function renderProgramYearPanel() {
       <div style="grid-column:1/-1;"><label>Notes (optional)</label><input type="text" id="pay_notes"></div>
     </form>
 
-    <button class="btn btn-secondary btn-sm" style="width:auto;" onclick="toggleYearStatus(${y}, '${isCompleted ? "active" : "completed"}')">
-      ${isCompleted ? `Reopen Year ${y}` : `Mark Year ${y} Complete`}
-    </button>`;
+    <button class="btn btn-secondary btn-sm" style="width:auto;" id="pfCompleteBtn"></button>`;
+
+  renderPaymentRecordSelect();
 }
 
-// Payment History is a single "select a payment record" picker rather than
-// a Year/Month drill-down -- one option per recorded transaction, most
-// recent first, and a details card for whichever one is selected.
+/** Which program year (1-4) the current Select value applies to, or null if there are none at all. */
+function currentActionYear() {
+  if (!selectedPaymentRecordValue) return null;
+  if (String(selectedPaymentRecordValue).startsWith("year-")) return Number(String(selectedPaymentRecordValue).slice(5));
+  const t = paymentAllTransactions.find((tx) => tx.id === Number(selectedPaymentRecordValue));
+  return t ? t.trainingYear : null;
+}
+
 function renderPaymentRecordSelect() {
   const sorted = [...paymentAllTransactions].sort((a, b) =>
     a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1
   );
+  const yearsWithPayments = new Set(sorted.map((t) => t.trainingYear));
+  const placeholderYears = currentPaymentYears.filter((y) => !yearsWithPayments.has(y.trainingYear)).map((y) => y.trainingYear);
 
   const select = document.getElementById("paymentRecordSelect");
-  if (!sorted.length) {
-    select.innerHTML = '<option value="">No payments recorded yet</option>';
-    selectedPaymentRecordId = null;
-    renderPaymentRecordDetails();
-    return;
+  const optionsHtml =
+    sorted
+      .map(
+        (t) =>
+          `<option value="${t.id}">${formatPaymentDate(t.date)} &mdash; ${formatMoney(t.amount)} (Year ${t.trainingYear}${
+            t.transactionType === "refund" ? ", refund" : ""
+          })</option>`
+      )
+      .join("") +
+    placeholderYears.map((y) => `<option value="year-${y}">Year ${y} &mdash; no payments recorded yet</option>`).join("");
+
+  select.innerHTML = optionsHtml || '<option value="">No payment periods available</option>';
+
+  const validValues = [...sorted.map((t) => String(t.id)), ...placeholderYears.map((y) => `year-${y}`)];
+  if (!validValues.includes(String(selectedPaymentRecordValue))) {
+    selectedPaymentRecordValue = validValues[0] || null;
   }
-
-  select.innerHTML = sorted
-    .map(
-      (t) =>
-        `<option value="${t.id}">${formatPaymentDate(t.date)} &mdash; ${formatMoney(t.amount)} (Year ${t.trainingYear}${
-          t.transactionType === "refund" ? ", refund" : ""
-        })</option>`
-    )
-    .join("");
-
-  if (!sorted.some((t) => t.id === selectedPaymentRecordId)) selectedPaymentRecordId = sorted[0].id;
-  select.value = selectedPaymentRecordId;
+  if (selectedPaymentRecordValue) select.value = selectedPaymentRecordValue;
   renderPaymentRecordDetails();
 }
 
-function selectPaymentRecord(id) {
-  selectedPaymentRecordId = id ? Number(id) : null;
+function selectPaymentRecord(value) {
+  selectedPaymentRecordValue = value || null;
   renderPaymentRecordDetails();
 }
 
 function renderPaymentRecordDetails() {
   const wrap = document.getElementById("paymentRecordDetails");
-  const t = paymentAllTransactions.find((tx) => tx.id === selectedPaymentRecordId);
-  if (!t) {
-    wrap.innerHTML = '<p class="empty-state">No payments recorded for this trainee yet.</p>';
-    return;
+  const year = currentActionYear();
+  const yearEntry = year ? currentPaymentYears.find((y) => y.trainingYear === year) : null;
+  const s = yearEntry ? yearEntry.summary : null;
+
+  if (!year || !s) {
+    wrap.innerHTML = '<p class="empty-state">No payment periods available.</p>';
+  } else {
+    const isPlaceholder = String(selectedPaymentRecordValue).startsWith("year-");
+    const t = isPlaceholder ? null : paymentAllTransactions.find((tx) => tx.id === Number(selectedPaymentRecordValue));
+    const dailyRate = s.totalFee / 365;
+
+    const transactionRows = t
+      ? `
+      <div class="result-row"><span>${t.transactionType === "refund" ? "Amount Refunded" : "Amount Paid"}</span><strong>${formatMoney(t.amount)}</strong></div>
+      <div class="result-row"><span>Payment date</span><strong>${formatPaymentDate(t.date)} at ${formatPaymentTime(t.createdAt)}</strong></div>
+      <div class="result-row"><span>Type</span><strong><span class="pill ${pillClassForTransactionType(t.transactionType)}">${escapeHtml(t.transactionType)}</span></strong></div>
+      <div class="result-row"><span>Method</span><strong>${t.method ? escapeHtml(t.method) : "&mdash;"}</strong></div>
+      <div class="result-row"><span>Added by</span><strong>${escapeHtml(t.addedByName)}</strong></div>
+      <div class="result-row"><span>Reference / Notes</span><strong>${t.invoiceId ? "Invoice #" + t.invoiceId : t.notes ? escapeHtml(t.notes) : "&mdash;"}</strong></div>`
+      : `<div class="result-row"><span>Payments</span><strong>No payments recorded for Year ${year} yet</strong></div>`;
+
+    wrap.innerHTML = `
+      ${transactionRows}
+      <div class="result-row"><span>Daily Rate (Year ${year})</span><strong>${formatMoney(dailyRate)}/day</strong></div>
+      <div class="result-row"><span>Remaining (Year ${year})</span><strong>${formatMoney(s.remaining)}</strong></div>
+      <div class="result-row"><span>Payment Status</span><strong>${escapeHtml(s.status)}</strong></div>
+      <div class="result-row"><span>Plan / Duration</span><strong>4 Years</strong></div>
+    `;
   }
 
-  const yearEntry = currentPaymentYears.find((y) => y.trainingYear === t.trainingYear);
-  const s = yearEntry ? yearEntry.summary : null;
-  const dailyRate = s ? s.totalFee / 365 : 0;
-
-  wrap.innerHTML = `
-    <div class="kpi-grid kpi-grid-4" style="gap:12px;margin:14px 0;">
-      <div class="kpi-card"><label>${t.transactionType === "refund" ? "Amount Refunded" : "Amount Paid"}</label><h2>${formatMoney(t.amount)}</h2></div>
-      <div class="kpi-card"><label>Daily Rate (Year ${t.trainingYear})</label><h2>${formatMoney(dailyRate)}/day</h2></div>
-      <div class="kpi-card"><label>Remaining (Year ${t.trainingYear})</label><h2>${s ? formatMoney(s.remaining) : "&mdash;"}</h2></div>
-      <div class="kpi-card"><label>Payment Status</label><h2>${s ? escapeHtml(s.status) : "&mdash;"}</h2></div>
-    </div>
-    <div class="result-row"><span>Payment date</span><strong>${formatPaymentDate(t.date)} at ${formatPaymentTime(t.createdAt)}</strong></div>
-    <div class="result-row"><span>Plan / Duration</span><strong>4 Years</strong></div>
-    <div class="result-row"><span>Type</span><strong><span class="pill ${pillClassForTransactionType(t.transactionType)}">${escapeHtml(t.transactionType)}</span></strong></div>
-    <div class="result-row"><span>Method</span><strong>${t.method ? escapeHtml(t.method) : "&mdash;"}</strong></div>
-    <div class="result-row"><span>Added by</span><strong>${escapeHtml(t.addedByName)}</strong></div>
-    <div class="result-row"><span>Reference / Notes</span><strong>${t.invoiceId ? "Invoice #" + t.invoiceId : t.notes ? escapeHtml(t.notes) : "&mdash;"}</strong></div>
-  `;
+  renderPaymentActionFields();
 }
 
-async function submitYearTotalFee(event, year) {
+/** Fills the always-visible fee/payment/complete-toggle controls to match whichever year the Select currently implies. */
+function renderPaymentActionFields() {
+  const year = currentActionYear();
+  const yearEntry = year ? currentPaymentYears.find((y) => y.trainingYear === year) : null;
+  const s = yearEntry ? yearEntry.summary : null;
+
+  document.getElementById("tf_total").value = s ? s.totalFee : "";
+  document.getElementById("tf_discount").value = s ? s.discount || 0 : 0;
+  document.getElementById("tf_due").value = s && s.nextDueDate ? s.nextDueDate : "";
+
+  const completeBtn = document.getElementById("pfCompleteBtn");
+  if (yearEntry) {
+    const isCompleted = yearEntry.periodStatus === "completed";
+    completeBtn.style.display = "";
+    completeBtn.textContent = isCompleted ? `Reopen Year ${year}` : `Mark Year ${year} Complete`;
+    completeBtn.onclick = () => toggleYearStatus(year, isCompleted ? "active" : "completed");
+  } else {
+    completeBtn.style.display = "none";
+  }
+}
+
+async function submitYearTotalFee(event) {
   event.preventDefault();
-  if (!currentPaymentUserId) return;
+  const year = currentActionYear();
+  if (!currentPaymentUserId || !year) return;
   const totalFee = Number(document.getElementById("tf_total").value);
   const discount = Number(document.getElementById("tf_discount").value) || 0;
   const nextDueDate = document.getElementById("tf_due").value || null;
@@ -2805,9 +2764,10 @@ async function submitYearTotalFee(event, year) {
   }
 }
 
-async function submitYearPayment(event, year) {
+async function submitYearPayment(event) {
   event.preventDefault();
-  if (!currentPaymentUserId) return;
+  const year = currentActionYear();
+  if (!currentPaymentUserId || !year) return;
 
   const payload = {
     amount: Number(document.getElementById("pay_amount").value),
