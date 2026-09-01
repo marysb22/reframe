@@ -42,12 +42,20 @@ async function optimizeImageIfPossible(filePath, { maxDimension, quality = 82 })
   if (!OPTIMIZABLE_FORMATS.has(meta.format)) return null;
 
   try {
-    const pipeline = sharp(inputBuffer).resize({
-      width: maxDimension,
-      height: maxDimension,
-      fit: "inside",
-      withoutEnlargement: true,
-    });
+    // .rotate() with no args physically applies the file's EXIF orientation
+    // (phone photos taken in portrait routinely store landscape pixel data
+    // plus a rotate-on-display tag) instead of just carrying the tag
+    // forward -- without it, re-encoding here bakes in the raw unrotated
+    // pixels and the photo comes out sideways for any renderer that
+    // doesn't separately honor EXIF orientation.
+    const pipeline = sharp(inputBuffer)
+      .rotate()
+      .resize({
+        width: maxDimension,
+        height: maxDimension,
+        fit: "inside",
+        withoutEnlargement: true,
+      });
 
     let buf;
     if (meta.format === "jpeg") buf = await pipeline.jpeg({ quality, mozjpeg: true }).toBuffer();
