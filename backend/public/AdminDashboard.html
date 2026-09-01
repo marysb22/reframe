@@ -142,8 +142,6 @@ tr:hover td{background:var(--surface-2);}
 .tab-btn{background:var(--surface-2);border:1px solid var(--border-soft);padding:7px 15px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:background .15s ease,color .15s ease;}
 .tab-btn:hover{background:var(--surface);}
 .tab-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
-.tab-btn.has-data:not(.active)::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--primary);margin-inline-start:7px;vertical-align:middle;}
-.payment-month-table{overflow-x:auto;}
 .payment-manage-panel{background:var(--surface-2);border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:18px;}
 .icon-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;margin-right:6px;color:var(--muted);}
 .icon-btn:hover{background:var(--surface-2);}
@@ -2514,14 +2512,8 @@ let allPayments = [];
 let currentPaymentUserId = null;
 let currentPaymentYears = [];
 let selectedProgramYear = null; // 1-4 -- which program year's fee/ledger form is open
-let paymentAllTransactions = []; // flattened ledger across all 4 program years, for the Year/Month browser
-let selectedPaymentYear = null; // a real calendar year, e.g. 2026
-let selectedPaymentMonth = null; // 1-12
-
-const PAYMENT_MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+let paymentAllTransactions = []; // flattened ledger across all 4 program years, for the payment-record picker
+let selectedPaymentRecordId = null; // id of the transaction currently shown in the Payment History details card
 
 function formatMoney(amount) {
   return "$" + Number(amount).toFixed(2);
@@ -2572,8 +2564,7 @@ async function openPaymentDetail(userId) {
   if (!data) return;
   currentPaymentYears = data.years;
   selectedProgramYear = data.activeYear;
-  selectedPaymentYear = null;
-  selectedPaymentMonth = null;
+  selectedPaymentRecordId = null;
   document.getElementById("pdName").textContent = data.fullName;
   document.getElementById("pdMemberCode").textContent = data.memberCode;
   renderYearCards();
@@ -2631,16 +2622,14 @@ function renderYearCards() {
     </div>
     <div class="payment-history-section">
       <h4>Payment History</h4>
-      <div class="tabs" id="paymentYearTabs"></div>
-      <div class="tabs" id="paymentMonthTabs"></div>
-      <div id="paymentMonthTable"></div>
+      <label style="margin-top:0;">Select payment period</label>
+      <select id="paymentRecordSelect" onchange="selectPaymentRecord(this.value)"></select>
+      <div id="paymentRecordDetails"></div>
     </div>`;
 
   renderProgramYearTabs();
   renderProgramYearPanel();
-  renderPaymentYearTabs();
-  renderPaymentMonthTabs();
-  renderPaymentMonthTable();
+  renderPaymentRecordSelect();
 }
 
 function renderPaymentYearsSummary() {
@@ -2732,92 +2721,67 @@ function renderProgramYearPanel() {
     </button>`;
 }
 
-function renderPaymentYearTabs() {
-  const years = [...new Set(paymentAllTransactions.map((t) => paymentDateParts(t.date).year))];
-  const currentCalendarYear = new Date().getFullYear();
-  if (!years.includes(currentCalendarYear)) years.push(currentCalendarYear);
-  years.sort((a, b) => b - a);
-
-  if (!years.includes(selectedPaymentYear)) selectedPaymentYear = years[0];
-
-  document.getElementById("paymentYearTabs").innerHTML = years
-    .map((y) => `<button type="button" class="tab-btn ${y === selectedPaymentYear ? "active" : ""}" onclick="selectPaymentYear(${y})">${y}</button>`)
-    .join("");
-}
-
-function selectPaymentYear(year) {
-  selectedPaymentYear = year;
-  selectedPaymentMonth = null;
-  renderPaymentYearTabs();
-  renderPaymentMonthTabs();
-  renderPaymentMonthTable();
-}
-
-function renderPaymentMonthTabs() {
-  const monthsWithData = new Set(
-    paymentAllTransactions
-      .filter((t) => paymentDateParts(t.date).year === selectedPaymentYear)
-      .map((t) => paymentDateParts(t.date).month)
+// Payment History is a single "select a payment record" picker rather than
+// a Year/Month drill-down -- one option per recorded transaction, most
+// recent first, and a details card for whichever one is selected.
+function renderPaymentRecordSelect() {
+  const sorted = [...paymentAllTransactions].sort((a, b) =>
+    a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1
   );
 
-  if (selectedPaymentMonth == null) {
-    const today = new Date();
-    if (selectedPaymentYear === today.getFullYear()) selectedPaymentMonth = today.getMonth() + 1;
-    else if (monthsWithData.size) selectedPaymentMonth = Math.max(...monthsWithData);
-    else selectedPaymentMonth = 1;
-  }
-
-  document.getElementById("paymentMonthTabs").innerHTML = PAYMENT_MONTH_NAMES.map((name, idx) => {
-    const m = idx + 1;
-    const hasData = monthsWithData.has(m);
-    return `<button type="button" class="tab-btn ${m === selectedPaymentMonth ? "active" : ""} ${hasData ? "has-data" : ""}" onclick="selectPaymentMonth(${m})">${name}</button>`;
-  }).join("");
-}
-
-function selectPaymentMonth(month) {
-  selectedPaymentMonth = month;
-  renderPaymentMonthTabs();
-  renderPaymentMonthTable();
-}
-
-function renderPaymentMonthTable() {
-  const wrap = document.getElementById("paymentMonthTable");
-  const monthTransactions = paymentAllTransactions
-    .filter((t) => {
-      const { year, month } = paymentDateParts(t.date);
-      return year === selectedPaymentYear && month === selectedPaymentMonth;
-    })
-    .sort((a, b) => (a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1));
-
-  const heading = `<h4>${PAYMENT_MONTH_NAMES[selectedPaymentMonth - 1]} ${selectedPaymentYear}</h4>`;
-
-  if (!monthTransactions.length) {
-    wrap.innerHTML = heading + '<p class="empty-state">No payments recorded for this month.</p>';
+  const select = document.getElementById("paymentRecordSelect");
+  if (!sorted.length) {
+    select.innerHTML = '<option value="">No payments recorded yet</option>';
+    selectedPaymentRecordId = null;
+    renderPaymentRecordDetails();
     return;
   }
 
-  const rows = monthTransactions
+  select.innerHTML = sorted
     .map(
-      (t) => `
-    <tr>
-      <td>${formatPaymentDate(t.date)}</td>
-      <td>${formatPaymentTime(t.createdAt)}</td>
-      <td>${formatMoney(t.amount)}</td>
-      <td><span class="pill ${pillClassForTransactionType(t.transactionType)}">${escapeHtml(t.transactionType)}</span></td>
-      <td>${t.method ? escapeHtml(t.method) : "&mdash;"}</td>
-      <td>${escapeHtml(t.addedByName)}</td>
-      <td>${t.invoiceId ? "Invoice #" + t.invoiceId : t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
-    </tr>`
+      (t) =>
+        `<option value="${t.id}">${formatPaymentDate(t.date)} &mdash; ${formatMoney(t.amount)} (Year ${t.trainingYear}${
+          t.transactionType === "refund" ? ", refund" : ""
+        })</option>`
     )
     .join("");
 
-  wrap.innerHTML = `${heading}
-    <div class="payment-month-table">
-      <table>
-        <thead><tr><th>Date</th><th>Time</th><th>Amount</th><th>Type</th><th>Method</th><th>Added by</th><th>Reference / Notes</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
+  if (!sorted.some((t) => t.id === selectedPaymentRecordId)) selectedPaymentRecordId = sorted[0].id;
+  select.value = selectedPaymentRecordId;
+  renderPaymentRecordDetails();
+}
+
+function selectPaymentRecord(id) {
+  selectedPaymentRecordId = id ? Number(id) : null;
+  renderPaymentRecordDetails();
+}
+
+function renderPaymentRecordDetails() {
+  const wrap = document.getElementById("paymentRecordDetails");
+  const t = paymentAllTransactions.find((tx) => tx.id === selectedPaymentRecordId);
+  if (!t) {
+    wrap.innerHTML = '<p class="empty-state">No payments recorded for this trainee yet.</p>';
+    return;
+  }
+
+  const yearEntry = currentPaymentYears.find((y) => y.trainingYear === t.trainingYear);
+  const s = yearEntry ? yearEntry.summary : null;
+  const dailyRate = s ? s.totalFee / 365 : 0;
+
+  wrap.innerHTML = `
+    <div class="kpi-grid kpi-grid-4" style="gap:12px;margin:14px 0;">
+      <div class="kpi-card"><label>${t.transactionType === "refund" ? "Amount Refunded" : "Amount Paid"}</label><h2>${formatMoney(t.amount)}</h2></div>
+      <div class="kpi-card"><label>Daily Rate (Year ${t.trainingYear})</label><h2>${formatMoney(dailyRate)}/day</h2></div>
+      <div class="kpi-card"><label>Remaining (Year ${t.trainingYear})</label><h2>${s ? formatMoney(s.remaining) : "&mdash;"}</h2></div>
+      <div class="kpi-card"><label>Payment Status</label><h2>${s ? escapeHtml(s.status) : "&mdash;"}</h2></div>
+    </div>
+    <div class="result-row"><span>Payment date</span><strong>${formatPaymentDate(t.date)} at ${formatPaymentTime(t.createdAt)}</strong></div>
+    <div class="result-row"><span>Plan / Duration</span><strong>4 Years</strong></div>
+    <div class="result-row"><span>Type</span><strong><span class="pill ${pillClassForTransactionType(t.transactionType)}">${escapeHtml(t.transactionType)}</span></strong></div>
+    <div class="result-row"><span>Method</span><strong>${t.method ? escapeHtml(t.method) : "&mdash;"}</strong></div>
+    <div class="result-row"><span>Added by</span><strong>${escapeHtml(t.addedByName)}</strong></div>
+    <div class="result-row"><span>Reference / Notes</span><strong>${t.invoiceId ? "Invoice #" + t.invoiceId : t.notes ? escapeHtml(t.notes) : "&mdash;"}</strong></div>
+  `;
 }
 
 async function submitYearTotalFee(event, year) {
