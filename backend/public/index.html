@@ -537,7 +537,7 @@
                 line-height: 1.5;
             }
         }
-
+        
         @media (max-width: 400px) {
             .hero-text h1 {
                 font-size: 1.2rem;
@@ -723,10 +723,10 @@
             color: var(--secondary-color);
             font-weight: 600;
         }
-
         /* Each calendar cell becomes a small column (day number + an
            optional green event badge) instead of a bare number, so a real
            event on that date is unmistakable at a glance. */
+        
         .cal-day-cell {
             display: flex;
             flex-direction: column;
@@ -740,16 +740,16 @@
             transition: all 0.25s ease;
             position: relative;
         }
-
+        
         .cal-day-cell:hover {
             background: #4D9794;
             color: white;
         }
-
+        
         .cal-day-cell:hover .event-badge {
             filter: brightness(1.1);
         }
-
+        
         .event-badge {
             display: inline-block;
             font-size: 0.6rem;
@@ -762,14 +762,14 @@
             letter-spacing: 0.2px;
             white-space: nowrap;
         }
-
+        
         .upcoming-events-list {
             display: flex;
             flex-direction: column;
             gap: 10px;
             margin-top: 4px;
         }
-
+        
         .upcoming-event-item {
             display: flex;
             align-items: center;
@@ -780,14 +780,14 @@
             border: 1px solid rgba(77, 151, 148, 0.18);
             border-radius: 10px;
         }
-
+        
         .upcoming-event-info {
             display: flex;
             flex-direction: column;
             gap: 2px;
             min-width: 0;
         }
-
+        
         .upcoming-event-title {
             font-weight: 700;
             font-size: 0.9rem;
@@ -796,12 +796,12 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-
+        
         .upcoming-event-date {
             font-size: 0.78rem;
             color: #5B6B69;
         }
-
+        
         .view-event-btn {
             flex-shrink: 0;
             font-size: 0.78rem;
@@ -813,18 +813,18 @@
             text-decoration: none;
             white-space: nowrap;
         }
-
+        
         .view-event-btn:hover {
             opacity: 0.88;
         }
-
+        
         .no-upcoming-events {
             text-align: center;
             color: #8B9795;
             font-size: 0.85rem;
             padding: 6px 0 0;
         }
-
+        
         .upcoming-events h4 {
             text-align: center;
             font-size: clamp(1.2rem, 0.9rem + 1.2vw, 1.6rem);
@@ -1002,7 +1002,7 @@
         .plan-card-body .view-btn:hover {
             background: #0284c7;
         }
-        
+
         .plan-card-body p {
             font-size: 1.05rem;
             line-height: 1.75;
@@ -1798,10 +1798,21 @@
             };
 
             const eventCopy = {
-                en: { viewOnEvent: "View on Event", noEvents: "No events scheduled this month.", more: "more" },
-                ar: { viewOnEvent: "View on Event", noEvents: "لا توجد فعاليات هذا الشهر.", more: "أخرى" }
+                en: {
+                    viewOnEvent: "View on Event",
+                    noEvents: "No events scheduled this month.",
+                    more: "more"
+                },
+                ar: {
+                    viewOnEvent: "View on Event",
+                    noEvents: "لا توجد فعاليات هذا الشهر.",
+                    more: "أخرى"
+                }
             };
-            function lang() { return document.documentElement.lang === "ar" ? "ar" : "en"; }
+
+            function lang() {
+                return document.documentElement.lang === "ar" ? "ar" : "en";
+            }
 
             function normalizeEventDate(dateString) {
                 if (!dateString) return null;
@@ -1836,7 +1847,11 @@
             function formatEventDate(dateString) {
                 const d = normalizeEventDate(dateString);
                 if (!d) return "";
-                return d.toLocaleDateString(lang() === "ar" ? "ar" : "en-US", { month: "short", day: "numeric", year: "numeric" });
+                return d.toLocaleDateString(lang() === "ar" ? "ar" : "en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric"
+                });
             }
 
             function renderUpcomingList(year, month) {
