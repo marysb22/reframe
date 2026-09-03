@@ -2092,97 +2092,10 @@ router.put(
   })
 );
 
-// ---- Hour type definitions ------------------------------------------------
-// Admin defines which categories of hours the system tracks (seeded with
-// 'training'/'supervision' by migration 009) -- adding a new one here is
-// purely a data change; sessions.session_type and
-// trainee_hour_adjustments.hour_type both FK to hour_types.code, and
-// every hours computation (computeHoursByType in serializers.js) reads
-// this table generically rather than hardcoding category names. `code`
-// is the FK target and is never editable after creation -- same
-// "deactivate instead of rename/delete" convention as training_milestones
-// above, and for the same reason (existing rows already point at it).
-// Only one row may be primary at a time (see set-primary below) -- that
-// is the type shown on a Trainee's own dashboard headline.
-
-// GET /api/admin/hour-types — every type, active and inactive
-router.get(
-  "/hour-types",
-  asyncRoute(async (req, res, db) => {
-    const { rows } = await db.query(
-      "SELECT code, label, is_active, is_primary, sort_order, created_at FROM hour_types ORDER BY sort_order ASC"
-    );
-    res.json({ hourTypes: rows });
-  })
-);
-
-// POST /api/admin/hour-types  { code, label, sortOrder? }
-router.post(
-  "/hour-types",
-  asyncRoute(async (req, res, db) => {
-    const { code, label, sortOrder } = req.body || {};
-    const cleanCode = String(code || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
-    if (!cleanCode) return res.status(400).json({ error: "Code is required" });
-    if (!label || !String(label).trim()) return res.status(400).json({ error: "Label is required" });
-
-    const { rows: existing } = await db.query("SELECT code FROM hour_types WHERE code = ?", [cleanCode]);
-    if (existing.length) return res.status(409).json({ error: `Code "${cleanCode}" is already in use` });
-
-    await db.query("INSERT INTO hour_types (code, label, sort_order) VALUES (?, ?, ?)", [
-      cleanCode,
-      label.trim(),
-      Number(sortOrder) || 0,
-    ]);
-
-    res.status(201).json({ code: cleanCode });
-  })
-);
-
-// PATCH /api/admin/hour-types/:code  { label?, isActive?, sortOrder? }
-router.patch(
-  "/hour-types/:code",
-  asyncRoute(async (req, res, db) => {
-    const code = String(req.params.code || "");
-    const { rows: existingRows } = await db.query("SELECT code, is_primary FROM hour_types WHERE code = ?", [code]);
-    if (!existingRows.length) return res.status(404).json({ error: "Hour type not found" });
-
-    const { label, isActive, sortOrder } = req.body || {};
-    // Hiding the current primary type from every dashboard/dropdown would
-    // silently break the Trainee headline card -- require picking a new
-    // primary first (see set-primary below).
-    if (isActive === false && existingRows[0].is_primary) {
-      return res.status(409).json({ error: "This is the primary hour type -- set a different type as primary before deactivating it" });
-    }
-
-    const updates = [];
-    const params = [];
-    if (label !== undefined) { updates.push("label = ?"); params.push(label); }
-    if (isActive !== undefined) { updates.push("is_active = ?"); params.push(!!isActive); }
-    if (sortOrder !== undefined) { updates.push("sort_order = ?"); params.push(Number(sortOrder) || 0); }
-    if (!updates.length) return res.status(400).json({ error: "No fields to update" });
-
-    params.push(code);
-    await db.query(`UPDATE hour_types SET ${updates.join(", ")} WHERE code = ?`, params);
-
-    res.json({ success: true });
-  })
-);
-
-// POST /api/admin/hour-types/:code/set-primary — atomically moves the
-// "shown on the Trainee dashboard headline" flag to this type.
-router.post(
-  "/hour-types/:code/set-primary",
-  asyncRoute(async (req, res, db) => {
-    const code = String(req.params.code || "");
-    const { rows } = await db.query("SELECT code, is_active FROM hour_types WHERE code = ?", [code]);
-    if (!rows.length) return res.status(404).json({ error: "Hour type not found" });
-    if (!rows[0].is_active) return res.status(400).json({ error: "Cannot make an inactive hour type primary" });
-
-    await db.query("UPDATE hour_types SET is_primary = FALSE WHERE is_primary = TRUE");
-    await db.query("UPDATE hour_types SET is_primary = TRUE WHERE code = ?", [code]);
-
-    res.json({ success: true });
-  })
-);
+// Hour type definitions (create/rename/deactivate/set-primary) are managed
+// by Master Trainer and Trainer (ToT), not Admin -- see
+// backend/src/routes/supervisor.js's "Hour type definitions" section.
+// Admin still has read access like every other role, via the shared
+// GET /api/profile/hour-types in profile.js.
 
 module.exports = router;

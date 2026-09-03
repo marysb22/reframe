@@ -817,21 +817,6 @@ tr:hover td{background:var(--surface-2);}
         <button class="btn" style="width:auto;" onclick="saveNotificationPrefs()">Save preferences</button>
       </div>
 
-      <div class="system-card" style="grid-column:1/-1;">
-        <h3><i class="fa fa-stopwatch"></i>Hour types</h3>
-        <p class="hint">Categories of hours the system tracks (Training, Supervision, and anything else you add here). The Primary type is the one shown on every Trainee's own dashboard.</p>
-        <table>
-          <thead><tr><th>Label</th><th>Code</th><th>Active</th><th>Primary</th></tr></thead>
-          <tbody id="hourTypesBody"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
-        </table>
-        <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Add a new hour type</h4>
-        <form id="hourTypeForm" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-          <div style="flex:1;min-width:180px;"><label style="margin-top:0;">Label</label><input type="text" id="htLabel" placeholder="e.g. Application Hours" required></div>
-          <div style="flex:1;min-width:160px;"><label style="margin-top:0;">Code (optional)</label><input type="text" id="htCode" placeholder="Auto-generated from label"></div>
-          <button type="submit" class="btn btn-sm" style="margin-top:0;">Add hour type</button>
-        </form>
-      </div>
-
     </div>
 
   </section>
@@ -1155,7 +1140,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadGroups();
   loadEvents();
   loadPayments();
-  loadHourTypes();
   restoreEventDraftIfAny();
 
   const initialSection = window.location.hash.slice(1) || "dashboard";
@@ -2506,77 +2490,6 @@ function saveNotificationPrefs() {
   };
   localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
   showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
-}
-
-// ---- Hour types -------------------------------------------------------
-// Admin-managed categories of hours (seeded with training/supervision) --
-// sessions.session_type and trainee_hour_adjustments.hour_type both FK to
-// this list, so adding one here is what actually makes it usable
-// end-to-end in every dashboard's session-logging forms and the Trainee's
-// own hours KPI, not just a label somewhere.
-
-let allHourTypes = [];
-
-async function loadHourTypes() {
-  const data = await apiRequest("/admin/hour-types");
-  if (!data) return;
-  allHourTypes = data.hourTypes;
-  renderHourTypes();
-}
-
-function renderHourTypes() {
-  const body = document.getElementById("hourTypesBody");
-  if (!allHourTypes.length) {
-    body.innerHTML = '<tr><td colspan="4" class="empty-state">No hour types yet.</td></tr>';
-    return;
-  }
-  body.innerHTML = allHourTypes
-    .map(
-      (ht) => `
-    <tr>
-      <td><strong>${escapeHtml(ht.label)}</strong></td>
-      <td style="color:var(--muted);">${escapeHtml(ht.code)}</td>
-      <td><label class="switch"><input type="checkbox" ${ht.is_active ? "checked" : ""} onchange="toggleHourTypeActive('${ht.code}', this.checked)"><span class="switch-track"></span></label></td>
-      <td>${
-        ht.is_primary
-          ? '<span class="pill active">Primary</span>'
-          : `<button class="btn btn-secondary btn-sm" style="width:auto;margin-top:0;" ${ht.is_active ? "" : "disabled"} onclick="setPrimaryHourType('${ht.code}')">Set primary</button>`
-      }</td>
-    </tr>`
-    )
-    .join("");
-}
-
-document.getElementById("hourTypeForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const label = document.getElementById("htLabel").value.trim();
-  const code = document.getElementById("htCode").value.trim();
-  const result = await apiRequest("/admin/hour-types", {
-    method: "POST",
-    body: JSON.stringify({ label, code: code || undefined }),
-  });
-  if (result) {
-    showToast(`Hour type "${label}" added`, "success");
-    document.getElementById("hourTypeForm").reset();
-    loadHourTypes();
-  }
-});
-
-async function toggleHourTypeActive(code, isActive) {
-  const result = await apiRequest(`/admin/hour-types/${code}`, {
-    method: "PATCH",
-    body: JSON.stringify({ isActive }),
-  });
-  if (result) showToast(isActive ? "Hour type activated" : "Hour type deactivated", "success");
-  loadHourTypes();
-}
-
-async function setPrimaryHourType(code) {
-  const result = await apiRequest(`/admin/hour-types/${code}/set-primary`, { method: "POST" });
-  if (result) {
-    showToast("Primary hour type updated", "success");
-    loadHourTypes();
-  }
 }
 
 // ---- Payments -------------------------------------------------------
