@@ -3111,6 +3111,25 @@
 
         const token = localStorage.getItem("token") || localStorage.getItem("reframe_token");
         if (!token) window.location.href = "login.html";
+        // A Trainer-in-Training (ToT) can end up on this URL via a stale
+        // bookmark, shared link, or browser back/forward cache -- the API
+        // layer authorizes both supervisor sub-types identically, so nothing
+        // else would catch this. Bounce them to their real dashboard instead
+        // of silently rendering the Master Trainer console for a ToT.
+        (function redirectIfWrongDashboard() {
+            let storedUser = null;
+            try {
+                storedUser = JSON.parse(localStorage.getItem("user") || localStorage.getItem("reframe_user") || "null");
+            } catch (e) { /* ignore malformed storage */ }
+            if (!storedUser) return;
+            const isMasterTrainer = storedUser.role === "supervisor" && storedUser.supervisorType === "primary";
+            if (isMasterTrainer) return;
+            window.location.href =
+                storedUser.role === "admin" ? "AdminDashboard.html" :
+                storedUser.role === "supervisor" ? "Totdashboard.html" :
+                storedUser.role === "designer" ? "DesignerDashboard.html" :
+                "PersonalProfile.html";
+        })();
         // Every /uploads/* file (except event images) now requires a valid
         // session -- <img src>/<a href> can't send an Authorization header,
         // so the same token is carried as a query param instead.
