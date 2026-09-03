@@ -16,7 +16,13 @@ const {
 const { documentUpload, materialUpload, assignmentAttachmentUpload } = require("../utils/uploads");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
-const { buildRecordsQuery, RECORD_TYPE_TABLES, buildHoursBreakdownQuery, buildTotHoursBreakdownQuery } = require("../utils/recordsQuery");
+const {
+  buildRecordsQuery,
+  RECORD_TYPE_TABLES,
+  TRAINEE_ACTIVITY_ENTITY_TYPES,
+  buildHoursBreakdownQuery,
+  buildTotHoursBreakdownQuery,
+} = require("../utils/recordsQuery");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi, attachSubmissionHistories } = require("../utils/assignmentsQuery");
 const { resolveWeekRange } = require("../utils/weekPeriod");
@@ -195,15 +201,18 @@ router.post(
     const student = await loadAssignedStudent(db, req.user.id, studentId, res);
     if (!student) return;
 
-    const { recordType, date, time, durationMinutes, status, attendanceStatus, title, content, score } = req.body || {};
+    const { recordType, date, time, durationMinutes, status, attendanceStatus, title, content, score, hourTypeCode } = req.body || {};
     if (!RECORD_TYPES.includes(recordType)) {
       return res.status(400).json({ error: `recordType must be one of: ${RECORD_TYPES.join(", ")}` });
     }
 
     let insertedId;
+    let sessionType;
+    let sessionTypeLabel;
     switch (recordType) {
       case "training_session":
-      case "supervision_session": {
+      case "supervision_session":
+      case "hour_session": {
         // Hours are never a typed number anymore -- they're derived from
         // this session's duration + its attendance status. A session dated
         // today or earlier already happened, so attendance is required and
@@ -216,6 +225,24 @@ router.post(
         if (!date) return res.status(400).json({ error: "date is required" });
         if (!Number.isFinite(Number(durationMinutes)) || Number(durationMinutes) < 0) {
           return res.status(400).json({ error: "durationMinutes is required and must be a non-negative number" });
+        }
+        // "training"/"supervision" are the two permanent, hardcoded types;
+        // any other active Admin-configured hour type is looked up live
+        // (the DB no longer enforces this with a CHECK constraint, so this
+        // lookup is now the only thing standing between a bad hourTypeCode
+        // and a broken foreign key).
+        if (recordType === "training_session") {
+          sessionType = "training";
+          sessionTypeLabel = "training";
+        } else if (recordType === "supervision_session") {
+          sessionType = "supervision";
+          sessionTypeLabel = "supervision";
+        } else {
+          if (!hourTypeCode) return res.status(400).json({ error: "hourTypeCode is required for a hour_session record" });
+          const { rows: htRows } = await db.query("SELECT code, label FROM hour_types WHERE code = ? AND is_active = 1", [hourTypeCode]);
+          if (!htRows.length) return res.status(400).json({ error: "That hour type does not exist or is inactive" });
+          sessionType = htRows[0].code;
+          sessionTypeLabel = htRows[0].label;
         }
         const { rows: todayRows } = await db.query("SELECT CURDATE() AS today");
         const isFuture = date > todayRows[0].today;
@@ -232,14 +259,13 @@ router.post(
           `SELECT id FROM sessions
            WHERE student_id = ? AND supervisor_id = ? AND session_type = ? AND session_date = ?
              AND duration_minutes = ? AND created_at >= NOW() - INTERVAL 10 SECOND`,
-          [studentId, req.user.id, recordType === "training_session" ? "training" : "supervision", date, Number(durationMinutes)]
+          [studentId, req.user.id, sessionType, date, Number(durationMinutes)]
         );
         if (dupeSessionRows.length) {
           return res.status(409).json({
             error: "This looks like a duplicate of a session just logged. Refresh and check the history before retrying.",
           });
         }
-        const sessionType = recordType === "training_session" ? "training" : "supervision";
         const sessionInsert = await db.query(
           `INSERT INTO sessions (student_id, supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes, status)
            VALUES (?,?,?,?,?,?,?,?,?)`,
@@ -316,12 +342,12 @@ router.post(
           data: { assignmentTitle: title || "Untitled assignment", trainerName: (trainer && trainer.fullName) || "Your trainer", dueDate: date },
         },
       });
-    } else if (recordType === "training_session" || recordType === "supervision_session") {
+    } else if (recordType === "training_session" || recordType === "supervision_session" || recordType === "hour_session") {
       const trainer = await getUserContactInfo(db, req.user.id);
       await createNotification(db, {
         recipientId: studentId,
         type: "session",
-        title: `New ${recordType === "training_session" ? "training" : "supervision"} session logged`,
+        title: `New ${sessionTypeLabel} session logged`,
         body: title || null,
         relatedEntityType: "session",
         relatedEntityId: insertedId,
@@ -329,7 +355,7 @@ router.post(
           template: "newSession",
           data: {
             sessionTitle: title,
-            sessionType: recordType === "training_session" ? "training" : "supervision",
+            sessionType: sessionTypeLabel,
             trainerName: (trainer && trainer.fullName) || "Your trainer",
             date,
           },
@@ -341,7 +367,7 @@ router.post(
     const { rows: freshRows } = await db.query(freshRq.sql, freshRq.params);
     const [withName] = await attachSupervisorNames(db, freshRows.filter((r) => r.id === insertedId));
     const responseBody = toRecord(withName || freshRows.find((r) => r.id === insertedId));
-    if (recordType === "training_session" || recordType === "supervision_session") {
+    if (recordType === "training_session" || recordType === "supervision_session" || recordType === "hour_session") {
       responseBody.attendanceStatus = attendanceStatus;
     }
     res.status(201).json(responseBody);
@@ -381,7 +407,7 @@ router.put(
 
     const { date, time, durationMinutes, status, title, content, score, attendanceStatus } = req.body || {};
 
-    if (recordType === "training_session" || recordType === "supervision_session") {
+    if (recordType === "training_session" || recordType === "supervision_session" || recordType === "hour_session") {
       await db.query(
         `UPDATE sessions SET
           session_date = COALESCE(?, session_date), session_time = COALESCE(?, session_time),
@@ -474,7 +500,7 @@ router.delete(
       return res.status(403).json({ error: "You can only delete records you created" });
     }
 
-    if (recordType === "training_session" || recordType === "supervision_session") {
+    if (recordType === "training_session" || recordType === "supervision_session" || recordType === "hour_session") {
       // Attendance is 1:1 with its session going forward (created together
       // by POST /records) -- deleting the session without its attendance
       // row would otherwise leave an orphaned attendance record (the FK is
@@ -514,8 +540,13 @@ router.post(
     if (!student) return;
 
     const { hourType, hours, reason, notes } = req.body || {};
-    if (!["training", "supervision"].includes(hourType)) {
-      return res.status(400).json({ error: "hourType must be training or supervision" });
+    // The DB no longer restricts this with a CHECK constraint (hour types
+    // are Admin-configurable via the hour_types table), so this live
+    // lookup is now what stops an invalid/inactive hourType from being
+    // inserted.
+    const { rows: htRows } = await db.query("SELECT code FROM hour_types WHERE code = ? AND is_active = 1", [hourType]);
+    if (!htRows.length) {
+      return res.status(400).json({ error: "hourType does not exist or is inactive" });
     }
     const numericHours = Number(hours);
     if (!Number.isFinite(numericHours) || numericHours === 0) {
@@ -1271,7 +1302,9 @@ router.get(
         id: r.id,
         studentName: r.student_name,
         studentCode: r.student_code,
-        recordType: r.session_type === "training" ? "training_session" : "supervision_session",
+        recordType:
+          r.session_type === "training" ? "training_session" : r.session_type === "supervision" ? "supervision_session" : "hour_session",
+        hourTypeCode: r.session_type,
         date: r.date,
         time: r.time,
         durationMinutes: r.duration_minutes,
@@ -1294,12 +1327,10 @@ router.get(
       `SELECT al.action, al.created_at, st.full_name AS student_name
        FROM audit_logs al
        JOIN students st ON st.id = al.entity_id
-       WHERE al.actor_id = ? AND al.entity_type IN (
-         'attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation'
-       )
+       WHERE al.actor_id = ? AND al.entity_type IN (${TRAINEE_ACTIVITY_ENTITY_TYPES.map(() => "?").join(",")})
        AND al.created_at >= ? AND al.created_at < ?
        ORDER BY al.created_at DESC LIMIT 500`,
-      [req.user.id, weekStart, weekEnd]
+      [req.user.id, ...TRAINEE_ACTIVITY_ENTITY_TYPES, weekStart, weekEnd]
     );
     res.json({
       weekStart,

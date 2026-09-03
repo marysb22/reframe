@@ -537,6 +537,9 @@
             gap: 14px;
             margin-bottom: 20px;
         }
+        .kpi-grid.kpi-grid-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
         
         .kpi-card {
             background: var(--surface);
@@ -2582,7 +2585,8 @@
         }
         
         @media(max-width:1200px) {
-            .kpi-grid {
+            .kpi-grid,
+            .kpi-grid.kpi-grid-3 {
                 grid-template-columns: repeat(2, 1fr);
             }
             .widget-row {
@@ -2611,7 +2615,8 @@
                 width: 100%;
                 padding: 20px;
             }
-            .kpi-grid {
+            .kpi-grid,
+            .kpi-grid.kpi-grid-3 {
                 grid-template-columns: 1fr;
             }
             .topbar {
@@ -2743,17 +2748,17 @@
             <!-- ============================================================= -->
             <section class="dash-section active-section" id="section-dashboard" data-title="Welcome back" data-eyebrow="Trainee console">
 
-                <section class="kpi-grid">
+                <section class="kpi-grid kpi-grid-3">
                     <div class="kpi-card">
                         <div class="kpi-top">
                             <div class="kpi-icon"><i class="fa fa-stopwatch"></i></div>
-                        </div><label>Clinical hours</label>
+                        </div><label id="kpiHoursLabel">Training Hours</label>
                         <h2 id="kpiHours">&mdash;</h2>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-top">
                             <div class="kpi-icon"><i class="fa fa-calendar-check"></i></div>
-                        </div><label>Attendance</label>
+                        </div><label>Attendance Rate</label>
                         <h2 id="kpiAttendance">&mdash;</h2>
                     </div>
                     <div class="kpi-card">
@@ -2762,12 +2767,11 @@
                         </div><label>Assignments</label>
                         <h2 id="kpiAssignments">&mdash;</h2>
                     </div>
-                    <div class="kpi-card">
-                        <div class="kpi-top">
-                            <div class="kpi-icon"><i class="fa fa-star"></i></div>
-                        </div><label>Avg. evaluation</label>
-                        <h2 id="kpiEval">&mdash;</h2>
-                    </div>
+                </section>
+
+                <section class="widget" id="trainerNoteWidget" style="margin-bottom:20px;">
+                    <div class="widget-title"><h3><i class="fa fa-note-sticky"></i>Trainer Note</h3></div>
+                    <div id="trainerNoteContent" class="empty-state">Loading...</div>
                 </section>
 
                 <section class="widget-row">
@@ -2812,7 +2816,7 @@
                         </div>
                     </div>
                     <div class="kpi-grid">
-                        <div class="kpi-card"><label>Cohort</label>
+                        <div class="kpi-card"><label>Group</label>
                             <h2 id="cohortValue" style="font-size:17px;">&mdash;</h2>
                         </div>
                         <div class="kpi-card"><label>Program year</label>
@@ -3012,7 +3016,7 @@
                             <h2>Sessions, attendance &amp; hours</h2>
                         </div>
                     </div>
-                    <p class="card-subtitle">Everything your supervisor has logged for you: training sessions, supervision sessions, attendance, clinical hours, notes and evaluations.</p>
+                    <p class="card-subtitle">Everything your supervisor has logged for you: training sessions, supervision sessions, attendance, hours, notes and evaluations.</p>
                     <div class="toolbar">
                         <input type="text" id="sessionSearch" placeholder="Search by title...">
                         <select id="sessionTypeFilter">
@@ -3235,15 +3239,35 @@
         let mySupervisors = [];
         let activeSupervisorId = null;
         let allRecords = [];
+        let activeHourTypes = []; // [{code, label, isPrimary}] -- fetched once, used to label hour_session/hour_adjustment records with their real type name
+
+        async function loadHourTypes() {
+            const data = await apiRequest("/profile/hour-types");
+            if (data) activeHourTypes = data.hourTypes || [];
+        }
+
+        // hour_session/hour_adjustment records carry their real category in
+        // hourTypeCode (e.g. "training", "supervision", or whatever Admin
+        // has added) -- resolve it against the fetched hour-type list
+        // instead of a static label, so a dynamically-added type shows its
+        // real name rather than a generic fallback.
+        function recordLabel(r) {
+            if (r.recordType === "hour_session" || r.recordType === "hour_adjustment") {
+                const ht = activeHourTypes.find((h) => h.code === r.hourTypeCode);
+                const label = (ht && ht.label) || RECORD_LABELS[r.recordType];
+                return r.recordType === "hour_adjustment" ? `${label} (manual adjustment)` : label;
+            }
+            return RECORD_LABELS[r.recordType];
+        }
 
         const RECORD_LABELS = {
             attendance: "Attendance",
             training_session: "Training session",
             supervision_session: "Supervision session",
+            hour_session: "Additional hours session",
             training_hours: "Training hours (legacy entry)",
             supervision_hours: "Supervision hours (legacy entry)",
             hour_adjustment: "Manual hour adjustment",
-            clinical_hours: "Clinical hours",
             assignment: "Assignment",
             note: "Note",
             evaluation: "Evaluation",
@@ -3639,7 +3663,7 @@
             document.getElementById("topbarSub").textContent = data.memberCode || "Trainee";
             setText("profileFullName", data.full_name);
             document.getElementById("profileSubline").textContent =
-                `${data.memberCode || ""} \u00b7 ${data.cohort || "No cohort"} \u00b7 ${data.currentYear ? "Year " + data.currentYear : "No year set"}`;
+                `${data.memberCode || ""} \u00b7 ${data.groupName || "No group"} \u00b7 ${data.currentYear ? "Year " + data.currentYear : "No year set"}`;
 
             if (data.photo) {
                 const imgHtml = `<img src="${UPLOADS}/photos/${data.photo}${TOKEN_Q}" alt="">`;
@@ -3652,7 +3676,7 @@
                 attachPhotoButton();
             }
 
-            setText("cohortValue", data.cohort);
+            setText("cohortValue", data.groupName || "Unassigned");
             setText("yearValue", data.currentYear ? `Year ${data.currentYear}` : null);
             setText("supervisorValue", data.supervisors && data.supervisors.length ? data.supervisors.map((s) => s.full_name).join(", ") : "Unassigned");
             document.getElementById("statusValue").innerHTML = `<span class="pill active">Active</span>`;
@@ -3686,9 +3710,11 @@
 
             populateProfileFields(data);
 
+            loadHourTypes();
             loadDashboardProgress();
             loadDashboardSchedule();
             loadDashboardActivity();
+            loadTrainerNote();
         }
 
         // ---- Personal information / Education edit mode -----------------------
@@ -3722,10 +3748,33 @@
         async function loadDashboardProgress() {
             const p = await apiRequest("/profile/progress");
             if (!p) return;
-            document.getElementById("kpiHours").textContent = nc(p.clinicalHours, "\u2014");
+            // The headline hours card follows whichever hour type Admin has
+            // marked primary -- label AND value both come from
+            // primaryHourType, never a hardcoded "Training Hours" string,
+            // so the card stays accurate if Admin ever changes it.
+            if (p.primaryHourType) {
+                setText("kpiHoursLabel", p.primaryHourType.label);
+                document.getElementById("kpiHours").textContent = nc(p.primaryHourType.hours, "\u2014");
+            }
             document.getElementById("kpiAttendance").textContent = p.attendanceRate != null ? p.attendanceRate + "%" : "\u2014";
-            document.getElementById("kpiAssignments").textContent = `${nc(p.assignmentsCompleted, 0)}/${nc(p.assignmentsTotal, 0)}`;
-            document.getElementById("kpiEval").textContent = nc(p.averageEvaluationScore, "\u2014");
+            document.getElementById("kpiAssignments").textContent = nc(p.assignmentsTotal, 0);
+        }
+
+        async function loadTrainerNote() {
+            const wrap = document.getElementById("trainerNoteContent");
+            const data = await apiRequest("/profile/records?type=note");
+            if (!data) return;
+            const latest = (data.records || [])[0];
+            if (!latest) {
+                wrap.className = "empty-state";
+                wrap.textContent = "No trainer note yet.";
+                return;
+            }
+            wrap.className = "";
+            wrap.innerHTML = `
+              <div style="color:var(--faint);font-size:11.5px;">${escapeHtml(latest.supervisorName || "")}${latest.date ? " \u00b7 " + formatPaymentDate(latest.date) : ""}</div>
+              <div style="margin-top:6px;font-size:13px;line-height:1.6;">${escapeHtml(latest.content || "")}</div>
+            `;
         }
 
         async function loadDashboardActivity() {
@@ -3768,7 +3817,7 @@
                 .map((r) => `
       <li class="sched-item">
         <div class="sched-time">${r.time || "--:--"}<small>${r.date}</small></div>
-        <div class="sinfo"><strong>${escapeHtml(r.title || RECORD_LABELS[r.recordType])}</strong><span>logged by ${escapeHtml(r.supervisorName)}</span></div>
+        <div class="sinfo"><strong>${escapeHtml(r.title || recordLabel(r))}</strong><span>logged by ${escapeHtml(r.supervisorName)}</span></div>
         <span class="sched-badge ${r.recordType}">${r.recordType === "training_session" ? "Training" : "Supervision"}</span>
       </li>
     `)
@@ -4374,7 +4423,7 @@ function renderSessions() {
   const supFilter = document.getElementById("sessionsSupFilter").value;
   const relevant = allRecords.filter((r) => r.recordType !== "assignment");
   const filtered = relevant.filter((r) => {
-    const matchesSearch = (r.title || "").toLowerCase().includes(search) || RECORD_LABELS[r.recordType].toLowerCase().includes(search);
+    const matchesSearch = (r.title || "").toLowerCase().includes(search) || recordLabel(r).toLowerCase().includes(search);
     const matchesType = !typeFilter || r.recordType === typeFilter;
     const matchesSup = !supFilter || String(r.supervisorId) === supFilter;
     return matchesSearch && matchesType && matchesSup;
@@ -4392,7 +4441,7 @@ function renderSessions() {
       if (r.score != null) bits.push("Score: " + r.score);
       if (r.status) bits.push(`<span class="pill ${r.status}">${escapeHtml(r.status)}</span>`);
       return `<li class="record-item">
-        <strong>${RECORD_LABELS[r.recordType]}${r.title ? " \u00b7 " + escapeHtml(r.title) : ""}</strong>
+        <strong>${recordLabel(r)}${r.title ? " \u00b7 " + escapeHtml(r.title) : ""}</strong>
         <div class="rmeta">${bits.join(" \u00b7 ")} \u00b7 logged by ${escapeHtml(r.supervisorName)}</div>
         ${r.content ? `<div class="rcontent">${escapeHtml(r.content)}</div>` : ""}
       </li>`;
@@ -5033,7 +5082,7 @@ async function loadCalendar() {
     allRecords = data.records;
     allRecords
       .filter((r) => r.recordType === "training_session" || r.recordType === "supervision_session")
-      .forEach((r) => { if (r.date) calItems.push({ date: r.date, title: r.title || RECORD_LABELS[r.recordType], type: r.recordType }); });
+      .forEach((r) => { if (r.date) calItems.push({ date: r.date, title: r.title || recordLabel(r), type: r.recordType }); });
   }
 
   const meetings = await apiRequest("/profile/meetings");

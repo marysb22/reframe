@@ -24,50 +24,61 @@
 function buildRecordsQuery(studentId, recordType) {
   const sql = `
     SELECT id, student_id, supervisor_id, record_type, record_date, record_time,
-           duration_minutes, status, title, content, score, created_at
+           duration_minutes, status, title, content, score, created_at, hour_type_code
     FROM (
       SELECT s.id, s.student_id, s.supervisor_id,
-             CASE WHEN s.session_type = 'training' THEN 'training_session' ELSE 'supervision_session' END AS record_type,
+             CASE
+               WHEN s.session_type = 'training' THEN 'training_session'
+               WHEN s.session_type = 'supervision' THEN 'supervision_session'
+               ELSE 'hour_session'
+             END AS record_type,
              s.session_date AS record_date, s.session_time AS record_time,
-             s.duration_minutes, s.status, s.title, s.notes AS content, CAST(NULL AS DECIMAL(5,2)) AS score, s.created_at
+             s.duration_minutes, s.status, s.title, s.notes AS content, CAST(NULL AS DECIMAL(5,2)) AS score, s.created_at,
+             s.session_type AS hour_type_code
       FROM sessions s WHERE s.student_id = ?
 
       UNION ALL
 
       SELECT a.id, a.student_id, a.supervisor_id, 'attendance' AS record_type,
-             a.attendance_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), a.status, CAST(NULL AS CHAR), a.notes, CAST(NULL AS DECIMAL(5,2)), a.created_at
+             a.attendance_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), a.status, CAST(NULL AS CHAR), a.notes, CAST(NULL AS DECIMAL(5,2)), a.created_at,
+             CAST(NULL AS CHAR)
       FROM attendance a WHERE a.student_id = ?
 
       UNION ALL
 
       SELECT th.id, th.student_id, th.supervisor_id, 'training_hours' AS record_type,
              th.hour_date, CAST(NULL AS TIME), CAST(ROUND(th.hours * 60) AS SIGNED) AS duration_minutes,
-             CAST(NULL AS CHAR), CAST(NULL AS CHAR), th.description, CAST(NULL AS DECIMAL(5,2)), th.created_at
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR), th.description, CAST(NULL AS DECIMAL(5,2)), th.created_at,
+             CAST(NULL AS CHAR)
       FROM training_hours th WHERE th.student_id = ?
 
       UNION ALL
 
       SELECT sh.id, sh.student_id, sh.supervisor_id, 'supervision_hours' AS record_type,
              sh.hour_date, CAST(NULL AS TIME), CAST(ROUND(sh.hours * 60) AS SIGNED) AS duration_minutes,
-             CAST(NULL AS CHAR), CAST(NULL AS CHAR), sh.description, CAST(NULL AS DECIMAL(5,2)), sh.created_at
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR), sh.description, CAST(NULL AS DECIMAL(5,2)), sh.created_at,
+             CAST(NULL AS CHAR)
       FROM supervision_hours sh WHERE sh.student_id = ?
 
       UNION ALL
 
       SELECT asg.id, asg.student_id, asg.supervisor_id, 'assignment' AS record_type,
-             asg.due_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), asg.status, asg.title, asg.description, CAST(NULL AS DECIMAL(5,2)), asg.created_at
+             asg.due_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), asg.status, asg.title, asg.description, CAST(NULL AS DECIMAL(5,2)), asg.created_at,
+             CAST(NULL AS CHAR)
       FROM assignments asg WHERE asg.student_id = ?
 
       UNION ALL
 
       SELECT n.id, n.student_id, n.supervisor_id, 'note' AS record_type,
-             n.note_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR), n.content, CAST(NULL AS DECIMAL(5,2)), n.created_at
+             n.note_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR), n.content, CAST(NULL AS DECIMAL(5,2)), n.created_at,
+             CAST(NULL AS CHAR)
       FROM supervisor_notes n WHERE n.student_id = ?
 
       UNION ALL
 
       SELECT ev.id, ev.student_id, ev.supervisor_id, 'evaluation' AS record_type,
-             ev.evaluation_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), ev.title, ev.content, ev.score, ev.created_at
+             ev.evaluation_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), ev.title, ev.content, ev.score, ev.created_at,
+             CAST(NULL AS CHAR)
       FROM evaluations ev WHERE ev.student_id = ?
 
       UNION ALL
@@ -76,11 +87,14 @@ function buildRecordsQuery(studentId, recordType) {
       -- deliberately absent from RECORD_TYPE_TABLES below so the generic
       -- PUT/DELETE record routes can never edit or delete one, mirroring
       -- payment_transactions' "never UPDATE or DELETE" ledger convention.
-      -- status carries hour_type ('training'/'supervision') here since
-      -- this record_type has no attendance-style status of its own.
+      -- status carries hour_type here since this record_type has no
+      -- attendance-style status of its own; hour_type_code mirrors it so
+      -- the frontend can resolve a real label the same way it does for
+      -- hour_session rows below.
       SELECT tha.id, tha.student_id, tha.added_by, 'hour_adjustment' AS record_type,
              DATE(tha.created_at), CAST(NULL AS TIME), CAST(ROUND(tha.hours * 60) AS SIGNED) AS duration_minutes,
-             tha.hour_type, tha.reason, tha.notes, CAST(NULL AS DECIMAL(5,2)), tha.created_at
+             tha.hour_type, tha.reason, tha.notes, CAST(NULL AS DECIMAL(5,2)), tha.created_at,
+             tha.hour_type
       FROM trainee_hour_adjustments tha WHERE tha.student_id = ?
     ) combined
     ${recordType ? "WHERE record_type = ?" : ""}
@@ -92,10 +106,26 @@ function buildRecordsQuery(studentId, recordType) {
   return { sql, params };
 }
 
+// Shared across supervisor.js and Mastertrainer.js's audit-log entity_type
+// allowlists, so adding a 10th record type (should one ever be needed) is
+// a one-line change here instead of six across two files.
+const TRAINEE_ACTIVITY_ENTITY_TYPES = [
+  "attendance",
+  "training_session",
+  "supervision_session",
+  "hour_session",
+  "training_hours",
+  "supervision_hours",
+  "assignment",
+  "note",
+  "evaluation",
+];
+
 /** Maps each record_type to the table + id column it actually lives in, for edit/delete routes. */
 const RECORD_TYPE_TABLES = {
   training_session: { table: "sessions", dateCol: "session_date", timeCol: "session_time" },
   supervision_session: { table: "sessions", dateCol: "session_date", timeCol: "session_time" },
+  hour_session: { table: "sessions", dateCol: "session_date", timeCol: "session_time" },
   attendance: { table: "attendance", dateCol: "attendance_date" },
   training_hours: { table: "training_hours", dateCol: "hour_date" },
   supervision_hours: { table: "supervision_hours", dateCol: "hour_date" },
@@ -175,4 +205,10 @@ function buildTotHoursBreakdownQuery(totId) {
   return { sql, params: [totId, totId] };
 }
 
-module.exports = { buildRecordsQuery, RECORD_TYPE_TABLES, buildHoursBreakdownQuery, buildTotHoursBreakdownQuery };
+module.exports = {
+  buildRecordsQuery,
+  RECORD_TYPE_TABLES,
+  TRAINEE_ACTIVITY_ENTITY_TYPES,
+  buildHoursBreakdownQuery,
+  buildTotHoursBreakdownQuery,
+};

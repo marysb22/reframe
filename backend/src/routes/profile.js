@@ -42,6 +42,7 @@ const PROFILE_SELECT = `
     st.gender, st.date_of_birth, st.marital_status, st.address,
     st.highest_degree, st.institution, st.certifications, st.cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year,
+    st.group_id, tg.name AS group_name,
     sup.specialization, sup.bio
   FROM user_credentials uc
   LEFT JOIN admin_users a ON a.id = uc.id
@@ -49,6 +50,7 @@ const PROFILE_SELECT = `
   LEFT JOIN students st ON st.id = uc.id
   LEFT JOIN designers d ON d.id = uc.id
   LEFT JOIN cohorts c ON c.id = st.cohort_id
+  LEFT JOIN trainer_groups tg ON tg.id = st.group_id
   WHERE uc.id = ?
 `;
 
@@ -401,6 +403,22 @@ router.get(
   requireStudent,
   asyncRoute(async (req, res, db) => {
     res.json(await computeProgressSummary(db, req.user.id));
+  })
+);
+
+// GET /api/profile/hour-types -- active hour types only, any authenticated
+// role (every dashboard that logs a session/hour-adjustment or displays
+// an hours KPI needs this list; only Admin can create/edit them, via
+// GET/POST/PATCH /admin/hour-types in admin.js). Lives here rather than a
+// new top-level route because profile.js is already the one router every
+// role reaches through the same requireAuth-only gate.
+router.get(
+  "/hour-types",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      "SELECT code, label, is_primary FROM hour_types WHERE is_active = 1 ORDER BY sort_order ASC"
+    );
+    res.json({ hourTypes: rows });
   })
 );
 

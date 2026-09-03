@@ -1,10 +1,17 @@
 const express = require("express");
 const { requireAuth, requireMasterTrainer, asyncRoute } = require("../middleware/auth");
-const { toRecord, toDocument, toMaterial, computeTrainingProgress } = require("../utils/serializers");
+const { toRecord, toDocument, toMaterial, computeTrainingProgress, computeHoursByType } = require("../utils/serializers");
 const { resolveWeekRange, getCurrentWeekRange, listRecentWeeks, shiftDate } = require("../utils/weekPeriod");
-const { buildTotHoursBreakdownQuery } = require("../utils/recordsQuery");
+const { buildTotHoursBreakdownQuery, TRAINEE_ACTIVITY_ENTITY_TYPES } = require("../utils/recordsQuery");
 
 const router = express.Router();
+
+// Pre-rendered as a literal SQL fragment (not `?` placeholders) since
+// these values are a fixed, internally-defined list, not user input, and
+// every one of the 4 call sites below already has its own unrelated
+// positional params -- inlining avoids disturbing any of their param
+// arrays/order.
+const ACTIVITY_ENTITY_TYPES_SQL = TRAINEE_ACTIVITY_ENTITY_TYPES.map((t) => `'${t}'`).join(",");
 
 /* =========================================================================
    This router was originally written against Postgres syntax ($1/$2
@@ -338,6 +345,38 @@ router.get(
        ORDER BY sup.full_name`, [groupId]
         );
 
+        // Additive, generic-over-however-many-active-hour-types breakdown,
+        // computed in one query for the whole group (not one per ToT) --
+        // training_hours/supervision_hours above stay exactly as they are,
+        // this is purely extra detail for any future UI that wants it.
+        const { rows: hourRows } = await db.query(
+            `SELECT sup.id AS supervisor_id, ht.code, ht.label, ht.is_primary,
+              COALESCE((SELECT SUM(hours) FROM training_hours WHERE supervisor_id = sup.id), 0) AS legacy_hours,
+              COALESCE((
+                SELECT SUM(s.duration_minutes) / 60 FROM sessions s
+                JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+                WHERE s.supervisor_id = sup.id AND s.session_type = ht.code AND s.status != 'cancelled'
+              ), 0) AS derived_hours,
+              COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE added_by = sup.id AND hour_type = ht.code), 0) AS adjustment_hours
+       FROM supervisors sup
+       JOIN hour_types ht ON ht.is_active = 1
+       WHERE sup.group_id = ? AND sup.supervisor_type = 'in_training'`,
+            [groupId]
+        );
+        const hoursByTotId = new Map();
+        for (const r of hourRows) {
+            if (!hoursByTotId.has(r.supervisor_id)) hoursByTotId.set(r.supervisor_id, []);
+            hoursByTotId.get(r.supervisor_id).push({
+                code: r.code,
+                label: r.label,
+                isPrimary: !!r.is_primary,
+                hours: Number(r.legacy_hours) + Number(r.derived_hours) + Number(r.adjustment_hours),
+            });
+        }
+        rows.forEach((r) => {
+            r.hoursByType = hoursByTotId.get(r.id) || [];
+        });
+
         res.json({ tots: rows });
     })
 );
@@ -413,11 +452,16 @@ router.get(
         const documents = await recentDocumentsForSupervisor(db, totId, 20);
         const materials = await materialsForSupervisor(db, totId);
         const meetings = await meetingsForSupervisor(db, totId);
+        // Additive, generic-over-however-many-active-hour-types breakdown --
+        // training_hours/supervision_hours in `stats` above stay exactly as
+        // they are, this is purely extra detail for any future UI.
+        const hoursByType = await computeHoursByType(db, { supervisorId: totId });
 
         res.json({
             trainer: tot,
             students,
             stats: statRows[0],
+            hoursByType,
             trainingReceived,
             recentRecords: recentRecords.map(toRecord),
             recentActivity,
@@ -744,7 +788,7 @@ router.get(
                       ELSE ROUND(100 * SUM(CASE WHEN att.status = 'present' THEN 1 ELSE 0 END) / COUNT(*), 1) END
                  FROM attendance att WHERE att.student_id = st.id) AS attendance_rate,
               (SELECT MAX(al.created_at) FROM audit_logs al WHERE al.entity_id = st.id
-                 AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')) AS last_activity_at,
+                 AND al.entity_type IN (${ACTIVITY_ENTITY_TYPES_SQL})) AS last_activity_at,
               (SELECT COUNT(*) FROM trainee_milestone_progress tmp WHERE tmp.student_id = st.id AND tmp.status = 'completed') AS milestones_completed,
               (SELECT COUNT(*) FROM training_milestones WHERE is_active = TRUE) AS milestones_total
        FROM students st
@@ -1606,7 +1650,7 @@ router.get(
        LEFT JOIN supervisors sup ON sup.id = al.actor_id
        LEFT JOIN user_credentials actor_uc ON actor_uc.id = al.actor_id
        LEFT JOIN students st ON st.id = al.entity_id
-         AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')
+         AND al.entity_type IN (${ACTIVITY_ENTITY_TYPES_SQL})
        WHERE (sup.group_id = ? OR (sup.id IS NULL AND st.group_id = ?))
          AND al.created_at >= ? AND al.created_at < ?
        ORDER BY al.created_at DESC
@@ -1642,10 +1686,10 @@ router.get(
                 `SELECT COUNT(*) AS total FROM audit_logs al
            LEFT JOIN supervisors sup ON sup.id = al.actor_id
            LEFT JOIN students st ON st.id = al.entity_id
-             AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')
+             AND al.entity_type IN (${ACTIVITY_ENTITY_TYPES_SQL})
           WHERE (sup.group_id = ? OR (sup.id IS NULL AND st.group_id = ?))
             AND al.created_at >= ? AND al.created_at < ?
-            AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')`,
+            AND al.entity_type IN (${ACTIVITY_ENTITY_TYPES_SQL})`,
                 [groupId, groupId, week.weekStart, week.weekEnd]
             );
             week.total = Number(rows[0].total);
@@ -1732,7 +1776,7 @@ async function recentActivityForActor(db, actorId, limit) {
         `SELECT al.action, al.created_at, st.full_name AS student_name
      FROM audit_logs al
      LEFT JOIN students st ON st.id = al.entity_id
-       AND al.entity_type IN ('attendance','training_session','supervision_session','training_hours','supervision_hours','assignment','note','evaluation')
+       AND al.entity_type IN (${ACTIVITY_ENTITY_TYPES_SQL})
      WHERE al.actor_id = ?
      ORDER BY al.created_at DESC
      LIMIT ?`, [actorId, limit]

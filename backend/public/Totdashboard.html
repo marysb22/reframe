@@ -2508,7 +2508,7 @@
                     <div class="kpi-card">
                         <div class="kpi-top">
                             <div class="kpi-icon"><i class="fa fa-stopwatch"></i></div>
-                        </div><label>Clinical hours logged</label>
+                        </div><label>Training hours logged</label>
                         <h2 id="kpiHours">&mdash;</h2>
                     </div>
                     <div class="kpi-card">
@@ -2731,8 +2731,6 @@
                         <input type="text" id="sessionSearch" placeholder="Search by title or trainee...">
                         <select id="sessionTypeFilter">
 <option value="">All types</option>
-<option value="training_session">Training sessions</option>
-<option value="supervision_session">Supervision sessions</option>
 </select>
                     </div>
                     <table>
@@ -3079,10 +3077,7 @@
                 <label>Trainee</label>
                 <select id="sesStudent" required></select>
                 <label>Session type</label>
-                <select id="sesType">
-<option value="training_session">Training session</option>
-<option value="supervision_session">Supervision session</option>
-</select>
+                <select id="sesType"></select>
                 <label>Title</label>
                 <input type="text" id="sesTitle" required>
                 <label>Date</label>
@@ -3191,7 +3186,8 @@
         // a valid recordType there and would 400. Split into the two real types,
         // and drop the unsupported "title" field on hours (the hours tables only
         // have hour_date / hours / description columns).
-        const RECORD_TYPES = {
+        let activeHourTypes = []; // [{code, label, isPrimary}] -- fetched once at startup, extends RECORD_TYPES below with a session + adjustment tab per type beyond the two permanent ones
+        let RECORD_TYPES = {
             attendance: {
                 label: "Attendance",
                 icon: "fa-calendar-check",
@@ -3231,7 +3227,65 @@
                 fields: ["date", "title", "score", "content"]
             },
         };
-        const TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents", "messages"];
+        let TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents", "messages"];
+
+        // Any active hour type beyond the two permanent ones ('training',
+        // 'supervision') gets its own session-logging tab and its own
+        // manual-adjustment tab, synthesized here rather than hardcoded --
+        // this is what makes an Admin-added hour type (e.g. "Application
+        // Hours") actually usable end-to-end, not just visible in a list
+        // somewhere. Both tabs reuse the exact same rendering/submit code
+        // as training_session/supervision_session and the existing
+        // training_hours/supervision_hours adjustment ledger (renderRecordPanel
+        // resolves the real backend recordType via config.apiRecordType,
+        // and renderHourAdjustmentPanel already takes a generic hourType
+        // string) -- nothing about those functions needed to change.
+        async function loadHourTypesAndExtendRecordTypes() {
+            const data = await apiRequest("/profile/hour-types");
+            if (!data) return;
+            activeHourTypes = data.hourTypes || [];
+            activeHourTypes
+                .filter((ht) => ht.code !== "training" && ht.code !== "supervision")
+                .forEach((ht) => {
+                    RECORD_TYPES[`hour_session:${ht.code}`] = {
+                        label: `${ht.label} sessions`,
+                        icon: "fa-clock",
+                        fields: ["date", "time", "duration", "title", "attendanceStatus", "content"],
+                        apiRecordType: "hour_session",
+                        hourTypeCode: ht.code,
+                    };
+                    RECORD_TYPES[`hour_adj:${ht.code}`] = {
+                        label: ht.label,
+                        icon: "fa-stopwatch",
+                        hourType: ht.code,
+                    };
+                });
+            TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents", "messages"];
+
+            const filterEl = document.getElementById("sessionTypeFilter");
+            if (filterEl) renderSessionTypeOptions(filterEl, true);
+        }
+
+        /** Resolves a tab key (which may be a synthetic "hour_session:<code>"/"hour_adj:<code>" key) to the real label for whichever hour type it's tagged with, falling back to "Training"/"Supervision" -- used by the ~5 spots below that used to 2-way ternary on session_type. */
+        function hourTypeLabel(code) {
+            const ht = activeHourTypes.find((h) => h.code === code);
+            if (ht) return ht.label.replace(/ Hours$/i, "");
+            return code === "training" ? "Training" : code === "supervision" ? "Supervision" : code;
+        }
+
+        /** Builds the <option> list for a "which session type" select -- the two permanent types plus one per other active hour type, all using the same "hour_session:<code>" synthetic value scheme submitRecordForm/openSessionModal already understand. */
+        function renderSessionTypeOptions(selectEl, withAllOption) {
+            const opts = [];
+            if (withAllOption) opts.push('<option value="">All types</option>');
+            opts.push(`<option value="training_session">Training session${withAllOption ? "s" : ""}</option>`);
+            opts.push(`<option value="supervision_session">Supervision session${withAllOption ? "s" : ""}</option>`);
+            activeHourTypes
+                .filter((ht) => ht.code !== "training" && ht.code !== "supervision")
+                .forEach((ht) => {
+                    opts.push(`<option value="hour_session:${ht.code}">${escapeHtml(ht.label)} session${withAllOption ? "s" : ""}</option>`);
+                });
+            selectEl.innerHTML = opts.join("");
+        }
 
         async function apiRequest(url, options = {}) {
             try {
@@ -3431,6 +3485,7 @@
 
         document.addEventListener("DOMContentLoaded", async() => {
             await loadMe();
+            await loadHourTypesAndExtendRecordTypes();
             await loadStudents();
             await loadSchedule();
             await loadActivity();
@@ -3741,8 +3796,8 @@
                 .map((i) => `
       <li class="sched-item">
         <div class="sched-time">${i.time || "--:--"}<small>${i.isToday ? "Today" : i.date}</small></div>
-        <div class="sinfo"><strong>${escapeHtml(i.title || RECORD_TYPES[i.recordType].label)}</strong><span>${escapeHtml(i.studentName)} &middot; ${escapeHtml(i.studentCode)}</span></div>
-        <span class="sched-badge ${i.recordType}">${i.recordType === "training_session" ? "Training" : "Supervision"}</span>
+        <div class="sinfo"><strong>${escapeHtml(i.title || hourTypeLabel(i.hourTypeCode) + " session")}</strong><span>${escapeHtml(i.studentName)} &middot; ${escapeHtml(i.studentCode)}</span></div>
+        <span class="sched-badge ${i.recordType}">${hourTypeLabel(i.hourTypeCode)}</span>
       </li>
     `)
                 .join("");
@@ -3816,7 +3871,7 @@
 
         function renderProgress(p) {
             const cells = [
-                ["Clinical hours", p.clinicalHours],
+                ["Training hours", p.clinicalHours],
                 ["Attendance", p.attendanceRate != null ? p.attendanceRate + "%" : "&mdash;"],
                 ["Training sessions", p.trainingSessions],
                 ["Supervision sessions", p.supervisionSessions],
@@ -3950,7 +4005,15 @@ function renderRecordPanel(container, type) {
     return;
   }
 
-  const records = currentStudentData.records.filter((r) => r.recordType === type);
+  // `type` is the tab's own key -- for the two permanent tabs this is
+  // already the real backend recordType, but a dynamic hour type's tab
+  // key (e.g. "hour_session:application") is synthetic; config carries
+  // the real apiRecordType + which specific hour type it's scoped to, so
+  // two different dynamic types' sessions never mix in each other's list.
+  const apiType = config.apiRecordType || type;
+  const records = currentStudentData.records.filter(
+    (r) => r.recordType === apiType && (!config.hourTypeCode || r.hourTypeCode === config.hourTypeCode)
+  );
   const editing = editingRecordId ? records.find((r) => r.id === editingRecordId) : null;
 
   // Attendance is now created together with its session (see
@@ -4095,7 +4158,12 @@ function cancelEditRecord() {
 
 async function submitRecordForm(e, type) {
   e.preventDefault();
-  const payload = { recordType: type };
+  // `type` may be a synthetic dynamic-hour-type tab key -- resolve to the
+  // real backend recordType (and its hourTypeCode, if any) before sending.
+  const config = RECORD_TYPES[type];
+  const apiType = (config && config.apiRecordType) || type;
+  const payload = { recordType: apiType };
+  if (config && config.hourTypeCode) payload.hourTypeCode = config.hourTypeCode;
   const get = (id) => { const el = document.getElementById(id); return el && el.value; };
   if (get("rf_date")) payload.date = get("rf_date");
   if (get("rf_time")) payload.time = get("rf_time");
@@ -4108,7 +4176,7 @@ async function submitRecordForm(e, type) {
 
   // FIX (rename pass): type-scoped URL to match the real backend.
   const url = editingRecordId
-    ? `/supervisor/records/${type}/${editingRecordId}`
+    ? `/supervisor/records/${apiType}/${editingRecordId}`
     : `/supervisor/students/${currentStudentId}/records`;
   const method = editingRecordId ? "PUT" : "POST";
 
@@ -4136,7 +4204,9 @@ function confirmDeleteRecord(type, id) {
   openConfirm("Delete this entry?", "This can't be undone.", () => deleteRecord(type, id));
 }
 async function deleteRecord(type, id) {
-  const result = await apiRequest(`/supervisor/records/${type}/${id}`, { method: "DELETE" });
+  const config = RECORD_TYPES[type];
+  const apiType = (config && config.apiRecordType) || type;
+  const result = await apiRequest(`/supervisor/records/${apiType}/${id}`, { method: "DELETE" });
   if (result) {
     showToast("Entry deleted", "success");
     await refreshCurrentStudent();
@@ -4842,7 +4912,7 @@ async function loadSessions() {
     const detail = await apiRequest(`/supervisor/students/${s.id}`);
     if (!detail) continue;
     detail.records
-      .filter((r) => r.recordType === "training_session" || r.recordType === "supervision_session")
+      .filter((r) => r.recordType === "training_session" || r.recordType === "supervision_session" || r.recordType === "hour_session")
       .forEach((r) => allSessions.push({ ...r, studentName: s.full_name, studentCode: s.memberCode, studentId: s.id }));
   }
   renderSessions();
@@ -4851,9 +4921,10 @@ async function loadSessions() {
 function renderSessions() {
   const search = (document.getElementById("sessionSearch").value || "").toLowerCase();
   const typeFilter = document.getElementById("sessionTypeFilter").value;
+  const isDynamicFilter = typeFilter.startsWith("hour_session:");
   const filtered = allSessions.filter((s) => {
     const matchesSearch = (s.title || "").toLowerCase().includes(search) || s.studentName.toLowerCase().includes(search);
-    const matchesType = !typeFilter || s.recordType === typeFilter;
+    const matchesType = !typeFilter || (isDynamicFilter ? s.recordType === "hour_session" && s.hourTypeCode === typeFilter.slice("hour_session:".length) : s.recordType === typeFilter);
     return matchesSearch && matchesType;
   });
 
@@ -4869,7 +4940,7 @@ function renderSessions() {
       <tr>
         <td><strong>${escapeHtml(s.title || "Untitled")}</strong></td>
         <td>${escapeHtml(s.studentName)} <span style="color:var(--faint);">(${escapeHtml(s.studentCode)})</span></td>
-        <td><span class="sched-badge ${s.recordType}">${s.recordType === "training_session" ? "Training" : "Supervision"}</span></td>
+        <td><span class="sched-badge ${s.recordType}">${hourTypeLabel(s.recordType === "hour_session" ? s.hourTypeCode : s.recordType === "training_session" ? "training" : "supervision")}</span></td>
         <td>${s.date ? escapeHtml(s.date) : "&mdash;"}${s.time ? " " + escapeHtml(s.time) : ""}</td>
         <td>${s.durationMinutes ? s.durationMinutes + " min" : "&mdash;"}</td>
         <td>
@@ -4889,6 +4960,7 @@ document.getElementById("sessionTypeFilter").addEventListener("change", renderSe
 function openSessionModal(session) {
   const form = document.getElementById("sessionModalForm");
   form.reset();
+  renderSessionTypeOptions(document.getElementById("sesType"), false);
   document.getElementById("sesEditId").value = "";
   document.getElementById("sesEditType").value = "";
   document.getElementById("sessionModalTitle").textContent = "Schedule session";
@@ -4897,7 +4969,8 @@ function openSessionModal(session) {
     document.getElementById("sesEditType").value = session.recordType;
     document.getElementById("sessionModalTitle").textContent = "Edit session";
     document.getElementById("sesStudent").value = session.studentId;
-    document.getElementById("sesType").value = session.recordType;
+    document.getElementById("sesType").value =
+      session.recordType === "hour_session" ? `hour_session:${session.hourTypeCode}` : session.recordType;
     document.getElementById("sesTitle").value = session.title || "";
     document.getElementById("sesDate").value = session.date || "";
     document.getElementById("sesTime").value = session.time || "";
@@ -4921,14 +4994,17 @@ document.getElementById("sessionModalForm").addEventListener("submit", async (e)
   // stored type never actually changes on edit.
   const editType = document.getElementById("sesEditType").value;
   const studentId = document.getElementById("sesStudent").value;
+  const rawType = document.getElementById("sesType").value;
+  const isDynamicType = rawType.startsWith("hour_session:");
   const payload = {
-    recordType: document.getElementById("sesType").value,
+    recordType: isDynamicType ? "hour_session" : rawType,
     title: document.getElementById("sesTitle").value,
     date: document.getElementById("sesDate").value,
     time: document.getElementById("sesTime").value,
     durationMinutes: document.getElementById("sesDuration").value ? Number(document.getElementById("sesDuration").value) : undefined,
     content: document.getElementById("sesContent").value,
   };
+  if (isDynamicType) payload.hourTypeCode = rawType.slice("hour_session:".length);
 
   const url = editId ? `/supervisor/records/${editType}/${editId}` : `/supervisor/students/${studentId}/records`;
   const method = editId ? "PUT" : "POST";
@@ -5445,7 +5521,7 @@ async function loadCalendar() {
   calItems = [];
   if (schedule) {
     [...schedule.today, ...schedule.upcoming].forEach((i) => {
-      calItems.push({ date: i.date, title: i.title || (RECORD_TYPES[i.recordType] && RECORD_TYPES[i.recordType].label), type: i.recordType });
+      calItems.push({ date: i.date, title: i.title || hourTypeLabel(i.hourTypeCode) + " session", type: i.recordType });
     });
   }
   const meetings = await apiRequest("/supervisor/meetings");

@@ -282,11 +282,31 @@ CREATE TABLE student_health_info (
 -- SECTION 4: SESSIONS, ATTENDANCE, HOURS
 -- =============================================================================
 
+-- Admin-managed list of hour categories (Training, Supervision, and
+-- whatever else Admin adds later). sessions.session_type and
+-- trainee_hour_adjustments.hour_type FK to this table's code instead of
+-- a fixed 2-value CHECK -- adding a new usable hour type is purely a
+-- data change, never a code change. At most one row has is_primary=1
+-- (enforced at the application layer) -- that is the type shown on a
+-- Trainee's own dashboard headline.
+CREATE TABLE hour_types (
+  code        VARCHAR(30) PRIMARY KEY,
+  label       VARCHAR(60) NOT NULL,
+  is_active   TINYINT(1) NOT NULL DEFAULT 1,
+  is_primary  TINYINT(1) NOT NULL DEFAULT 0,
+  sort_order  INT NOT NULL DEFAULT 0,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO hour_types (code, label, is_active, is_primary, sort_order) VALUES
+  ('training', 'Training Hours', 1, 1, 1),
+  ('supervision', 'Supervision Hours', 1, 0, 2);
+
 CREATE TABLE sessions (
   id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
   student_id         BIGINT NOT NULL,
   supervisor_id      BIGINT NOT NULL,
-  session_type       VARCHAR(20) NOT NULL CHECK (session_type IN ('training', 'supervision')),
+  session_type       VARCHAR(30) NOT NULL,
   title              VARCHAR(255),
   session_date       DATE NOT NULL,
   session_time       TIME,
@@ -297,7 +317,8 @@ CREATE TABLE sessions (
   created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_sessions_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  CONSTRAINT fk_sessions_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT
+  CONSTRAINT fk_sessions_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_sessions_hour_type FOREIGN KEY (session_type) REFERENCES hour_types(code) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE attendance (
@@ -411,14 +432,15 @@ CREATE TABLE tot_hour_adjustments (
 CREATE TABLE trainee_hour_adjustments (
   id          BIGINT AUTO_INCREMENT PRIMARY KEY,
   student_id  BIGINT NOT NULL,
-  hour_type   VARCHAR(20) NOT NULL CHECK (hour_type IN ('training', 'supervision')),
+  hour_type   VARCHAR(30) NOT NULL,
   hours       DECIMAL(6,2) NOT NULL,
   reason      VARCHAR(255) NOT NULL,
   notes       TEXT,
   added_by    BIGINT NOT NULL,
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_traineeadj_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  CONSTRAINT fk_traineeadj_added_by FOREIGN KEY (added_by) REFERENCES user_credentials(id)
+  CONSTRAINT fk_traineeadj_added_by FOREIGN KEY (added_by) REFERENCES user_credentials(id),
+  CONSTRAINT fk_traineeadj_hour_type FOREIGN KEY (hour_type) REFERENCES hour_types(code) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Append-only manual hour-adjustment ledger for a Trainee, added by whichever supervisor (Master Trainer or ToT) currently has them in their supervisor_students caseload. Never UPDATE/DELETE.';
 

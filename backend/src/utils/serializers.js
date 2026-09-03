@@ -213,6 +213,7 @@ function toRecord(row) {
     supervisorId: row.supervisor_id,
     supervisorName: row.supervisor_name,
     createdAt: row.created_at,
+    hourTypeCode: row.hour_type_code,
   };
 }
 
@@ -297,29 +298,64 @@ function toStudentSummary(row) {
 // row and isn't cancelled -- absent/excused/cancelled always contribute 0.
 // Nothing here is cached; every read recomputes from source rows, so an
 // attendance correction changes the total on the very next read.
+/**
+ * Computes total hours per active hour_types row for either a Trainee
+ * (studentId) or a Trainer/ToT's own hours delivered (supervisorId) --
+ * pass exactly one. Legacy training_hours/supervision_hours are frozen
+ * (no new inserts, see supervisor.js) so they only ever contribute to
+ * their original two codes, but the query itself doesn't hardcode that --
+ * sessions and trainee_hour_adjustments are summed with a plain GROUP BY,
+ * which is naturally generic over however many active hour_types exist.
+ * Adding a new hour type never requires touching this function.
+ */
+async function computeHoursByType(db, { studentId, supervisorId } = {}) {
+  const idCol = studentId != null ? "student_id" : "supervisor_id";
+  const id = studentId != null ? studentId : supervisorId;
+
+  const [legacyRes, derivedRes, adjRes, typesRes] = await Promise.all([
+    db.query(
+      `SELECT 'training' AS code, COALESCE(SUM(hours), 0) AS hours FROM training_hours WHERE ${idCol} = ?
+       UNION ALL
+       SELECT 'supervision' AS code, COALESCE(SUM(hours), 0) AS hours FROM supervision_hours WHERE ${idCol} = ?`,
+      [id, id]
+    ),
+    db.query(
+      `SELECT s.session_type AS code, SUM(s.duration_minutes) / 60 AS hours
+       FROM sessions s
+       JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+       WHERE s.${idCol} = ? AND s.status != 'cancelled'
+       GROUP BY s.session_type`,
+      [id]
+    ),
+    studentId != null
+      ? db.query(`SELECT hour_type AS code, SUM(hours) AS hours FROM trainee_hour_adjustments WHERE student_id = ? GROUP BY hour_type`, [id])
+      : Promise.resolve({ rows: [] }),
+    db.query("SELECT code, label, is_primary FROM hour_types WHERE is_active = 1 ORDER BY sort_order"),
+  ]);
+
+  const totals = new Map();
+  const add = (code, hours) => {
+    if (!code) return;
+    totals.set(code, (totals.get(code) || 0) + Number(hours));
+  };
+  legacyRes.rows.forEach((r) => add(r.code, r.hours));
+  derivedRes.rows.forEach((r) => add(r.code, r.hours));
+  adjRes.rows.forEach((r) => add(r.code, r.hours));
+
+  return typesRes.rows.map((t) => ({
+    code: t.code,
+    label: t.label,
+    isPrimary: !!t.is_primary,
+    hours: totals.get(t.code) || 0,
+  }));
+}
+
 async function computeProgressSummary(db, studentId) {
   // MySQL has no FILTER (WHERE ...) clause (Postgres-only) -- every
   // COUNT(*) FILTER (WHERE cond) below becomes COUNT(CASE WHEN cond THEN 1 END),
   // which only counts rows where cond is true, same result.
-  const [hoursRes, attendanceRes, sessionsRes, assignmentsRes, evalRes] = await Promise.all([
-    db.query(
-      `SELECT
-         COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id = ?), 0) AS legacy_training,
-         COALESCE((SELECT SUM(hours) FROM supervision_hours WHERE student_id = ?), 0) AS legacy_supervision,
-         COALESCE((
-           SELECT SUM(s.duration_minutes) / 60 FROM sessions s
-           JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
-           WHERE s.student_id = ? AND s.session_type = 'training' AND s.status != 'cancelled'
-         ), 0) AS derived_training,
-         COALESCE((
-           SELECT SUM(s.duration_minutes) / 60 FROM sessions s
-           JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
-           WHERE s.student_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled'
-         ), 0) AS derived_supervision,
-         COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'training'), 0) AS adj_training,
-         COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'supervision'), 0) AS adj_supervision`,
-      [studentId, studentId, studentId, studentId, studentId, studentId]
-    ),
+  const [hoursByType, attendanceRes, sessionsRes, assignmentsRes, evalRes] = await Promise.all([
+    computeHoursByType(db, { studentId }),
     db.query(
       `SELECT
          COUNT(CASE WHEN status = 'present' THEN 1 END) AS present,
@@ -344,20 +380,20 @@ async function computeProgressSummary(db, studentId) {
     ]),
   ]);
 
-  const hours = hoursRes.rows[0];
   const attendance = attendanceRes.rows[0];
   const sessions = sessionsRes.rows[0];
   const assignments = assignmentsRes.rows[0];
   const avgScore = evalRes.rows[0].avg_score;
 
-  const trainingHours = Number(hours.legacy_training) + Number(hours.derived_training) + Number(hours.adj_training);
-  const supervisionHours =
-    Number(hours.legacy_supervision) + Number(hours.derived_supervision) + Number(hours.adj_supervision);
+  const trainingHours = hoursByType.find((h) => h.code === "training")?.hours || 0;
+  const supervisionHours = hoursByType.find((h) => h.code === "supervision")?.hours || 0;
 
   return {
     clinicalHours: trainingHours + supervisionHours,
     trainingHours,
     supervisionHours,
+    hoursByType,
+    primaryHourType: hoursByType.find((h) => h.isPrimary) || null,
     attendanceRate: Number(attendance.total) > 0 ? Math.round((Number(attendance.present) / Number(attendance.total)) * 100) : null,
     trainingSessions: Number(sessions.training_sessions),
     supervisionSessions: Number(sessions.supervision_sessions),
@@ -405,4 +441,5 @@ module.exports = {
   toStudentSummary,
   computeProgressSummary,
   computeTrainingProgress,
+  computeHoursByType,
 };
