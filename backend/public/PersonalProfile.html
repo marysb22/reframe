@@ -940,29 +940,265 @@
             color: var(--info);
         }
 
-        /* ===== Payments: one Select, plain detail rows (no cards) ===== */
-        .payment-detail-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            padding: 6px 0;
-            border-bottom: 1px solid var(--border-soft);
-        }
-        .payment-detail-row:last-child {
-            border-bottom: none;
-        }
-        .payment-detail-row span:first-child {
+        /* ===== Payments (Trainee, read-only): period tabs + summary cards +
+           progress + history, table on desktop / cards on mobile ===== */
+        .pill.not-started {
+            background: var(--surface-2);
             color: var(--muted);
         }
-        .pill.refund {
-            background: var(--danger-bg);
-            color: var(--danger);
-        }
-        .pill.adjustment {
+        .pill.in-progress {
             background: var(--warning-bg);
             color: var(--warning);
         }
+
+        .pay-period-nav {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+            margin-bottom: 18px;
+            scrollbar-width: thin;
+        }
+        .period-tab {
+            flex: none;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            color: var(--muted);
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 9px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background .15s ease, color .15s ease, border-color .15s ease;
+            white-space: nowrap;
+        }
+        .period-tab:hover {
+            background: var(--surface);
+            border-color: var(--primary-light);
+        }
+        .period-tab.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .pay-status-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .pay-status-row h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .pay-summary-grid {
+            grid-template-columns: repeat(3, 1fr);
+            margin-bottom: 18px;
+        }
+        .pay-summary-grid .kpi-card.pay-highlight {
+            border-color: var(--primary-light);
+        }
+        .pay-summary-grid .kpi-icon.icon-success {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+        .pay-summary-grid .kpi-icon.icon-danger {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+        .pay-summary-grid h2.text-success {
+            color: var(--success);
+        }
+        .pay-summary-grid h2.text-danger {
+            color: var(--danger);
+        }
+
+        .pay-progress-card {
+            background: var(--surface);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-card);
+            padding: 18px 20px;
+            margin-bottom: 22px;
+        }
+        .pay-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 10px;
+        }
+        .pay-progress-header span {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .03em;
+        }
+        .pay-progress-header strong {
+            font-family: "Lexend", "Inter", sans-serif;
+            font-size: 20px;
+        }
+        .pay-progress-track {
+            background: var(--border-soft);
+            border-radius: 20px;
+            height: 10px;
+            overflow: hidden;
+        }
+        .pay-progress-fill {
+            height: 100%;
+            border-radius: 20px;
+            background: var(--primary);
+            transition: width .4s ease;
+        }
+        .pay-progress-fill.is-complete {
+            background: var(--success);
+        }
+        .pay-progress-sub {
+            margin-top: 8px;
+            font-size: 12.5px;
+            color: var(--muted);
+        }
+
+        .pay-history-section h3 {
+            margin: 0 0 2px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .pay-history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .pay-history-table th {
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            color: var(--faint);
+            padding: 0 10px 10px;
+            border-bottom: 1px solid var(--border-soft);
+        }
+        .pay-history-table td {
+            padding: 13px 10px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border-soft);
+        }
+        .pay-history-table tr:last-child td {
+            border-bottom: none;
+        }
+        .pay-amount.is-payment {
+            color: var(--success);
+            font-weight: 700;
+        }
+        .pay-amount.is-refund {
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        .pay-history-cards {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .pay-history-card {
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            padding: 13px 15px;
+        }
+        .pay-history-card .pay-amount {
+            font-size: 16px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .pay-history-card .pay-card-meta {
+            color: var(--muted);
+            font-size: 12.5px;
+        }
+        .pay-history-card .pay-card-notes {
+            margin-top: 5px;
+            font-size: 12.5px;
+            color: var(--text);
+        }
+
+        .pay-empty {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .pay-empty i {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: var(--surface-2);
+            color: var(--faint);
+            display: grid;
+            place-items: center;
+            font-size: 20px;
+            margin: 0 auto 14px;
+        }
+        .pay-empty strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+        .pay-empty p {
+            margin: 0 auto;
+            max-width: 360px;
+            color: var(--faint);
+            font-size: 12.5px;
+            line-height: 1.6;
+        }
+
+        .pay-error {
+            background: var(--danger-bg);
+            color: var(--danger);
+            border-radius: 12px;
+            padding: 16px 18px;
+            font-size: 13px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .pay-skeleton {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .pay-skel-tabs {
+            display: flex;
+            gap: 8px;
+        }
+        .pay-skel-block {
+            display: block;
+            background: linear-gradient(90deg, var(--surface-2) 25%, var(--border-soft) 37%, var(--surface-2) 63%);
+            background-size: 400% 100%;
+            border-radius: var(--radius-md);
+            animation: pay-skel-pulse 1.4s ease infinite;
+        }
+        @keyframes pay-skel-pulse {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0 50%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .pay-skel-block { animation: none; }
+        }
+
+        @media(max-width:900px) {
+            .pay-summary-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media(max-width:640px) {
+            .pay-summary-grid { grid-template-columns: 1fr; }
+            .pay-history-table { display: none; }
+            .pay-history-cards { display: flex; }
+        }
+
 
         /* ===== Modal (matches Totdashboard.html/masterDashborad.html) ===== */
         .modal-overlay {
@@ -2910,14 +3146,30 @@
             <section class="dash-section" id="section-payments" data-title="Payments" data-eyebrow="Finance">
                 <section class="system-card">
                     <div class="card-title">
-                        <div class="card-title-left"><i class="fa fa-money-bill"></i>
+                        <div class="card-title-left"><i class="fa fa-sack-dollar"></i>
                             <h2>Payments</h2>
                         </div>
                     </div>
+                    <p class="card-subtitle">Track your training fees, payments, and remaining balance.</p>
                     <div class="readonly-banner"><i class="fa fa-eye"></i><span>View only &mdash; payments are recorded exclusively by the Admin. Your supervisor has no access to this information.</span></div>
-                    <p class="hint" style="margin:0 0 16px;">Your 4-year program is billed as four independent yearly periods &mdash; each year has its own total fee, ledger, and completion status. Nothing here mixes across years.</p>
-                    <div id="yearCardsWrap">
-                        <div class="empty-state">Loading...</div>
+                    <div id="paymentsWrap">
+                        <div class="pay-skeleton" aria-hidden="true">
+                            <div class="pay-skel-tabs">
+                                <span class="pay-skel-block" style="width:76px;height:34px;"></span>
+                                <span class="pay-skel-block" style="width:76px;height:34px;"></span>
+                                <span class="pay-skel-block" style="width:76px;height:34px;"></span>
+                            </div>
+                            <div class="kpi-grid pay-summary-grid">
+                                <span class="pay-skel-block" style="height:92px;"></span>
+                                <span class="pay-skel-block" style="height:92px;"></span>
+                                <span class="pay-skel-block" style="height:92px;"></span>
+                                <span class="pay-skel-block" style="height:92px;"></span>
+                                <span class="pay-skel-block" style="height:92px;"></span>
+                                <span class="pay-skel-block" style="height:92px;"></span>
+                            </div>
+                            <span class="pay-skel-block" style="height:76px;"></span>
+                            <span class="pay-skel-block" style="height:140px;"></span>
+                        </div>
                     </div>
                 </section>
             </section>
@@ -4550,18 +4802,16 @@ async function loadAnnouncements() {
     .join("");
 }
 
-// ---- Payments (read-only, single Select, no cards) -----------------------
-// The 4-year program is still billed as four independent fee periods (own
-// total fee/discount/status each) -- that business model is unchanged.
-// The whole view is driven by one Select: its options are every recorded
-// payment (most recent first) plus, for any of the 4 years with no
-// payment yet, a single placeholder entry for that year -- so all 4 years
-// stay reachable without a second control. Whichever option is picked
-// shows that payment's (or year's) details as plain rows below it.
+// ---- Payments (Trainee, read-only) ---------------------------------------
+// Every training year is its own independent fee period -- own total fee,
+// discount, ledger, and completion status. Choosing a period tab shows
+// ONLY that year's numbers and complete payment history; nothing ever
+// mixes across years. The program can have any number of periods -- the
+// tabs and everything below them render dynamically from however many
+// the API returns, nothing here is hard-coded to a fixed count.
 
-let paymentAllTransactions = [];
-let currentPaymentYears = [];
-let selectedPaymentRecordValue = null;
+let paymentYears = [];
+let selectedPayYear = null;
 
 /** `dateStr` is a plain "YYYY-MM-DD" string (the DB connection uses
  * dateStrings:true) -- splitting it directly, rather than routing it
@@ -4589,105 +4839,182 @@ function formatPaymentTime(createdAt) {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-function pillClassForTransactionType(type) {
-  if (type === "payment") return "paid";
-  if (type === "refund") return "refund";
-  return "adjustment";
-}
-
-/** Which program year (1-4) the current Select value belongs to, or null if there are none at all. */
-function currentPaymentRecordYear() {
-  if (!selectedPaymentRecordValue) return null;
-  if (String(selectedPaymentRecordValue).startsWith("year-")) return Number(String(selectedPaymentRecordValue).slice(5));
-  const t = paymentAllTransactions.find((tx) => tx.id === Number(selectedPaymentRecordValue));
-  return t ? t.trainingYear : null;
-}
-
-function renderPaymentRecordSelect() {
-  const sorted = [...paymentAllTransactions].sort((a, b) =>
-    a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1
-  );
-  const yearsWithPayments = new Set(sorted.map((t) => t.trainingYear));
-  const placeholderYears = currentPaymentYears.filter((y) => !yearsWithPayments.has(y.trainingYear)).map((y) => y.trainingYear);
-
-  const select = document.getElementById("paymentRecordSelect");
-  const optionsHtml =
-    sorted
-      .map(
-        (t) =>
-          `<option value="${t.id}">${formatPaymentDate(t.date)} \u2014 ${formatMoney(t.amount)} (Year ${t.trainingYear}${
-            t.transactionType === "refund" ? ", refund" : ""
-          })</option>`
-      )
-      .join("") +
-    placeholderYears.map((y) => `<option value="year-${y}">Year ${y} \u2014 no payments recorded yet</option>`).join("");
-
-  select.innerHTML = optionsHtml || '<option value="">No payment periods available</option>';
-
-  const validValues = [...sorted.map((t) => String(t.id)), ...placeholderYears.map((y) => `year-${y}`)];
-  if (!validValues.includes(String(selectedPaymentRecordValue))) {
-    selectedPaymentRecordValue = validValues[0] || null;
-  }
-  if (selectedPaymentRecordValue) select.value = selectedPaymentRecordValue;
-  renderPaymentRecordDetails();
-}
-
-function selectPaymentRecord(value) {
-  selectedPaymentRecordValue = value || null;
-  renderPaymentRecordDetails();
-}
-
-function renderPaymentRecordDetails() {
-  const wrap = document.getElementById("paymentRecordDetails");
-  const year = currentPaymentRecordYear();
-  const yearEntry = year ? currentPaymentYears.find((y) => y.trainingYear === year) : null;
-  const s = yearEntry ? yearEntry.summary : null;
-
-  if (!year || !s) {
-    wrap.innerHTML = '<p class="empty-state">No payment periods available.</p>';
-    return;
-  }
-
-  const isPlaceholder = String(selectedPaymentRecordValue).startsWith("year-");
-  const t = isPlaceholder ? null : paymentAllTransactions.find((tx) => tx.id === Number(selectedPaymentRecordValue));
-  const dailyRate = s.totalFee / 365;
-
-  const transactionRows = t
-    ? `
-    <div class="payment-detail-row"><span>${t.transactionType === "refund" ? "Amount Refunded" : "Amount Paid"}</span><strong>${formatMoney(t.amount)}</strong></div>
-    <div class="payment-detail-row"><span>Payment date</span><strong>${formatPaymentDate(t.date)} at ${formatPaymentTime(t.createdAt)}</strong></div>
-    <div class="payment-detail-row"><span>Type</span><strong><span class="pill ${pillClassForTransactionType(t.transactionType)}">${escapeHtml(t.transactionType)}</span></strong></div>
-    <div class="payment-detail-row"><span>Method</span><strong>${escapeHtml(t.method || "\u2014")}</strong></div>
-    <div class="payment-detail-row"><span>Reference / Notes</span><strong>${t.invoiceId ? "Invoice #" + t.invoiceId : escapeHtml(t.notes || "\u2014")}</strong></div>`
-    : `<div class="payment-detail-row"><span>Payments</span><strong>No payments recorded for Year ${year} yet</strong></div>`;
-
-  wrap.innerHTML = `
-    ${transactionRows}
-    <div class="payment-detail-row"><span>Daily Rate (Year ${year})</span><strong>${formatMoney(dailyRate)}/day</strong></div>
-    <div class="payment-detail-row"><span>Remaining (Year ${year})</span><strong>${formatMoney(s.remaining)}</strong></div>
-    <div class="payment-detail-row"><span>Payment Status</span><strong><span class="pill ${s.status || "unpaid"}">${escapeHtml(s.status || "unpaid")}</span></strong></div>
-    <div class="payment-detail-row"><span>Next Due</span><strong>${s.nextDueDate ? formatPaymentDate(s.nextDueDate) : "\u2014"}</strong></div>
-    <div class="payment-detail-row"><span>Plan / Duration</span><strong>4 Years</strong></div>
-  `;
+/** "Not Started" / "In Progress" / "Completed" -- a display-only label.
+ * "Completed" always follows the Admin's own periodStatus flag; it is
+ * never guessed from the balance (a year can be marked complete before
+ * or after it's fully paid, that's the Admin's call). */
+function payPeriodStage(entry) {
+  if (entry.periodStatus === "completed") return { label: "Completed", pill: "completed" };
+  if (entry.summary.paid > 0) return { label: "In Progress", pill: "in-progress" };
+  return { label: "Not Started", pill: "not-started" };
 }
 
 async function loadPayments() {
-  const wrap = document.getElementById("yearCardsWrap");
+  const wrap = document.getElementById("paymentsWrap");
   const data = await apiRequest("/profile/payments");
   if (!data) {
-    wrap.innerHTML = '<div class="empty-state">Couldn\'t load payment info.</div>';
+    wrap.innerHTML = `
+      <div class="pay-error"><i class="fa fa-triangle-exclamation"></i>
+        <div><strong>Unable to load payment information</strong><br>Please try again later.</div>
+      </div>`;
     return;
   }
-  currentPaymentYears = data.years;
-  paymentAllTransactions = data.years.flatMap((y) => y.transactions.map((t) => ({ ...t, trainingYear: y.trainingYear })));
-  selectedPaymentRecordValue = null;
+
+  paymentYears = data.years || [];
+  if (!paymentYears.some((y) => y.trainingYear === selectedPayYear)) {
+    selectedPayYear =
+      data.activeYear && paymentYears.some((y) => y.trainingYear === data.activeYear)
+        ? data.activeYear
+        : paymentYears[0]
+        ? paymentYears[0].trainingYear
+        : null;
+  }
 
   wrap.innerHTML = `
-    <label style="margin-top:0;">Select payment period</label>
-    <select id="paymentRecordSelect" onchange="selectPaymentRecord(this.value)"></select>
-    <div id="paymentRecordDetails"></div>`;
+    <div class="pay-period-nav" id="payPeriodNav"></div>
+    <div class="pay-status-row" id="payStatusRow"></div>
+    <div class="kpi-grid pay-summary-grid" id="paySummaryGrid"></div>
+    <div class="pay-progress-card" id="payProgressCard"></div>
+    <div class="pay-history-section" id="payHistorySection"></div>`;
 
-  renderPaymentRecordSelect();
+  renderPaymentPeriodNav();
+}
+
+function renderPaymentPeriodNav() {
+  const nav = document.getElementById("payPeriodNav");
+  nav.style.display = paymentYears.length ? "" : "none";
+  nav.innerHTML = paymentYears
+    .map(
+      (entry) =>
+        `<button type="button" class="period-tab ${entry.trainingYear === selectedPayYear ? "active" : ""}" onclick="selectPaymentYear(${entry.trainingYear})">Year ${entry.trainingYear}</button>`
+    )
+    .join("");
+  renderSelectedYearPayments();
+}
+
+function selectPaymentYear(year) {
+  selectedPayYear = year;
+  renderPaymentPeriodNav();
+}
+
+function renderSelectedYearPayments() {
+  const entry = paymentYears.find((y) => y.trainingYear === selectedPayYear);
+  const statusRow = document.getElementById("payStatusRow");
+  const summaryGrid = document.getElementById("paySummaryGrid");
+  const progressCard = document.getElementById("payProgressCard");
+  const historySection = document.getElementById("payHistorySection");
+
+  if (!entry) {
+    statusRow.innerHTML = "";
+    summaryGrid.innerHTML = "";
+    progressCard.innerHTML = "";
+    historySection.innerHTML = `
+      <div class="pay-empty">
+        <i class="fa fa-receipt"></i>
+        <strong>No payment periods yet</strong>
+        <p>Your training fee periods will appear here once the Admin sets them up.</p>
+      </div>`;
+    return;
+  }
+
+  const s = entry.summary;
+  const netFee = Math.max((s.totalFee || 0) - (s.discount || 0), 0);
+  const stage = payPeriodStage(entry);
+
+  statusRow.innerHTML = `<h3>Year ${entry.trainingYear}</h3><span class="pill ${stage.pill}">${stage.label}</span>`;
+
+  summaryGrid.innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-file-invoice-dollar"></i></div></div>
+      <label>Total Fee</label>
+      <h2>${formatMoney(s.totalFee)}</h2>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-tag"></i></div></div>
+      <label>Discount</label>
+      <h2>${formatMoney(s.discount || 0)}</h2>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-calculator"></i></div></div>
+      <label>Net Fee</label>
+      <h2>${formatMoney(netFee)}</h2>
+    </div>
+    <div class="kpi-card pay-highlight">
+      <div class="kpi-top"><div class="kpi-icon icon-success"><i class="fa fa-circle-check"></i></div></div>
+      <label>Total Paid</label>
+      <h2 class="text-success">${formatMoney(s.paid)}</h2>
+    </div>
+    <div class="kpi-card pay-highlight">
+      <div class="kpi-top"><div class="kpi-icon icon-danger"><i class="fa fa-hourglass-half"></i></div></div>
+      <label>Remaining Balance</label>
+      <h2 class="text-danger">${formatMoney(s.remaining)}</h2>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-calendar-days"></i></div></div>
+      <label>Next Due Date</label>
+      <h2 style="font-size:17px;">${s.nextDueDate ? formatPaymentDate(s.nextDueDate) : "\u2014"}</h2>
+    </div>`;
+
+  const pct = netFee > 0 ? Math.max(0, Math.min(100, Math.round((s.paid / netFee) * 100))) : 0;
+  progressCard.innerHTML = `
+    <div class="pay-progress-header"><span>Payment Progress</span><strong>${pct}%</strong></div>
+    <div class="pay-progress-track"><div class="pay-progress-fill ${pct >= 100 ? "is-complete" : ""}" style="width:${pct}%;"></div></div>
+    <div class="pay-progress-sub">${formatMoney(s.paid)} paid of ${formatMoney(netFee)}</div>`;
+
+  // COMPLETE history for this year -- every transaction, not just the latest.
+  const transactions = [...entry.transactions].sort((a, b) =>
+    a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1
+  );
+
+  if (!transactions.length) {
+    historySection.innerHTML = `
+      <h3>Payment History</h3>
+      <p class="card-subtitle">Payment records for Year ${entry.trainingYear}</p>
+      <div class="pay-empty">
+        <i class="fa fa-receipt"></i>
+        <strong>No payments recorded yet</strong>
+        <p>Your payment history for this training period will appear here once a payment has been recorded by the Admin.</p>
+      </div>`;
+    return;
+  }
+
+  const rowsHtml = (t) => {
+    const isRefund = t.transactionType === "refund";
+    const amount = `<span class="pay-amount ${isRefund ? "is-refund" : "is-payment"}">${isRefund ? "&minus;" : ""}${formatMoney(t.amount)}</span>`;
+    const meta = `${formatPaymentDate(t.date)} &middot; ${formatPaymentTime(t.createdAt)}`;
+    const notes = t.invoiceId ? "Invoice #" + t.invoiceId : t.notes ? escapeHtml(t.notes) : "\u2014";
+    return { amount, meta, method: t.method ? escapeHtml(t.method) : "\u2014", notes };
+  };
+
+  const rows = transactions
+    .map((t) => {
+      const r = rowsHtml(t);
+      return `<tr><td>${r.amount}</td><td>${r.meta}</td><td>${r.method}</td><td>${r.notes}</td></tr>`;
+    })
+    .join("");
+
+  const cards = transactions
+    .map((t) => {
+      const r = rowsHtml(t);
+      return `
+      <div class="pay-history-card">
+        ${r.amount}
+        <div class="pay-card-meta">${r.meta}${t.method ? " &middot; " + r.method : ""}</div>
+        ${r.notes !== "\u2014" ? `<div class="pay-card-notes">${r.notes}</div>` : ""}
+      </div>`;
+    })
+    .join("");
+
+  historySection.innerHTML = `
+    <h3>Payment History</h3>
+    <p class="card-subtitle">Payment records for Year ${entry.trainingYear} (${transactions.length})</p>
+    <div style="overflow-x:auto;">
+      <table class="pay-history-table">
+        <thead><tr><th>Amount</th><th>Date</th><th>Method</th><th>Reference / Notes</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="pay-history-cards">${cards}</div>`;
 }
 
 // ---- Calendar -----------------------------------------------------------
