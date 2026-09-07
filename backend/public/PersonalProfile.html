@@ -926,6 +926,7 @@
         
         .pill.excused,
         .pill.pending,
+        .pill.returned,
         .pill.partial {
             background: var(--warning-bg);
             color: var(--warning);
@@ -2840,9 +2841,9 @@
                     </div>
                     <div class="form-grid">
                         <div><label>Full name</label><input id="name" class="profile-editable-field" disabled></div>
-                        <div><label>Sex</label><select id="gender" class="profile-editable-field" disabled><option value="">&mdash;</option><option>Female</option><option>Male</option></select></div>
+                        <div><label>Sex</label><select id="gender" class="profile-editable-field" disabled><option value="">&mdash;</option><option>Female</option><option>Male</option><option>Other</option></select></div>
                         <div><label>Date of birth</label><input type="date" id="dateOfBirth" class="profile-editable-field" disabled></div>
-                        <div><label>Marital status</label><select id="maritalStatus" class="profile-editable-field" disabled><option value="">&mdash;</option><option>Single</option><option>Married</option></select></div>
+                        <div><label>Marital status</label><select id="maritalStatus" class="profile-editable-field" disabled><option value="">&mdash;</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option></select></div>
                         <div><label>Phone</label><input id="phone" placeholder="+961" class="profile-editable-field" disabled></div>
                         <div><label>Email</label><input type="email" id="email" class="profile-editable-field" disabled></div>
                         <div class="full"><label>Address</label><input id="address" class="profile-editable-field" disabled></div>
@@ -2881,10 +2882,10 @@
                         <div class="card-title-left"><i class="fa fa-lock"></i>
                             <h2>Health &amp; emergency information</h2>
                         </div>
-                        <span class="restricted-tag">Restricted</span>
+                        <span class="restricted-tag">Private</span>
                     </div>
                     <div class="warning-box"><i class="fa fa-shield-halved"></i>
-                        <p>Only authorized medical/program staff can access this information.</p>
+                        <p>Visible to Administration only.</p>
                     </div>
                     <div class="form-grid">
                         <div class="full"><label>Medical conditions</label><textarea id="medicalConditions"></textarea></div>
@@ -2893,7 +2894,7 @@
                         <div><label>Phone number</label><input id="emergencyPhone"></div>
                         <div><label>Alternate phone number</label><input id="emergencyPhone2"></div>
                     </div>
-                    <label class="consent-row"><input type="checkbox" id="healthConsent">I understand why this information is collected and who can access it.</label>
+                    <label class="consent-row"><input type="checkbox" id="healthConsent">I understand why this information is collected.</label>
                 </section>
 
                 <div class="profile-edit-actions" id="profileSaveActions" style="display:none;">
@@ -2913,7 +2914,7 @@
                             <h2>Calendar</h2>
                         </div>
                     </div>
-                    <div class="readonly-banner"><i class="fa fa-eye"></i><span>View only &mdash; sessions and meetings are scheduled by your supervisor.</span></div>
+                    <div class="readonly-banner"><i class="fa fa-eye"></i><span>View only &mdash; sessions and meetings are scheduled by Trainers and Supervisors.</span></div>
                     <div class="cal-topbar">
                         <h3 class="cal-title" id="calTitle">&mdash;</h3>
                         <div class="cal-nav">
@@ -2939,7 +2940,6 @@
                     <p class="card-subtitle">Shared by your supervisor(s). Downloads only &mdash; you can't edit or remove these.</p>
                     <div class="toolbar">
                         <input type="text" id="materialsSearch" placeholder="Search materials..." oninput="onMaterialsControlsChanged()">
-                        <select id="materialsSupFilter" onchange="loadMaterials()"><option value="">All supervisors</option></select>
                         <select id="materialsSort" onchange="onMaterialsControlsChanged()">
                             <option value="newest">Newest first</option>
                             <option value="oldest">Oldest first</option>
@@ -2977,11 +2977,11 @@
                     </div>
                     <div class="toolbar">
                         <input type="text" id="assignmentsSearch" placeholder="Search by title...">
-                        <select id="assignmentsSupFilter"><option value="">All supervisors</option></select>
                         <select id="assignmentsStatusFilter">
                             <option value="">All statuses</option>
                             <option value="pending">New</option>
                             <option value="submitted">Submitted</option>
+                            <option value="returned">For Editing</option>
                             <option value="overdue">Late</option>
                             <option value="graded">Graded</option>
                             <option value="completed">Completed</option>
@@ -3028,7 +3028,6 @@
 <option value="note">Notes</option>
 <option value="evaluation">Evaluations</option>
 </select>
-                        <select id="sessionsSupFilter" onchange="loadSessions()"><option value="">All supervisors</option></select>
                     </div>
                     <ul class="record-list" id="sessionsList">
                         <li class="empty-state">Loading...</li>
@@ -3046,7 +3045,6 @@
                             <h2>Online meetings</h2>
                         </div>
                     </div>
-                    <div class="toolbar"><select id="meetingsSupFilter" onchange="loadMeetings()"><option value="">All supervisors</option></select></div>
                     <div id="meetingsList">
                         <div class="empty-state">Loading meetings...</div>
                     </div>
@@ -3119,8 +3117,7 @@
                             <h2>Documents</h2>
                         </div>
                     </div>
-                    <p class="card-subtitle">Files your supervisor has shared with you.</p>
-                    <div class="toolbar"><select id="docsSupFilter" onchange="loadDocuments()"><option value="">All supervisors</option></select></div>
+                    <p class="card-subtitle">Documents shared with you.</p>
                     <ul class="doc-list" id="docsList">
                         <li class="empty-state">Loading...</li>
                     </ul>
@@ -3137,7 +3134,6 @@
                             <h2>Announcements</h2>
                         </div>
                     </div>
-                    <div class="toolbar"><select id="announcementsSupFilter" onchange="loadAnnouncements()"><option value="">All supervisors</option></select></div>
                     <ul class="record-list" id="announcementsList">
                         <li class="empty-state">Loading...</li>
                     </ul>
@@ -3372,7 +3368,16 @@
 
         function setValue(id, value) {
             const el = document.getElementById(id);
-            if (el) el.value = nc(value, "");
+            if (!el) return;
+            const v = nc(value, "");
+            // For a <select>, a stored value that doesn't match any hardcoded
+            // <option> would otherwise silently blank the field (looks broken
+            // even though the data is fine) -- inject it as a fallback option
+            // so whatever is actually on file always displays.
+            if (el.tagName === "SELECT" && v && !Array.from(el.options).some((o) => o.value === v)) {
+                el.appendChild(new Option(v, v));
+            }
+            el.value = v;
         }
 
         function setText(id, value) {
@@ -3471,7 +3476,6 @@
 
         document.addEventListener("DOMContentLoaded", async() => {
             await loadProfile();
-            populateSupervisorFilters();
             loadNotificationPrefs();
             loadNotifUnreadCount();
             notifPollTimer = setInterval(loadNotifUnreadCount, 60000);
@@ -3952,27 +3956,9 @@
 
         // ---- Learning materials (read-only) ------------------------------------
 
-        // ---- Per-supervisor filtering (shared across Materials/Assignments/
-        // Sessions/Meetings/Documents/Announcements) --------------------------
-
-        function supFilterQuery(selectId) {
-            const el = document.getElementById(selectId);
-            const val = el ? el.value : "";
-            return val ? `?supervisorId=${encodeURIComponent(val)}` : "";
-        }
-
-        function populateSupervisorFilters() {
-            const supervisors = (currentProfile && currentProfile.supervisors) || [];
-            const ids = ["materialsSupFilter", "assignmentsSupFilter", "sessionsSupFilter", "meetingsSupFilter", "docsSupFilter", "announcementsSupFilter"];
-            ids.forEach((id) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                const current = el.value;
-                el.innerHTML = '<option value="">All supervisors</option>' +
-                    supervisors.map((s) => `<option value="${s.id}">${escapeHtml(s.full_name)}</option>`).join("");
-                if (current) el.value = current;
-            });
-        }
+        // Sender/sharer/creator/organizer are always shown inline from real
+        // data (Sent by / Shared by / logged by / trainerName) -- the trainee
+        // never has to pick a person to filter these feeds by.
 
 // ---- Learning materials: compact searchable/filterable/sortable list ----
 // (replaces the old large-card grid -- see .material-row/.type-pill CSS).
@@ -3999,7 +3985,7 @@ function materialGroupOf(m) {
 }
 
 async function loadMaterials() {
-    const data = await apiRequest("/profile/materials-feed" + supFilterQuery("materialsSupFilter"));
+    const data = await apiRequest("/profile/materials-feed");
     if (!data) return;
     materialsRaw = data.materials;
     materialsTypeFilter = "all";
@@ -4103,7 +4089,7 @@ function materialRowHtml(m) {
       <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
       <div class="mrow-body">
         <div class="mrow-title">${escapeHtml(m.title)}</div>
-        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; Shared by ${escapeHtml(m.supervisorName)}${dateStr ? " &middot; " + dateStr : ""}</div>
+        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; ${m.isGroupShared ? "Shared with your group" : "Shared with you"} &middot; Shared by ${escapeHtml(m.supervisorName)}${dateStr ? " &middot; " + dateStr : ""} &middot; Access: Read &amp; Download</div>
       </div>
       <div class="mrow-actions">
         <button type="button" class="mrow-btn primary" onclick="openMaterialPreview(${m.id})"><i class="fa fa-eye"></i> Open</button>
@@ -4140,7 +4126,7 @@ async function openMaterialPreview(id) {
     document.getElementById("matPreviewTitle").textContent = m.title;
     const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
     document.getElementById("matPreviewMeta").textContent =
-        `${capitalize(m.materialType)} · Shared by ${m.supervisorName}${dateStr ? " · " + dateStr : ""}${m.description ? " — " + m.description : ""}`;
+        `${capitalize(m.materialType)} · ${m.isGroupShared ? "Shared with your group" : "Shared with you"} · Shared by ${m.supervisorName}${dateStr ? " · " + dateStr : ""}${m.description ? " — " + m.description : ""}`;
 
     const body = document.getElementById("matPreviewBody");
     const fileUrl = m.externalUrl || `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
@@ -4172,6 +4158,7 @@ let allAssignments = [];
 const ASSIGNMENT_STATUS_LABEL = {
   pending: "New",
   submitted: "Submitted",
+  returned: "For Editing",
   overdue: "Late",
   completed: "Completed",
   graded: "Graded",
@@ -4179,12 +4166,14 @@ const ASSIGNMENT_STATUS_LABEL = {
 const ASSIGNMENT_STATUS_PILL = {
   pending: "pending",
   submitted: "submitted",
+  returned: "returned",
   overdue: "overdue",
   completed: "completed",
   graded: "completed",
 };
 
 function assignmentDisplayStatus(a) {
+  if (a.submission && a.submission.status === "returned") return "returned";
   if (a.submission && a.submission.status === "graded") return "graded";
   return a.status || "pending";
 }
@@ -4195,31 +4184,17 @@ async function loadAssignments() {
   const data = await apiRequest("/profile/assignments");
   if (!data) return;
   allAssignments = data.assignments;
-
-  const supSel = document.getElementById("assignmentsSupFilter");
-  if (supSel) {
-    const current = supSel.value;
-    // Filtered by trainer NAME rather than id -- the API doesn't expose a
-    // trainerId on this shape, and a trainee's caseload is small enough
-    // (1-3 trainers) that a name collision is not a realistic concern here.
-    const names = Array.from(new Set(allAssignments.map((a) => a.trainerName))).sort();
-    supSel.innerHTML = `<option value="">All supervisors</option>` + names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
-    if (names.includes(current)) supSel.value = current;
-  }
-
   renderAssignments();
 }
 
 function renderAssignments() {
   const wrap = document.getElementById("assignmentsList");
   const search = (document.getElementById("assignmentsSearch").value || "").toLowerCase();
-  const supFilter = document.getElementById("assignmentsSupFilter").value;
   const statusFilter = document.getElementById("assignmentsStatusFilter").value;
   const sortBy = document.getElementById("assignmentsSort").value;
 
   let filtered = allAssignments.filter((a) => {
     if (search && !(a.title || "").toLowerCase().includes(search)) return false;
-    if (supFilter && a.trainerName !== supFilter) return false;
     if (statusFilter && assignmentDisplayStatus(a) !== statusFilter) return false;
     return true;
   });
@@ -4257,7 +4232,6 @@ function renderAssignments() {
 }
 
 document.getElementById("assignmentsSearch").addEventListener("input", renderAssignments);
-document.getElementById("assignmentsSupFilter").addEventListener("change", renderAssignments);
 document.getElementById("assignmentsStatusFilter").addEventListener("change", renderAssignments);
 document.getElementById("assignmentsSort").addEventListener("change", renderAssignments);
 
@@ -4305,7 +4279,7 @@ function openAssignmentDetail(id) {
             <h4><i class="fa fa-file-circle-check"></i> ${escapeHtml(s.originalName)}</h4>
             <div class="adeadline">Submitted ${new Date(s.submittedAt).toLocaleString()}</div>
           </div>
-          <span class="pill ${s.status === "graded" ? "completed" : "submitted"}">${escapeHtml((ASSIGNMENT_STATUS_LABEL[s.status] || s.status))}</span>
+          <span class="pill ${ASSIGNMENT_STATUS_PILL[s.status] || "submitted"}">${escapeHtml((ASSIGNMENT_STATUS_LABEL[s.status] || s.status))}</span>
         </div>
         ${s.notes ? `<div class="acontent">${escapeHtml(s.notes)}</div>` : ""}
         <a href="${UPLOADS}/submissions/${s.filename}${TOKEN_Q}" target="_blank" rel="noopener" style="font-size:12.5px;font-weight:600;color:var(--primary);text-decoration:none;">
@@ -4319,6 +4293,11 @@ function openAssignmentDetail(id) {
             <span style="font-size:22px;font-weight:700;">${s.score != null ? s.score : "&mdash;"}</span>
             ${a.maxScore ? `<span style="color:var(--muted);">/ ${a.maxScore}</span>` : ""}
           </div>
+          ${s.feedback ? `<div class="acontent">${escapeHtml(s.feedback)}</div>` : `<div class="empty-state">No written feedback.</div>`}
+        </div>` : ""}
+      ${s.status === "returned" ? `
+        <div class="assignment-detail-section">
+          <h5>Requested Changes</h5>
           ${s.feedback ? `<div class="acontent">${escapeHtml(s.feedback)}</div>` : `<div class="empty-state">No written feedback.</div>`}
         </div>` : ""}
     `;
@@ -4346,7 +4325,7 @@ function openAssignmentDetail(id) {
                 <h4><i class="fa fa-file"></i> ${escapeHtml(s.originalName)}</h4>
                 <div class="adeadline">Submitted ${new Date(s.submittedAt).toLocaleString()}</div>
               </div>
-              <span class="pill ${s.status === "graded" ? "completed" : "submitted"}">${escapeHtml((ASSIGNMENT_STATUS_LABEL[s.status] || s.status))}</span>
+              <span class="pill ${ASSIGNMENT_STATUS_PILL[s.status] || "submitted"}">${escapeHtml((ASSIGNMENT_STATUS_LABEL[s.status] || s.status))}</span>
             </div>
             ${s.notes ? `<div class="acontent">${escapeHtml(s.notes)}</div>` : ""}
             <a href="${UPLOADS}/submissions/${s.filename}${TOKEN_Q}" target="_blank" rel="noopener" style="font-size:12.5px;font-weight:600;color:var(--primary);text-decoration:none;">
@@ -4420,13 +4399,11 @@ async function loadSessions() {
 function renderSessions() {
   const search = (document.getElementById("sessionSearch").value || "").toLowerCase();
   const typeFilter = document.getElementById("sessionTypeFilter").value;
-  const supFilter = document.getElementById("sessionsSupFilter").value;
   const relevant = allRecords.filter((r) => r.recordType !== "assignment");
   const filtered = relevant.filter((r) => {
     const matchesSearch = (r.title || "").toLowerCase().includes(search) || recordLabel(r).toLowerCase().includes(search);
     const matchesType = !typeFilter || r.recordType === typeFilter;
-    const matchesSup = !supFilter || String(r.supervisorId) === supFilter;
-    return matchesSearch && matchesType && matchesSup;
+    return matchesSearch && matchesType;
   });
 
   const list = document.getElementById("sessionsList");
@@ -4437,7 +4414,10 @@ function renderSessions() {
     .map((r) => {
       const bits = [];
       if (r.date) bits.push(r.date + (r.time ? " " + r.time : ""));
-      if (r.durationMinutes) bits.push(r.durationMinutes + " min");
+      if (r.durationMinutes) {
+        const hours = r.durationMinutes / 60;
+        bits.push("Hours: " + (Number.isInteger(hours) ? hours : hours.toFixed(1)));
+      }
       if (r.score != null) bits.push("Score: " + r.score);
       if (r.status) bits.push(`<span class="pill ${r.status}">${escapeHtml(r.status)}</span>`);
       return `<li class="record-item">
@@ -4455,7 +4435,7 @@ document.getElementById("sessionTypeFilter").addEventListener("change", renderSe
 
 async function loadMeetings() {
   const wrap = document.getElementById("meetingsList");
-  const data = await apiRequest("/profile/meetings" + supFilterQuery("meetingsSupFilter"));
+  const data = await apiRequest("/profile/meetings");
   if (!data) {
     wrap.innerHTML = '<div class="empty-state">Couldn\'t load meetings.</div>';
     return;
@@ -4468,6 +4448,7 @@ async function loadMeetings() {
         <div class="mplatform"><i class="fa fa-video"></i> ${escapeHtml(PLATFORM_LABELS[m.platform] || m.platform)}</div>
         <h4>${escapeHtml(m.title)}</h4>
         <div class="mwhen">${m.scheduledAt ? new Date(m.scheduledAt).toLocaleString() : "No time set"}</div>
+        <div class="rmeta">Scheduled by: ${escapeHtml(m.supervisorName)}</div>
         <a class="mlink" href="${escapeHtml(m.meetingUrl)}" target="_blank" rel="noopener">Join meeting <i class="fa fa-arrow-up-right-from-square"></i></a>
       </div>
     `)
@@ -4822,30 +4803,70 @@ async function sendGcMessage() {
 
 // ---- Documents (read-only) ----------------------------------------------
 
+let documentsRaw = [];
+
 async function loadDocuments() {
-  const data = await apiRequest("/profile/documents" + supFilterQuery("docsSupFilter"));
+  const data = await apiRequest("/profile/documents");
   const list = document.getElementById("docsList");
   if (!data) return;
-  if (!data.documents.length) { list.innerHTML = '<li class="empty-state">No documents shared yet.</li>'; return; }
-  list.innerHTML = data.documents
+  documentsRaw = data.documents;
+  if (!documentsRaw.length) { list.innerHTML = '<li class="empty-state">No documents shared yet.</li>'; return; }
+  list.innerHTML = documentsRaw
     .map((d) => `<li class="doc-item">
-      <div><a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
-      <div class="rmeta" style="color:var(--faint);font-size:11px;margin-top:2px;">from ${escapeHtml(d.uploadedByName)}</div></div>
+      <div class="mrow-body">
+        <div class="mrow-title">${escapeHtml(d.originalName)}</div>
+        <div class="rmeta" style="color:var(--faint);font-size:11px;margin-top:2px;">Shared with you &middot; Shared by: ${escapeHtml(d.uploadedByName)}</div>
+      </div>
+      <div class="mrow-actions">
+        <button type="button" class="mrow-btn primary" onclick="openDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
+        <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+      </div>
     </li>`)
     .join("");
+}
+
+/** Same type-by-extension preview pattern as openMaterialPreview() (below),
+ *  applied to Documents -- which has no materialType field of its own, so
+ *  the file kind is inferred from its name instead. */
+function openDocumentPreview(id) {
+  const d = documentsRaw.find((x) => x.id === id);
+  if (!d) return;
+  const fileUrl = `${UPLOADS}/documents/${d.filename}${TOKEN_Q}`;
+  const name = d.originalName || d.filename || "";
+
+  document.getElementById("matPreviewTitle").textContent = name;
+  document.getElementById("matPreviewMeta").textContent = `Shared by ${d.uploadedByName}`;
+
+  const body = document.getElementById("matPreviewBody");
+  if (/\.(png|jpe?g|gif|webp|svg)$/i.test(name)) {
+    body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(name)}">`;
+  } else if (/\.(mp4|webm|mov)$/i.test(name)) {
+    body.innerHTML = `<video src="${escapeHtml(fileUrl)}" controls></video>`;
+  } else if (/\.pdf$/i.test(name)) {
+    body.innerHTML = `<iframe src="${escapeHtml(fileUrl)}"></iframe>`;
+  } else {
+    body.innerHTML = `
+      <div style="text-align:center;padding:30px 10px;">
+        <i class="fa fa-file" style="font-size:34px;color:var(--faint);margin-bottom:14px;display:block;"></i>
+        <a class="mrow-btn primary" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" download>
+          <i class="fa fa-download"></i> Download ${escapeHtml(name)}
+        </a>
+      </div>`;
+  }
+  openModal("materialPreviewModal");
 }
 
 // ---- Announcements (read-only) -------------------------------------------
 
 async function loadAnnouncements() {
-  const data = await apiRequest("/profile/announcements" + supFilterQuery("announcementsSupFilter"));
+  const data = await apiRequest("/profile/announcements");
   const list = document.getElementById("announcementsList");
   if (!data) return;
   if (!data.announcements.length) { list.innerHTML = '<li class="empty-state">No announcements yet.</li>'; return; }
   list.innerHTML = data.announcements
     .map((a) => `<li class="record-item">
       <strong>${escapeHtml(a.title)}</strong>
-      <div class="rmeta">${escapeHtml(a.supervisorName)} \u00b7 ${new Date(a.createdAt).toLocaleString()}</div>
+      <div class="rmeta">Sent by: ${escapeHtml(a.supervisorName)} \u00b7 ${new Date(a.createdAt).toLocaleString()}</div>
       <div class="rcontent">${escapeHtml(a.content)}</div>
     </li>`)
     .join("");

@@ -248,6 +248,12 @@ function toMaterial(row) {
     originalName: row.original_name,
     externalUrl: row.external_url,
     supervisorName: row.supervisor_name,
+    // NULL student_id means the supervisor shared it with their whole
+    // caseload rather than one trainee -- see learning_materials' schema
+    // comment. A trainee's own caseload/group is effectively the same set
+    // of people, so the frontend can safely label this "your group".
+    // (undefined, not just false, on any query that doesn't select student_id.)
+    isGroupShared: row.student_id === undefined ? undefined : row.student_id === null,
     createdAt: row.created_at,
     // Best-effort link from an 'assignment'-tagged material to a real row in
     // the separate `assignments` table -- there is no actual foreign key

@@ -882,7 +882,8 @@ router.get(
       filter = "AND m.supervisor_id = ?";
     }
     const { rows } = await db.query(
-      `SELECT m.* FROM meetings m
+      `SELECT m.*, sup.full_name AS supervisor_name FROM meetings m
+       JOIN supervisors sup ON sup.id = m.supervisor_id
        WHERE m.supervisor_id IN (SELECT supervisor_id FROM supervisor_students WHERE student_id = ?)
          AND (m.student_id IS NULL OR m.student_id = ?)
          ${filter}
@@ -897,6 +898,7 @@ router.get(
         meetingUrl: r.meeting_url,
         scheduledAt: r.scheduled_at,
         durationMinutes: r.duration_minutes,
+        supervisorName: r.supervisor_name,
       })),
     });
   })
