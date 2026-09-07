@@ -176,8 +176,9 @@ router.get(
       `SELECT d.*, COALESCE(a.full_name, sup.full_name) AS uploaded_by_name FROM documents d
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE d.student_id = ? ORDER BY d.created_at DESC LIMIT 500`,
-      [studentId]
+       WHERE (d.student_id = ? OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?)))
+       ORDER BY d.created_at DESC LIMIT 500`,
+      [studentId, studentId]
     );
 
     res.json({
@@ -201,7 +202,7 @@ router.post(
     const student = await loadAssignedStudent(db, req.user.id, studentId, res);
     if (!student) return;
 
-    const { recordType, date, time, durationMinutes, status, attendanceStatus, title, content, score, hourTypeCode } = req.body || {};
+    const { recordType, date, time, durationMinutes, status, attendanceStatus, minutesCompleted, title, content, score, hourTypeCode } = req.body || {};
     if (!RECORD_TYPES.includes(recordType)) {
       return res.status(400).json({ error: `recordType must be one of: ${RECORD_TYPES.join(", ")}` });
     }
@@ -246,8 +247,11 @@ router.post(
         }
         const { rows: todayRows } = await db.query("SELECT CURDATE() AS today");
         const isFuture = date > todayRows[0].today;
-        if (!isFuture && !["present", "absent", "excused"].includes(attendanceStatus)) {
+        if (!isFuture && !["present", "absent", "excused", "partial"].includes(attendanceStatus)) {
           return res.status(400).json({ error: "attendanceStatus is required for a session dated today or earlier" });
+        }
+        if (attendanceStatus === "partial" && !(Number.isFinite(Number(minutesCompleted)) && Number(minutesCompleted) >= 0)) {
+          return res.status(400).json({ error: "minutesCompleted is required and must be a non-negative number when attendanceStatus is 'partial'" });
         }
         // Duplicate-submission guard (same student/type/date/duration
         // within the last 10 seconds) -- catches a double-click or a
@@ -274,9 +278,9 @@ router.post(
         insertedId = sessionInsert.insertId;
         if (!isFuture) {
           await db.query(
-            `INSERT INTO attendance (student_id, supervisor_id, session_id, attendance_date, status, recorded_by)
-             VALUES (?,?,?,?,?,?)`,
-            [studentId, req.user.id, insertedId, date, attendanceStatus, req.user.id]
+            `INSERT INTO attendance (student_id, supervisor_id, session_id, attendance_date, status, minutes_completed, recorded_by)
+             VALUES (?,?,?,?,?,?,?)`,
+            [studentId, req.user.id, insertedId, date, attendanceStatus, attendanceStatus === "partial" ? Number(minutesCompleted) : null, req.user.id]
           );
         }
         break;
@@ -405,7 +409,7 @@ router.put(
       return res.status(403).json({ error: "You can only edit records you created" });
     }
 
-    const { date, time, durationMinutes, status, title, content, score, attendanceStatus } = req.body || {};
+    const { date, time, durationMinutes, status, title, content, score, attendanceStatus, minutesCompleted } = req.body || {};
 
     if (recordType === "training_session" || recordType === "supervision_session" || recordType === "hour_session") {
       await db.query(
@@ -422,23 +426,28 @@ router.put(
       // above), so this upserts rather than assuming UPDATE will match a
       // row. Also flips the session's own lifecycle status to 'completed'
       // now that attendance -- and therefore its hours -- are known.
-      if (["present", "absent", "excused"].includes(attendanceStatus)) {
+      if (["present", "absent", "excused", "partial"].includes(attendanceStatus)) {
+        if (attendanceStatus === "partial" && !(Number.isFinite(Number(minutesCompleted)) && Number(minutesCompleted) >= 0)) {
+          return res.status(400).json({ error: "minutesCompleted is required and must be a non-negative number when attendanceStatus is 'partial'" });
+        }
+        const minutesToStore = attendanceStatus === "partial" ? Number(minutesCompleted) : null;
         const { rows: attRows } = await db.query("SELECT id FROM attendance WHERE session_id = ?", [recordId]);
         if (attRows.length) {
-          await db.query("UPDATE attendance SET status = ? WHERE session_id = ?", [attendanceStatus, recordId]);
+          await db.query("UPDATE attendance SET status = ?, minutes_completed = ? WHERE session_id = ?", [attendanceStatus, minutesToStore, recordId]);
         } else {
           await db.query(
-            `INSERT INTO attendance (student_id, supervisor_id, session_id, attendance_date, status, recorded_by)
-             VALUES (?, ?, ?, (SELECT session_date FROM sessions WHERE id = ?), ?, ?)`,
-            [existing.student_id, req.user.id, recordId, recordId, attendanceStatus, req.user.id]
+            `INSERT INTO attendance (student_id, supervisor_id, session_id, attendance_date, status, minutes_completed, recorded_by)
+             VALUES (?, ?, ?, (SELECT session_date FROM sessions WHERE id = ?), ?, ?, ?)`,
+            [existing.student_id, req.user.id, recordId, recordId, attendanceStatus, minutesToStore, req.user.id]
           );
         }
         await db.query("UPDATE sessions SET status = 'completed' WHERE id = ? AND status = 'scheduled'", [recordId]);
       }
     } else if (recordType === "attendance") {
       await db.query(
-        `UPDATE attendance SET attendance_date = COALESCE(?, attendance_date), status = COALESCE(?, status), notes = COALESCE(?, notes) WHERE id = ?`,
-        [date ?? null, status ?? null, content ?? null, recordId]
+        `UPDATE attendance SET attendance_date = COALESCE(?, attendance_date), status = COALESCE(?, status),
+          notes = COALESCE(?, notes), minutes_completed = COALESCE(?, minutes_completed) WHERE id = ?`,
+        [date ?? null, status ?? null, content ?? null, minutesCompleted ?? null, recordId]
       );
     } else if (recordType === "training_hours" || recordType === "supervision_hours") {
       const hours = durationMinutes != null ? Number(durationMinutes) / 60 : null;
@@ -989,6 +998,62 @@ router.put(
   })
 );
 
+// PUT /api/supervisor/assignments/:id/return  { feedback }
+// Sends the trainee's latest submission back for editing instead of
+// grading it -- 'returned' is already a legal assignment_submissions.status
+// value (see schema), this is just the first route that ever sets it.
+// assignments.status goes back to 'submitted' (not 'completed', not
+// 'pending') so assignmentRowToApi()'s existing overdue/submitted
+// derivation stays accurate; the Trainee UI already renders "For Editing"
+// whenever the latest submission's status is 'returned', regardless of
+// what the assignment's own top-level status says.
+router.put(
+  "/assignments/:id/return",
+  asyncRoute(async (req, res, db) => {
+    const assignmentId = Number(req.params.id);
+    const { rows: assignmentRows } = await db.query(
+      "SELECT * FROM assignments WHERE id = ? AND supervisor_id = ?",
+      [assignmentId, req.user.id]
+    );
+    if (!assignmentRows.length) return res.status(404).json({ error: "Assignment not found" });
+    const assignment = assignmentRows[0];
+
+    const { rows: submissionRows } = await db.query(
+      "SELECT id FROM assignment_submissions WHERE assignment_id = ? ORDER BY submitted_at DESC LIMIT 1",
+      [assignmentId]
+    );
+    if (!submissionRows.length) return res.status(409).json({ error: "This trainee hasn't submitted anything yet" });
+
+    const { feedback } = req.body || {};
+    if (!feedback || !feedback.trim()) {
+      return res.status(400).json({ error: "Feedback is required when returning an assignment for editing" });
+    }
+    await db.query(
+      `UPDATE assignment_submissions SET feedback = ?, graded_by = ?, graded_at = NOW(), status = 'returned' WHERE id = ?`,
+      [feedback, req.user.id, submissionRows[0].id]
+    );
+    await db.query("UPDATE assignments SET status = 'submitted', updated_at = NOW() WHERE id = ?", [assignmentId]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'assignment returned for editing', 'assignment_submissions', ?, ?)",
+      [req.user.id, submissionRows[0].id, JSON.stringify({ feedback })]
+    );
+    await createNotification(db, {
+      recipientId: assignment.student_id,
+      type: "assignment",
+      title: `Changes requested on your assignment: ${assignment.title}`,
+      body: feedback,
+      relatedEntityType: "assignment",
+      relatedEntityId: assignmentId,
+      email: {
+        template: "assignmentReturned",
+        data: { assignmentTitle: assignment.title, feedback },
+      },
+    });
+
+    res.json({ success: true });
+  })
+);
+
 // ---- Documents -----------------------------------------------------------
 
 router.post("/students/:studentId/documents", (req, res) => {
@@ -1010,10 +1075,24 @@ router.post("/students/:studentId/documents", (req, res) => {
     );
     if (!assigned.rows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
 
-    const insert = await pool.query(
-      `INSERT INTO documents (student_id, uploaded_by, filename, original_name) VALUES (?,?,?,?)`,
-      [studentId, req.user.id, req.file.filename, req.file.originalname]
-    );
+    // "Share with the whole group" resolves to that trainee's own group --
+    // there's no separate group picker, matching the "auto-determine, don't
+    // make the user select" convention used elsewhere on this page.
+    let insert;
+    if (req.body && (req.body.shareWithGroup === "1" || req.body.shareWithGroup === "true")) {
+      const { rows: stuRows } = await pool.query("SELECT group_id FROM students WHERE id = ?", [studentId]);
+      const groupId = stuRows[0] && stuRows[0].group_id;
+      if (!groupId) return res.status(400).json({ error: "This trainee has no group to share with" });
+      insert = await pool.query(
+        `INSERT INTO documents (student_id, group_id, uploaded_by, filename, original_name) VALUES (NULL,?,?,?,?)`,
+        [groupId, req.user.id, req.file.filename, req.file.originalname]
+      );
+    } else {
+      insert = await pool.query(
+        `INSERT INTO documents (student_id, uploaded_by, filename, original_name) VALUES (?,?,?,?)`,
+        [studentId, req.user.id, req.file.filename, req.file.originalname]
+      );
+    }
     const { rows } = await pool.query("SELECT * FROM documents WHERE id = ?", [insert.insertId]);
 
     res.status(201).json(toDocument({ ...rows[0], uploaded_by_name: req.user.member_code }));

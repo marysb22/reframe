@@ -2684,7 +2684,7 @@
                 </ul>
                 <div class="nav-label">Learning</div>
                 <ul>
-                    <li><a data-section="materials" href="#materials"><i class="fa fa-book-open"></i>Learning materials</a></li>
+                    <li><a data-section="materials" href="#materials"><i class="fa fa-book-open"></i>Learning Materials Library</a></li>
                     <li><a data-section="assignments" href="#assignments"><i class="fa fa-list-check"></i>Assignments</a></li>
                     <li><a data-section="sessions" href="#sessions"><i class="fa fa-chalkboard-user"></i>Sessions &amp; attendance</a></li>
                     <li><a data-section="meetings" href="#meetings"><i class="fa fa-video"></i>Meetings</a></li>
@@ -2692,7 +2692,6 @@
                 <div class="nav-label">Communication</div>
                 <ul>
                     <li><a data-section="chat" href="#chat"><i class="fa fa-comments"></i>Chat</a></li>
-                    <li><a data-section="documents" href="#documents"><i class="fa fa-folder-open"></i>Documents</a></li>
                     <li><a data-section="announcements" href="#announcements"><i class="fa fa-bullhorn"></i>Announcements</a></li>
                 </ul>
                 <div class="nav-label">Account</div>
@@ -2894,7 +2893,6 @@
                         <div><label>Phone number</label><input id="emergencyPhone"></div>
                         <div><label>Alternate phone number</label><input id="emergencyPhone2"></div>
                     </div>
-                    <label class="consent-row"><input type="checkbox" id="healthConsent">I understand why this information is collected.</label>
                 </section>
 
                 <div class="profile-edit-actions" id="profileSaveActions" style="display:none;">
@@ -2914,7 +2912,7 @@
                             <h2>Calendar</h2>
                         </div>
                     </div>
-                    <div class="readonly-banner"><i class="fa fa-eye"></i><span>View only &mdash; sessions and meetings are scheduled by Trainers and Supervisors.</span></div>
+                    <div class="readonly-banner"><i class="fa fa-eye"></i><span>Sessions and meetings are scheduled by Trainers and Supervisors.</span></div>
                     <div class="cal-topbar">
                         <h3 class="cal-title" id="calTitle">&mdash;</h3>
                         <div class="cal-nav">
@@ -2930,16 +2928,16 @@
             <!-- ============================================================= -->
             <!-- LEARNING MATERIALS                                             -->
             <!-- ============================================================= -->
-            <section class="dash-section" id="section-materials" data-title="Learning materials" data-eyebrow="Learning">
+            <section class="dash-section" id="section-materials" data-title="Learning Materials Library" data-eyebrow="Learning">
                 <section class="system-card">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-book-open"></i>
-                            <h2>Learning materials</h2>
+                            <h2>Learning Materials Library</h2>
                         </div>
                     </div>
-                    <p class="card-subtitle">Shared by your supervisor(s). Downloads only &mdash; you can't edit or remove these.</p>
+                    <p class="card-subtitle">Documents, resources and files shared with you. View here &mdash; you can't edit or remove these.</p>
                     <div class="toolbar">
-                        <input type="text" id="materialsSearch" placeholder="Search materials..." oninput="onMaterialsControlsChanged()">
+                        <input type="text" id="materialsSearch" placeholder="Search materials and documents..." oninput="onMaterialsControlsChanged()">
                         <select id="materialsSort" onchange="onMaterialsControlsChanged()">
                             <option value="newest">Newest first</option>
                             <option value="oldest">Oldest first</option>
@@ -3021,7 +3019,6 @@
                         <input type="text" id="sessionSearch" placeholder="Search by title...">
                         <select id="sessionTypeFilter">
 <option value="">All types</option>
-<option value="attendance">Attendance</option>
 <option value="training_session">Training sessions</option>
 <option value="supervision_session">Supervision sessions</option>
 <option value="hour_adjustment">Manual adjustments</option>
@@ -3104,23 +3101,6 @@
                             </div>
                         </div>
                     </div>
-                </section>
-            </section>
-
-            <!-- ============================================================= -->
-            <!-- DOCUMENTS                                                      -->
-            <!-- ============================================================= -->
-            <section class="dash-section" id="section-documents" data-title="Documents" data-eyebrow="Communication">
-                <section class="system-card">
-                    <div class="card-title">
-                        <div class="card-title-left"><i class="fa fa-folder-open"></i>
-                            <h2>Documents</h2>
-                        </div>
-                    </div>
-                    <p class="card-subtitle">Documents shared with you.</p>
-                    <ul class="doc-list" id="docsList">
-                        <li class="empty-state">Loading...</li>
-                    </ul>
                 </section>
             </section>
 
@@ -3401,17 +3381,16 @@
 
         const SECTION_IDS = [
             "dashboard", "profile", "calendar", "materials", "assignments", "sessions",
-            "meetings", "chat", "documents", "announcements", "payments", "settings",
+            "meetings", "chat", "announcements", "payments", "settings",
         ];
 
         const SECTION_LOADERS = {
             calendar: () => loadCalendar(),
-            materials: () => loadMaterials(),
+            materials: () => loadMaterials(), // also loads Documents -- see loadMaterials()
             assignments: () => loadAssignments(),
             sessions: () => loadSessions(),
             meetings: () => loadMeetings(),
             chat: () => loadChat(),
-            documents: () => loadDocuments(),
             announcements: () => loadAnnouncements(),
             payments: () => loadPayments(),
         };
@@ -3947,8 +3926,8 @@
             // edit mode active so the trainee doesn't lose what they typed.
         });
         // NOTE: the "Health & emergency information" fields (medicalConditions,
-        // emergencyName/Relationship/Phone, emergencyPhone2, healthConsent) are
-        // NOT included in the save payload above -- still UI-only. The
+        // emergencyName/Relationship/Phone, emergencyPhone2) are NOT included
+        // in the save payload above -- still UI-only. The
         // `student_health_info` table exists in the schema with columns for
         // medical_conditions/emergency_contact_name/relationship/phone but not
         // yet a second phone -- add an emergency_contact_phone_2 column plus a
@@ -3984,14 +3963,46 @@ function materialGroupOf(m) {
     return MATERIAL_TYPE_GROUPS[m.materialType] || "other";
 }
 
+// The Learning Materials Library combines two backend features (the
+// learning_materials table and the separate documents table) into one
+// visual list -- each stays its own table/route/permissions, this only
+// merges what the trainee sees. Document rows are reshaped to look like a
+// material row (materialType "document" already exists as a real material
+// type, so they share the same icon/group/pill) and flagged __isDocument so
+// preview/download know which upload folder to use.
 async function loadMaterials() {
-    const data = await apiRequest("/profile/materials-feed");
-    if (!data) return;
-    materialsRaw = data.materials;
+    const [matData, docData] = await Promise.all([
+        apiRequest("/profile/materials-feed"),
+        apiRequest("/profile/documents"),
+    ]);
+    const materials = (matData && matData.materials) || [];
+    documentsRaw = (docData && docData.documents) || [];
+    const documentRows = documentsRaw.map((d) => ({
+        id: `doc:${d.id}`,
+        __isDocument: true,
+        __documentId: d.id,
+        title: d.originalName,
+        description: null,
+        materialType: "document",
+        filename: d.filename,
+        originalName: d.originalName,
+        externalUrl: null,
+        supervisorName: d.uploadedByName,
+        isGroupShared: d.isGroupShared,
+        createdAt: d.createdAt,
+    }));
+    materialsRaw = materials.concat(documentRows);
     materialsTypeFilter = "all";
     materialsShownCount = MATERIALS_PAGE_SIZE;
     renderMaterialTypePills();
     applyMaterialsFilters();
+}
+
+function openLibraryItem(id) {
+    const m = materialsRaw.find((x) => String(x.id) === String(id));
+    if (!m) return;
+    if (m.__isDocument) { openDocumentPreview(m.__documentId); return; }
+    openMaterialPreview(m.id);
 }
 
 function renderMaterialTypePills() {
@@ -4082,7 +4093,9 @@ function renderMaterialRows(list, groupByType) {
 }
 
 function materialRowHtml(m) {
-    const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
+    const fileHref = m.__isDocument
+        ? `${UPLOADS}/documents/${m.filename}${TOKEN_Q}`
+        : (m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`);
     const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
     return `
     <div class="material-row">
@@ -4092,7 +4105,7 @@ function materialRowHtml(m) {
         <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; ${m.isGroupShared ? "Shared with your group" : "Shared with you"} &middot; Shared by ${escapeHtml(m.supervisorName)}${dateStr ? " &middot; " + dateStr : ""} &middot; Access: Read &amp; Download</div>
       </div>
       <div class="mrow-actions">
-        <button type="button" class="mrow-btn primary" onclick="openMaterialPreview(${m.id})"><i class="fa fa-eye"></i> Open</button>
+        <button type="button" class="mrow-btn primary" onclick="openLibraryItem('${m.id}')"><i class="fa fa-eye"></i> Open</button>
         <a class="mrow-btn" href="${fileHref}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
       </div>
     </div>`;
@@ -4299,6 +4312,10 @@ function openAssignmentDetail(id) {
         <div class="assignment-detail-section">
           <h5>Requested Changes</h5>
           ${s.feedback ? `<div class="acontent">${escapeHtml(s.feedback)}</div>` : `<div class="empty-state">No written feedback.</div>`}
+        </div>
+        <div class="submit-row">
+          <input type="file" id="submitFileDetail">
+          <button class="btn btn-sm" onclick="submitAssignmentDetail(${a.id})"><i class="fa fa-upload"></i> Resubmit</button>
         </div>` : ""}
     `;
   } else {
@@ -4396,10 +4413,22 @@ async function loadSessions() {
   renderSessions();
 }
 
+const ATTENDANCE_LABELS = { present: "Attended", absent: "Not Attended", partial: "Partially Attended", excused: "Excused" };
+const SESSION_RECORD_TYPES = ["training_session", "supervision_session", "hour_session"];
+
+function hoursText(minutes) {
+  const hours = (minutes || 0) / 60;
+  return "Hours: " + (Number.isInteger(hours) ? hours : hours.toFixed(1));
+}
+
 function renderSessions() {
   const search = (document.getElementById("sessionSearch").value || "").toLowerCase();
   const typeFilter = document.getElementById("sessionTypeFilter").value;
-  const relevant = allRecords.filter((r) => r.recordType !== "assignment");
+  // Standalone 'attendance' records are redundant now that every session
+  // row already carries its own real attendance status/hours below --
+  // supervisor.js no longer creates them at all (only pre-existing legacy
+  // rows could still have this record type).
+  const relevant = allRecords.filter((r) => r.recordType !== "assignment" && r.recordType !== "attendance");
   const filtered = relevant.filter((r) => {
     const matchesSearch = (r.title || "").toLowerCase().includes(search) || recordLabel(r).toLowerCase().includes(search);
     const matchesType = !typeFilter || r.recordType === typeFilter;
@@ -4414,12 +4443,26 @@ function renderSessions() {
     .map((r) => {
       const bits = [];
       if (r.date) bits.push(r.date + (r.time ? " " + r.time : ""));
-      if (r.durationMinutes) {
-        const hours = r.durationMinutes / 60;
-        bits.push("Hours: " + (Number.isInteger(hours) ? hours : hours.toFixed(1)));
+      const isSession = SESSION_RECORD_TYPES.includes(r.recordType);
+      if (isSession) {
+        // A session's own lifecycle status (scheduled/completed/cancelled)
+        // isn't attendance -- the real "did they attend, and for how long"
+        // answer lives on its linked attendance row instead.
+        if (r.attendanceStatus) {
+          const completedMinutes =
+            r.attendanceStatus === "present" ? r.durationMinutes :
+            r.attendanceStatus === "partial" ? r.attendanceMinutesCompleted :
+            0;
+          bits.push(`<span class="pill ${r.attendanceStatus}">${escapeHtml(ATTENDANCE_LABELS[r.attendanceStatus] || r.attendanceStatus)}</span>`);
+          bits.push(hoursText(completedMinutes));
+        } else {
+          bits.push(`<span class="pill scheduled">Not yet recorded</span>`);
+        }
+      } else {
+        if (r.durationMinutes) bits.push(hoursText(r.durationMinutes));
+        if (r.score != null) bits.push("Score: " + r.score);
+        if (r.status) bits.push(`<span class="pill ${r.status}">${escapeHtml(r.status)}</span>`);
       }
-      if (r.score != null) bits.push("Score: " + r.score);
-      if (r.status) bits.push(`<span class="pill ${r.status}">${escapeHtml(r.status)}</span>`);
       return `<li class="record-item">
         <strong>${recordLabel(r)}${r.title ? " \u00b7 " + escapeHtml(r.title) : ""}</strong>
         <div class="rmeta">${bits.join(" \u00b7 ")} \u00b7 logged by ${escapeHtml(r.supervisorName)}</div>
@@ -4802,28 +4845,10 @@ async function sendGcMessage() {
 }
 
 // ---- Documents (read-only) ----------------------------------------------
+// Fetched inline by loadMaterials() (above) as part of the combined
+// Learning Materials Library -- documentsRaw is populated there.
 
 let documentsRaw = [];
-
-async function loadDocuments() {
-  const data = await apiRequest("/profile/documents");
-  const list = document.getElementById("docsList");
-  if (!data) return;
-  documentsRaw = data.documents;
-  if (!documentsRaw.length) { list.innerHTML = '<li class="empty-state">No documents shared yet.</li>'; return; }
-  list.innerHTML = documentsRaw
-    .map((d) => `<li class="doc-item">
-      <div class="mrow-body">
-        <div class="mrow-title">${escapeHtml(d.originalName)}</div>
-        <div class="rmeta" style="color:var(--faint);font-size:11px;margin-top:2px;">Shared with you &middot; Shared by: ${escapeHtml(d.uploadedByName)}</div>
-      </div>
-      <div class="mrow-actions">
-        <button type="button" class="mrow-btn primary" onclick="openDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
-        <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
-      </div>
-    </li>`)
-    .join("");
-}
 
 /** Same type-by-extension preview pattern as openMaterialPreview() (below),
  *  applied to Documents -- which has no materialType field of its own, so

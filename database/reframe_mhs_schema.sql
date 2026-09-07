@@ -327,10 +327,11 @@ CREATE TABLE attendance (
   supervisor_id   BIGINT NOT NULL,
   session_id      BIGINT,                       -- optional link to a specific session
   attendance_date DATE NOT NULL,
-  status          VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'excused')),
+  status          VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'excused', 'partial')),
   notes           TEXT,
   recorded_by     BIGINT NOT NULL,
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  minutes_completed INT,                          -- only meaningful when status = 'partial'
   CONSTRAINT fk_attendance_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
   CONSTRAINT fk_attendance_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
   CONSTRAINT fk_attendance_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL,
@@ -536,13 +537,18 @@ CREATE TABLE videos (
 
 CREATE TABLE documents (
   id             BIGINT AUTO_INCREMENT PRIMARY KEY,
-  student_id     BIGINT NOT NULL,
+  student_id     BIGINT,                        -- NULL = shared with group_id instead of one trainee
+  group_id       BIGINT,                        -- NULL = shared with student_id instead of a whole group
   uploaded_by    BIGINT NOT NULL,
   document_type  VARCHAR(20) NOT NULL DEFAULT 'general' CHECK (document_type IN ('general', 'cv', 'certificate', 'assignment')),
   filename       VARCHAR(255) NOT NULL,
   original_name  VARCHAR(255) NOT NULL,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- Exactly one of student_id/group_id should be set -- enforced at the
+  -- application layer (not a CHECK: MySQL rejects a CHECK on a column that
+  -- also carries an ON DELETE SET NULL FK action).
   CONSTRAINT fk_documents_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_documents_group FOREIGN KEY (group_id) REFERENCES trainer_groups(id) ON DELETE SET NULL,
   CONSTRAINT fk_documents_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES user_credentials(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

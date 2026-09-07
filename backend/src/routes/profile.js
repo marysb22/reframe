@@ -471,8 +471,9 @@ router.get(
        JOIN user_credentials uc ON uc.id = d.uploaded_by
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE d.student_id = ? ${filter} ORDER BY d.created_at DESC LIMIT 500`,
-      params
+       WHERE (d.student_id = ? OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?)))
+         ${filter} ORDER BY d.created_at DESC LIMIT 500`,
+      [req.user.id, req.user.id, ...params.slice(1)]
     );
     res.json({ documents: rows.map(toDocument) });
   })

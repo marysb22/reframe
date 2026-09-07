@@ -116,6 +116,16 @@ const TEMPLATES = {
     return { subject: "Assignment Graded", text, html };
   },
 
+  assignmentReturned({ recipientName, assignmentTitle, feedback }) {
+    const { text, html } = wrap(recipientName, [
+      "Your assignment was reviewed and sent back for editing.",
+      "",
+      field("Assignment", assignmentTitle),
+      field("Requested changes", feedback),
+    ]);
+    return { subject: "Changes Requested on Your Assignment", text, html };
+  },
+
   // Deliberately does NOT use wrap() -- its "log in to view details" footer
   // doesn't apply to a pre-authentication email, and a reset code needs to
   // stand out visually rather than read like a routine activity notice.

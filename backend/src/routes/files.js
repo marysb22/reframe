@@ -82,12 +82,24 @@ const AUTHORIZERS = {
   },
 
   documents: async (user, filename) => {
-    const { rows } = await pool.query("SELECT student_id FROM documents WHERE filename = ?", [filename]);
+    const { rows } = await pool.query("SELECT student_id, group_id FROM documents WHERE filename = ?", [filename]);
     if (!rows.length) return false;
-    const studentId = rows[0].student_id;
+    const { student_id: studentId, group_id: groupId } = rows[0];
     if (user.role === "admin") return true;
-    if (user.role === "trainee") return Number(user.id) === studentId;
-    if (user.role === "supervisor") return isCaseloadMatch(user.id, studentId);
+    if (user.role === "trainee") {
+      // NULL student_id = shared with the whole group instead of one
+      // trainee -- authorized if this trainee actually belongs to it.
+      if (studentId) return Number(user.id) === studentId;
+      if (!groupId) return false;
+      const { rows: srows } = await pool.query("SELECT 1 FROM students WHERE id = ? AND group_id = ?", [user.id, groupId]);
+      return srows.length > 0;
+    }
+    if (user.role === "supervisor") {
+      if (studentId) return isCaseloadMatch(user.id, studentId);
+      if (!groupId) return false;
+      const { rows: srows } = await pool.query("SELECT 1 FROM supervisors WHERE id = ? AND group_id = ?", [user.id, groupId]);
+      return srows.length > 0;
+    }
     return false;
   },
 

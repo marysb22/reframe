@@ -3075,6 +3075,7 @@
                 <textarea id="gradeFeedback" placeholder="Feedback for the trainee..."></textarea>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('gradeModal')">Cancel</button>
+                    <button type="button" class="btn btn-secondary" onclick="returnAssignmentForEditing()">Return for editing</button>
                     <button type="submit" class="btn">Save grade</button>
                 </div>
             </form>
@@ -3226,7 +3227,7 @@
                 label: "Attendance",
                 icon: "fa-calendar-check",
                 fields: ["status", "content"],
-                statusOptions: ["present", "absent", "excused"]
+                statusOptions: ["present", "partial", "absent", "excused"]
             },
             training_session: {
                 label: "Training sessions",
@@ -4005,6 +4006,17 @@
             }
         }
 
+        // Shared by both attendance-entry paths (a session's own attendance
+        // field, and the standalone "Attendance" correction tab) -- only
+        // relevant/shown when the attendance status is "partial".
+        function partialHoursFieldHtml(visible) {
+            return `<div id="rf_partial_wrap" style="${visible ? "" : "display:none;"}"><label>Hours actually completed</label><input type="number" min="0" step="0.25" id="rf_partial_hours"></div>`;
+        }
+        function togglePartialHoursField(status) {
+            const wrap = document.getElementById("rf_partial_wrap");
+            if (wrap) wrap.style.display = status === "partial" ? "" : "none";
+        }
+
         function fieldInput(type, field, value) {
             value = nc(value, "");
             if (field === "date") return `<div><label>Date</label><input type="date" id="rf_date" value="${escapeHtml(value)}"></div>`;
@@ -4014,17 +4026,20 @@
             if (field === "score") return `<div><label>Score (0-100)</label><input type="number" min="0" max="100" id="rf_score" value="${escapeHtml(value)}"></div>`;
             if (field === "status") {
                 const options = RECORD_TYPES[type].statusOptions;
-                return `<div><label>Status</label><select id="rf_status">${options
+                const partialBlock = type === "attendance" ? partialHoursFieldHtml(value === "partial") : "";
+                const onchange = type === "attendance" ? ` onchange="togglePartialHoursField(this.value)"` : "";
+                return `<div><label>Status</label><select id="rf_status"${onchange}>${options
       .map((o) => `<option value="${o}" ${o === value ? "selected" : ""}>${o}</option>`)
-      .join("")}</select></div>`;
+      .join("")}</select></div>${partialBlock}`;
   }
   if (field === "attendanceStatus") {
-    return `<div><label>Attendance (leave blank to schedule a future session)</label><select id="rf_attendance">
+    return `<div><label>Attendance (leave blank to schedule a future session)</label><select id="rf_attendance" onchange="togglePartialHoursField(this.value)">
       <option value="">Select... (required if the date is today or earlier)</option>
       <option value="present" ${value === "present" ? "selected" : ""}>Present</option>
+      <option value="partial" ${value === "partial" ? "selected" : ""}>Partially attended</option>
       <option value="absent" ${value === "absent" ? "selected" : ""}>Absent</option>
       <option value="excused" ${value === "excused" ? "selected" : ""}>Excused</option>
-    </select></div>`;
+    </select></div>${partialHoursFieldHtml(value === "partial")}`;
   }
   if (field === "content") return `<div class="full"><label>Notes</label><textarea id="rf_content">${escapeHtml(value)}</textarea></div>`;
   return "";
@@ -4207,6 +4222,9 @@ async function submitRecordForm(e, type) {
   if (get("rf_score")) payload.score = Number(get("rf_score"));
   if (get("rf_status")) payload.status = get("rf_status");
   if (get("rf_attendance")) payload.attendanceStatus = get("rf_attendance");
+  if ((get("rf_status") === "partial" || get("rf_attendance") === "partial") && get("rf_partial_hours")) {
+    payload.minutesCompleted = Math.round(Number(get("rf_partial_hours")) * 60);
+  }
   if (get("rf_content")) payload.content = get("rf_content");
 
   // FIX (rename pass): type-scoped URL to match the real backend.
@@ -4264,6 +4282,9 @@ function renderDocumentsPanel(container) {
     <form class="record-form" id="docForm">
       <label>Upload a document (PDF, Word, or image)</label>
       <input type="file" id="docFile" accept=".pdf,.doc,.docx,image/*" required>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
+        <input type="checkbox" id="docShareGroup" style="width:auto;"> Share with this trainee's whole group instead of just them
+      </label>
       <div class="modal-actions"><button type="submit" class="btn">Upload</button></div>
     </form>
     <ul class="doc-list">
@@ -4271,7 +4292,7 @@ function renderDocumentsPanel(container) {
         <li class="doc-item">
           <div>
             <a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
-            <div class="rmeta">uploaded by ${escapeHtml(d.uploadedByName)}</div>
+            <div class="rmeta">uploaded by ${escapeHtml(d.uploadedByName)}${d.isGroupShared ? " &middot; shared with the whole group" : ""}</div>
           </div>
         </li>
       `).join("") : '<li class="empty-state" style="list-style:none;">No documents uploaded yet.</li>'}
@@ -4284,6 +4305,7 @@ function renderDocumentsPanel(container) {
     if (!file) return;
     const form = new FormData();
     form.append("document", file);
+    if (document.getElementById("docShareGroup").checked) form.append("shareWithGroup", "1");
     try {
       const response = await fetch(`${API}/supervisor/students/${currentStudentId}/documents`, {
         method: "POST",
@@ -4936,6 +4958,24 @@ document.getElementById("gradeModalForm").addEventListener("submit", async (e) =
     loadAssignments();
   }
 });
+
+async function returnAssignmentForEditing() {
+  const id = document.getElementById("gradeAssignmentId").value;
+  const feedback = document.getElementById("gradeFeedback").value;
+  if (!feedback.trim()) {
+    showToast("Add feedback explaining what needs to change before returning it", "error");
+    return;
+  }
+  const result = await apiRequest(`/supervisor/assignments/${id}/return`, {
+    method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feedback }),
+  });
+  if (result) {
+    showSuccessNotification("Returned for Editing", "The trainee will be asked to make changes and resubmit.");
+    closeModal("gradeModal");
+    loadAssignments();
+  }
+}
 
 let allSessions = [];
 

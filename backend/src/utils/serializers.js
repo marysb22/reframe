@@ -214,6 +214,10 @@ function toRecord(row) {
     supervisorName: row.supervisor_name,
     createdAt: row.created_at,
     hourTypeCode: row.hour_type_code,
+    // Session-type rows only: the linked attendance row's real status/
+    // minutes, distinct from the session's own lifecycle status above.
+    attendanceStatus: row.attendance_status,
+    attendanceMinutesCompleted: row.attendance_minutes_completed,
   };
 }
 
@@ -223,6 +227,9 @@ function toDocument(row) {
     filename: row.filename,
     originalName: row.original_name,
     uploadedByName: row.uploaded_by_name,
+    // Same convention as toMaterial()'s isGroupShared: undefined (not just
+    // false) on any query that doesn't select student_id.
+    isGroupShared: row.student_id === undefined ? undefined : row.student_id === null,
     createdAt: row.created_at,
   };
 }
@@ -326,9 +333,12 @@ async function computeHoursByType(db, { studentId, supervisorId } = {}) {
       [id, id]
     ),
     db.query(
-      `SELECT s.session_type AS code, SUM(s.duration_minutes) / 60 AS hours
+      `SELECT s.session_type AS code,
+              SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes
+                       WHEN a.status = 'partial' THEN COALESCE(a.minutes_completed, 0)
+                       ELSE 0 END) / 60 AS hours
        FROM sessions s
-       JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+       JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
        WHERE s.${idCol} = ? AND s.status != 'cancelled'
        GROUP BY s.session_type`,
       [id]
@@ -363,8 +373,11 @@ async function computeProgressSummary(db, studentId) {
   const [hoursByType, attendanceRes, sessionsRes, assignmentsRes, evalRes] = await Promise.all([
     computeHoursByType(db, { studentId }),
     db.query(
+      // A partially-attended session still counts as "attended" for the
+      // rate -- they did show up, just not for the full duration (that
+      // nuance shows up in the hours total instead, via computeHoursByType).
       `SELECT
-         COUNT(CASE WHEN status = 'present' THEN 1 END) AS present,
+         COUNT(CASE WHEN status IN ('present', 'partial') THEN 1 END) AS present,
          COUNT(*) AS total
        FROM attendance WHERE student_id = ?`,
       [studentId]
