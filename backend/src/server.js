@@ -82,6 +82,7 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/profile", require("./routes/profile"));
 app.use("/api/supervisor", require("./routes/supervisor"));
+app.use("/api/library", require("./routes/library"));
 app.use("/api/master-trainer", require("./routes/Mastertrainer"));
 app.use("/api/designer", require("./routes/designer"));
 app.use("/api/chat-rooms", require("./routes/chatRooms"));

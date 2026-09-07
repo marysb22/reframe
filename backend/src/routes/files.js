@@ -104,12 +104,19 @@ const AUTHORIZERS = {
   },
 
   materials: async (user, filename) => {
+    // A row's cover_image is a second, independent filename (the Library
+    // feature's book cover) -- matched here too, since it's served from
+    // this same /uploads/materials/ folder.
     const { rows } = await pool.query(
-      "SELECT supervisor_id, student_id FROM learning_materials WHERE filename = ?",
-      [filename]
+      "SELECT material_type, supervisor_id, admin_id, student_id FROM learning_materials WHERE filename = ? OR cover_image = ?",
+      [filename, filename]
     );
     if (!rows.length) return false;
-    const { supervisor_id: supervisorId, student_id: studentId } = rows[0];
+    const { material_type: materialType, supervisor_id: supervisorId, admin_id: adminId, student_id: studentId } = rows[0];
+    // Books (the standalone Library feature) have no per-student/caseload
+    // targeting at all -- every authenticated user may read one, matching
+    // the Library route's own "one shared list" rule.
+    if (materialType === "book" || adminId) return true;
     if (user.role === "admin") return true;
     if (user.role === "supervisor") return Number(user.id) === supervisorId;
     if (user.role === "trainee") {

@@ -225,7 +225,7 @@ router.get(
         (SELECT COUNT(*) FROM assignments a JOIN supervisors sup ON sup.id = a.supervisor_id
            WHERE sup.group_id = ? AND a.due_date < CURRENT_DATE AND a.status NOT IN ('completed', 'submitted')) AS assignments_overdue,
         (SELECT COUNT(*) FROM learning_materials lm JOIN supervisors sup ON sup.id = lm.supervisor_id
-           WHERE sup.group_id = ? AND lm.created_at >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)) AS materials_week,
+           WHERE sup.group_id = ? AND lm.material_type != 'book' AND lm.created_at >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)) AS materials_week,
         (SELECT COUNT(*) FROM attendance att JOIN supervisors sup ON sup.id = att.supervisor_id
            WHERE sup.group_id = ? AND att.status = 'present') AS attendance_present,
         (SELECT COUNT(*) FROM attendance att JOIN supervisors sup ON sup.id = att.supervisor_id
@@ -418,7 +418,7 @@ router.get(
         (SELECT COUNT(*) FROM assignments WHERE supervisor_id = ? AND status = 'completed') AS assignments_completed,
         (SELECT COUNT(*) FROM evaluations WHERE supervisor_id = ?) AS evaluation_count,
         (SELECT COUNT(*) FROM meetings WHERE supervisor_id = ?) AS meeting_count,
-        (SELECT COUNT(*) FROM learning_materials WHERE supervisor_id = ?) AS material_count`,
+        (SELECT COUNT(*) FROM learning_materials WHERE supervisor_id = ? AND material_type != 'book') AS material_count`,
             Array(15).fill(totId)
         );
 
@@ -1367,7 +1367,7 @@ router.get(
         (SELECT COUNT(*) FROM assignments a JOIN supervisors sup ON sup.id = a.supervisor_id
            WHERE sup.group_id = ? AND a.due_date BETWEEN ? AND ? AND a.status = 'completed') AS assignments_completed,
         (SELECT COUNT(*) FROM learning_materials lm JOIN supervisors sup ON sup.id = lm.supervisor_id
-           WHERE sup.group_id = ? AND lm.created_at BETWEEN ? AND ?) AS materials_added,
+           WHERE sup.group_id = ? AND lm.material_type != 'book' AND lm.created_at BETWEEN ? AND ?) AS materials_added,
         (SELECT COUNT(*) FROM trainee_milestone_progress tmp JOIN students st ON st.id = tmp.student_id
            WHERE st.group_id = ? AND tmp.status = 'completed' AND tmp.completed_at BETWEEN ? AND ?) AS milestones_achieved`,
             [
@@ -1430,7 +1430,7 @@ router.get(
         const { rows: materialRows } = await db.query(
             `SELECT lm.id, lm.title, lm.material_type, lm.created_at, sup.full_name AS trainer_name
        FROM learning_materials lm JOIN supervisors sup ON sup.id = lm.supervisor_id
-       WHERE sup.group_id = ? AND lm.created_at BETWEEN ? AND ?
+       WHERE sup.group_id = ? AND lm.material_type != 'book' AND lm.created_at BETWEEN ? AND ?
        ORDER BY lm.created_at DESC`, [groupId, startDT, endDT]
         );
 
@@ -1587,7 +1587,7 @@ router.get(
                       ORDER BY a.id DESC LIMIT 1) AS matched_assignment_id
        FROM learning_materials lm
        JOIN supervisors sup ON sup.id = lm.supervisor_id
-       WHERE sup.group_id = ?
+       WHERE sup.group_id = ? AND lm.material_type != 'book'
        ORDER BY lm.created_at DESC
        LIMIT 100`, [groupId]
         );
@@ -1797,7 +1797,7 @@ async function recentDocumentsForSupervisor(db, supervisorId, limit) {
 
 async function materialsForSupervisor(db, supervisorId) {
     const { rows } = await db.query(
-        "SELECT * FROM learning_materials WHERE supervisor_id = ? ORDER BY created_at DESC", [supervisorId]
+        "SELECT * FROM learning_materials WHERE supervisor_id = ? AND material_type != 'book' ORDER BY created_at DESC", [supervisorId]
     );
     return rows;
 }

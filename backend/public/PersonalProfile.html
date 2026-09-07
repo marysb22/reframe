@@ -1459,6 +1459,202 @@
             margin-top: 0;
         }
 
+        /* ===== Library (Books) -- a standalone, read-only-for-Trainee
+           feature, deliberately separate from the Learning Materials
+           Library above: cover-forward cards, not rows. ===== */
+        .library-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .library-header-text p {
+            margin: 2px 0 0;
+            color: var(--muted);
+            font-size: 12.5px;
+        }
+
+        .book-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 18px;
+            margin-top: 16px;
+        }
+
+        .book-card {
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            overflow: hidden;
+            transition: box-shadow .15s ease, transform .15s ease;
+        }
+
+        .book-card:hover {
+            box-shadow: 0 10px 26px rgba(0, 0, 0, .09);
+            transform: translateY(-2px);
+        }
+
+        .book-cover {
+            aspect-ratio: 3 / 4;
+            background: var(--surface-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border-soft);
+            cursor: pointer;
+        }
+
+        .book-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .book-cover i {
+            font-size: 30px;
+            color: var(--faint);
+        }
+
+        .book-info {
+            padding: 10px 12px 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex: 1;
+        }
+
+        .book-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .book-author {
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+
+        .book-meta {
+            font-size: 10.5px;
+            color: var(--faint);
+            margin-top: auto;
+            padding-top: 4px;
+        }
+
+        .book-added-by {
+            font-size: 10px;
+            color: var(--faint);
+        }
+
+        .book-actions {
+            display: flex;
+            gap: 6px;
+            padding: 8px 12px 12px;
+        }
+
+        .book-open-btn {
+            flex: 1;
+            height: 30px;
+            border-radius: 8px;
+            border: 1px solid var(--primary);
+            background: var(--primary);
+            color: #fff;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .book-open-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .library-empty {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--muted);
+        }
+
+        .library-empty i {
+            font-size: 30px;
+            color: var(--faint);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .reader-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(20, 24, 23, .7);
+            z-index: 3000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .reader-overlay.open {
+            display: flex;
+        }
+
+        .reader-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 20px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .reader-header-info h3 {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .reader-header-info p {
+            margin: 2px 0 0;
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+
+        .reader-header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .reader-body {
+            flex: 1;
+            background: #525659;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+        }
+
+        .reader-body iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .reader-body img,
+        .reader-body video {
+            max-width: 92%;
+            max-height: 92%;
+            object-fit: contain;
+        }
+
         .material-row {
             display: flex;
             align-items: center;
@@ -2679,6 +2875,7 @@
                 <div class="nav-label">Workspace</div>
                 <ul>
                     <li><a data-section="dashboard" class="active" href="#dashboard"><i class="fa fa-gauge"></i>Dashboard</a></li>
+                    <li><a data-section="library" href="#library"><i class="fa fa-building-columns"></i>Library</a></li>
                     <li><a data-section="profile" href="#profile"><i class="fa fa-user"></i>My Profile</a></li>
                     <li><a data-section="calendar" href="#calendar"><i class="fa fa-calendar"></i>Calendar</a></li>
                 </ul>
@@ -2924,6 +3121,49 @@
                     <div class="cal-grid" id="calBody" style="margin-top:1px;"></div>
                 </section>
             </section>
+
+            <!-- ============================================================= -->
+            <!-- LIBRARY (Books) -- standalone, read-only for the Trainee       -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-library" data-title="Library" data-eyebrow="Resources">
+                <section class="system-card">
+                    <div class="library-header">
+                        <div class="library-header-text">
+                            <h2>Library</h2>
+                            <p>Professional Books &amp; Knowledge Resources</p>
+                        </div>
+                    </div>
+                    <div class="toolbar" style="margin-top:14px;">
+                        <input type="text" id="librarySearch" placeholder="Search by title, author, or category..." oninput="applyLibraryFilters()">
+                        <select id="librarySort" onchange="applyLibraryFilters()">
+                            <option value="newest">Recently added</option>
+                            <option value="title-az">Title A&ndash;Z</option>
+                            <option value="title-za">Title Z&ndash;A</option>
+                            <option value="author-az">Author A&ndash;Z</option>
+                            <option value="author-za">Author Z&ndash;A</option>
+                        </select>
+                    </div>
+                    <div class="type-pills" id="libraryCategoryPills" style="margin-top:12px;"></div>
+                    <div class="book-grid" id="libraryGrid">
+                        <div class="empty-state">Loading library...</div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- BOOK READER -->
+            <div class="reader-overlay" id="readerOverlay">
+                <div class="reader-header">
+                    <div class="reader-header-info">
+                        <h3 id="readerTitle">&mdash;</h3>
+                        <p id="readerMeta"></p>
+                    </div>
+                    <div class="reader-header-actions">
+                        <a class="btn btn-secondary" id="readerDownload" href="#" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+                        <button type="button" class="btn btn-secondary" onclick="closeBookReader()"><i class="fa fa-xmark"></i> Close</button>
+                    </div>
+                </div>
+                <div class="reader-body" id="readerBody"></div>
+            </div>
 
             <!-- ============================================================= -->
             <!-- LEARNING MATERIALS                                             -->
@@ -3380,11 +3620,12 @@
         // ---- Section switching -------------------------------------------------
 
         const SECTION_IDS = [
-            "dashboard", "profile", "calendar", "materials", "assignments", "sessions",
+            "dashboard", "library", "profile", "calendar", "materials", "assignments", "sessions",
             "meetings", "chat", "announcements", "payments", "settings",
         ];
 
         const SECTION_LOADERS = {
+            library: () => loadLibrary(),
             calendar: () => loadCalendar(),
             materials: () => loadMaterials(), // also loads Documents -- see loadMaterials()
             assignments: () => loadAssignments(),
@@ -5231,6 +5472,123 @@ async function saveNotificationPrefs() {
     }),
   });
   if (result) showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
+}
+
+// ==========================================================================
+// LIBRARY (Books) -- a standalone feature, separate from the Learning
+// Materials Library above. Read-only here: the Trainee can view, search,
+// sort, open/read, and download, but never add or remove a book -- there is
+// no add-book UI anywhere on this page, and the backend independently
+// rejects a Trainee's POST/DELETE to /library/books regardless.
+// ==========================================================================
+
+let libraryBooksRaw = [];
+let libraryCategoryFilter = "all";
+
+function libraryFileExt(name) {
+  const m = /\.([a-z0-9]+)$/i.exec(name || "");
+  return m ? m[1].toUpperCase() : "";
+}
+
+async function loadLibrary() {
+  const data = await apiRequest("/library/books");
+  if (!data) return;
+  libraryBooksRaw = data.books;
+  libraryCategoryFilter = "all";
+  renderLibraryCategoryPills();
+  applyLibraryFilters();
+}
+
+function renderLibraryCategoryPills() {
+  const categories = Array.from(new Set(libraryBooksRaw.map((b) => b.category).filter(Boolean))).sort();
+  const groups = ["all", ...categories];
+  document.getElementById("libraryCategoryPills").innerHTML = groups
+    .map((c) => `<button type="button" class="type-pill${c === libraryCategoryFilter ? " active" : ""}" onclick="setLibraryCategoryFilter('${escapeHtml(c).replace(/'/g, "&#39;")}')">${c === "all" ? "All" : escapeHtml(c)}</button>`)
+    .join("");
+}
+
+function setLibraryCategoryFilter(category) {
+  libraryCategoryFilter = category;
+  renderLibraryCategoryPills();
+  applyLibraryFilters();
+}
+
+function applyLibraryFilters() {
+  const search = (document.getElementById("librarySearch").value || "").trim().toLowerCase();
+  const sort = document.getElementById("librarySort").value;
+
+  let list = libraryBooksRaw.filter((b) => {
+    if (libraryCategoryFilter !== "all" && (b.category || "") !== libraryCategoryFilter) return false;
+    if (search) {
+      const hay = `${b.title || ""} ${b.author || ""} ${b.category || ""}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  list = list.slice().sort((a, b) => {
+    if (sort === "title-az") return (a.title || "").localeCompare(b.title || "");
+    if (sort === "title-za") return (b.title || "").localeCompare(a.title || "");
+    if (sort === "author-az") return (a.author || "").localeCompare(b.author || "");
+    if (sort === "author-za") return (b.author || "").localeCompare(a.author || "");
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  renderLibraryGrid(list);
+}
+
+function renderLibraryGrid(list) {
+  const root = document.getElementById("libraryGrid");
+  if (!list.length) {
+    root.innerHTML = `
+      <div class="library-empty" style="grid-column:1/-1;">
+        <i class="fa fa-book"></i>
+        <h4>No books found</h4>
+        <p>${libraryBooksRaw.length ? "Try another title, author, or category." : "No books have been added to the Library yet."}</p>
+      </div>`;
+    return;
+  }
+  root.innerHTML = list.map((b) => `
+    <div class="book-card">
+      <div class="book-cover" onclick="openBookReader(${b.id})">
+        ${b.coverImage ? `<img src="${UPLOADS}/materials/${b.coverImage}${TOKEN_Q}" alt="">` : `<i class="fa fa-book"></i>`}
+      </div>
+      <div class="book-info">
+        <div class="book-title">${escapeHtml(b.title)}</div>
+        ${b.author ? `<div class="book-author">${escapeHtml(b.author)}</div>` : ""}
+        <div class="book-meta">${escapeHtml([b.category, libraryFileExt(b.originalName)].filter(Boolean).join(" · "))}</div>
+        <div class="book-added-by">Added by: ${escapeHtml(b.createdByName)} &middot; ${escapeHtml(b.createdByRole)}</div>
+      </div>
+      <div class="book-actions">
+        <button type="button" class="book-open-btn" onclick="openBookReader(${b.id})">Open &amp; Read</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function openBookReader(id) {
+  const b = libraryBooksRaw.find((x) => x.id === id);
+  if (!b) return;
+  document.getElementById("readerTitle").textContent = b.title;
+  document.getElementById("readerMeta").textContent =
+    `${b.author ? b.author + " · " : ""}Added by: ${b.createdByName} · ${b.createdByRole}`;
+  const fileUrl = `${UPLOADS}/materials/${b.filename}${TOKEN_Q}`;
+  const ext = libraryFileExt(b.originalName).toLowerCase();
+  const body = document.getElementById("readerBody");
+  if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
+    body.innerHTML = `<img src="${fileUrl}" alt="${escapeHtml(b.title)}">`;
+  } else if (["mp4", "mov"].includes(ext)) {
+    body.innerHTML = `<video src="${fileUrl}" controls></video>`;
+  } else {
+    body.innerHTML = `<iframe src="${fileUrl}" title="${escapeHtml(b.title)}"></iframe>`;
+  }
+  document.getElementById("readerDownload").href = fileUrl;
+  document.getElementById("readerOverlay").classList.add("open");
+}
+
+function closeBookReader() {
+  document.getElementById("readerOverlay").classList.remove("open");
+  document.getElementById("readerBody").innerHTML = "";
 }
     </script>
 </body>

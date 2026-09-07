@@ -499,19 +499,27 @@ CREATE TABLE assignment_submissions (
 
 CREATE TABLE learning_materials (
   id             BIGINT AUTO_INCREMENT PRIMARY KEY,
-  supervisor_id  BIGINT NOT NULL,
-  student_id     BIGINT,                        -- NULL = shared with whole caseload
+  supervisor_id  BIGINT,                        -- NULL when admin_id is set instead (an Admin-authored row)
+  admin_id       BIGINT,                        -- NULL when supervisor_id is set instead -- exactly one is always set
+  student_id     BIGINT,                        -- NULL = shared with whole caseload (or, for material_type='book', not applicable -- every book is universally visible)
   title          VARCHAR(255) NOT NULL,
   description    TEXT,
   material_type  VARCHAR(20) NOT NULL CHECK (material_type IN (
                      'document', 'image', 'video', 'audio', 'link',
-                     'assignment', 'worksheet', 'reading'
+                     'assignment', 'worksheet', 'reading', 'book'
                    )),
   filename       VARCHAR(255),
   original_name  VARCHAR(255),
   external_url   VARCHAR(2048),
+  -- author/category/cover_image are used only by the Library ('book') feature
+  -- -- NULL for every ordinary material, never read by the existing Materials
+  -- routes/UI.
+  author         VARCHAR(255),
+  category       VARCHAR(100),
+  cover_image    VARCHAR(255),
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_material_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_material_admin FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE SET NULL,
   CONSTRAINT fk_material_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
   CONSTRAINT chk_material_has_file CHECK (filename IS NOT NULL OR external_url IS NOT NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1173,7 +1173,7 @@ router.get(
                   AND LOWER(a.title) = LOWER(lm.title)
                 ORDER BY a.id DESC LIMIT 1) AS matched_assignment_id
        FROM learning_materials lm
-       WHERE lm.supervisor_id = ?
+       WHERE lm.supervisor_id = ? AND lm.material_type != 'book'
        ORDER BY lm.created_at DESC
        LIMIT 200`,
       [req.user.id]
@@ -1274,10 +1274,10 @@ router.post("/materials", (req, res) => {
 router.delete(
   "/materials/:materialId",
   asyncRoute(async (req, res, db) => {
-    const { rows: existingRows } = await db.query("SELECT * FROM learning_materials WHERE id = ? AND supervisor_id = ?", [
-      req.params.materialId,
-      req.user.id,
-    ]);
+    const { rows: existingRows } = await db.query(
+      "SELECT * FROM learning_materials WHERE id = ? AND supervisor_id = ? AND material_type != 'book'",
+      [req.params.materialId, req.user.id]
+    );
     if (!existingRows.length) return res.status(404).json({ error: "Material not found" });
 
     await db.query("DELETE FROM learning_materials WHERE id = ?", [req.params.materialId]);

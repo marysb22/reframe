@@ -778,6 +778,7 @@ router.get(
        JOIN supervisors sup ON sup.id = lm.supervisor_id
        WHERE lm.supervisor_id IN (SELECT supervisor_id FROM supervisor_students WHERE student_id = ?)
          AND (lm.student_id IS NULL OR lm.student_id = ?)
+         AND lm.material_type != 'book'
          ${filter}
        ORDER BY lm.created_at DESC`,
       params
