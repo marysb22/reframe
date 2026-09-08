@@ -6288,11 +6288,19 @@ function openBookReader(id) {
     body.innerHTML = `<img src="${fileUrl}" alt="${escapeHtml(b.title)}">`;
   } else if (["mp4", "mov"].includes(ext)) {
     body.innerHTML = `<video src="${fileUrl}" controls></video>`;
-  } else {
-    // PDFs (and anything the browser can render natively) open in the
-    // browser's own built-in viewer, which already provides page
+  } else if (ext === "pdf") {
+    // The browser's own built-in PDF viewer already provides page
     // navigation, zoom, fullscreen, and find-in-document for free.
     body.innerHTML = `<iframe src="${fileUrl}" title="${escapeHtml(b.title)}"></iframe>`;
+  } else {
+    // Word/PowerPoint/etc: no browser can render these inline, so an
+    // <iframe> here would just show blank. Offer a clear download instead.
+    body.innerHTML = `
+      <div style="text-align:center;padding:40px 24px;background:#fff;border-radius:14px;max-width:360px;">
+        <i class="fa fa-file-lines" style="font-size:40px;color:var(--faint);margin-bottom:16px;display:block;"></i>
+        <p style="margin:0 0 16px;color:var(--muted);font-size:13px;">This file type can't be previewed in the browser.</p>
+        <a class="btn" href="${fileUrl}" download style="width:auto;display:inline-flex;align-items:center;gap:8px;margin:0;"><i class="fa fa-download"></i> Download ${escapeHtml(b.originalName || "")}</a>
+      </div>`;
   }
   document.getElementById("readerDownload").href = fileUrl;
   document.getElementById("readerOverlay").classList.add("open");
