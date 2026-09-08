@@ -18,6 +18,18 @@ const router = express.Router();
 
 router.use(requireAuth);
 
+// The user-facing "Type" dropdown -- a controlled list distinct from the
+// existing material_type column (which only distinguishes a Library row
+// from an ordinary Material). Mirrors the schema's own chk_resource_type
+// CHECK constraint; kept here too so a bad value 400s with a clear message
+// instead of surfacing as a raw DB error.
+const RESOURCE_TYPES = [
+  "book", "article", "research_paper", "academic_paper", "thesis",
+  "ebook", "reference", "guide", "report", "other",
+];
+
+const CURRENT_YEAR = new Date().getFullYear();
+
 function toBook(row) {
   const createdByRole = row.admin_id ? "Admin" : row.supervisor_type === "primary" ? "Master Trainer" : "ToT";
   const createdByName = row.admin_id ? row.admin_name : row.supervisor_name;
@@ -30,6 +42,9 @@ function toBook(row) {
     filename: row.filename,
     originalName: row.original_name,
     coverImage: row.cover_image,
+    publisher: row.publisher,
+    publicationYear: row.publication_year,
+    resourceType: row.resource_type,
     createdByName,
     createdByRole,
     createdAt: row.created_at,
@@ -72,31 +87,33 @@ router.post("/books", (req, res) => {
 
     const file = req.files && req.files.file && req.files.file[0];
     const cover = req.files && req.files.coverImage && req.files.coverImage[0];
+    const fail = (status, error) => {
+      if (file) fs.unlink(file.path, () => {});
+      if (cover) fs.unlink(cover.path, () => {});
+      return res.status(status).json({ error });
+    };
     try {
-      const { title, author, description, category } = req.body || {};
-      if (!title || !title.trim()) {
-        if (file) fs.unlink(file.path, () => {});
-        if (cover) fs.unlink(cover.path, () => {});
-        return res.status(400).json({ error: "Title is required" });
+      const { title, author, description, category, publisher, resourceType } = req.body || {};
+      if (!title || !title.trim()) return fail(400, "Title is required");
+      if (!author || !author.trim()) return fail(400, "Author is required");
+      if (!resourceType || !RESOURCE_TYPES.includes(resourceType)) {
+        return fail(400, `Type is required and must be one of: ${RESOURCE_TYPES.join(", ")}`);
       }
-      if (!file) {
-        if (cover) fs.unlink(cover.path, () => {});
-        return res.status(400).json({ error: "A book file is required" });
+      if (!file) return fail(400, "A book file is required");
+
+      let publicationYear = null;
+      if (req.body.publicationYear != null && req.body.publicationYear !== "") {
+        publicationYear = Number(req.body.publicationYear);
+        if (!Number.isInteger(publicationYear) || publicationYear < 1000 || publicationYear > CURRENT_YEAR + 1) {
+          return fail(400, `Publication year must be a whole number between 1000 and ${CURRENT_YEAR + 1}`);
+        }
       }
 
       const check = checkFileContent(file.path, ["pdf", "office", "image", "media"]);
-      if (!check.safe) {
-        fs.unlink(file.path, () => {});
-        if (cover) fs.unlink(cover.path, () => {});
-        return res.status(400).json({ error: check.reason });
-      }
+      if (!check.safe) return fail(400, check.reason);
       if (cover) {
         const coverCheck = checkFileContent(cover.path, ["image"]);
-        if (!coverCheck.safe) {
-          fs.unlink(file.path, () => {});
-          fs.unlink(cover.path, () => {});
-          return res.status(400).json({ error: "Cover image: " + coverCheck.reason });
-        }
+        if (!coverCheck.safe) return fail(400, "Cover image: " + coverCheck.reason);
         await optimizeImageIfPossible(cover.path, { maxDimension: 800 });
       }
       await optimizeImageIfPossible(file.path, { maxDimension: 1920 });
@@ -121,9 +138,13 @@ router.post("/books", (req, res) => {
 
       const insert = await pool.query(
         `INSERT INTO learning_materials
-           (supervisor_id, admin_id, student_id, title, author, description, category, material_type, filename, original_name, cover_image)
-         VALUES (?,?,NULL,?,?,?,?,'book',?,?,?)`,
-        [supervisorId, adminId, title.trim(), author || null, description || null, category || null, file.filename, file.originalname, cover ? cover.filename : null]
+           (supervisor_id, admin_id, student_id, title, author, description, category, material_type, filename, original_name, cover_image, publisher, publication_year, resource_type)
+         VALUES (?,?,NULL,?,?,?,?,'book',?,?,?,?,?,?)`,
+        [
+          supervisorId, adminId, title.trim(), author.trim(), description || null, category || null,
+          file.filename, file.originalname, cover ? cover.filename : null,
+          publisher || null, publicationYear, resourceType,
+        ]
       );
       await pool.query(
         "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'book added', 'learning_materials', ?)",
@@ -133,9 +154,12 @@ router.post("/books", (req, res) => {
       res.status(201).json({
         id: insert.insertId,
         title: title.trim(),
-        author: author || null,
+        author: author.trim(),
         description: description || null,
         category: category || null,
+        publisher: publisher || null,
+        publicationYear,
+        resourceType,
         filename: file.filename,
         originalName: file.originalname,
         coverImage: cover ? cover.filename : null,

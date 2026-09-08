@@ -1612,6 +1612,104 @@
             cursor: pointer;
         }
 
+        .book-year {
+            font-size: 10.5px;
+            color: var(--faint);
+        }
+
+        .book-details-layout {
+            display: flex;
+            gap: 24px;
+        }
+
+        .book-details-cover {
+            width: 180px;
+            flex-shrink: 0;
+            aspect-ratio: 3 / 4;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .book-details-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .book-details-cover i {
+            font-size: 40px;
+            color: var(--faint);
+        }
+
+        .book-details-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .book-details-info h3 {
+            margin: 0 0 4px;
+            font-size: 19px;
+            font-weight: 700;
+        }
+
+        .book-details-author {
+            color: var(--muted);
+            font-size: 13.5px;
+            margin-bottom: 10px;
+        }
+
+        .book-details-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .book-details-tags .type-pill {
+            cursor: default;
+        }
+
+        .book-details-desc {
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.55;
+            margin: 0 0 16px;
+        }
+
+        .book-details-meta {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            column-gap: 14px;
+            row-gap: 8px;
+            margin: 0 0 4px;
+            font-size: 12.5px;
+        }
+
+        .book-details-meta dt {
+            color: var(--faint);
+            font-weight: 600;
+        }
+
+        .book-details-meta dd {
+            margin: 0;
+            color: var(--text);
+        }
+
+        @media (max-width: 560px) {
+            .book-details-layout {
+                flex-direction: column;
+            }
+
+            .book-details-cover {
+                width: 140px;
+            }
+        }
+
         .library-empty {
             text-align: center;
             padding: 50px 20px;
@@ -2874,13 +2972,19 @@
                         <button class="btn" onclick="openAddBookModal()"><i class="fa fa-plus"></i> Add Book</button>
                     </div>
                     <div class="toolbar" style="margin-top:14px;">
-                        <input type="text" id="librarySearch" placeholder="Search by title, author, or category..." oninput="applyLibraryFilters()">
+                        <input type="text" id="librarySearch" placeholder="Search by title, author, publisher, category, or type..." oninput="applyLibraryFilters()">
+                        <select id="libraryTypeFilter" onchange="applyLibraryFilters()">
+                            <option value="">All types</option>
+                        </select>
                         <select id="librarySort" onchange="applyLibraryFilters()">
                             <option value="newest">Recently added</option>
+                            <option value="oldest">Oldest added</option>
                             <option value="title-az">Title A&ndash;Z</option>
                             <option value="title-za">Title Z&ndash;A</option>
                             <option value="author-az">Author A&ndash;Z</option>
                             <option value="author-za">Author Z&ndash;A</option>
+                            <option value="year-newest">Publication year (newest)</option>
+                            <option value="year-oldest">Publication year (oldest)</option>
                         </select>
                     </div>
                     <div class="type-pills" id="libraryCategoryPills" style="margin-top:12px;"></div>
@@ -2896,20 +3000,28 @@
                     <button class="close-modal" onclick="closeModal('addBookModal')">&times;</button>
                     <h3>Add a Book</h3>
                     <form id="addBookForm">
-                        <label>Book title</label>
+                        <label>Book title *</label>
                         <input type="text" id="bookTitle" required>
-                        <label>Author</label>
-                        <input type="text" id="bookAuthor">
-                        <label>Description</label>
-                        <textarea id="bookDescription"></textarea>
+                        <label>Author *</label>
+                        <input type="text" id="bookAuthor" required>
+                        <label>Type *</label>
+                        <select id="bookResourceType" required>
+                            <option value="">Select a type...</option>
+                        </select>
                         <label>Category / Topic</label>
                         <input type="text" id="bookCategory">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div><label>Publication year</label><input type="number" id="bookPublicationYear" min="1000" placeholder="e.g. 2008"></div>
+                            <div><label>Publisher</label><input type="text" id="bookPublisher"></div>
+                        </div>
+                        <label>Description</label>
+                        <textarea id="bookDescription"></textarea>
                         <label>Cover image</label>
                         <div class="book-upload-box" id="bookCoverBox">
                             <input type="file" id="bookCoverInput" accept="image/*" onchange="onBookFileChosen('cover')">
                             <span id="bookCoverLabel"><i class="fa fa-image"></i> Click to choose a cover image (optional)</span>
                         </div>
-                        <label>Book file</label>
+                        <label>Book file *</label>
                         <div class="book-upload-box" id="bookFileBox">
                             <input type="file" id="bookFileInput" accept=".pdf,.doc,.docx,.ppt,.pptx,image/*,video/mp4,video/quicktime,audio/*" required onchange="onBookFileChosen('file')">
                             <span id="bookFileLabel"><i class="fa fa-file-arrow-up"></i> Click to choose the book file</span>
@@ -2919,6 +3031,14 @@
                             <button type="submit" class="btn">Add Book</button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- BOOK DETAILS MODAL -->
+            <div class="modal-overlay" id="bookDetailsModal">
+                <div class="modal-box wide">
+                    <button class="close-modal" onclick="closeModal('bookDetailsModal')">&times;</button>
+                    <div id="bookDetailsBody"></div>
                 </div>
             </div>
 
@@ -6193,6 +6313,31 @@ async function saveNotificationPrefs() {
 let libraryBooksRaw = [];
 let libraryCategoryFilter = "all";
 
+// The controlled Type list -- mirrors RESOURCE_TYPES in backend/src/routes/library.js.
+// Adding a new type later means updating both lists, not touching the DB schema.
+const RESOURCE_TYPES = [
+  { value: "book", label: "Book" },
+  { value: "article", label: "Article" },
+  { value: "research_paper", label: "Research Paper" },
+  { value: "academic_paper", label: "Academic Paper" },
+  { value: "thesis", label: "Thesis" },
+  { value: "ebook", label: "E-Book" },
+  { value: "reference", label: "Reference" },
+  { value: "guide", label: "Guide" },
+  { value: "report", label: "Report" },
+  { value: "other", label: "Other" },
+];
+const RESOURCE_TYPE_LABELS = Object.fromEntries(RESOURCE_TYPES.map((t) => [t.value, t.label]));
+
+function populateLibraryTypeSelects() {
+  const optionsHtml = RESOURCE_TYPES.map((t) => `<option value="${t.value}">${t.label}</option>`).join("");
+  const formSelect = document.getElementById("bookResourceType");
+  if (formSelect) formSelect.innerHTML = `<option value="">Select a type...</option>${optionsHtml}`;
+  const filterSelect = document.getElementById("libraryTypeFilter");
+  if (filterSelect) filterSelect.innerHTML = `<option value="">All types</option>${optionsHtml}`;
+}
+populateLibraryTypeSelects();
+
 function libraryFileExt(name) {
   const m = /\.([a-z0-9]+)$/i.exec(name || "");
   return m ? m[1].toUpperCase() : "";
@@ -6224,11 +6369,13 @@ function setLibraryCategoryFilter(category) {
 function applyLibraryFilters() {
   const search = (document.getElementById("librarySearch").value || "").trim().toLowerCase();
   const sort = document.getElementById("librarySort").value;
+  const typeFilter = document.getElementById("libraryTypeFilter").value;
 
   let list = libraryBooksRaw.filter((b) => {
     if (libraryCategoryFilter !== "all" && (b.category || "") !== libraryCategoryFilter) return false;
+    if (typeFilter && b.resourceType !== typeFilter) return false;
     if (search) {
-      const hay = `${b.title || ""} ${b.author || ""} ${b.category || ""}`.toLowerCase();
+      const hay = `${b.title || ""} ${b.author || ""} ${b.publisher || ""} ${b.category || ""} ${RESOURCE_TYPE_LABELS[b.resourceType] || ""}`.toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
@@ -6239,6 +6386,12 @@ function applyLibraryFilters() {
     if (sort === "title-za") return (b.title || "").localeCompare(a.title || "");
     if (sort === "author-az") return (a.author || "").localeCompare(b.author || "");
     if (sort === "author-za") return (b.author || "").localeCompare(a.author || "");
+    if (sort === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
+    // Books without a publication year sink to the bottom of either
+    // direction rather than clustering unpredictably at whichever end
+    // the missing-value fallback happens to sort toward.
+    if (sort === "year-newest") return (b.publicationYear || 0) - (a.publicationYear || 0);
+    if (sort === "year-oldest") return (a.publicationYear || 9999) - (b.publicationYear || 9999);
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
@@ -6252,27 +6405,73 @@ function renderLibraryGrid(list) {
       <div class="library-empty" style="grid-column:1/-1;">
         <i class="fa fa-book"></i>
         <h4>No books found</h4>
-        <p>${libraryBooksRaw.length ? "Try another title, author, or category." : "No books have been added to the Library yet."}</p>
+        <p>${libraryBooksRaw.length ? "Try another title, author, publisher, category, or type." : "No books have been added to the Library yet."}</p>
       </div>`;
     return;
   }
-  root.innerHTML = list.map((b) => `
+  root.innerHTML = list.map((b) => {
+    const typeCategory = [RESOURCE_TYPE_LABELS[b.resourceType], b.category].filter(Boolean).join(" · ");
+    const fileUrl = `${UPLOADS}/materials/${b.filename}${TOKEN_Q}`;
+    return `
     <div class="book-card">
-      <div class="book-cover" onclick="openBookReader(${b.id})">
+      <div class="book-cover" onclick="openBookDetails(${b.id})">
         ${b.coverImage ? `<img src="${UPLOADS}/materials/${b.coverImage}${TOKEN_Q}" alt="">` : `<i class="fa fa-book"></i>`}
       </div>
       <div class="book-info">
-        <div class="book-title">${escapeHtml(b.title)}</div>
+        <div class="book-title" onclick="openBookDetails(${b.id})" style="cursor:pointer;">${escapeHtml(b.title)}</div>
         ${b.author ? `<div class="book-author">${escapeHtml(b.author)}</div>` : ""}
-        <div class="book-meta">${escapeHtml([b.category, libraryFileExt(b.originalName)].filter(Boolean).join(" · "))}</div>
+        ${typeCategory ? `<div class="book-meta">${escapeHtml(typeCategory)}</div>` : ""}
+        ${b.publicationYear ? `<div class="book-year">${escapeHtml(String(b.publicationYear))}</div>` : ""}
         <div class="book-added-by">Added by: ${escapeHtml(b.createdByName)} &middot; ${escapeHtml(b.createdByRole)}</div>
       </div>
       <div class="book-actions">
         <button type="button" class="book-open-btn" onclick="openBookReader(${b.id})">Open &amp; Read</button>
+        <a class="book-menu-btn" title="Download" href="${fileUrl}" download="${escapeHtml(b.originalName || "")}" style="display:flex;align-items:center;justify-content:center;text-decoration:none;"><i class="fa fa-download"></i></a>
         ${b.canDelete ? `<button type="button" class="book-menu-btn" title="Remove this book" onclick="deleteLibraryBook(${b.id})"><i class="fa fa-trash"></i></button>` : ""}
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
+}
+
+function bookFileInfo(b) {
+  const ext = libraryFileExt(b.originalName);
+  return ext ? `${ext} file` : "File";
+}
+
+function openBookDetails(id) {
+  const b = libraryBooksRaw.find((x) => x.id === id);
+  if (!b) return;
+  const fileUrl = `${UPLOADS}/materials/${b.filename}${TOKEN_Q}`;
+  const typeLabel = RESOURCE_TYPE_LABELS[b.resourceType] || "";
+  const addedDate = b.createdAt ? new Date(b.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
+  document.getElementById("bookDetailsBody").innerHTML = `
+    <div class="book-details-layout">
+      <div class="book-details-cover">
+        ${b.coverImage ? `<img src="${UPLOADS}/materials/${b.coverImage}${TOKEN_Q}" alt="">` : `<i class="fa fa-book"></i>`}
+      </div>
+      <div class="book-details-info">
+        <h3>${escapeHtml(b.title)}</h3>
+        ${b.author ? `<div class="book-details-author">${escapeHtml(b.author)}</div>` : ""}
+        <div class="book-details-tags">
+          ${typeLabel ? `<span class="type-pill">${escapeHtml(typeLabel)}</span>` : ""}
+          ${b.category ? `<span class="type-pill">${escapeHtml(b.category)}</span>` : ""}
+        </div>
+        ${b.description ? `<p class="book-details-desc">${escapeHtml(b.description)}</p>` : ""}
+        <dl class="book-details-meta">
+          ${b.publisher ? `<dt>Publisher</dt><dd>${escapeHtml(b.publisher)}</dd>` : ""}
+          ${b.publicationYear ? `<dt>Publication year</dt><dd>${escapeHtml(String(b.publicationYear))}</dd>` : ""}
+          <dt>Added by</dt><dd>${escapeHtml(b.createdByName)} &middot; ${escapeHtml(b.createdByRole)}</dd>
+          ${addedDate ? `<dt>Date added</dt><dd>${addedDate}</dd>` : ""}
+          <dt>File</dt><dd>${escapeHtml(bookFileInfo(b))} &middot; ${escapeHtml(b.originalName || "")}</dd>
+        </dl>
+        <div class="modal-actions" style="justify-content:flex-start;">
+          <button type="button" class="btn" style="flex:none;" onclick="closeModal('bookDetailsModal'); openBookReader(${b.id});"><i class="fa fa-book-open"></i> Open &amp; Read</button>
+          <a class="btn btn-secondary" style="flex:none;text-decoration:none;" href="${fileUrl}" download="${escapeHtml(b.originalName || "")}"><i class="fa fa-download"></i> Download</a>
+        </div>
+      </div>
+    </div>`;
+  openModal("bookDetailsModal");
 }
 
 function bookUnsupportedPreviewHtml(b, fileUrl) {
@@ -6364,11 +6563,21 @@ document.getElementById("addBookForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const file = document.getElementById("bookFileInput").files[0];
   if (!file) return showToast("Choose a book file", "error");
+  const title = document.getElementById("bookTitle").value.trim();
+  const author = document.getElementById("bookAuthor").value.trim();
+  const resourceType = document.getElementById("bookResourceType").value;
+  if (!title) return showToast("Title is required", "error");
+  if (!author) return showToast("Author is required", "error");
+  if (!resourceType) return showToast("Choose a type", "error");
   const form = new FormData();
-  form.append("title", document.getElementById("bookTitle").value);
-  form.append("author", document.getElementById("bookAuthor").value);
+  form.append("title", title);
+  form.append("author", author);
+  form.append("resourceType", resourceType);
   form.append("description", document.getElementById("bookDescription").value);
   form.append("category", document.getElementById("bookCategory").value);
+  form.append("publisher", document.getElementById("bookPublisher").value);
+  const publicationYear = document.getElementById("bookPublicationYear").value;
+  if (publicationYear) form.append("publicationYear", publicationYear);
   form.append("file", file);
   const cover = document.getElementById("bookCoverInput").files[0];
   if (cover) form.append("coverImage", cover);

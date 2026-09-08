@@ -511,17 +511,29 @@ CREATE TABLE learning_materials (
   filename       VARCHAR(255),
   original_name  VARCHAR(255),
   external_url   VARCHAR(2048),
-  -- author/category/cover_image are used only by the Library ('book') feature
-  -- -- NULL for every ordinary material, never read by the existing Materials
-  -- routes/UI.
-  author         VARCHAR(255),
-  category       VARCHAR(100),
-  cover_image    VARCHAR(255),
+  -- author/category/cover_image/publisher/publication_year/resource_type
+  -- are used only by the Library ('book') feature -- NULL for every
+  -- ordinary material, never read by the existing Materials routes/UI.
+  -- resource_type is the user-facing "Type" dropdown (Book/Article/
+  -- Research Paper/.../Other) -- a DIFFERENT classification from
+  -- material_type above (which just distinguishes a Library row from an
+  -- ordinary Material); never conflate the two.
+  author            VARCHAR(255),
+  category          VARCHAR(100),
+  cover_image       VARCHAR(255),
+  publisher         VARCHAR(255),
+  publication_year  SMALLINT,
+  resource_type     VARCHAR(30) CHECK (resource_type IS NULL OR resource_type IN (
+                       'book', 'article', 'research_paper', 'academic_paper', 'thesis',
+                       'ebook', 'reference', 'guide', 'report', 'other'
+                     )),
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_material_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
   CONSTRAINT fk_material_admin FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE SET NULL,
   CONSTRAINT fk_material_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  CONSTRAINT chk_material_has_file CHECK (filename IS NOT NULL OR external_url IS NOT NULL)
+  CONSTRAINT chk_material_has_file CHECK (filename IS NOT NULL OR external_url IS NOT NULL),
+  CONSTRAINT chk_publication_year CHECK (publication_year IS NULL OR publication_year BETWEEN 1000 AND 2100),
+  INDEX idx_materials_type_created (material_type, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE videos (
