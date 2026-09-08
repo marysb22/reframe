@@ -69,8 +69,23 @@ function ensureUploadDir(dir) {
   return dir;
 }
 
+// multer/busboy decodes the filename from the multipart Content-Disposition
+// header as latin1 (the multipart spec's default charset when the browser
+// doesn't send RFC 2231 extended encoding, which no mainstream browser
+// does for a plain file input) -- any non-ASCII filename (Arabic, accented
+// Latin, etc.) therefore arrives mojibake'd (real UTF-8 bytes misread one
+// byte at a time as latin1). Re-decoding those same bytes as UTF-8 recovers
+// the original text; a plain-ASCII name round-trips through this unchanged,
+// so it's always safe to apply, not just for non-ASCII uploads.
+function fixOriginalNameEncoding(file) {
+  file.originalname = Buffer.from(file.originalname, "latin1").toString("utf8");
+}
+
 const eventImageStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, ensureUploadDir(path.join(config.uploadsDir, "events"))),
+  destination: (req, file, cb) => {
+    fixOriginalNameEncoding(file);
+    cb(null, ensureUploadDir(path.join(config.uploadsDir, "events")));
+  },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);
@@ -92,7 +107,10 @@ const eventImageUpload = multer({
 
 function makeDiskStorage(subfolder) {
   return multer.diskStorage({
-    destination: (req, file, cb) => cb(null, ensureUploadDir(path.join(config.uploadsDir, subfolder))),
+    destination: (req, file, cb) => {
+      fixOriginalNameEncoding(file);
+      cb(null, ensureUploadDir(path.join(config.uploadsDir, subfolder)));
+    },
     filename: (req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase();
       cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);
