@@ -270,6 +270,7 @@ CREATE TABLE student_health_info (
   emergency_contact_name          VARCHAR(255),
   emergency_contact_relationship  VARCHAR(100),
   emergency_contact_phone         VARCHAR(50),
+  emergency_contact_phone_2       VARCHAR(50),
   consent_given                   BOOLEAN NOT NULL DEFAULT FALSE,
   consent_given_at                DATETIME,
   updated_at                      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

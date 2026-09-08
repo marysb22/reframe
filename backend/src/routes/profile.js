@@ -91,6 +91,26 @@ async function attachTraineeSupervisors(db, profile, userId) {
   profile.supervisors = supRows.map((r) => ({ id: r.id, full_name: r.full_name }));
 }
 
+// Attaches the trainee's own Health & Emergency info to a profile object in
+// place. Deliberately NOT part of PROFILE_SELECT/toProfileResponse -- those
+// are shared by admin.js/supervisor.js/group.js to show OTHER people's
+// profiles, and this data must only ever reach the trainee's own GET/PUT
+// /profile/me (scoped by req.user.id from the JWT), never anyone else's view.
+async function attachTraineeHealthInfo(db, profile, userId) {
+  const { rows } = await db.query(
+    `SELECT medical_conditions, emergency_contact_name, emergency_contact_relationship,
+            emergency_contact_phone, emergency_contact_phone_2
+     FROM student_health_info WHERE student_id = ?`,
+    [userId]
+  );
+  const h = rows[0] || {};
+  profile.medicalConditions = h.medical_conditions || null;
+  profile.emergencyContactName = h.emergency_contact_name || null;
+  profile.emergencyContactRelationship = h.emergency_contact_relationship || null;
+  profile.emergencyContactPhone = h.emergency_contact_phone || null;
+  profile.emergencyContactPhone2 = h.emergency_contact_phone_2 || null;
+}
+
 // GET /api/profile/me
 router.get(
   "/me",
@@ -99,7 +119,10 @@ router.get(
     if (!rows.length) return res.status(404).json({ error: "Profile not found" });
 
     const profile = toProfileResponse(rows[0]);
-    if (req.user.role === "trainee") await attachTraineeSupervisors(db, profile, req.user.id);
+    if (req.user.role === "trainee") {
+      await attachTraineeSupervisors(db, profile, req.user.id);
+      await attachTraineeHealthInfo(db, profile, req.user.id);
+    }
 
     res.json(profile);
   })
@@ -124,13 +147,41 @@ router.put(
       certifications,
       bio,
       specialization,
+      medicalConditions,
+      emergencyContactName,
+      emergencyContactRelationship,
+      emergencyContactPhone,
+      emergencyContactPhone2,
     } = req.body || {};
 
-    if (!full_name || !String(full_name).trim()) {
+    const table = profileTableForRole(req.user.role);
+
+    // My Profile completeness -- checked against the actual required fields
+    // of the trainee's My Profile form (not an invented broader set): Full
+    // name (already backend-required everywhere) plus the Health &
+    // Emergency section's own required subset (name/relationship/phone;
+    // medical conditions and the alternate phone stay optional). Checked
+    // before any write so a rejected save never partially applies, and
+    // reported together in one response so the trainee sees every gap at
+    // once instead of fixing one field per submit.
+    if (table === "students") {
+      const missingFields = [];
+      if (!full_name || !String(full_name).trim()) missingFields.push("Full name");
+      if (!emergencyContactName || !String(emergencyContactName).trim()) missingFields.push("Emergency contact name");
+      if (!emergencyContactRelationship || !String(emergencyContactRelationship).trim()) missingFields.push("Relationship");
+      if (!emergencyContactPhone || !String(emergencyContactPhone).trim()) missingFields.push("Phone number");
+      if (missingFields.length) {
+        return res.status(400).json({
+          error: "Please complete your My Profile information before saving.",
+          missingFields,
+        });
+      }
+    } else if (!full_name || !String(full_name).trim()) {
+      // Unchanged behavior for Admin/Supervisor/Designer's own My Profile
+      // pages -- those have no Health & Emergency section, so the pre-
+      // existing single-field check stays exactly as it was.
       return res.status(400).json({ error: "Full name is required" });
     }
-
-    const table = profileTableForRole(req.user.role);
 
     if (email) {
       const { rows: existing } = await db.query(`SELECT id FROM ${table} WHERE email = ? AND id != ?`, [
@@ -161,6 +212,26 @@ router.put(
           req.user.id,
         ]
       );
+      await db.query(
+        `INSERT INTO student_health_info
+           (student_id, medical_conditions, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, emergency_contact_phone_2, updated_at)
+         VALUES (?,?,?,?,?,?, NOW())
+         ON DUPLICATE KEY UPDATE
+           medical_conditions = VALUES(medical_conditions),
+           emergency_contact_name = VALUES(emergency_contact_name),
+           emergency_contact_relationship = VALUES(emergency_contact_relationship),
+           emergency_contact_phone = VALUES(emergency_contact_phone),
+           emergency_contact_phone_2 = VALUES(emergency_contact_phone_2),
+           updated_at = NOW()`,
+        [
+          req.user.id,
+          medicalConditions || null,
+          emergencyContactName.trim(),
+          emergencyContactRelationship.trim(),
+          emergencyContactPhone.trim(),
+          emergencyContactPhone2 || null,
+        ]
+      );
     } else if (table === "supervisors") {
       await db.query(
         `UPDATE supervisors SET full_name = ?, email = ?, phone = ?, bio = ?, specialization = ?, updated_at = NOW() WHERE id = ?`,
@@ -187,7 +258,10 @@ router.put(
 
     const { rows } = await db.query(PROFILE_SELECT, [req.user.id]);
     const profile = toProfileResponse(rows[0]);
-    if (req.user.role === "trainee") await attachTraineeSupervisors(db, profile, req.user.id);
+    if (req.user.role === "trainee") {
+      await attachTraineeSupervisors(db, profile, req.user.id);
+      await attachTraineeHealthInfo(db, profile, req.user.id);
+    }
     res.json(profile);
   })
 );

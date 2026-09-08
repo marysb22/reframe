@@ -2674,6 +2674,11 @@
             font-size: 12.5px;
             line-height: 1.5;
         }
+
+        .profile-field-error {
+            border-color: var(--danger) !important;
+            background: var(--danger-bg) !important;
+        }
         
         .consent-row {
             margin-top: 16px;
@@ -3144,7 +3149,7 @@
                         <button type="button" class="btn btn-secondary" id="profileEditBtn" onclick="startProfileEdit()"><i class="fa fa-pen"></i> Edit</button>
                     </div>
                     <div class="form-grid">
-                        <div><label>Full name</label><input id="name" class="profile-editable-field" disabled></div>
+                        <div><label>Full name *</label><input id="name" class="profile-editable-field" disabled></div>
                         <div><label>Sex</label><select id="gender" class="profile-editable-field" disabled><option value="">&mdash;</option><option>Female</option><option>Male</option><option>Other</option></select></div>
                         <div><label>Date of birth</label><input type="date" id="dateOfBirth" class="profile-editable-field" disabled></div>
                         <div><label>Marital status</label><select id="maritalStatus" class="profile-editable-field" disabled><option value="">&mdash;</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option></select></div>
@@ -3192,11 +3197,11 @@
                         <p>Visible to Administration only.</p>
                     </div>
                     <div class="form-grid">
-                        <div class="full"><label>Medical conditions</label><textarea id="medicalConditions"></textarea></div>
-                        <div><label>Emergency contact name</label><input id="emergencyName"></div>
-                        <div><label>Relationship</label><input id="emergencyRelationship"></div>
-                        <div><label>Phone number</label><input id="emergencyPhone"></div>
-                        <div><label>Alternate phone number</label><input id="emergencyPhone2"></div>
+                        <div class="full"><label>Medical conditions</label><textarea id="medicalConditions" class="profile-editable-field" disabled></textarea></div>
+                        <div><label>Emergency contact name *</label><input id="emergencyName" class="profile-editable-field" disabled></div>
+                        <div><label>Relationship *</label><input id="emergencyRelationship" class="profile-editable-field" disabled></div>
+                        <div><label>Phone number *</label><input id="emergencyPhone" class="profile-editable-field" disabled></div>
+                        <div><label>Alternate phone number</label><input id="emergencyPhone2" class="profile-editable-field" disabled></div>
                     </div>
                 </section>
 
@@ -4037,6 +4042,11 @@
             setValue("highestDegree", data.highestDegree);
             setValue("institution", data.institution);
             setValue("certifications", data.certifications);
+            setValue("medicalConditions", data.medicalConditions);
+            setValue("emergencyName", data.emergencyContactName);
+            setValue("emergencyRelationship", data.emergencyContactRelationship);
+            setValue("emergencyPhone", data.emergencyContactPhone);
+            setValue("emergencyPhone2", data.emergencyContactPhone2);
 
             const cvStatus = document.getElementById("cvStatus");
             if (cvStatus) cvStatus.textContent = data.cvFile ? `Current file: ${data.cvFile}` : "PDF, maximum 10MB";
@@ -4088,6 +4098,7 @@
 
         function cancelProfileEdit() {
             if (currentProfile) populateProfileFields(currentProfile);
+            clearProfileFieldErrors();
             endProfileEdit();
         }
 
@@ -4259,7 +4270,54 @@
             }
         });
 
+        // The COMPLETE set of fields the trainee's My Profile actually
+        // requires -- Full name (already backend-required everywhere) plus
+        // the Health & Emergency section's own required subset. Everything
+        // else on this page (gender, DOB, marital status, phone, email,
+        // address, education fields, medical conditions, alternate phone)
+        // has never been required anywhere in this app and stays optional.
+        // Keys are the exact human-readable labels the backend's
+        // `missingFields` response uses, so a server-side rejection and a
+        // client-side one highlight the same fields with no translation step.
+        const PROFILE_FIELD_LABEL_TO_ID = {
+            "Full name": "name",
+            "Emergency contact name": "emergencyName",
+            "Relationship": "emergencyRelationship",
+            "Phone number": "emergencyPhone",
+        };
+
+        function clearProfileFieldErrors() {
+            Object.values(PROFILE_FIELD_LABEL_TO_ID).forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove("profile-field-error");
+            });
+        }
+
+        function showMissingProfileFields(missingLabels) {
+            missingLabels.forEach((label) => {
+                const id = PROFILE_FIELD_LABEL_TO_ID[label];
+                if (id) document.getElementById(id).classList.add("profile-field-error");
+            });
+            showToast(
+                "Please complete your My Profile information before saving. Missing: " + missingLabels.join(", "),
+                "error"
+            );
+            const firstId = PROFILE_FIELD_LABEL_TO_ID[missingLabels[0]];
+            if (firstId) document.getElementById(firstId).focus();
+        }
+
         document.getElementById("saveProfileBtn").addEventListener("click", async() => {
+            clearProfileFieldErrors();
+
+            // Client-side pre-check for fast feedback -- the backend
+            // independently re-validates the same complete rule below, since
+            // this check alone can be bypassed (devtools, a direct API call).
+            const missing = Object.keys(PROFILE_FIELD_LABEL_TO_ID).filter((label) => {
+                const el = document.getElementById(PROFILE_FIELD_LABEL_TO_ID[label]);
+                return !el.value.trim();
+            });
+            if (missing.length) return showMissingProfileFields(missing);
+
             const payload = {
                 full_name: document.getElementById("name").value,
                 email: document.getElementById("email").value,
@@ -4271,30 +4329,43 @@
                 highestDegree: document.getElementById("highestDegree").value,
                 institution: document.getElementById("institution").value,
                 certifications: document.getElementById("certifications").value,
+                medicalConditions: document.getElementById("medicalConditions").value,
+                emergencyContactName: document.getElementById("emergencyName").value,
+                emergencyContactRelationship: document.getElementById("emergencyRelationship").value,
+                emergencyContactPhone: document.getElementById("emergencyPhone").value,
+                emergencyContactPhone2: document.getElementById("emergencyPhone2").value,
             };
-            const result = await apiRequest("/profile/me", {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload),
-            });
-            if (result) {
-                currentProfile = result;
-                populateProfileFields(result);
-                endProfileEdit();
-                showSuccessNotification("Profile Updated", "Your profile information has been saved successfully.");
+
+            // A direct fetch, not apiRequest() -- this handler needs to read
+            // the response body on a non-2xx status (missingFields), which
+            // apiRequest() intentionally doesn't expose to its callers.
+            let response, body;
+            try {
+                response = await fetch(`${API}/profile/me`, {
+                    method: "PUT",
+                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                body = await response.json().catch(() => null);
+            } catch (err) {
+                showToast(err.message || "Connection error", "error");
+                return;
             }
-            // On failure apiRequest() already showed the error toast -- leave
-            // edit mode active so the trainee doesn't lose what they typed.
+
+            if (!response.ok) {
+                if (body && Array.isArray(body.missingFields)) showMissingProfileFields(body.missingFields);
+                else showToast((body && body.error) || "Failed to save profile", "error");
+                // Stay in edit mode -- everything the trainee typed, valid or
+                // not, is left exactly as-is in the inputs.
+                return;
+            }
+
+            currentProfile = body;
+            populateProfileFields(body);
+            clearProfileFieldErrors();
+            endProfileEdit();
+            showSuccessNotification("Profile Updated", "Your profile information has been saved successfully.");
         });
-        // NOTE: the "Health & emergency information" fields (medicalConditions,
-        // emergencyName/Relationship/Phone, emergencyPhone2) are NOT included
-        // in the save payload above -- still UI-only. The
-        // `student_health_info` table exists in the schema with columns for
-        // medical_conditions/emergency_contact_name/relationship/phone but not
-        // yet a second phone -- add an emergency_contact_phone_2 column plus a
-        // load/save route before wiring this section up for real.
 
         // ---- Learning materials (read-only) ------------------------------------
 
