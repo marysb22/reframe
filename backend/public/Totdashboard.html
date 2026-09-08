@@ -4602,8 +4602,12 @@ function renderDocumentsPanel(container) {
       ${docs.length ? docs.map((d) => `
         <li class="doc-item">
           <div>
-            <a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
+            <div class="mrow-title">${escapeHtml(d.originalName)}</div>
             <div class="rmeta">uploaded by ${escapeHtml(d.uploadedByName)}${d.isGroupShared ? " &middot; shared with the whole group" : ""}</div>
+            <div class="mrow-actions" style="margin-top:4px;">
+              <button type="button" class="mrow-btn primary" onclick="openStudentDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
+              <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+            </div>
           </div>
         </li>
       `).join("") : '<li class="empty-state" style="list-style:none;">No documents uploaded yet.</li>'}
@@ -4881,6 +4885,44 @@ async function openMaterialPreview(id) {
       </div>`;
   }
   openModal("materialPreviewModal");
+}
+
+/** Same type-by-extension inline preview as openMaterialPreview(), reused
+ *  for Documents -- which has no materialType field of its own, so the
+ *  file kind is inferred from its name instead. Shared by both Documents
+ *  lists on this page (per-trainee, caseload-wide) via the id-lookup
+ *  wrappers below. */
+function openDocumentPreviewGeneric(d) {
+  if (!d) return;
+  const name = d.originalName || "";
+  const fileUrl = `${UPLOADS}/documents/${d.filename}${TOKEN_Q}`;
+  document.getElementById("matPreviewTitle").textContent = name;
+  document.getElementById("matPreviewMeta").textContent = `Uploaded by ${d.uploadedByName || ""}`;
+  const body = document.getElementById("matPreviewBody");
+  if (/\.(png|jpe?g|gif|webp|svg)$/i.test(name)) {
+    body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(name)}">`;
+  } else if (/\.(mp4|webm|mov)$/i.test(name)) {
+    body.innerHTML = `<video src="${escapeHtml(fileUrl)}" controls></video>`;
+  } else if (/\.pdf$/i.test(name)) {
+    body.innerHTML = `<iframe src="${escapeHtml(fileUrl)}"></iframe>`;
+  } else {
+    body.innerHTML = `
+      <div style="text-align:center;padding:30px 10px;">
+        <i class="fa fa-file" style="font-size:34px;color:var(--faint);margin-bottom:14px;display:block;"></i>
+        <a class="mrow-btn primary" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" download>
+          <i class="fa fa-download"></i> Download ${escapeHtml(name)}
+        </a>
+      </div>`;
+  }
+  openModal("materialPreviewModal");
+}
+
+function openStudentDocumentPreview(id) {
+  openDocumentPreviewGeneric((currentStudentData && currentStudentData.documents || []).find((d) => d.id === id));
+}
+
+function openAllDocumentsPreview(id) {
+  openDocumentPreviewGeneric(allDocumentsRaw.find((d) => d.id === id));
 }
 
 function openMaterialModal() {
@@ -5860,6 +5902,8 @@ async function sendGcMessage() {
   }
 }
 
+let allDocumentsRaw = [];
+
 async function loadAllDocuments() {
   const list = document.getElementById("allDocumentsList");
   list.innerHTML = '<li class="empty-state">Loading documents...</li>';
@@ -5875,6 +5919,7 @@ async function loadAllDocuments() {
     if (!detail) continue;
     detail.documents.forEach((d) => allDocs.push({ ...d, studentName: s.full_name, studentCode: s.memberCode }));
   }
+  allDocumentsRaw = allDocs;
 
   if (!allDocs.length) {
     list.innerHTML = '<li class="empty-state">No documents uploaded yet.</li>';
@@ -5887,8 +5932,12 @@ async function loadAllDocuments() {
     .map((d) => `
       <li class="doc-item">
         <div>
-          <a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a>
+          <div class="mrow-title">${escapeHtml(d.originalName)}</div>
           <div class="rmeta">${escapeHtml(d.studentName)} (${escapeHtml(d.studentCode)}) &middot; uploaded by ${escapeHtml(d.uploadedByName)}</div>
+          <div class="mrow-actions" style="margin-top:4px;">
+            <button type="button" class="mrow-btn primary" onclick="openAllDocumentsPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
+            <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+          </div>
         </div>
       </li>
     `)

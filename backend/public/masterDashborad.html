@@ -4058,7 +4058,13 @@
             if (totActiveTab === "documents") {
                 c.innerHTML = currentTot.documents.length ? `
           <ul class="doc-list">${currentTot.documents.map((d) => `
-            <li class="doc-item"><div><a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName || d.original_name)}</a></div></li>`).join("")}</ul>`
+            <li class="doc-item"><div>
+              <div class="mrow-title">${escapeHtml(d.originalName || d.original_name)}</div>
+              <div class="mrow-actions" style="margin-top:4px;">
+                <button type="button" class="mrow-btn primary" onclick="openTotDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
+                <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+              </div>
+            </div></li>`).join("")}</ul>`
                     : '<p class="empty-state">No documents yet.</p>';
                 return;
             }
@@ -4067,8 +4073,12 @@
           <div class="material-grid">${currentTot.materials.map((m) => `
             <div class="material-card"><div class="mtype">${escapeHtml(m.materialType || m.material_type)}</div>
               <h4>${escapeHtml(m.title)}</h4>
-              ${m.externalUrl || m.external_url ? `<a class="mlink" href="${escapeHtml(m.externalUrl || m.external_url)}" target="_blank" rel="noopener">Open link</a>`
-                    : `<a class="mlink" href="${UPLOADS}/materials/${m.filename}${TOKEN_Q}" target="_blank" rel="noopener">Download</a>`}
+              <div style="display:flex;gap:10px;margin-top:6px;">
+                ${m.externalUrl || m.external_url ? `<a class="mlink" href="${escapeHtml(m.externalUrl || m.external_url)}" target="_blank" rel="noopener">Open link</a>` : `
+                  <a class="mlink" href="#" onclick="openTotMaterialPreview(${m.id}); return false;">Open</a>
+                  <a class="mlink" href="${UPLOADS}/materials/${m.filename}${TOKEN_Q}" target="_blank" rel="noopener" download>Download</a>
+                `}
+              </div>
             </div>`).join("")}</div>`
                     : '<p class="empty-state">No materials shared yet.</p>';
                 return;
@@ -4588,7 +4598,13 @@
             if (trActiveTab === "documents") {
                 c.innerHTML = currentTrainee.documents.length ? `
           <ul class="doc-list">${currentTrainee.documents.map((d) => `
-            <li class="doc-item"><div><a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName || d.original_name)}</a></div></li>`).join("")}</ul>`
+            <li class="doc-item"><div>
+              <div class="mrow-title">${escapeHtml(d.originalName || d.original_name)}</div>
+              <div class="mrow-actions" style="margin-top:4px;">
+                <button type="button" class="mrow-btn primary" onclick="openTraineeDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
+                <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+              </div>
+            </div></li>`).join("")}</ul>`
                     : '<p class="empty-state">No documents yet.</p>';
             }
         }
@@ -4849,19 +4865,91 @@
             openModal("materialPreviewModal");
         }
 
+        /** Same type-by-extension inline preview as openMaterialPreview(),
+         *  reused for Documents -- which has no materialType field of its
+         *  own, so the file kind is inferred from its name instead. Shared
+         *  by every Documents list on this page (per-ToT, per-Trainee,
+         *  group-wide) via the thin id-lookup wrappers below. */
+        function openDocumentPreviewGeneric(d) {
+            if (!d) return;
+            const name = d.originalName || d.original_name || "";
+            const fileUrl = `${UPLOADS}/documents/${d.filename}${TOKEN_Q}`;
+            document.getElementById("matPreviewTitle").textContent = name;
+            document.getElementById("matPreviewMeta").textContent = `Uploaded by ${d.uploadedByName || d.uploaded_by_name || ""}`;
+            const body = document.getElementById("matPreviewBody");
+            if (/\.(png|jpe?g|gif|webp|svg)$/i.test(name)) {
+                body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(name)}">`;
+            } else if (/\.(mp4|webm|mov)$/i.test(name)) {
+                body.innerHTML = `<video src="${escapeHtml(fileUrl)}" controls></video>`;
+            } else if (/\.pdf$/i.test(name)) {
+                body.innerHTML = `<iframe src="${escapeHtml(fileUrl)}"></iframe>`;
+            } else {
+                body.innerHTML = `
+      <div style="text-align:center;padding:30px 10px;">
+        <i class="fa fa-file" style="font-size:34px;color:var(--faint);margin-bottom:14px;display:block;"></i>
+        <a class="mrow-btn primary" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" download>
+          <i class="fa fa-download"></i> Download ${escapeHtml(name)}
+        </a>
+      </div>`;
+            }
+            openModal("materialPreviewModal");
+        }
+
+        function openTotDocumentPreview(id) {
+            openDocumentPreviewGeneric((currentTot && currentTot.documents || []).find((d) => d.id === id));
+        }
+        function openTraineeDocumentPreview(id) {
+            openDocumentPreviewGeneric((currentTrainee && currentTrainee.documents || []).find((d) => d.id === id));
+        }
+        function openGroupDocumentPreview(id) {
+            openDocumentPreviewGeneric(allDocumentsRaw.find((d) => d.id === id));
+        }
+        function openTotMaterialPreview(id) {
+            const m = (currentTot && currentTot.materials || []).find((x) => x.id === id);
+            if (!m) return;
+            document.getElementById("matPreviewTitle").textContent = m.title;
+            document.getElementById("matPreviewMeta").textContent = escapeHtml(m.materialType || m.material_type || "");
+            const body = document.getElementById("matPreviewBody");
+            const fileUrl = m.externalUrl || m.external_url || `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
+            const type = m.materialType || m.material_type;
+            if (type === "image") {
+                body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(m.title)}">`;
+            } else if (type === "video") {
+                body.innerHTML = `<video src="${escapeHtml(fileUrl)}" controls></video>`;
+            } else if (!m.externalUrl && !m.external_url && m.filename && /\.pdf$/i.test(m.filename)) {
+                body.innerHTML = `<iframe src="${escapeHtml(fileUrl)}"></iframe>`;
+            } else {
+                body.innerHTML = `
+      <div style="text-align:center;padding:30px 10px;">
+        <i class="fa fa-file" style="font-size:34px;color:var(--faint);margin-bottom:14px;display:block;"></i>
+        <a class="mrow-btn primary" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" ${(m.externalUrl || m.external_url) ? "" : "download"}>
+          <i class="fa ${(m.externalUrl || m.external_url) ? "fa-arrow-up-right-from-square" : "fa-download"}"></i> ${(m.externalUrl || m.external_url) ? "Open link" : "Download " + escapeHtml(m.originalName || "")}
+        </a>
+      </div>`;
+            }
+            openModal("materialPreviewModal");
+        }
+
+        let allDocumentsRaw = [];
+
         async function loadAllDocuments() {
             const list = document.getElementById("allDocsList");
             list.innerHTML = '<li class="empty-state">Loading documents...</li>';
             const data = await apiRequest("/master-trainer/documents");
             if (!data) return;
-            if (!data.documents.length) {
+            allDocumentsRaw = data.documents;
+            if (!allDocumentsRaw.length) {
                 list.innerHTML = '<li class="empty-state">No documents in your Group yet.</li>';
                 return;
             }
-            list.innerHTML = data.documents.map((d) => `
+            list.innerHTML = allDocumentsRaw.map((d) => `
         <li class="doc-item"><div>
-          <a href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName || d.original_name)}</a>
+          <div class="mrow-title">${escapeHtml(d.originalName || d.original_name)}</div>
           <div class="rmeta">${escapeHtml(d.student_name || "")} &middot; uploaded by ${escapeHtml(d.uploadedByName || d.uploaded_by_name || "")}</div>
+          <div class="mrow-actions" style="margin-top:4px;">
+            <button type="button" class="mrow-btn primary" onclick="openGroupDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
+            <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+          </div>
         </div></li>`).join("");
         }
 
