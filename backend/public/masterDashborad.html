@@ -5879,7 +5879,18 @@ function renderLibraryGrid(list) {
   `).join("");
 }
 
-function openBookReader(id) {
+function bookUnsupportedPreviewHtml(b, fileUrl) {
+  return `
+      <div style="text-align:center;padding:40px 24px;background:#fff;border-radius:14px;max-width:360px;">
+        <i class="fa fa-file-lines" style="font-size:40px;color:var(--faint);margin-bottom:16px;display:block;"></i>
+        <p style="margin:0 0 16px;color:var(--muted);font-size:13px;">This file type can't be previewed in the browser.</p>
+        <a class="btn" href="${fileUrl}" download style="width:auto;display:inline-flex;align-items:center;gap:8px;margin:0;"><i class="fa fa-download"></i> Download ${escapeHtml(b.originalName || "")}</a>
+      </div>`;
+}
+
+const OFFICE_PREVIEW_EXTS = ["doc", "docx", "ppt", "pptx", "xls", "xlsx"];
+
+async function openBookReader(id) {
   const b = libraryBooksRaw.find((x) => x.id === id);
   if (!b) return;
   document.getElementById("readerTitle").textContent = b.title;
@@ -5888,24 +5899,36 @@ function openBookReader(id) {
   const fileUrl = `${UPLOADS}/materials/${b.filename}${TOKEN_Q}`;
   const ext = libraryFileExt(b.originalName).toLowerCase();
   const body = document.getElementById("readerBody");
+  document.getElementById("readerDownload").href = fileUrl;
+  document.getElementById("readerOverlay").classList.add("open");
+
   if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
     body.innerHTML = `<img src="${fileUrl}" alt="${escapeHtml(b.title)}">`;
   } else if (["mp4", "mov"].includes(ext)) {
     body.innerHTML = `<video src="${fileUrl}" controls></video>`;
   } else if (ext === "pdf") {
     body.innerHTML = `<iframe src="${fileUrl}" title="${escapeHtml(b.title)}"></iframe>`;
+  } else if (OFFICE_PREVIEW_EXTS.includes(ext)) {
+    // Word/PowerPoint/Excel can't render in any browser natively -- route
+    // through Google Docs Viewer instead via a short-lived (5 min),
+    // single-file signed link (never a permanently public URL). Falls
+    // back to the plain download card if the link can't be issued or
+    // reached (e.g. a local/private dev server Google can't reach).
+    body.innerHTML = `<div class="library-empty" style="color:#eee;"><i class="fa fa-spinner fa-spin-pulse"></i><p>Loading preview...</p></div>`;
+    try {
+      const linkRes = await fetch(`${UPLOADS}/preview-link?subfolder=materials&filename=${encodeURIComponent(b.filename)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!linkRes.ok) throw new Error("preview link request failed");
+      const linkData = await linkRes.json();
+      const publicUrl = window.API_BASE + linkData.url;
+      body.innerHTML = `<iframe src="https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(publicUrl)}" title="${escapeHtml(b.title)}"></iframe>`;
+    } catch (err) {
+      body.innerHTML = bookUnsupportedPreviewHtml(b, fileUrl);
+    }
   } else {
-    // Word/PowerPoint/etc: no browser can render these inline, so an
-    // <iframe> here would just show blank. Offer a clear download instead.
-    body.innerHTML = `
-      <div style="text-align:center;padding:40px 24px;background:#fff;border-radius:14px;max-width:360px;">
-        <i class="fa fa-file-lines" style="font-size:40px;color:var(--faint);margin-bottom:16px;display:block;"></i>
-        <p style="margin:0 0 16px;color:var(--muted);font-size:13px;">This file type can't be previewed in the browser.</p>
-        <a class="btn" href="${fileUrl}" download style="width:auto;display:inline-flex;align-items:center;gap:8px;margin:0;"><i class="fa fa-download"></i> Download ${escapeHtml(b.originalName || "")}</a>
-      </div>`;
+    body.innerHTML = bookUnsupportedPreviewHtml(b, fileUrl);
   }
-  document.getElementById("readerDownload").href = fileUrl;
-  document.getElementById("readerOverlay").classList.add("open");
 }
 
 function closeBookReader() {

@@ -170,6 +170,56 @@ const AUTHORIZERS = {
   },
 };
 
+// GET /uploads/preview-link?subfolder=X&filename=Y -- issues a short-lived,
+// single-file signed link so an external renderer (Google Docs Viewer,
+// which needs a URL its own servers can fetch with no session/cookie) can
+// read one specific, already-authorized file without making it permanently
+// public. Reuses the exact same per-subfolder authorization check as the
+// private download route above -- this never grants access the private
+// route wouldn't already allow, it only relays it to a URL a third party
+// can reach for 5 minutes.
+router.get("/preview-link", authenticateForFile, async (req, res) => {
+  const { subfolder, filename } = req.query;
+  if (!subfolder || !filename || !/^[A-Za-z0-9._-]+$/.test(filename)) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  const authorizer = AUTHORIZERS[subfolder];
+  if (!authorizer) return res.status(404).json({ error: "Not found" });
+
+  try {
+    const allowed = await authorizer(req.fileUser, filename);
+    if (!allowed) return res.status(403).json({ error: "You don't have access to this file" });
+  } catch (err) {
+    console.error("[files] preview-link authorization check failed:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+
+  const token = jwt.sign({ purpose: "file-preview", subfolder, filename }, config.jwtSecret, { expiresIn: "5m" });
+  res.json({ url: `/uploads/preview/${token}` });
+});
+
+// GET /uploads/preview/:token -- deliberately NOT behind authenticateForFile:
+// this is the one URL a non-logged-in fetch (Google's own server) must be
+// able to reach. The token itself carries and proves the authorization --
+// signed, single-file-scoped, and expires in 5 minutes, so this never
+// leaves a file permanently or broadly exposed.
+router.get("/preview/:token", async (req, res) => {
+  let payload;
+  try {
+    payload = jwt.verify(req.params.token, config.jwtSecret);
+  } catch (err) {
+    return res.status(403).json({ error: "This preview link is invalid or has expired" });
+  }
+  if (payload.purpose !== "file-preview" || !payload.subfolder || !payload.filename) {
+    return res.status(403).json({ error: "This preview link is invalid" });
+  }
+
+  const filePath = path.join(config.uploadsDir, payload.subfolder, payload.filename);
+  res.sendFile(filePath, (err) => {
+    if (err && !res.headersSent) res.status(404).json({ error: "File not found" });
+  });
+});
+
 router.get("/:subfolder/:filename", authenticateForFile, async (req, res) => {
   const { subfolder, filename } = req.params;
   // multer only ever generates `<timestamp>-<hex><ext>` -- anything with a
