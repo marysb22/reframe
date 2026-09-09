@@ -2463,7 +2463,18 @@
         .inbox-item:hover {
             border-color: var(--primary-light);
         }
-        
+
+        .inbox-item.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .inbox-item.active .inbox-info strong,
+        .inbox-item.active .inbox-info span,
+        .inbox-item.active .inbox-time {
+            color: #fff;
+        }
+
         .inbox-item .inbox-avatar {
             width: 40px;
             height: 40px;
@@ -3330,10 +3341,27 @@
                     </div>
 
                     <div id="directChatPanel">
-                        <p class="card-subtitle">One conversation per assigned trainee. Click a conversation to open the full thread.</p>
-                        <ul class="inbox-list" id="chatInboxList">
-                            <li class="empty-state">Loading conversations...</li>
-                        </ul>
+                        <p class="card-subtitle">One conversation per assigned trainee.</p>
+                        <div class="gc-layout">
+                            <div class="gc-room-list">
+                                <ul class="inbox-list" id="chatInboxList">
+                                    <li class="empty-state">Loading conversations...</li>
+                                </ul>
+                            </div>
+                            <div class="gc-thread-panel">
+                                <div class="gc-thread-header" id="dmThreadHeader" style="display:none;">
+                                    <h4 id="dmThreadName">&mdash;</h4>
+                                    <button type="button" class="icon-btn" title="Open full profile" onclick="if (dmActiveStudentId) openStudent(dmActiveStudentId)"><i class="fa fa-user"></i></button>
+                                </div>
+                                <div class="chat-thread gc-thread-body" id="dmThread">
+                                    <div class="empty-state">Select a conversation to start chatting.</div>
+                                </div>
+                                <div class="gc-composer" id="dmComposer" style="display:none;">
+                                    <textarea id="dmInput" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDirectMessage();}"></textarea>
+                                    <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendDirectMessage()"><i class="fa fa-paper-plane"></i></button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="groupChatPanel" style="display:none;">
@@ -3830,7 +3858,7 @@
                 fields: ["date", "title", "score", "content"]
             },
         };
-        let TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents", "messages"];
+        let TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents"];
 
         // Any active hour type beyond the two permanent ones ('training',
         // 'supervision') gets its own session-logging tab and its own
@@ -3863,7 +3891,7 @@
                         hourType: ht.code,
                     };
                 });
-            TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents", "messages"];
+            TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents"];
 
             const filterEl = document.getElementById("sessionTypeFilter");
             if (filterEl) renderSessionTypeOptions(filterEl, true);
@@ -4355,7 +4383,7 @@
       <td>
         <div class="row-actions">
           <button class="icon-btn" title="Open profile" onclick="openStudent(${s.id})"><i class="fa fa-eye"></i></button>
-          <button class="icon-btn" title="Message" onclick="openStudent(${s.id}, 'messages')"><i class="fa fa-comment"></i></button>
+          <button class="icon-btn" title="Message" onclick="openDirectMessageFor(${s.id})"><i class="fa fa-comment"></i></button>
         </div>
       </td>
     </tr>
@@ -4509,10 +4537,6 @@
             return "&mdash;";
         }
 
-        // Tracks whether there's actually training data to show, independent
-        // of the Messages-tab visibility override in renderActivePanel()
-        // below -- switching tabs must never lose track of "no data at all"
-        // vs. "has data, just hidden for this one tab."
         let sdTrainingHasData = false;
 
         function renderTrainingInfo(student) {
@@ -4522,7 +4546,7 @@
                 el.style.display = "none";
                 return;
             }
-            el.style.display = activeTab === "messages" ? "none" : "";
+            el.style.display = "";
             const cells = [
                 ["Training start", formatTrainingDate(student.trainingStartDate)],
                 ["Duration", student.trainingDurationYears ? student.trainingDurationYears + " Years" : "&mdash;"],
@@ -4538,8 +4562,7 @@
             const labels = {
                 overview: "Overview",
                 milestones: "Milestones",
-                documents: "Documents",
-                messages: "Messages"
+                documents: "Documents"
             };
             document.getElementById("sdTabs").innerHTML = TAB_ORDER.map((t) => {
                 const label = (RECORD_TYPES[t] && RECORD_TYPES[t].label) || labels[t];
@@ -4557,13 +4580,7 @@
             const container = document.getElementById("sdPanels");
             editingRecordId = null;
 
-            // Give the Messages tab's chat its full space -- both the
-            // progress KPIs and the Training Information card (still shown
-            // on every other tab) hide only here, restored again the
-            // moment a different tab is selected.
-            document.getElementById("sdProgress").style.display = activeTab === "messages" ? "none" : "";
-            document.getElementById("sdTraining").style.display =
-                sdTrainingHasData && activeTab !== "messages" ? "" : "none";
+            document.getElementById("sdTraining").style.display = sdTrainingHasData ? "" : "none";
 
             if (activeTab === "overview") {
                 container.innerHTML = `<p style="color:var(--muted);font-size:13px;">Use the tabs above to log attendance, sessions, hours, assignments, notes, and evaluations. Everything you add here appears immediately on the trainee's My Profile page.</p>`;
@@ -4577,11 +4594,6 @@
 
             if (activeTab === "documents") {
                 renderDocumentsPanel(container);
-                return;
-            }
-
-            if (activeTab === "messages") {
-                await renderMessagesPanel(container);
                 return;
             }
 
@@ -4952,40 +4964,6 @@ function renderDocumentsPanel(container) {
       showToast(err.message, "error");
     }
   });
-}
-
-async function renderMessagesPanel(container) {
-  container.innerHTML = `<div class="chat-thread" id="chatThread"><div class="empty-state">Loading messages...</div></div>
-    <div class="chat-compose"><textarea id="chatInput" placeholder="Write a message to this trainee..."></textarea><button class="btn" onclick="sendMessage()"><i class="fa fa-paper-plane"></i></button></div>`;
-
-  const data = await apiRequest(`/supervisor/students/${currentStudentId}/messages`);
-  const thread = document.getElementById("chatThread");
-  if (!data || !data.messages.length) {
-    thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>';
-    return;
-  }
-  thread.innerHTML = data.messages
-    .map(
-      (m) => `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"}">${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}</div></div>`
-    )
-    .join("");
-  thread.scrollTop = thread.scrollHeight;
-}
-
-async function sendMessage() {
-  const input = document.getElementById("chatInput");
-  const content = input.value.trim();
-  if (!content) return;
-  const result = await apiRequest(`/supervisor/students/${currentStudentId}/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
-  });
-  if (result) {
-    input.value = "";
-    await renderMessagesPanel(document.getElementById("sdPanels"));
-    loadedSections.delete("chat");
-  }
 }
 
 function confirmRemoveCurrentStudent() {
@@ -5992,7 +5970,7 @@ async function loadChatInbox() {
 
   list.innerHTML = conversations
     .map(({ student, last }) => `
-      <li class="inbox-item" onclick="openStudent(${student.id}, 'messages')">
+      <li class="inbox-item ${Number(student.id) === Number(dmActiveStudentId) ? "active" : ""}" data-student-id="${student.id}" onclick="openDirectThread(${student.id})">
         <div class="inbox-avatar">${escapeHtml(initials(student.full_name))}</div>
         <div class="inbox-info">
           <strong>${escapeHtml(student.full_name)}</strong>
@@ -6002,6 +5980,65 @@ async function loadChatInbox() {
       </li>
     `)
     .join("");
+}
+
+// ---- Direct Messages (1:1 chat, inline within the Chat section -- a
+// dedicated chat-only interface, never the trainee profile modal) ---------
+let dmActiveStudentId = null;
+
+function markActiveInboxItem() {
+  document.querySelectorAll("#chatInboxList .inbox-item").forEach((el) => {
+    el.classList.toggle("active", Number(el.dataset.studentId) === Number(dmActiveStudentId));
+  });
+}
+
+async function openDirectThread(studentId) {
+  dmActiveStudentId = studentId;
+  markActiveInboxItem();
+
+  const student = allStudents.find((s) => Number(s.id) === Number(studentId));
+  document.getElementById("dmThreadHeader").style.display = "flex";
+  document.getElementById("dmThreadName").textContent = student ? student.full_name : "Conversation";
+  document.getElementById("dmComposer").style.display = "flex";
+
+  const thread = document.getElementById("dmThread");
+  thread.innerHTML = '<div class="empty-state">Loading messages...</div>';
+  const data = await apiRequest(`/supervisor/students/${studentId}/messages`);
+  if (!data) return;
+  if (!data.messages.length) {
+    thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>';
+    return;
+  }
+  thread.innerHTML = data.messages
+    .map((m) => `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"}">${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}</div></div>`)
+    .join("");
+  thread.scrollTop = thread.scrollHeight;
+}
+
+async function sendDirectMessage() {
+  if (!dmActiveStudentId) return;
+  const input = document.getElementById("dmInput");
+  const content = input.value.trim();
+  if (!content) return;
+  const result = await apiRequest(`/supervisor/students/${dmActiveStudentId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (result) {
+    input.value = "";
+    await openDirectThread(dmActiveStudentId);
+    await loadChatInbox();
+  }
+}
+
+// Entry point from outside the Chat section (e.g. the trainees list's
+// "Message" icon) -- always lands in the dedicated chat-only Direct
+// Messages view, never the trainee profile modal.
+function openDirectMessageFor(studentId) {
+  showSection("chat");
+  switchChatMode("direct");
+  openDirectThread(studentId);
 }
 
 // ---- Group Chats -------------------------------------------------------
