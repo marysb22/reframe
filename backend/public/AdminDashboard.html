@@ -751,7 +751,7 @@ tr:hover td{background:var(--surface-2);}
 
       <div id="spPanel-documents" class="sp-panel" style="display:none;">
         <table>
-          <thead><tr><th>File</th><th>Uploaded by</th><th>Date</th><th></th></tr></thead>
+          <thead><tr><th>File</th><th>Uploaded by</th><th>Date</th><th>Actions</th></tr></thead>
           <tbody id="spDocsBody"><tr><td colspan="4" class="empty-state">No documents yet.</td></tr></tbody>
         </table>
       </div>
@@ -2459,15 +2459,25 @@ function renderSpDocuments(documents) {
     return;
   }
   body.innerHTML = documents
-    .map(
-      (d) => `
+    .map((d) => {
+      // Open: plain link, no `download` attribute -- the browser renders a
+      // PDF inline (its own tab) instead of forcing a save, same rule the
+      // Library/Materials/Documents preview modals rely on elsewhere.
+      // Download: the identical URL, just with `download` added, so it's an
+      // explicit separate action rather than Open silently saving the file.
+      const fileUrl = `${API_BASE}/uploads/documents/${d.filename}${TOKEN_Q}`;
+      return `
     <tr>
-      <td><a href="${API_BASE}/uploads/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener">${escapeHtml(d.originalName)}</a></td>
-      <td>${d.uploadedByName ? escapeHtml(d.uploadedByName) : "&mdash;"}</td>
+      <td>${escapeHtml(d.originalName)}</td>
+      <td>${d.uploadedByName ? escapeHtml(d.uploadedByName) : "&mdash;"}${d.uploadedByRole ? " &middot; " + escapeHtml(d.uploadedByRole) : ""}</td>
       <td>${new Date(d.createdAt).toLocaleDateString()}</td>
-      <td><button class="icon-btn danger" title="Delete document" onclick="confirmDeleteDocument(${d.id})"><i class="fa fa-trash"></i></button></td>
-    </tr>`
-    )
+      <td>
+        <a class="icon-btn" title="Open" href="${fileUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;"><i class="fa fa-eye"></i></a>
+        <a class="icon-btn" title="Download" href="${fileUrl}" download style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;"><i class="fa fa-download"></i></a>
+        <button class="icon-btn danger" title="Delete document" onclick="confirmDeleteDocument(${d.id})"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>`;
+    })
     .join("");
 }
 
