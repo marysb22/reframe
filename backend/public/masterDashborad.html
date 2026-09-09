@@ -4946,7 +4946,7 @@
             applyMaterialsFilters();
         }
 
-        function openMaterialPreview(id) {
+        async function openMaterialPreview(id) {
             const m = materialsRaw.find((x) => x.id === id);
             if (!m) return;
 
@@ -4973,6 +4973,21 @@
                 body.innerHTML = `<video src="${escapeHtml(fileUrl)}" controls></video>`;
             } else if (!m.externalUrl && m.filename && /\.pdf$/i.test(m.filename)) {
                 body.innerHTML = `<iframe src="${escapeHtml(fileUrl)}"></iframe>`;
+            } else if (!m.externalUrl && m.filename && OFFICE_PREVIEW_EXTS.includes((m.filename.split(".").pop() || "").toLowerCase())) {
+                // Same short-lived signed-link approach as the Library reader
+                // (openBookReader) -- reused as-is, not a second implementation.
+                body.innerHTML = `<div class="library-empty" style="color:#eee;"><i class="fa fa-spinner fa-spin-pulse"></i><p>Loading preview...</p></div>`;
+                try {
+                    const linkRes = await fetch(`${UPLOADS}/preview-link?subfolder=materials&filename=${encodeURIComponent(m.filename)}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (!linkRes.ok) throw new Error("preview link request failed");
+                    const linkData = await linkRes.json();
+                    const publicUrl = window.API_BASE + linkData.url;
+                    body.innerHTML = `<iframe src="https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(publicUrl)}" title="${escapeHtml(m.title)}"></iframe>`;
+                } catch (err) {
+                    body.innerHTML = bookUnsupportedPreviewHtml(m, fileUrl);
+                }
             } else {
                 body.innerHTML = `
       <div style="text-align:center;padding:30px 10px;">
@@ -4990,7 +5005,7 @@
          *  own, so the file kind is inferred from its name instead. Shared
          *  by every Documents list on this page (per-ToT, per-Trainee,
          *  group-wide) via the thin id-lookup wrappers below. */
-        function openDocumentPreviewGeneric(d) {
+        async function openDocumentPreviewGeneric(d) {
             if (!d) return;
             const name = d.originalName || d.original_name || "";
             const fileUrl = `${UPLOADS}/documents/${d.filename}${TOKEN_Q}`;
@@ -5003,6 +5018,21 @@
                 body.innerHTML = `<video src="${escapeHtml(fileUrl)}" controls></video>`;
             } else if (/\.pdf$/i.test(name)) {
                 body.innerHTML = `<iframe src="${escapeHtml(fileUrl)}"></iframe>`;
+            } else if (OFFICE_PREVIEW_EXTS.includes((name.split(".").pop() || "").toLowerCase())) {
+                // Same short-lived signed-link approach as the Library reader
+                // (openBookReader) -- reused as-is, not a second implementation.
+                body.innerHTML = `<div class="library-empty" style="color:#eee;"><i class="fa fa-spinner fa-spin-pulse"></i><p>Loading preview...</p></div>`;
+                try {
+                    const linkRes = await fetch(`${UPLOADS}/preview-link?subfolder=documents&filename=${encodeURIComponent(d.filename)}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (!linkRes.ok) throw new Error("preview link request failed");
+                    const linkData = await linkRes.json();
+                    const publicUrl = window.API_BASE + linkData.url;
+                    body.innerHTML = `<iframe src="https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(publicUrl)}" title="${escapeHtml(name)}"></iframe>`;
+                } catch (err) {
+                    body.innerHTML = bookUnsupportedPreviewHtml(d, fileUrl);
+                }
             } else {
                 body.innerHTML = `
       <div style="text-align:center;padding:30px 10px;">
@@ -5024,7 +5054,7 @@
         function openGroupDocumentPreview(id) {
             openDocumentPreviewGeneric(allDocumentsRaw.find((d) => d.id === id));
         }
-        function openTotMaterialPreview(id) {
+        async function openTotMaterialPreview(id) {
             const m = (currentTot && currentTot.materials || []).find((x) => x.id === id);
             if (!m) return;
             document.getElementById("matPreviewTitle").textContent = m.title;
@@ -5038,6 +5068,21 @@
                 body.innerHTML = `<video src="${escapeHtml(fileUrl)}" controls></video>`;
             } else if (!m.externalUrl && !m.external_url && m.filename && /\.pdf$/i.test(m.filename)) {
                 body.innerHTML = `<iframe src="${escapeHtml(fileUrl)}"></iframe>`;
+            } else if (!m.externalUrl && !m.external_url && m.filename && OFFICE_PREVIEW_EXTS.includes((m.filename.split(".").pop() || "").toLowerCase())) {
+                // Same short-lived signed-link approach as the Library reader
+                // (openBookReader) -- reused as-is, not a second implementation.
+                body.innerHTML = `<div class="library-empty" style="color:#eee;"><i class="fa fa-spinner fa-spin-pulse"></i><p>Loading preview...</p></div>`;
+                try {
+                    const linkRes = await fetch(`${UPLOADS}/preview-link?subfolder=materials&filename=${encodeURIComponent(m.filename)}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (!linkRes.ok) throw new Error("preview link request failed");
+                    const linkData = await linkRes.json();
+                    const publicUrl = window.API_BASE + linkData.url;
+                    body.innerHTML = `<iframe src="https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(publicUrl)}" title="${escapeHtml(m.title)}"></iframe>`;
+                } catch (err) {
+                    body.innerHTML = bookUnsupportedPreviewHtml(m, fileUrl);
+                }
             } else {
                 body.innerHTML = `
       <div style="text-align:center;padding:30px 10px;">
