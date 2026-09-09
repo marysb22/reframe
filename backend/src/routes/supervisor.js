@@ -35,7 +35,8 @@ const STUDENT_PROFILE_SELECT = `
   SELECT uc.id, uc.member_code, uc.role, uc.status, uc.must_change_password, uc.created_at, uc.updated_at,
          st.full_name, st.email, st.phone, st.photo, st.gender, st.date_of_birth, st.marital_status,
          st.address, st.highest_degree, st.institution, st.certifications, st.cv_file,
-         st.cohort_id, c.name AS cohort_name, st.current_year
+         st.cohort_id, c.name AS cohort_name, st.current_year,
+         st.training_start_date, CURDATE() AS training_today
   FROM user_credentials uc
   JOIN students st ON st.id = uc.id
   LEFT JOIN cohorts c ON c.id = st.cohort_id

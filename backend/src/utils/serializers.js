@@ -6,6 +6,8 @@
  * these read.
  */
 
+const { TRAINING_DURATION_YEARS, calculateTrainingProgress } = require("./trainingTimeline");
+
 /** Event forms send either a real array or newline-separated bullet text -- normalize to an array either way. Shared by admin.js and designer.js, both of which manage the `events` table. */
 function toArray(value) {
   if (Array.isArray(value)) return value;
@@ -70,6 +72,19 @@ function toPublicUser(row) {
 }
 
 function toProfileResponse(row) {
+  // Training Start Date -> End Date/Year/Status are all derived here, once,
+  // from row.training_start_date + row.training_today (CURDATE(), selected
+  // alongside the row itself -- see PROFILE_SELECT/USER_SELECT/
+  // STUDENT_PROFILE_SELECT). This is the one place every profile-detail
+  // view in the app computes these fields; nothing else recomputes them
+  // separately. `undefined` (not null) on any query that didn't select
+  // these columns, matching the same convention used elsewhere in this file.
+  const trainingStartDate = row.training_start_date;
+  const progress =
+    trainingStartDate === undefined
+      ? { status: undefined, trainingYear: undefined, endDate: undefined }
+      : calculateTrainingProgress(trainingStartDate, row.training_today);
+
   return {
     ...toPublicUser(row),
     phone: row.phone,
@@ -83,6 +98,13 @@ function toProfileResponse(row) {
     cohort: row.cohort_name,
     cohortId: row.cohort_id,
     currentYear: row.current_year,
+    // Trainee/Supervisor only (undefined for admin/designer rows, whose
+    // queries never select training_start_date at all).
+    trainingStartDate: trainingStartDate === undefined ? undefined : trainingStartDate || null,
+    trainingDurationYears: trainingStartDate ? TRAINING_DURATION_YEARS : trainingStartDate === undefined ? undefined : null,
+    trainingEndDate: progress.endDate,
+    trainingStatus: progress.status,
+    trainingYear: progress.trainingYear,
   };
 }
 

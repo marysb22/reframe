@@ -54,6 +54,8 @@ const USER_SELECT = `
     st.cohort_id, c.name AS cohort_name, st.current_year, st.highest_degree, st.institution,
     sup.group_id AS supervisor_group_id, st.group_id AS student_group_id,
     tg.id AS group_id, tg.name AS group_name,
+    COALESCE(sup.training_start_date, st.training_start_date) AS training_start_date,
+    CURDATE() AS training_today,
     COALESCE(
       (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', sup2.id, 'full_name', sup2.full_name, 'supervisor_type', sup2.supervisor_type))
          FROM supervisor_students ss JOIN supervisors sup2 ON sup2.id = ss.supervisor_id
@@ -424,11 +426,15 @@ router.put(
       highestDegree,
       institution,
       certifications,
+      trainingStartDate,
     } = req.body || {};
     const allowedStatus = ["active", "suspended"];
 
     if (status !== undefined && !allowedStatus.includes(status)) {
       return res.status(400).json({ error: "Status must be 'active' or 'suspended'" });
+    }
+    if (trainingStartDate && !/^\d{4}-\d{2}-\d{2}$/.test(trainingStartDate)) {
+      return res.status(400).json({ error: "Training start date must be a valid date (YYYY-MM-DD)" });
     }
     if (status !== undefined) {
       await db.query("UPDATE user_credentials SET status = ?, updated_at = NOW() WHERE id = ?", [status, id]);
@@ -499,6 +505,14 @@ router.put(
     if (existing.role === "supervisor" && specialization !== undefined) {
       profileParams.push(specialization || null);
       profileUpdates.push(`specialization = ?`);
+    }
+    // Training Start Date -- the one field a person's Training End Date/
+    // Year/Status are all derived from (see trainingTimeline.js). Applies
+    // to both Trainee and Supervisor (Master Trainer + ToT) rows, unlike
+    // the trainee-only/supervisor-only fields above.
+    if ((existing.role === "trainee" || existing.role === "supervisor") && trainingStartDate !== undefined) {
+      profileParams.push(trainingStartDate || null);
+      profileUpdates.push(`training_start_date = ?`);
     }
     if (profileUpdates.length) {
       profileParams.push(id);

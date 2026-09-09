@@ -3234,6 +3234,28 @@
                     </div>
                 </section>
 
+                <section class="system-card" id="trainingInfoCard" style="display:none;">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-graduation-cap"></i>
+                            <h2>Training Information</h2>
+                        </div>
+                    </div>
+                    <div class="kpi-grid">
+                        <div class="kpi-card"><label>Start Date</label>
+                            <h2 id="trainingStartDateValue" style="font-size:16px;">&mdash;</h2>
+                        </div>
+                        <div class="kpi-card"><label>Duration</label>
+                            <h2 id="trainingDurationValue" style="font-size:17px;">&mdash;</h2>
+                        </div>
+                        <div class="kpi-card"><label>Expected End Date</label>
+                            <h2 id="trainingEndDateValue" style="font-size:16px;">&mdash;</h2>
+                        </div>
+                        <div class="kpi-card"><label>Training Status</label>
+                            <h2 id="trainingStatusValue" style="font-size:16px;">&mdash;</h2>
+                        </div>
+                    </div>
+                </section>
+
                 <section class="system-card">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-user"></i>
@@ -4146,6 +4168,22 @@
         // always pass the FULL object (GET /profile/me or the PUT result,
         // which returns the same complete shape) so no field is ever left
         // showing a stale or blanked-out value.
+        // Both fields the backend already computed (see trainingTimeline.js
+        // + toProfileResponse) -- this is display formatting only, never a
+        // second, independent date/status calculation.
+        function formatTrainingDate(yyyyMmDd) {
+            if (!yyyyMmDd) return null;
+            const [y, m, d] = yyyyMmDd.split("-").map(Number);
+            return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+        }
+
+        function formatTrainingStatus(status, year) {
+            if (status === "scheduled") return "Scheduled";
+            if (status === "completed") return "Completed";
+            if (status === "active") return `Active${year ? " · Year " + year : ""}`;
+            return null;
+        }
+
         function populateProfileFields(data) {
             setText("topbarName", data.full_name);
             document.getElementById("topbarSub").textContent = data.memberCode || "Trainee";
@@ -4168,6 +4206,22 @@
             setText("yearValue", data.currentYear ? `Year ${data.currentYear}` : null);
             setText("supervisorValue", data.supervisors && data.supervisors.length ? data.supervisors.map((s) => s.full_name).join(", ") : "Unassigned");
             document.getElementById("statusValue").innerHTML = `<span class="pill active">Active</span>`;
+
+            // Training Information -- every field here is read directly from
+            // what the backend already computed (toProfileResponse, fed by
+            // trainingTimeline.js); this page never does its own date math.
+            const trainingCard = document.getElementById("trainingInfoCard");
+            if (trainingCard) {
+                if (data.trainingStartDate) {
+                    trainingCard.style.display = "";
+                    setText("trainingStartDateValue", formatTrainingDate(data.trainingStartDate));
+                    setText("trainingDurationValue", data.trainingDurationYears ? `${data.trainingDurationYears} Years` : null);
+                    setText("trainingEndDateValue", formatTrainingDate(data.trainingEndDate));
+                    setText("trainingStatusValue", formatTrainingStatus(data.trainingStatus, data.trainingYear));
+                } else {
+                    trainingCard.style.display = "none";
+                }
+            }
 
             setValue("name", data.full_name);
             setValue("gender", data.gender);

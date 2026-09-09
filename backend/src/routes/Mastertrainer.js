@@ -3,6 +3,7 @@ const { requireAuth, requireMasterTrainer, asyncRoute } = require("../middleware
 const { toRecord, toDocument, toMaterial, computeTrainingProgress, computeHoursByType } = require("../utils/serializers");
 const { resolveWeekRange, getCurrentWeekRange, listRecentWeeks, shiftDate } = require("../utils/weekPeriod");
 const { buildTotHoursBreakdownQuery, TRAINEE_ACTIVITY_ENTITY_TYPES } = require("../utils/recordsQuery");
+const { TRAINING_DURATION_YEARS, calculateTrainingProgress } = require("../utils/trainingTimeline");
 
 const router = express.Router();
 
@@ -102,11 +103,26 @@ function noGroupResponse(res, shape) {
 /** Confirms totId is an in_training supervisor inside the calling MT's group.
  *  Returns the row or writes 403/404 and returns null — same pattern as
  *  loadAssignedStudent() in routes/supervisor.js. */
+// Attaches the same Training Start Date-derived fields toProfileResponse()
+// computes elsewhere (see trainingTimeline.js) onto a raw query row that
+// wasn't funneled through that shared serializer -- this router returns
+// plain snake_case rows, not the camelCase profile shape, so the fields are
+// added directly rather than duplicating the calculation a second way.
+function withTrainingInfo(row) {
+    const progress = calculateTrainingProgress(row.training_start_date, row.training_today);
+    row.trainingStartDate = row.training_start_date || null;
+    row.trainingDurationYears = row.training_start_date ? TRAINING_DURATION_YEARS : null;
+    row.trainingEndDate = progress.endDate;
+    row.trainingStatus = progress.status;
+    row.trainingYear = progress.trainingYear;
+    return row;
+}
+
 async function loadGroupTot(db, groupId, totId, res) {
     const { rows } = await db.query(
         `SELECT uc.id, uc.member_code, uc.status, uc.created_at,
             sup.full_name, sup.email, sup.phone, sup.photo, sup.bio, sup.specialization,
-            sup.group_id, sup.supervisor_type
+            sup.group_id, sup.supervisor_type, sup.training_start_date, CURDATE() AS training_today
      FROM user_credentials uc
      JOIN supervisors sup ON sup.id = uc.id
      WHERE uc.id = ? AND sup.supervisor_type = 'in_training'`, [totId]
@@ -119,7 +135,7 @@ async function loadGroupTot(db, groupId, totId, res) {
         res.status(403).json({ error: "This trainer is not in your group" });
         return null;
     }
-    return rows[0];
+    return withTrainingInfo(rows[0]);
 }
 
 /** Confirms studentId belongs (via students.group_id) to the calling MT's group. */
@@ -128,7 +144,7 @@ async function loadGroupStudent(db, groupId, studentId, res) {
         `SELECT uc.id, uc.member_code, uc.status, uc.created_at,
             st.full_name, st.email, st.phone, st.photo, st.gender, st.current_year,
             st.highest_degree, st.institution, st.certifications, st.cv_file,
-            st.group_id, c.name AS cohort_name
+            st.group_id, c.name AS cohort_name, st.training_start_date, CURDATE() AS training_today
      FROM user_credentials uc
      JOIN students st ON st.id = uc.id
      LEFT JOIN cohorts c ON c.id = st.cohort_id
@@ -142,7 +158,7 @@ async function loadGroupStudent(db, groupId, studentId, res) {
         res.status(403).json({ error: "This trainee is not in your group" });
         return null;
     }
-    return rows[0];
+    return withTrainingInfo(rows[0]);
 }
 
 // ---- /me — Master Trainer's own profile + group summary -----------------

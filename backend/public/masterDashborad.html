@@ -3611,6 +3611,7 @@
                 </div>
             </div>
             <div class="progress-grid" id="totProgress"></div>
+            <div class="progress-grid" id="totTraining" style="display:none;margin-top:10px;"></div>
             <div class="tabs" id="totTabs"></div>
             <div id="totPanels"></div>
         </div>
@@ -3626,6 +3627,7 @@
                     <p id="trMeta">&mdash;</p>
                 </div>
             </div>
+            <div class="progress-grid" id="trTraining" style="display:none;margin-top:10px;"></div>
             <div class="tabs" id="trTabs"></div>
             <div id="trPanels"></div>
         </div>
@@ -4200,6 +4202,41 @@
         }
         document.getElementById("totSearch").addEventListener("input", renderTots);
 
+        // Training Information -- every value here is read directly from what
+        // the backend already computed (trainingTimeline.js, wired into this
+        // dashboard's /master-trainer routes); this page never does its own
+        // date math.
+        function formatTrainingDate(yyyyMmDd) {
+            if (!yyyyMmDd) return "&mdash;";
+            const [y, m, d] = yyyyMmDd.split("-").map(Number);
+            return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+        }
+
+        function formatTrainingStatus(status, year) {
+            if (status === "scheduled") return "Scheduled";
+            if (status === "completed") return "Completed";
+            if (status === "active") return `Active${year ? " · Year " + year : ""}`;
+            return "&mdash;";
+        }
+
+        function renderTrainingInfo(elId, person) {
+            const el = document.getElementById(elId);
+            if (!person.trainingStartDate) {
+                el.style.display = "none";
+                return;
+            }
+            el.style.display = "";
+            const cells = [
+                ["Training start", formatTrainingDate(person.trainingStartDate)],
+                ["Duration", person.trainingDurationYears ? person.trainingDurationYears + " Years" : "&mdash;"],
+                ["Expected end", formatTrainingDate(person.trainingEndDate)],
+                ["Training status", formatTrainingStatus(person.trainingStatus, person.trainingYear)],
+            ];
+            el.innerHTML = cells
+                .map(([label, value]) => `<div class="progress-cell"><label>${label}</label><strong>${value}</strong></div>`)
+                .join("");
+        }
+
         async function openTot(totId) {
             const data = await apiRequest(`/master-trainer/tots/${totId}`);
             if (!data) return;
@@ -4220,6 +4257,7 @@
                 ["Evaluations", s.evaluation_count],
                 ["Meetings", s.meeting_count],
             ].map(([label, value]) => `<div class="progress-cell"><label>${label}</label><strong>${value}</strong></div>`).join("");
+            renderTrainingInfo("totTraining", data.trainer);
 
             totActiveTab = "trainees";
             renderTotTabs();
@@ -4777,6 +4815,7 @@
             document.getElementById("trName").textContent = data.student.full_name;
             document.getElementById("trMeta").textContent =
                 `${data.student.member_code} \u00b7 ${data.student.cohort_name || "No cohort"} \u00b7 ${data.tots.map((t) => t.full_name).join(", ") || "No ToT assigned"}`;
+            renderTrainingInfo("trTraining", data.student);
             trActiveTab = "records";
             renderTraineeTabs();
             renderTraineePanel();

@@ -3691,6 +3691,7 @@
             </div>
 
             <div class="progress-grid" id="sdProgress"></div>
+            <div class="progress-grid" id="sdTraining" style="display:none;margin-top:10px;"></div>
 
             <div class="tabs" id="sdTabs"></div>
 
@@ -4436,6 +4437,7 @@
                 `${data.student.memberCode} \u00b7 ${data.student.cohort || "No cohort"} \u00b7 ${data.student.currentYear ? "Year " + data.student.currentYear : "No year set"}`;
 
             renderProgress(data.progress);
+            renderTrainingInfo(data.student);
             renderTabs();
             activeTab = initialTab || "overview";
             await renderActivePanel();
@@ -4453,6 +4455,40 @@
                 ["Avg. evaluation", nc(p.averageEvaluationScore, "&mdash;")],
             ];
             document.getElementById("sdProgress").innerHTML = cells
+                .map(([label, value]) => `<div class="progress-cell"><label>${label}</label><strong>${value}</strong></div>`)
+                .join("");
+        }
+
+        // Training Information -- every value here is read directly from what
+        // the backend already computed (toProfileResponse, fed by
+        // trainingTimeline.js); this page never does its own date math.
+        function formatTrainingDate(yyyyMmDd) {
+            if (!yyyyMmDd) return "&mdash;";
+            const [y, m, d] = yyyyMmDd.split("-").map(Number);
+            return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+        }
+
+        function formatTrainingStatus(status, year) {
+            if (status === "scheduled") return "Scheduled";
+            if (status === "completed") return "Completed";
+            if (status === "active") return `Active${year ? " · Year " + year : ""}`;
+            return "&mdash;";
+        }
+
+        function renderTrainingInfo(student) {
+            const el = document.getElementById("sdTraining");
+            if (!student.trainingStartDate) {
+                el.style.display = "none";
+                return;
+            }
+            el.style.display = "";
+            const cells = [
+                ["Training start", formatTrainingDate(student.trainingStartDate)],
+                ["Duration", student.trainingDurationYears ? student.trainingDurationYears + " Years" : "&mdash;"],
+                ["Expected end", formatTrainingDate(student.trainingEndDate)],
+                ["Training status", formatTrainingStatus(student.trainingStatus, student.trainingYear)],
+            ];
+            el.innerHTML = cells
                 .map(([label, value]) => `<div class="progress-cell"><label>${label}</label><strong>${value}</strong></div>`)
                 .join("");
         }

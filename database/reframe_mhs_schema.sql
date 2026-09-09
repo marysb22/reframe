@@ -185,6 +185,12 @@ CREATE TABLE supervisors (
   -- first) before they can be deleted -- suspend instead.
   primary_supervisor_id  BIGINT,
   group_id               BIGINT,
+  -- Official Training Start Date -- Training End Date/Year/Status are all
+  -- DERIVED from this at read time (see backend/src/utils/trainingTimeline.js),
+  -- never stored, so there is nothing to keep in sync. Defaults to the
+  -- program's current single cohort-wide start date so any newly-created
+  -- Supervisor gets the right value automatically with zero application code.
+  training_start_date    DATE DEFAULT '2026-09-15',
   created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_supervisors_credentials FOREIGN KEY (id) REFERENCES user_credentials(id) ON DELETE CASCADE,
@@ -214,6 +220,12 @@ CREATE TABLE students (
   cv_file             VARCHAR(255),             -- stored filename in uploads/cv
   photo               VARCHAR(255),             -- stored filename in uploads/photos
   group_id            BIGINT,
+  -- Official Training Start Date -- Training End Date/Year/Status are all
+  -- DERIVED from this at read time (see backend/src/utils/trainingTimeline.js),
+  -- never stored, so there is nothing to keep in sync. Independent of
+  -- current_year (a plain Admin-set label used only by Payments), and of
+  -- cohorts.start_date/end_date (never actually written to by any route).
+  training_start_date DATE DEFAULT '2026-09-15',
   created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_students_credentials FOREIGN KEY (id) REFERENCES user_credentials(id) ON DELETE CASCADE,

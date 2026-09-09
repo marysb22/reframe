@@ -721,6 +721,15 @@ tr:hover td{background:var(--surface-2);}
           <div class="kpi-card"><label>Cohort</label><h2 id="spA_cohort" style="font-size:18px;">&mdash;</h2></div>
           <div class="kpi-card"><label>Program year</label><h2 id="spA_year" style="font-size:18px;">&mdash;</h2></div>
         </div>
+        <div id="spA_trainingCard" style="display:none;">
+          <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Training Information</h4>
+          <div class="kpi-grid kpi-grid-4" style="margin-bottom:18px;">
+            <div class="kpi-card"><label>Start Date</label><h2 id="spA_trainingStart" style="font-size:16px;">&mdash;</h2></div>
+            <div class="kpi-card"><label>Duration</label><h2 id="spA_trainingDuration" style="font-size:17px;">&mdash;</h2></div>
+            <div class="kpi-card"><label>Expected End Date</label><h2 id="spA_trainingEnd" style="font-size:16px;">&mdash;</h2></div>
+            <div class="kpi-card"><label>Training Status</label><h2 id="spA_trainingStatus" style="font-size:16px;">&mdash;</h2></div>
+          </div>
+        </div>
         <div class="kpi-grid kpi-grid-4" style="margin-bottom:18px;">
           <div class="kpi-card"><label>Training hours</label><h2 id="spA_hours" style="font-size:18px;">&mdash;</h2></div>
           <div class="kpi-card"><label>Attendance</label><h2 id="spA_attendance" style="font-size:18px;">&mdash;</h2></div>
@@ -1164,6 +1173,22 @@ function showSuccessNotification(title, message, duration = 2800) {
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Both fields the backend already computed (see trainingTimeline.js +
+// toProfileResponse) -- this is display formatting only, never a second,
+// independent date/status calculation.
+function formatTrainingDate(yyyyMmDd) {
+  if (!yyyyMmDd) return "—";
+  const [y, m, d] = yyyyMmDd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+}
+
+function formatTrainingStatus(status, year) {
+  if (status === "scheduled") return "Scheduled";
+  if (status === "completed") return "Completed";
+  if (status === "active") return `Active${year ? " · Year " + year : ""}`;
+  return "—";
 }
 
 function logout() {
@@ -2168,6 +2193,22 @@ function renderCvDetail() {
     ? `<div class="cv-section"><h4>Training &amp; Certifications</h4>${cvFieldRow("Certifications", certificationsValue, "certifications", { multiline: true })}</div>`
     : "";
 
+  // Training Information -- Start Date is the one field a person's Training
+  // End Date/Year/Status are all derived from (trainingTimeline.js). Applies
+  // to both Trainees and Supervisors (Master Trainer + ToT), unlike the
+  // education/specialization sections above. Duration/End Date/Status are
+  // always shown read-only even while editing since they're computed, never
+  // entered directly.
+  const trainingDateField = cvEditing
+    ? `<div class="cv-field"><label>Start Date</label><input type="date" data-cv-field="trainingStartDate" value="${d.trainingStartDate || ""}"></div>`
+    : `<div class="cv-field"><label>Start Date</label><div class="cv-field-value">${formatTrainingDate(d.trainingStartDate)}</div></div>`;
+  const trainingComputedFields = !cvEditing && d.trainingStartDate
+    ? `<div class="cv-field"><label>Duration</label><div class="cv-field-value">${d.trainingDurationYears ? d.trainingDurationYears + " Years" : "—"}</div></div>
+       <div class="cv-field"><label>Expected End Date</label><div class="cv-field-value">${formatTrainingDate(d.trainingEndDate)}</div></div>
+       <div class="cv-field"><label>Training Status</label><div class="cv-field-value">${formatTrainingStatus(d.trainingStatus, d.trainingYear)}</div></div>`
+    : "";
+  const trainingSection = `<div class="cv-section"><h4>Training Information</h4><div class="cv-field-grid">${trainingDateField}${trainingComputedFields}</div></div>`;
+
   const actions = [
     `<button class="btn btn-secondary btn-sm no-print" onclick="closeCvDetail()"><i class="fa fa-arrow-left"></i> Back to list</button>`,
   ];
@@ -2206,6 +2247,7 @@ function renderCvDetail() {
     ${educationSection}
     ${certificationsSection}
     ${specializationSection}
+    ${trainingSection}
   `;
 }
 
@@ -2390,6 +2432,20 @@ function renderStudentProfile(data) {
   // Academic
   document.getElementById("spA_cohort").textContent = p.cohort || "—";
   document.getElementById("spA_year").textContent = p.currentYear ? "Year " + p.currentYear : "—";
+
+  // Training Information -- every value here is read directly from what the
+  // backend already computed (toProfileResponse, fed by trainingTimeline.js);
+  // this page never does its own date math.
+  const trainingCard = document.getElementById("spA_trainingCard");
+  if (p.trainingStartDate) {
+    trainingCard.style.display = "";
+    document.getElementById("spA_trainingStart").textContent = formatTrainingDate(p.trainingStartDate);
+    document.getElementById("spA_trainingDuration").textContent = p.trainingDurationYears ? `${p.trainingDurationYears} Years` : "—";
+    document.getElementById("spA_trainingEnd").textContent = formatTrainingDate(p.trainingEndDate);
+    document.getElementById("spA_trainingStatus").textContent = formatTrainingStatus(p.trainingStatus, p.trainingYear);
+  } else {
+    trainingCard.style.display = "none";
+  }
 
   const prog = data.progress;
   document.getElementById("spA_hours").textContent = prog.clinicalHours ?? "—";
