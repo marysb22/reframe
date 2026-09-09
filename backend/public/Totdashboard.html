@@ -4509,13 +4509,20 @@
             return "&mdash;";
         }
 
+        // Tracks whether there's actually training data to show, independent
+        // of the Messages-tab visibility override in renderActivePanel()
+        // below -- switching tabs must never lose track of "no data at all"
+        // vs. "has data, just hidden for this one tab."
+        let sdTrainingHasData = false;
+
         function renderTrainingInfo(student) {
             const el = document.getElementById("sdTraining");
-            if (!student.trainingStartDate) {
+            sdTrainingHasData = !!student.trainingStartDate;
+            if (!sdTrainingHasData) {
                 el.style.display = "none";
                 return;
             }
-            el.style.display = "";
+            el.style.display = activeTab === "messages" ? "none" : "";
             const cells = [
                 ["Training start", formatTrainingDate(student.trainingStartDate)],
                 ["Duration", student.trainingDurationYears ? student.trainingDurationYears + " Years" : "&mdash;"],
@@ -4549,6 +4556,12 @@
         async function renderActivePanel() {
             const container = document.getElementById("sdPanels");
             editingRecordId = null;
+
+            // Give the Messages tab's chat its full space -- the Training
+            // Information card (still shown on every other tab) hides only
+            // here, restored again the moment a different tab is selected.
+            document.getElementById("sdTraining").style.display =
+                sdTrainingHasData && activeTab !== "messages" ? "" : "none";
 
             if (activeTab === "overview") {
                 container.innerHTML = `<p style="color:var(--muted);font-size:13px;">Use the tabs above to log attendance, sessions, hours, assignments, notes, and evaluations. Everything you add here appears immediately on the trainee's My Profile page.</p>`;
