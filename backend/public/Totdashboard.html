@@ -1893,6 +1893,16 @@
             background: var(--primary-dark);
         }
 
+        .mrow-btn.danger {
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .mrow-btn.danger:hover {
+            background: var(--danger);
+            color: #fff;
+        }
+
         .materials-load-more {
             display: block;
             margin: 14px auto 0;
@@ -3364,13 +3374,35 @@
                         <div class="card-title-left"><i class="fa fa-folder-open"></i>
                             <h2>Documents</h2>
                         </div>
+                        <button type="button" class="btn btn-secondary" onclick="openAddDocumentModal()"><i class="fa fa-plus"></i> Add Document</button>
                     </div>
-                    <p class="card-subtitle">Every file uploaded to any of your assigned trainees' profiles, newest first. Upload a new document from a trainee's own profile.</p>
+                    <p class="card-subtitle">Every file uploaded to any of your assigned trainees' profiles, newest first.</p>
                     <ul class="doc-list" id="allDocumentsList">
                         <li class="empty-state">Loading documents...</li>
                     </ul>
                 </section>
             </section>
+
+            <!-- ADD DOCUMENT MODAL (from the general Documents section --
+                 uploads via the same POST /supervisor/students/:id/documents
+                 the per-trainee profile's own Documents tab already uses) -->
+            <div class="modal-overlay" id="addDocumentModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('addDocumentModal')">&times;</button>
+                    <h3>Add a Document</h3>
+                    <form id="addDocumentForm">
+                        <label>Trainee</label>
+                        <select id="adTraineeSelect" required></select>
+                        <label>File (PDF, Word, or image)</label>
+                        <input type="file" id="adFileInput" accept=".pdf,.doc,.docx,image/*" required>
+                        <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
+                            <input type="checkbox" id="adShareGroup" style="width:auto;"> Share with this trainee's whole group instead of just them
+                        </label>
+                        <div class="modal-actions"><button type="submit" class="btn">Upload</button></div>
+                    </form>
+                </div>
+            </div>
+            <input type="file" id="docChangeFileInput" accept=".pdf,.doc,.docx,image/*" style="display:none;">
 
             <!-- ============================================================= -->
             <!-- ANNOUNCEMENTS                                                  -->
@@ -4870,6 +4902,8 @@ function renderDocumentsPanel(container) {
             <div class="mrow-actions" style="margin-top:4px;">
               <button type="button" class="mrow-btn primary" onclick="openStudentDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
               <a class="mrow-btn" href="${withDownloadMode(`${UPLOADS}/documents/${d.filename}${TOKEN_Q}`)}" target="_blank" rel="noopener" download="${escapeHtml(d.originalName || "")}"><i class="fa fa-download"></i> Download</a>
+              ${d.canManage ? `<button type="button" class="mrow-btn" onclick="changeDocumentFile(${d.id})"><i class="fa fa-arrows-rotate"></i> Change File</button>
+              <button type="button" class="mrow-btn danger" onclick="confirmDeleteDocument(${d.id})"><i class="fa fa-trash"></i> Delete</button>` : ""}
             </div>
           </div>
         </li>
@@ -6320,6 +6354,13 @@ async function loadAllDocuments() {
         d.approvalStatus === "pending"
           ? `<button type="button" class="mrow-btn" onclick="approveGroupDocument(${d.id})"><i class="fa fa-check"></i> Accept</button>`
           : "";
+      // Only the ToT who uploaded this exact document gets these -- the
+      // backend re-checks uploaded_by on every PUT/DELETE regardless of
+      // what this button shows.
+      const manageActions = d.canManage
+        ? `<button type="button" class="mrow-btn" onclick="changeDocumentFile(${d.id})"><i class="fa fa-arrows-rotate"></i> Change File</button>
+           <button type="button" class="mrow-btn danger" onclick="confirmDeleteDocument(${d.id})"><i class="fa fa-trash"></i> Delete</button>`
+        : "";
       return `
       <li class="doc-item">
         <div>
@@ -6329,12 +6370,96 @@ async function loadAllDocuments() {
             <button type="button" class="mrow-btn primary" onclick="openAllDocumentsPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
             <a class="mrow-btn" href="${withDownloadMode(`${UPLOADS}/documents/${d.filename}${TOKEN_Q}`)}" target="_blank" rel="noopener" download="${escapeHtml(d.originalName || "")}"><i class="fa fa-download"></i> Download</a>
             ${acceptBtn}
+            ${manageActions}
           </div>
         </div>
       </li>
     `;
     })
     .join("");
+}
+
+// ---- Add Document (from the general Documents section) -------------------
+function openAddDocumentModal() {
+  const form = document.getElementById("addDocumentForm");
+  form.reset();
+  const select = document.getElementById("adTraineeSelect");
+  select.innerHTML = allStudents.map((s) => `<option value="${s.id}">${escapeHtml(s.full_name)} (${escapeHtml(s.memberCode)})</option>`).join("");
+  openModal("addDocumentModal");
+}
+
+document.getElementById("addDocumentForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const studentId = document.getElementById("adTraineeSelect").value;
+  const file = document.getElementById("adFileInput").files[0];
+  if (!studentId || !file) return showToast("Choose a trainee and a file", "error");
+
+  const form = new FormData();
+  form.append("document", file);
+  if (document.getElementById("adShareGroup").checked) form.append("shareWithGroup", "1");
+
+  try {
+    const response = await fetch(`${API}/supervisor/students/${studentId}/documents`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) throw new Error((body && body.error) || "Upload failed");
+    closeModal("addDocumentModal");
+    showToast("Document uploaded", "success");
+    loadAllDocuments();
+    loadedSections.delete("documents");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+// ---- Document management: Change File / Delete (my own uploads) ----------
+let pendingChangeFileDocId = null;
+
+document.getElementById("docChangeFileInput").addEventListener("change", async () => {
+  const input = document.getElementById("docChangeFileInput");
+  const file = input.files[0];
+  const docId = pendingChangeFileDocId;
+  input.value = "";
+  pendingChangeFileDocId = null;
+  if (!file || !docId) return;
+
+  const form = new FormData();
+  form.append("document", file);
+  try {
+    const response = await fetch(`${API}/supervisor/documents/${docId}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) throw new Error((body && body.error) || "Failed to replace the file");
+    showToast("File replaced", "success");
+    loadAllDocuments();
+    if (currentStudentId) refreshCurrentStudent();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+function changeDocumentFile(docId) {
+  pendingChangeFileDocId = docId;
+  document.getElementById("docChangeFileInput").click();
+}
+
+function confirmDeleteDocument(docId) {
+  openConfirm("Delete this document?", "This can't be undone.", () => deleteDocument(docId));
+}
+
+async function deleteDocument(docId) {
+  const result = await apiRequest(`/supervisor/documents/${docId}`, { method: "DELETE" });
+  if (result) {
+    showToast("Document deleted", "success");
+    loadAllDocuments();
+    if (currentStudentId) refreshCurrentStudent();
+  }
 }
 
 async function approveGroupDocument(id) {

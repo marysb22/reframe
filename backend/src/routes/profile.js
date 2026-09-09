@@ -22,6 +22,7 @@ const { buildRecordsQuery } = require("../utils/recordsQuery");
 const { createNotification } = require("../utils/notifications");
 const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi, attachSubmissionHistories } = require("../utils/assignmentsQuery");
+const { DOCUMENT_SELECT } = require("../utils/documentsQuery");
 
 const router = express.Router();
 
@@ -545,22 +546,7 @@ router.get(
       filter = `AND d.uploaded_by = ?`;
     }
     const { rows } = await db.query(
-      `SELECT d.*,
-              COALESCE(a.full_name, sup.full_name, st_up.full_name) AS uploaded_by_name,
-              uc.role AS uploaded_by_role,
-              sup.supervisor_type AS uploaded_by_supervisor_type,
-              tg.name AS shared_group_name,
-              shsup.full_name AS shared_supervisor_name,
-              shsup.supervisor_type AS shared_supervisor_type,
-              apsup.full_name AS approved_by_name
-       FROM documents d
-       JOIN user_credentials uc ON uc.id = d.uploaded_by
-       LEFT JOIN admin_users a ON a.id = d.uploaded_by
-       LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       LEFT JOIN students st_up ON st_up.id = d.uploaded_by
-       LEFT JOIN trainer_groups tg ON tg.id = d.group_id
-       LEFT JOIN supervisors shsup ON shsup.id = d.shared_with_supervisor_id
-       LEFT JOIN supervisors apsup ON apsup.id = d.approved_by
+      `${DOCUMENT_SELECT}
        WHERE (
          d.student_id = ?
          OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?) AND d.approval_status = 'approved')
@@ -569,7 +555,9 @@ router.get(
          ${filter} ORDER BY d.created_at DESC LIMIT 500`,
       params
     );
-    res.json({ documents: rows.map(toDocument) });
+    res.json({
+      documents: rows.map((r) => ({ ...toDocument(r), canManage: Number(r.uploaded_by) === Number(req.user.id) })),
+    });
   })
 );
 
@@ -703,16 +691,17 @@ router.post("/documents", requireStudent, (req, res) => {
         console.error("[profile] failed to notify ToT(s) of new document:", notifyErr);
       }
 
-      res.status(201).json(
-        toDocument({
+      res.status(201).json({
+        ...toDocument({
           ...rows[0],
           uploaded_by_name: (meRows[0] && meRows[0].full_name) || req.user.member_code,
           uploaded_by_role: "trainee",
           shared_group_name: groupName,
           shared_supervisor_name: sharedWithSupervisorName,
           shared_supervisor_type: sharedWithSupervisorId ? "in_training" : null,
-        })
-      );
+        }),
+        canManage: true,
+      });
     } catch (e) {
       console.error("[profile] failed to upload document:", e);
       cleanup();
@@ -720,6 +709,89 @@ router.post("/documents", requireStudent, (req, res) => {
     }
   });
 });
+
+// PUT /api/profile/documents/:id (multipart, field "document") -- Change
+// File. Only the trainee who uploaded a document may replace its file; the
+// row itself (id, sharing target, approval state) is left exactly as it
+// is -- this never creates a new document, only swaps what filename/
+// original_name point to. Same replace-then-unlink-the-old-file pattern as
+// the existing CV replace above (POST /cv).
+router.put("/documents/:id", requireStudent, (req, res) => {
+  documentUpload.single("document")(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const cleanup = () => fs.unlink(req.file.path, () => {});
+
+    const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
+    if (!check.safe) {
+      cleanup();
+      return res.status(400).json({ error: check.reason });
+    }
+
+    try {
+      const { pool } = require("../db");
+      const docId = Number(req.params.id);
+      const { rows } = await pool.query("SELECT uploaded_by, filename FROM documents WHERE id = ?", [docId]);
+      if (!rows.length) {
+        cleanup();
+        return res.status(404).json({ error: "Document not found" });
+      }
+      if (Number(rows[0].uploaded_by) !== Number(req.user.id)) {
+        cleanup();
+        return res.status(403).json({ error: "You can only replace a file you uploaded" });
+      }
+
+      await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
+
+      const previousFilename = rows[0].filename;
+      await pool.query("UPDATE documents SET filename = ?, original_name = ? WHERE id = ?", [
+        req.file.filename,
+        req.file.originalname,
+        docId,
+      ]);
+      fs.unlink(path.join(config.uploadsDir, "documents", previousFilename), (unlinkErr) => {
+        if (unlinkErr && unlinkErr.code !== "ENOENT") console.error("Failed to remove replaced document file:", unlinkErr);
+      });
+
+      const { rows: updated } = await pool.query(`${DOCUMENT_SELECT} WHERE d.id = ?`, [docId]);
+      res.json({ ...toDocument(updated[0]), canManage: true });
+    } catch (e) {
+      console.error("[profile] failed to replace document file:", e);
+      cleanup();
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+});
+
+// DELETE /api/profile/documents/:id -- only the trainee who uploaded a
+// document may delete it. Mirrors admin.js's DELETE /admin/documents/:id
+// (DB row + file on disk + audit log), scoped to the uploader instead of
+// Admin's unrestricted access.
+router.delete(
+  "/documents/:id",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const docId = Number(req.params.id);
+    if (!docId) return res.status(400).json({ error: "Invalid document id" });
+
+    const { rows } = await db.query("SELECT uploaded_by, filename FROM documents WHERE id = ?", [docId]);
+    if (!rows.length) return res.status(404).json({ error: "Document not found" });
+    if (Number(rows[0].uploaded_by) !== Number(req.user.id)) {
+      return res.status(403).json({ error: "You can only delete a document you uploaded" });
+    }
+
+    await db.query("DELETE FROM documents WHERE id = ?", [docId]);
+    fs.unlink(path.join(config.uploadsDir, "documents", rows[0].filename), (err) => {
+      if (err && err.code !== "ENOENT") console.error("Failed to delete document file:", err);
+    });
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'document_deleted', 'documents', ?)",
+      [req.user.id, docId]
+    );
+
+    res.json({ success: true });
+  })
+);
 
 // ---- Assignments (richer than the generic /records?type=assignment view --
 // carries attachment/content link + submission + grade/feedback, none of

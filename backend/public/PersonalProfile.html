@@ -1843,6 +1843,16 @@
             background: var(--primary-dark);
         }
 
+        .mrow-btn.danger {
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .mrow-btn.danger:hover {
+            background: var(--danger);
+            color: #fff;
+        }
+
         .materials-load-more {
             display: block;
             margin: 14px auto 0;
@@ -3456,6 +3466,11 @@
                 </div>
             </div>
 
+            <!-- Hidden input reused by every document row's "Change File" button
+                 (see changeDocumentFile() below) -- one shared input rather than
+                 one per row. -->
+            <input type="file" id="docChangeFileInput" accept=".pdf,.doc,.docx,image/*" style="display:none;">
+
             <!-- ADD DOCUMENT MODAL -->
             <div class="modal-overlay" id="addDocumentModal">
                 <div class="modal-box">
@@ -4619,6 +4634,7 @@ async function loadMaterials() {
         approvalStatus: d.approvalStatus,
         approvedByName: d.approvedByName,
         createdAt: d.createdAt,
+        canManage: d.canManage,
     }));
     materialsRaw = materials.concat(documentRows);
     materialsTypeFilter = "all";
@@ -4749,6 +4765,14 @@ function materialRowHtml(m) {
     const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
     const sharedByText = `Shared by ${escapeHtml(m.supervisorName)}${m.uploadedByRole ? " &middot; " + escapeHtml(m.uploadedByRole) : ""}`;
     const approvalText = documentApprovalLabel(m);
+    // Change File / Delete only ever apply to a Document (not a Material,
+    // which belongs to the ToT who shared it), and only when the backend
+    // confirms this trainee is the one who uploaded it (m.canManage) --
+    // the buttons are a convenience, not the actual permission check.
+    const manageActions = m.__isDocument && m.canManage
+        ? `<button type="button" class="mrow-btn" onclick="changeDocumentFile(${m.__documentId})"><i class="fa fa-arrows-rotate"></i> Change File</button>
+       <button type="button" class="mrow-btn danger" onclick="confirmDeleteDocument(${m.__documentId})"><i class="fa fa-trash"></i> Delete</button>`
+        : "";
     return `
     <div class="material-row">
       <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
@@ -4759,8 +4783,61 @@ function materialRowHtml(m) {
       <div class="mrow-actions">
         <button type="button" class="mrow-btn primary" onclick="openLibraryItem('${m.id}')"><i class="fa fa-eye"></i> Open</button>
         <a class="mrow-btn" href="${m.externalUrl ? fileHref : withDownloadMode(fileHref)}" target="_blank" rel="noopener" download="${escapeHtml(m.originalName || m.title || "")}"><i class="fa fa-download"></i> Download</a>
+        ${manageActions}
       </div>
     </div>`;
+}
+
+// ---- Document management: Change File / Delete (Trainee's own uploads) --
+// Both actions hit endpoints the backend gates on `uploaded_by === self`
+// regardless of what this UI shows -- these buttons only ever appear when
+// the server already told us (canManage) this document is ours.
+let pendingChangeFileDocId = null;
+
+document.getElementById("docChangeFileInput").addEventListener("change", async () => {
+    const input = document.getElementById("docChangeFileInput");
+    const file = input.files[0];
+    const docId = pendingChangeFileDocId;
+    input.value = "";
+    pendingChangeFileDocId = null;
+    if (!file || !docId) return;
+
+    const form = new FormData();
+    form.append("document", file);
+    try {
+        const response = await fetch(`${API}/profile/documents/${docId}`, {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${token}` },
+            body: form,
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) throw new Error((body && body.error) || "Failed to replace the file");
+        showToast("File replaced", "success");
+        await loadMaterials();
+    } catch (err) {
+        showToast(err.message, "error");
+    }
+});
+
+function changeDocumentFile(docId) {
+    pendingChangeFileDocId = docId;
+    document.getElementById("docChangeFileInput").click();
+}
+
+async function confirmDeleteDocument(docId) {
+    if (!confirm("Delete this document? This can't be undone.")) return;
+    try {
+        const response = await fetch(`${API}/profile/documents/${docId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) throw new Error((body && body.error) || "Failed to delete document");
+        showToast("Document deleted", "success");
+        await loadMaterials();
+    } catch (err) {
+        showToast(err.message, "error");
+    }
 }
 
 function capitalize(str) {

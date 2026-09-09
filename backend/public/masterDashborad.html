@@ -5304,15 +5304,27 @@
                 list.innerHTML = '<li class="empty-state">No documents in your Group yet.</li>';
                 return;
             }
-            list.innerHTML = allDocumentsRaw.map((d) => `
+            list.innerHTML = allDocumentsRaw.map((d) => {
+                const studentPrefix = d.studentName ? `${escapeHtml(d.studentName)}${d.studentCode ? " (" + escapeHtml(d.studentCode) + ")" : ""} &middot; ` : "";
+                const roleText = d.uploadedByRole ? ` &middot; ${escapeHtml(d.uploadedByRole)}` : "";
+                const sharedText = d.sharedWith
+                    ? ` &middot; Shared with ${escapeHtml(d.sharedWith.name)}${d.sharedWith.type === "supervisor" ? " &middot; " + escapeHtml(d.sharedWith.role) : ""}`
+                    : "";
+                const approvalText = d.approvalStatus === "pending"
+                    ? ` &middot; <span style="color:var(--warning, #b5730f);font-weight:600;">Pending Approval</span>`
+                    : d.approvalStatus === "approved" && d.approvedByName
+                    ? ` &middot; Approved by ${escapeHtml(d.approvedByName)}`
+                    : "";
+                return `
         <li class="doc-item"><div>
-          <div class="mrow-title">${escapeHtml(d.originalName || d.original_name)}</div>
-          <div class="rmeta">${escapeHtml(d.student_name || "")} &middot; uploaded by ${escapeHtml(d.uploadedByName || d.uploaded_by_name || "")}</div>
+          <div class="mrow-title">${escapeHtml(d.originalName)}</div>
+          <div class="rmeta">${studentPrefix}Uploaded by ${escapeHtml(d.uploadedByName)}${roleText}${sharedText}${approvalText}</div>
           <div class="mrow-actions" style="margin-top:4px;">
             <button type="button" class="mrow-btn primary" onclick="openGroupDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
-            <a class="mrow-btn" href="${withDownloadMode(`${UPLOADS}/documents/${d.filename}${TOKEN_Q}`)}" target="_blank" rel="noopener" download="${escapeHtml(d.originalName || d.original_name || "")}"><i class="fa fa-download"></i> Download</a>
+            <a class="mrow-btn" href="${withDownloadMode(`${UPLOADS}/documents/${d.filename}${TOKEN_Q}`)}" target="_blank" rel="noopener" download="${escapeHtml(d.originalName || "")}"><i class="fa fa-download"></i> Download</a>
           </div>
-        </div></li>`).join("");
+        </div></li>`;
+            }).join("");
         }
 
         // null = viewing the current Friday->Thursday week (see

@@ -1611,7 +1611,18 @@ router.get(
     })
 );
 
-// GET /api/master-trainer/documents — every document uploaded for a trainee in the group
+// GET /api/master-trainer/documents — every document a member of this
+// Master Trainer's own Group is authorized to see: personal per-trainee
+// uploads (student_id set, that trainee's own group) AND Group-shared
+// uploads (student_id NULL, group_id set directly -- used by both a
+// Trainee's "share with My Group" and a ToT's "share with group" upload).
+// The previous version only matched the first case via an inner join on
+// students, which silently hid every Group-shared document from the
+// Master Trainer entirely. Deliberately NOT filtered on approval_status --
+// matches files.js's own AUTHORIZERS.documents rule that any supervisor in
+// the Group (not just its ToTs) may already open/download a pending
+// Group-shared file, so hiding it from this list would just make it
+// harder to find, not actually more private.
 router.get(
     "/documents",
     asyncRoute(async(req, res, db) => {
@@ -1619,18 +1630,33 @@ router.get(
         if (!groupId) return noGroupResponse(res, { documents: [] });
 
         const { rows } = await db.query(
-            `SELECT d.*, st.full_name AS student_name, uc.member_code AS student_code,
-              COALESCE(a.full_name, sup.full_name) AS uploaded_by_name
+            `SELECT d.*, target_st.full_name AS student_name, target_uc.member_code AS student_code,
+              COALESCE(a.full_name, sup.full_name, st_up.full_name) AS uploaded_by_name,
+              uc.role AS uploaded_by_role,
+              sup.supervisor_type AS uploaded_by_supervisor_type,
+              tg.name AS shared_group_name,
+              apsup.full_name AS approved_by_name
        FROM documents d
-       JOIN students st ON st.id = d.student_id
-       JOIN user_credentials uc ON uc.id = st.id
+       JOIN user_credentials uc ON uc.id = d.uploaded_by
+       LEFT JOIN students target_st ON target_st.id = d.student_id
+       LEFT JOIN user_credentials target_uc ON target_uc.id = d.student_id
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE st.group_id = ?
+       LEFT JOIN students st_up ON st_up.id = d.uploaded_by
+       LEFT JOIN trainer_groups tg ON tg.id = d.group_id
+       LEFT JOIN supervisors apsup ON apsup.id = d.approved_by
+       WHERE (d.student_id IS NOT NULL AND target_st.group_id = ?)
+          OR (d.student_id IS NULL AND d.group_id = ?)
        ORDER BY d.created_at DESC
-       LIMIT 200`, [groupId]
+       LIMIT 200`, [groupId, groupId]
         );
-        res.json({ documents: rows.map(toDocument) });
+        // toDocument() only returns its own fixed shape -- student_name/
+        // student_code (this route's one addition beyond the shared shape,
+        // since a Group-shared document has no single "recipient student")
+        // are merged back in afterward rather than added to the serializer.
+        res.json({
+            documents: rows.map((r) => ({ ...toDocument(r), studentName: r.student_name || null, studentCode: r.student_code || null })),
+        });
     })
 );
 
