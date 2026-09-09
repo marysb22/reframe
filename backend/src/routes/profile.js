@@ -549,7 +549,8 @@ router.get(
               sup.supervisor_type AS uploaded_by_supervisor_type,
               tg.name AS shared_group_name,
               shsup.full_name AS shared_supervisor_name,
-              shsup.supervisor_type AS shared_supervisor_type
+              shsup.supervisor_type AS shared_supervisor_type,
+              apsup.full_name AS approved_by_name
        FROM documents d
        JOIN user_credentials uc ON uc.id = d.uploaded_by
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
@@ -557,9 +558,10 @@ router.get(
        LEFT JOIN students st_up ON st_up.id = d.uploaded_by
        LEFT JOIN trainer_groups tg ON tg.id = d.group_id
        LEFT JOIN supervisors shsup ON shsup.id = d.shared_with_supervisor_id
+       LEFT JOIN supervisors apsup ON apsup.id = d.approved_by
        WHERE (
          d.student_id = ?
-         OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?))
+         OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?) AND d.approval_status = 'approved')
          OR d.uploaded_by = ?
        )
          ${filter} ORDER BY d.created_at DESC LIMIT 500`,
@@ -650,10 +652,16 @@ router.post("/documents", requireStudent, (req, res) => {
         sharedWithSupervisorName = target.full_name;
       }
 
+      // A "My Group" share starts pending -- visible only to the uploader
+      // and the group's ToTs until one of them approves it. "My ToT" keeps
+      // today's immediate 'approved' behavior (the column default) since
+      // this task's approval gate is explicitly Group-sharing only.
+      const approvalStatus = shareWith === "group" ? "pending" : "approved";
+
       const insert = await pool.query(
-        `INSERT INTO documents (student_id, group_id, shared_with_supervisor_id, uploaded_by, filename, original_name)
-         VALUES (NULL, ?, ?, ?, ?, ?)`,
-        [groupId, sharedWithSupervisorId, req.user.id, req.file.filename, req.file.originalname]
+        `INSERT INTO documents (student_id, group_id, shared_with_supervisor_id, uploaded_by, filename, original_name, approval_status)
+         VALUES (NULL, ?, ?, ?, ?, ?, ?)`,
+        [groupId, sharedWithSupervisorId, req.user.id, req.file.filename, req.file.originalname, approvalStatus]
       );
       const { rows } = await pool.query("SELECT * FROM documents WHERE id = ?", [insert.insertId]);
       const { rows: meRows } = await pool.query("SELECT full_name FROM students WHERE id = ?", [req.user.id]);

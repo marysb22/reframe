@@ -179,7 +179,8 @@ router.get(
               sup.supervisor_type AS uploaded_by_supervisor_type,
               tg.name AS shared_group_name,
               shsup.full_name AS shared_supervisor_name,
-              shsup.supervisor_type AS shared_supervisor_type
+              shsup.supervisor_type AS shared_supervisor_type,
+              apsup.full_name AS approved_by_name
        FROM documents d
        JOIN user_credentials uc ON uc.id = d.uploaded_by
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
@@ -187,9 +188,10 @@ router.get(
        LEFT JOIN students st_up ON st_up.id = d.uploaded_by
        LEFT JOIN trainer_groups tg ON tg.id = d.group_id
        LEFT JOIN supervisors shsup ON shsup.id = d.shared_with_supervisor_id
+       LEFT JOIN supervisors apsup ON apsup.id = d.approved_by
        WHERE (
          d.student_id = ?
-         OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?))
+         OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?) AND d.approval_status = 'approved')
          OR (d.uploaded_by = ? AND d.shared_with_supervisor_id = ?)
        )
        ORDER BY d.created_at DESC LIMIT 500`,
@@ -1113,6 +1115,107 @@ router.post("/students/:studentId/documents", (req, res) => {
     res.status(201).json(toDocument({ ...rows[0], uploaded_by_name: req.user.member_code }));
   });
 });
+
+// GET /api/supervisor/group-documents -- a ToT's (or MT's) review queue for
+// their own Group: every document shared with that Group, pending AND
+// approved, regardless of whether the uploading trainee is in this
+// supervisor's personal caseload (GET /students/:studentId is caseload-
+// gated and can't see a group-mate outside that caseload -- this is the
+// one place a supervisor sees the whole Group's shared documents).
+router.get(
+  "/group-documents",
+  asyncRoute(async (req, res, db) => {
+    const { rows: meRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
+    const groupId = meRows[0] && meRows[0].group_id;
+    if (!groupId) return res.json({ documents: [] });
+
+    const { rows } = await db.query(
+      `SELECT d.*,
+              COALESCE(a.full_name, sup.full_name, st_up.full_name) AS uploaded_by_name,
+              uc.role AS uploaded_by_role,
+              sup.supervisor_type AS uploaded_by_supervisor_type,
+              tg.name AS shared_group_name,
+              apsup.full_name AS approved_by_name
+       FROM documents d
+       JOIN user_credentials uc ON uc.id = d.uploaded_by
+       LEFT JOIN admin_users a ON a.id = d.uploaded_by
+       LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
+       LEFT JOIN students st_up ON st_up.id = d.uploaded_by
+       LEFT JOIN trainer_groups tg ON tg.id = d.group_id
+       LEFT JOIN supervisors apsup ON apsup.id = d.approved_by
+       WHERE d.group_id = ?
+       ORDER BY d.created_at DESC LIMIT 500`,
+      [groupId]
+    );
+    res.json({ documents: rows.map(toDocument) });
+  })
+);
+
+// POST /api/supervisor/documents/:id/approve -- ANY ONE ToT responsible for
+// the document's Group (supervisor_type='in_training' AND their own
+// group_id matches the document's group_id) can approve it; a Master
+// Trainer or a ToT from a different Group cannot. The state change is one
+// atomic UPDATE guarded by `approval_status = 'pending'` in its own WHERE
+// clause -- two ToTs racing to approve the same document can never both
+// "win": MySQL/InnoDB serializes the two UPDATEs, the first flips the row
+// and the second's WHERE no longer matches (affectedRows = 0), so it's
+// reported the real current state instead of erroring or double-applying.
+router.post(
+  "/documents/:id/approve",
+  asyncRoute(async (req, res, db) => {
+    const docId = Number(req.params.id);
+    if (!docId) return res.status(400).json({ error: "Invalid document id" });
+
+    const { rows: meRows } = await db.query(
+      "SELECT group_id, supervisor_type FROM supervisors WHERE id = ?",
+      [req.user.id]
+    );
+    const me = meRows[0];
+    if (!me || me.supervisor_type !== "in_training") {
+      return res.status(403).json({ error: "Only a Trainer (ToT) can approve a shared document" });
+    }
+    if (!me.group_id) {
+      return res.status(403).json({ error: "You don't belong to a Group" });
+    }
+
+    // Existence and group-membership are checked explicitly (and
+    // separately) so a wrong-group ToT gets a clear 403 rather than a 404
+    // that could be misread as "no such document".
+    const { rows: docRows } = await db.query("SELECT group_id FROM documents WHERE id = ?", [docId]);
+    if (!docRows.length) return res.status(404).json({ error: "Document not found" });
+    if (Number(docRows[0].group_id) !== Number(me.group_id)) {
+      return res.status(403).json({ error: "This document doesn't belong to your Group" });
+    }
+
+    const result = await db.query(
+      `UPDATE documents SET approval_status = 'approved', approved_by = ?, approved_at = NOW()
+       WHERE id = ? AND group_id = ? AND approval_status = 'pending'`,
+      [req.user.id, docId, me.group_id]
+    );
+
+    // FOR UPDATE, not a plain SELECT: this whole handler runs inside one
+    // REPEATABLE READ transaction (see asyncRoute), where a plain read
+    // uses the snapshot taken at the transaction's FIRST query -- stale
+    // if a concurrent ToT's approval committed in between. A locking read
+    // forces a "current read" of the latest committed row instead, which
+    // is what lets a losing racer correctly report who actually won.
+    const { rows } = await db.query(
+      `SELECT d.*, apsup.full_name AS approved_by_name
+       FROM documents d LEFT JOIN supervisors apsup ON apsup.id = d.approved_by
+       WHERE d.id = ?
+       FOR UPDATE`,
+      [docId]
+    );
+
+    if (result.affectedRows > 0) {
+      await db.query(
+        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'document_approved', 'documents', ?)",
+        [req.user.id, docId]
+      );
+    }
+    res.json(toDocument(rows[0]));
+  })
+);
 
 // ---- Messages --------------------------------------------------------
 

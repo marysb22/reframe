@@ -83,11 +83,17 @@ const AUTHORIZERS = {
 
   documents: async (user, filename) => {
     const { rows } = await pool.query(
-      "SELECT student_id, group_id, shared_with_supervisor_id, uploaded_by FROM documents WHERE filename = ?",
+      "SELECT student_id, group_id, shared_with_supervisor_id, uploaded_by, approval_status FROM documents WHERE filename = ?",
       [filename]
     );
     if (!rows.length) return false;
-    const { student_id: studentId, group_id: groupId, shared_with_supervisor_id: sharedWithSupervisorId, uploaded_by: uploadedBy } = rows[0];
+    const {
+      student_id: studentId,
+      group_id: groupId,
+      shared_with_supervisor_id: sharedWithSupervisorId,
+      uploaded_by: uploadedBy,
+      approval_status: approvalStatus,
+    } = rows[0];
     if (user.role === "admin") return true;
     // The uploader can always reach their own file, regardless of who they
     // shared it with -- closes the gap a Trainee-uploaded, ToT-only-shared
@@ -95,9 +101,12 @@ const AUTHORIZERS = {
     if (Number(user.id) === Number(uploadedBy)) return true;
     if (user.role === "trainee") {
       // NULL student_id = shared with the whole group instead of one
-      // trainee -- authorized if this trainee actually belongs to it.
+      // trainee -- authorized if this trainee actually belongs to it AND
+      // (for a Trainee-uploaded Group share) it has already been approved --
+      // a pending Group share is visible to nobody but its uploader and the
+      // Group's ToTs (handled in the supervisor branch below) until then.
       if (studentId) return Number(user.id) === studentId;
-      if (!groupId) return false;
+      if (!groupId || approvalStatus !== "approved") return false;
       const { rows: srows } = await pool.query("SELECT 1 FROM students WHERE id = ? AND group_id = ?", [user.id, groupId]);
       return srows.length > 0;
     }
@@ -107,6 +116,9 @@ const AUTHORIZERS = {
       if (sharedWithSupervisorId) return Number(user.id) === Number(sharedWithSupervisorId);
       if (studentId) return isCaseloadMatch(user.id, studentId);
       if (!groupId) return false;
+      // Deliberately NOT gated on approval_status -- a Group's supervisors
+      // (its ToTs, reviewing a pending upload before approving it) must be
+      // able to open the file itself, not just see it listed as pending.
       const { rows: srows } = await pool.query("SELECT 1 FROM supervisors WHERE id = ? AND group_id = ?", [user.id, groupId]);
       return srows.length > 0;
     }

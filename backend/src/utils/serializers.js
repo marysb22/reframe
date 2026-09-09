@@ -264,6 +264,13 @@ function toDocument(row) {
     // Same convention as toMaterial()'s isGroupShared: undefined (not just
     // false) on any query that doesn't select student_id.
     isGroupShared: row.student_id === undefined ? undefined : row.student_id === null,
+    // 'pending'/'approved' -- only ever 'pending' for a Trainee's "share with
+    // My Group" upload before a responsible ToT approves it; every other
+    // share type/uploader is 'approved' immediately. Undefined when the
+    // query didn't select it (older callers that never asked for it).
+    approvalStatus: row.approval_status,
+    approvedByName: row.approved_by_name || undefined,
+    approvedAt: row.approved_at || undefined,
     createdAt: row.created_at,
   };
 }

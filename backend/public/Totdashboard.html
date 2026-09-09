@@ -5033,7 +5033,8 @@ async function openDocumentPreviewGeneric(d) {
   const name = d.originalName || "";
   const fileUrl = `${UPLOADS}/documents/${d.filename}${TOKEN_Q}`;
   document.getElementById("matPreviewTitle").textContent = name;
-  document.getElementById("matPreviewMeta").textContent = `Uploaded by ${d.uploadedByName || ""}`;
+  const approvalText = d.approvalStatus === "pending" ? "Pending Approval" : d.approvalStatus === "approved" && d.approvedByName ? `Approved by ${d.approvedByName}` : "";
+  document.getElementById("matPreviewMeta").textContent = `Uploaded by ${d.uploadedByName || ""}${approvalText ? " · " + approvalText : ""}`;
   const body = document.getElementById("matPreviewBody");
   if (/\.(png|jpe?g|gif|webp|svg)$/i.test(name)) {
     body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(name)}">`;
@@ -6059,17 +6060,30 @@ async function loadAllDocuments() {
   const list = document.getElementById("allDocumentsList");
   list.innerHTML = '<li class="empty-state">Loading documents...</li>';
 
-  if (!allStudents.length) {
-    list.innerHTML = '<li class="empty-state">No trainees assigned yet.</li>';
-    return;
-  }
-
   const allDocs = [];
+  const seenDocIds = new Set();
+
   for (const s of allStudents) {
     const detail = await apiRequest(`/supervisor/students/${s.id}`);
     if (!detail) continue;
-    detail.documents.forEach((d) => allDocs.push({ ...d, studentName: s.full_name, studentCode: s.memberCode }));
+    detail.documents.forEach((d) => {
+      if (seenDocIds.has(d.id)) return;
+      seenDocIds.add(d.id);
+      allDocs.push({ ...d, studentName: s.full_name, studentCode: s.memberCode });
+    });
   }
+
+  // Every document shared with my own Group (pending or approved) --
+  // independent of my personal caseload above, so I can review/approve a
+  // Group-mate's upload even if that trainee isn't individually assigned
+  // to me. See GET /supervisor/group-documents.
+  const groupData = await apiRequest("/supervisor/group-documents");
+  ((groupData && groupData.documents) || []).forEach((d) => {
+    if (seenDocIds.has(d.id)) return;
+    seenDocIds.add(d.id);
+    allDocs.push(d);
+  });
+
   allDocumentsRaw = allDocs;
 
   if (!allDocs.length) {
@@ -6085,20 +6099,46 @@ async function loadAllDocuments() {
       const sharedText = d.sharedWith
         ? ` &middot; Shared with ${escapeHtml(d.sharedWith.name)}${d.sharedWith.type === "supervisor" ? " &middot; " + escapeHtml(d.sharedWith.role) : ""}`
         : "";
+      // Group-review rows (from GET /supervisor/group-documents) have no
+      // single "recipient student" the way a per-trainee row does -- skip
+      // that prefix for them instead of showing an empty "() ·".
+      const studentPrefix = d.studentName ? `${escapeHtml(d.studentName)}${d.studentCode ? " (" + escapeHtml(d.studentCode) + ")" : ""} &middot; ` : "";
+      const approvalText =
+        d.approvalStatus === "pending"
+          ? ` &middot; <span style="color:var(--warning, #b5730f);font-weight:600;">Pending Approval</span>`
+          : d.approvalStatus === "approved" && d.approvedByName
+          ? ` &middot; Approved by ${escapeHtml(d.approvedByName)}`
+          : "";
+      const acceptBtn =
+        d.approvalStatus === "pending"
+          ? `<button type="button" class="mrow-btn" onclick="approveGroupDocument(${d.id})"><i class="fa fa-check"></i> Accept</button>`
+          : "";
       return `
       <li class="doc-item">
         <div>
           <div class="mrow-title">${escapeHtml(d.originalName)}</div>
-          <div class="rmeta">${escapeHtml(d.studentName)} (${escapeHtml(d.studentCode)}) &middot; Shared by ${escapeHtml(d.uploadedByName)}${roleText}${sharedText}</div>
+          <div class="rmeta">${studentPrefix}Shared by ${escapeHtml(d.uploadedByName)}${roleText}${sharedText}${approvalText}</div>
           <div class="mrow-actions" style="margin-top:4px;">
             <button type="button" class="mrow-btn primary" onclick="openAllDocumentsPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
             <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+            ${acceptBtn}
           </div>
         </div>
       </li>
     `;
     })
     .join("");
+}
+
+async function approveGroupDocument(id) {
+  const result = await apiRequest(`/supervisor/documents/${id}/approve`, { method: "POST" });
+  if (result) {
+    showToast(
+      result.approvalStatus === "approved" ? `Approved${result.approvedByName ? " by " + result.approvedByName : ""}` : "Status updated",
+      "success"
+    );
+    loadAllDocuments();
+  }
 }
 
 let calViewYear, calViewMonth;

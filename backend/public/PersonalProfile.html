@@ -4459,6 +4459,8 @@ async function loadMaterials() {
         uploadedByRole: d.uploadedByRole,
         sharedWith: d.sharedWith,
         isGroupShared: d.isGroupShared,
+        approvalStatus: d.approvalStatus,
+        approvedByName: d.approvedByName,
         createdAt: d.createdAt,
     }));
     materialsRaw = materials.concat(documentRows);
@@ -4572,18 +4574,30 @@ function documentShareLabel(m) {
     return m.isGroupShared ? "Shared with your group" : "Shared with you";
 }
 
+// Only ever meaningful for a Trainee's own "share with My Group" upload
+// (the only path that ever writes 'pending', or 'approved' with a real
+// approver) -- every other document/material is 'approved' with no
+// approver, and this returns "" for them, same no-op-for-Materials rule
+// as documentShareLabel() above.
+function documentApprovalLabel(m) {
+    if (m.approvalStatus === "pending") return `<span style="color:var(--warning);font-weight:600;">Pending Approval</span>`;
+    if (m.approvalStatus === "approved" && m.approvedByName) return `Approved by ${escapeHtml(m.approvedByName)}`;
+    return "";
+}
+
 function materialRowHtml(m) {
     const fileHref = m.__isDocument
         ? `${UPLOADS}/documents/${m.filename}${TOKEN_Q}`
         : (m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`);
     const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
     const sharedByText = `Shared by ${escapeHtml(m.supervisorName)}${m.uploadedByRole ? " &middot; " + escapeHtml(m.uploadedByRole) : ""}`;
+    const approvalText = documentApprovalLabel(m);
     return `
     <div class="material-row">
       <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
       <div class="mrow-body">
         <div class="mrow-title">${escapeHtml(m.title)}</div>
-        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; ${documentShareLabel(m)} &middot; ${sharedByText}${dateStr ? " &middot; " + dateStr : ""} &middot; Access: Read &amp; Download</div>
+        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; ${documentShareLabel(m)} &middot; ${sharedByText}${approvalText ? " &middot; " + approvalText : ""}${dateStr ? " &middot; " + dateStr : ""} &middot; Access: Read &amp; Download</div>
       </div>
       <div class="mrow-actions">
         <button type="button" class="mrow-btn primary" onclick="openLibraryItem('${m.id}')"><i class="fa fa-eye"></i> Open</button>
@@ -5354,6 +5368,12 @@ function documentShareLabelPlain(d) {
   return d.isGroupShared ? "Shared with your group" : "Shared with you";
 }
 
+function documentApprovalLabelPlain(d) {
+  if (d.approvalStatus === "pending") return "Pending Approval";
+  if (d.approvalStatus === "approved" && d.approvedByName) return `Approved by ${d.approvedByName}`;
+  return "";
+}
+
 /** Same type-by-extension preview pattern as openMaterialPreview() (below),
  *  applied to Documents -- which has no materialType field of its own, so
  *  the file kind is inferred from its name instead. */
@@ -5364,8 +5384,9 @@ async function openDocumentPreview(id) {
   const name = d.originalName || d.filename || "";
 
   document.getElementById("matPreviewTitle").textContent = name;
+  const approvalText = documentApprovalLabelPlain(d);
   document.getElementById("matPreviewMeta").textContent =
-    `Shared by ${d.uploadedByName}${d.uploadedByRole ? " · " + d.uploadedByRole : ""} · ${documentShareLabelPlain(d)}`;
+    `Shared by ${d.uploadedByName}${d.uploadedByRole ? " · " + d.uploadedByRole : ""} · ${documentShareLabelPlain(d)}${approvalText ? " · " + approvalText : ""}`;
 
   const body = document.getElementById("matPreviewBody");
   if (/\.(png|jpe?g|gif|webp|svg)$/i.test(name)) {

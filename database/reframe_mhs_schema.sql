@@ -566,6 +566,13 @@ CREATE TABLE documents (
   filename       VARCHAR(255) NOT NULL,
   original_name  VARCHAR(255) NOT NULL,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- Group-approval workflow: a Trainee's "share with My Group" document
+  -- starts 'pending' (visible only to the uploader and the group's ToTs)
+  -- until ANY ONE of those ToTs approves it. Every other share type/uploader
+  -- inserts (or defaults to) 'approved' -- unaffected, immediate visibility.
+  approval_status VARCHAR(20) NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending', 'approved')),
+  approved_by     BIGINT,
+  approved_at     DATETIME,
   -- Exactly one of student_id/group_id/shared_with_supervisor_id should be
   -- set -- enforced at the application layer (not a CHECK: MySQL rejects a
   -- CHECK on a column that also carries an ON DELETE SET NULL FK action).
@@ -575,6 +582,7 @@ CREATE TABLE documents (
   CONSTRAINT fk_documents_group FOREIGN KEY (group_id) REFERENCES trainer_groups(id) ON DELETE SET NULL,
   CONSTRAINT fk_documents_shared_supervisor FOREIGN KEY (shared_with_supervisor_id) REFERENCES supervisors(id) ON DELETE SET NULL,
   CONSTRAINT fk_documents_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES user_credentials(id),
+  CONSTRAINT fk_documents_approved_by FOREIGN KEY (approved_by) REFERENCES supervisors(id) ON DELETE SET NULL,
   INDEX idx_documents_shared_supervisor (shared_with_supervisor_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
