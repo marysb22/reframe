@@ -1947,6 +1947,99 @@
             margin: 4px 0 16px;
         }
 
+        .mp-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0 34px 10px 0;
+        }
+
+        .mp-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 9px;
+            border-radius: 6px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .03em;
+            color: var(--muted);
+        }
+
+        .mp-size {
+            font-size: 11.5px;
+            color: var(--faint);
+        }
+
+        .mp-toolbar-spacer {
+            flex: 1;
+        }
+
+        .mp-zoom-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .mp-icon-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--muted);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mp-icon-btn:hover {
+            background: var(--surface-2);
+        }
+
+        .mp-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 60px 20px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .mp-loading i {
+            font-size: 26px;
+            color: var(--primary);
+        }
+
+        #mpViewerBox.mp-fullscreen {
+            position: fixed;
+            inset: 16px;
+            max-width: none;
+            width: auto;
+            max-height: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #mpViewerBox.mp-fullscreen .material-preview-body {
+            flex: 1;
+            min-height: 0;
+        }
+
+        #mpViewerBox.mp-fullscreen .material-preview-body iframe,
+        #mpViewerBox.mp-fullscreen .material-preview-body img,
+        #mpViewerBox.mp-fullscreen .material-preview-body video {
+            height: 100%;
+            max-height: 100%;
+        }
+
+        .material-preview-body img {
+            transition: transform .15s ease;
+        }
+
         @media (max-width: 640px) {
             .material-row {
                 flex-wrap: wrap;
@@ -3088,8 +3181,18 @@
 
             <!-- MATERIAL PREVIEW MODAL -->
             <div class="modal-overlay" id="materialPreviewModal">
-                <div class="modal-box wide">
+                <div class="modal-box wide" id="mpViewerBox">
                     <button class="close-modal" onclick="closeModal('materialPreviewModal')">&times;</button>
+                    <div class="mp-toolbar">
+                        <span class="mp-badge" id="mpFileBadge">FILE</span>
+                        <span class="mp-size" id="mpFileSize"></span>
+                        <span class="mp-toolbar-spacer"></span>
+                        <div class="mp-zoom-controls" id="mpZoomControls">
+                            <button type="button" class="mp-icon-btn" onclick="mpZoom(-1)" title="Zoom out"><i class="fa fa-minus"></i></button>
+                            <button type="button" class="mp-icon-btn" onclick="mpZoom(1)" title="Zoom in"><i class="fa fa-plus"></i></button>
+                        </div>
+                        <button type="button" class="mp-icon-btn" onclick="toggleMpFullscreen()" title="Fullscreen"><i class="fa fa-expand"></i></button>
+                    </div>
                     <h3 id="matPreviewTitle">&mdash;</h3>
                     <div class="material-preview-meta" id="matPreviewMeta"></div>
                     <div class="material-preview-body" id="matPreviewBody"></div>
@@ -4135,6 +4238,10 @@
                 await loadAssignments();
                 const target = allAssignments.find((a) => Number(a.id) === Number(relatedEntityId));
                 if (target && target.submission) openGradeModal(target.id);
+            } else if (relatedEntityType === "document" && relatedEntityId) {
+                showSection("documents");
+                await loadAllDocuments();
+                openAllDocumentsPreview(Number(relatedEntityId));
             }
         }
 
@@ -4726,7 +4833,7 @@ function renderDocumentsPanel(container) {
             <div class="rmeta">uploaded by ${escapeHtml(d.uploadedByName)}${d.isGroupShared ? " &middot; shared with the whole group" : ""}</div>
             <div class="mrow-actions" style="margin-top:4px;">
               <button type="button" class="mrow-btn primary" onclick="openStudentDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
-              <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+              <a class="mrow-btn" href="${withDownloadMode(`${UPLOADS}/documents/${d.filename}${TOKEN_Q}`)}" target="_blank" rel="noopener" download="${escapeHtml(d.originalName || "")}"><i class="fa fa-download"></i> Download</a>
             </div>
           </div>
         </li>
@@ -4948,7 +5055,7 @@ function materialRowHtml(m) {
       </div>
       <div class="mrow-actions">
         <button type="button" class="mrow-btn primary" onclick="openMaterialPreview(${m.id})"><i class="fa fa-eye"></i> Open</button>
-        <a class="mrow-btn" href="${fileHref}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+        <a class="mrow-btn" href="${m.externalUrl ? fileHref : withDownloadMode(fileHref)}" target="_blank" rel="noopener" download="${escapeHtml(m.originalName || m.title || "")}"><i class="fa fa-download"></i> Download</a>
         <button class="icon-btn danger" title="Delete" onclick="confirmDeleteMaterial(${m.id})"><i class="fa fa-trash"></i></button>
       </div>
     </div>`;
@@ -4961,6 +5068,58 @@ function capitalize(str) {
 function materialsLoadMore() {
   materialsShownCount += MATERIALS_PAGE_SIZE;
   applyMaterialsFilters();
+}
+
+// ---- Shared "modern viewer" chrome (badge/size/zoom/fullscreen/loading) --
+// one implementation, reused by every open*Preview function below for both
+// Materials and Documents. Open never downloads: every branch here either
+// renders inline (image/video/iframe) or shows the shared "can't preview"
+// card with its own explicit Download action -- there is no path where
+// clicking Open silently saves a file.
+let mpZoomLevel = 1;
+
+function mpLoadingHtml() {
+  return `<div class="mp-loading"><i class="fa fa-spinner fa-spin-pulse"></i><p>Opening document&hellip;</p></div>`;
+}
+
+function mpResetToolbar(originalName, fileUrl, showZoom) {
+  mpZoomLevel = 1;
+  document.getElementById("mpViewerBox").classList.remove("mp-fullscreen");
+  document.getElementById("mpZoomControls").style.display = showZoom ? "flex" : "none";
+  document.getElementById("mpFileBadge").textContent = (String(originalName || "").split(".").pop() || "FILE").toUpperCase();
+  const sizeEl = document.getElementById("mpFileSize");
+  sizeEl.textContent = "";
+  if (fileUrl) {
+    // A HEAD request just to read Content-Length -- the server already
+    // sends it on every response via res.sendFile, so this is one small
+    // round trip, not a second download of the file itself.
+    fetch(fileUrl, { method: "HEAD" })
+      .then((r) => {
+        const len = r.headers.get("content-length");
+        if (len) sizeEl.textContent = formatFileSize(Number(len));
+      })
+      .catch(() => {});
+  }
+}
+
+function mpZoom(direction) {
+  mpZoomLevel = Math.min(3, Math.max(0.5, mpZoomLevel + direction * 0.25));
+  const img = document.querySelector("#matPreviewBody img");
+  if (img) img.style.transform = `scale(${mpZoomLevel})`;
+}
+
+function toggleMpFullscreen() {
+  const box = document.getElementById("mpViewerBox");
+  const on = box.classList.toggle("mp-fullscreen");
+  const icon = box.querySelector(".mp-toolbar .fa-expand, .mp-toolbar .fa-compress");
+  if (icon) icon.className = on ? "fa fa-compress" : "fa fa-expand";
+}
+
+// Appends the explicit `?mode=download` files.js now understands, plus (at
+// each call site) a real filename on the `download` attribute, so a saved
+// file keeps its original name instead of the internal stored hash.
+function withDownloadMode(fileUrl) {
+  return fileUrl + (fileUrl.includes("?") ? "&" : "?") + "mode=download";
 }
 
 async function openMaterialPreview(id) {
@@ -4989,17 +5148,18 @@ async function openMaterialPreview(id) {
 
   const body = document.getElementById("matPreviewBody");
   const fileUrl = m.externalUrl || `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
+  mpResetToolbar(m.originalName || m.filename || m.title, m.externalUrl ? null : fileUrl, m.materialType === "image");
   if (m.materialType === "image") {
-    body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(m.title)}">`;
+    body.innerHTML = `${mpLoadingHtml()}<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(m.title)}" style="display:none;" onload="this.style.display='';this.previousElementSibling.remove();">`;
   } else if (m.materialType === "video") {
-    body.innerHTML = `<video src="${escapeHtml(fileUrl)}" controls></video>`;
+    body.innerHTML = `${mpLoadingHtml()}<video src="${escapeHtml(fileUrl)}" controls style="display:none;" onloadeddata="this.style.display='';this.previousElementSibling.remove();"></video>`;
   } else if (!m.externalUrl && m.filename && /\.pdf$/i.test(m.filename)) {
-    body.innerHTML = `<iframe src="${escapeHtml(fileUrl)}"></iframe>`;
+    body.innerHTML = `${mpLoadingHtml()}<iframe src="${escapeHtml(fileUrl)}" style="display:none;" onload="this.style.display='';this.previousElementSibling.remove();"></iframe>`;
   } else if (!m.externalUrl && m.filename && OFFICE_PREVIEW_EXTS.includes((m.filename.split(".").pop() || "").toLowerCase())) {
     // Same short-lived signed-link approach as the Library reader
     // (openBookReader, below) -- reused as-is rather than a second,
     // parallel implementation.
-    body.innerHTML = `<div class="library-empty" style="color:#eee;"><i class="fa fa-spinner fa-spin-pulse"></i><p>Loading preview...</p></div>`;
+    body.innerHTML = mpLoadingHtml();
     try {
       const linkRes = await fetch(`${UPLOADS}/preview-link?subfolder=materials&filename=${encodeURIComponent(m.filename)}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -5015,8 +5175,9 @@ async function openMaterialPreview(id) {
     body.innerHTML = `
       <div style="text-align:center;padding:30px 10px;">
         <i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}" style="font-size:34px;color:var(--faint);margin-bottom:14px;display:block;"></i>
-        <a class="mrow-btn primary" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" ${m.externalUrl ? "" : "download"}>
-          <i class="fa ${m.externalUrl ? "fa-arrow-up-right-from-square" : "fa-download"}"></i> ${m.externalUrl ? "Open link" : "Download " + escapeHtml(m.originalName || "")}
+        <p style="margin:0 0 16px;color:var(--muted);font-size:13px;">${m.externalUrl ? "" : "Preview is not available for this file type."}</p>
+        <a class="mrow-btn primary" href="${m.externalUrl ? escapeHtml(fileUrl) : withDownloadMode(escapeHtml(fileUrl))}" target="_blank" rel="noopener" ${m.externalUrl ? "" : `download="${escapeHtml(m.originalName || "")}"`}>
+          <i class="fa ${m.externalUrl ? "fa-arrow-up-right-from-square" : "fa-download"}"></i> ${m.externalUrl ? "Open link" : "Download File"}
         </a>
       </div>`;
   }
@@ -5036,16 +5197,18 @@ async function openDocumentPreviewGeneric(d) {
   const approvalText = d.approvalStatus === "pending" ? "Pending Approval" : d.approvalStatus === "approved" && d.approvedByName ? `Approved by ${d.approvedByName}` : "";
   document.getElementById("matPreviewMeta").textContent = `Uploaded by ${d.uploadedByName || ""}${approvalText ? " · " + approvalText : ""}`;
   const body = document.getElementById("matPreviewBody");
-  if (/\.(png|jpe?g|gif|webp|svg)$/i.test(name)) {
-    body.innerHTML = `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(name)}">`;
+  const isImage = /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
+  mpResetToolbar(name, fileUrl, isImage);
+  if (isImage) {
+    body.innerHTML = `${mpLoadingHtml()}<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(name)}" style="display:none;" onload="this.style.display='';this.previousElementSibling.remove();">`;
   } else if (/\.(mp4|webm|mov)$/i.test(name)) {
-    body.innerHTML = `<video src="${escapeHtml(fileUrl)}" controls></video>`;
+    body.innerHTML = `${mpLoadingHtml()}<video src="${escapeHtml(fileUrl)}" controls style="display:none;" onloadeddata="this.style.display='';this.previousElementSibling.remove();"></video>`;
   } else if (/\.pdf$/i.test(name)) {
-    body.innerHTML = `<iframe src="${escapeHtml(fileUrl)}"></iframe>`;
+    body.innerHTML = `${mpLoadingHtml()}<iframe src="${escapeHtml(fileUrl)}" style="display:none;" onload="this.style.display='';this.previousElementSibling.remove();"></iframe>`;
   } else if (OFFICE_PREVIEW_EXTS.includes((name.split(".").pop() || "").toLowerCase())) {
     // Same short-lived signed-link approach as the Library reader
     // (openBookReader) -- reused as-is rather than a second implementation.
-    body.innerHTML = `<div class="library-empty" style="color:#eee;"><i class="fa fa-spinner fa-spin-pulse"></i><p>Loading preview...</p></div>`;
+    body.innerHTML = mpLoadingHtml();
     try {
       const linkRes = await fetch(`${UPLOADS}/preview-link?subfolder=documents&filename=${encodeURIComponent(d.filename)}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -5061,8 +5224,9 @@ async function openDocumentPreviewGeneric(d) {
     body.innerHTML = `
       <div style="text-align:center;padding:30px 10px;">
         <i class="fa fa-file" style="font-size:34px;color:var(--faint);margin-bottom:14px;display:block;"></i>
-        <a class="mrow-btn primary" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" download>
-          <i class="fa fa-download"></i> Download ${escapeHtml(name)}
+        <p style="margin:0 0 16px;color:var(--muted);font-size:13px;">Preview is not available for this file type.</p>
+        <a class="mrow-btn primary" href="${withDownloadMode(escapeHtml(fileUrl))}" target="_blank" rel="noopener" download="${escapeHtml(name)}">
+          <i class="fa fa-download"></i> Download File
         </a>
       </div>`;
   }
@@ -6063,21 +6227,28 @@ async function loadAllDocuments() {
   const allDocs = [];
   const seenDocIds = new Set();
 
-  for (const s of allStudents) {
-    const detail = await apiRequest(`/supervisor/students/${s.id}`);
-    if (!detail) continue;
+  // Fetched in parallel, not one-request-per-trainee-in-sequence -- with a
+  // caseload of N trainees this used to mean N round trips back-to-back
+  // before the list (or any single document) could even open.
+  const [studentDetails, groupData] = await Promise.all([
+    Promise.all(allStudents.map((s) => apiRequest(`/supervisor/students/${s.id}`))),
+    apiRequest("/supervisor/group-documents"),
+  ]);
+
+  studentDetails.forEach((detail, i) => {
+    if (!detail) return;
+    const s = allStudents[i];
     detail.documents.forEach((d) => {
       if (seenDocIds.has(d.id)) return;
       seenDocIds.add(d.id);
       allDocs.push({ ...d, studentName: s.full_name, studentCode: s.memberCode });
     });
-  }
+  });
 
   // Every document shared with my own Group (pending or approved) --
   // independent of my personal caseload above, so I can review/approve a
   // Group-mate's upload even if that trainee isn't individually assigned
   // to me. See GET /supervisor/group-documents.
-  const groupData = await apiRequest("/supervisor/group-documents");
   ((groupData && groupData.documents) || []).forEach((d) => {
     if (seenDocIds.has(d.id)) return;
     seenDocIds.add(d.id);
@@ -6120,7 +6291,7 @@ async function loadAllDocuments() {
           <div class="rmeta">${studentPrefix}Shared by ${escapeHtml(d.uploadedByName)}${roleText}${sharedText}${approvalText}</div>
           <div class="mrow-actions" style="margin-top:4px;">
             <button type="button" class="mrow-btn primary" onclick="openAllDocumentsPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
-            <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
+            <a class="mrow-btn" href="${withDownloadMode(`${UPLOADS}/documents/${d.filename}${TOKEN_Q}`)}" target="_blank" rel="noopener" download="${escapeHtml(d.originalName || "")}"><i class="fa fa-download"></i> Download</a>
             ${acceptBtn}
           </div>
         </div>

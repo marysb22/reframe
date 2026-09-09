@@ -665,6 +665,41 @@ router.post("/documents", requireStudent, (req, res) => {
       );
       const { rows } = await pool.query("SELECT * FROM documents WHERE id = ?", [insert.insertId]);
       const { rows: meRows } = await pool.query("SELECT full_name FROM students WHERE id = ?", [req.user.id]);
+      const traineeName = (meRows[0] && meRows[0].full_name) || req.user.member_code;
+
+      // Notify only the ToT(s) actually responsible for this trainee --
+      // never the rest of the Group. A failure here must never turn an
+      // already-successful upload into a 500, so it's isolated in its own
+      // try/catch rather than sharing the outer one.
+      try {
+        if (shareWith === "group") {
+          const { rows: groupTots } = await pool.query(
+            "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training'",
+            [groupId]
+          );
+          for (const tot of groupTots) {
+            await createNotification(pool, {
+              recipientId: tot.id,
+              type: "document",
+              title: `${traineeName} added a document to your Group`,
+              body: `${req.file.originalname} · Pending Approval`,
+              relatedEntityType: "document",
+              relatedEntityId: insert.insertId,
+            });
+          }
+        } else {
+          await createNotification(pool, {
+            recipientId: sharedWithSupervisorId,
+            type: "document",
+            title: `${traineeName} shared a document with you`,
+            body: req.file.originalname,
+            relatedEntityType: "document",
+            relatedEntityId: insert.insertId,
+          });
+        }
+      } catch (notifyErr) {
+        console.error("[profile] failed to notify ToT(s) of new document:", notifyErr);
+      }
 
       res.status(201).json(
         toDocument({

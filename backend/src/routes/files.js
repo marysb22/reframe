@@ -268,6 +268,15 @@ router.get("/:subfolder/:filename", authenticateForFile, async (req, res) => {
   // user's private file to a different user who happens to guess the URL.
   res.set("Cache-Control", "private, max-age=86400");
 
+  // Open vs Download used to be a purely client-side distinction (whether
+  // the <a> had a `download` attribute) on an otherwise identical request --
+  // the server never sent a Content-Disposition at all, leaving "does this
+  // render inline" up to whatever a given browser/OS defaults to for a
+  // header that's simply absent. `?mode=download` makes the intent explicit
+  // and protocol-level instead: same authorization, same file, only the
+  // disposition differs.
+  res.set("Content-Disposition", req.query.mode === "download" ? `attachment; filename="${filename}"` : `inline; filename="${filename}"`);
+
   const filePath = path.join(config.uploadsDir, subfolder, filename);
   res.sendFile(filePath, (err) => {
     if (err && !res.headersSent) res.status(404).json({ error: "File not found" });
