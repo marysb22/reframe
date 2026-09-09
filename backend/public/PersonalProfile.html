@@ -2251,6 +2251,26 @@
             flex-shrink: 0;
         }
 
+        /* Small circular unread-count dot (Direct Messages) -- distinct from
+           .gc-unread-badge above (Group Chat rooms' own pill-shaped badge,
+           unchanged) since this one must render as a true circle for a
+           single digit rather than a wide pill. */
+        .unread-dot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+            border-radius: 50%;
+            background: var(--danger);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
         .gc-room-preview {
             font-size: 11px;
             color: var(--muted);
@@ -3104,7 +3124,7 @@
                 </ul>
                 <div class="nav-label">Communication</div>
                 <ul>
-                    <li><a data-section="chat" href="#chat"><i class="fa fa-comments"></i>Chat<span class="gc-unread-badge" id="chatNavUnreadBadge" style="display:none;margin-left:auto;"></span></a></li>
+                    <li><a data-section="chat" href="#chat"><i class="fa fa-comments"></i>Chat<span class="unread-dot" id="chatNavUnreadBadge" style="display:none;margin-left:auto;"></span></a></li>
                     <li><a data-section="announcements" href="#announcements"><i class="fa fa-bullhorn"></i>Announcements</a></li>
                 </ul>
                 <div class="nav-label">Account</div>
@@ -3600,7 +3620,7 @@
                         </div>
                     </div>
                     <div class="chat-mode-tabs">
-                        <button type="button" class="chat-mode-tab active" id="chatModeDirectTab" onclick="switchChatMode('direct')">Direct Messages<span class="gc-unread-badge" id="dmTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
+                        <button type="button" class="chat-mode-tab active" id="chatModeDirectTab" onclick="switchChatMode('direct')">Direct Messages<span class="unread-dot" id="dmTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
                         <button type="button" class="chat-mode-tab" id="chatModeGroupTab" onclick="switchChatMode('group')">Group Chats</button>
                     </div>
 
@@ -4110,7 +4130,7 @@
             [document.getElementById("chatNavUnreadBadge"), document.getElementById("dmTabUnreadBadge")].forEach((el) => {
                 if (!el) return;
                 el.textContent = label;
-                el.style.display = count > 0 ? "inline-block" : "none";
+                el.style.display = count > 0 ? "inline-flex" : "none";
             });
         }
 
@@ -5361,7 +5381,7 @@ async function renderSupervisorTabs() {
     .map((s) => {
       const count = unreadCounts[s.id] || 0;
       const active = Number(s.id) === Number(activeSupervisorId) ? " active" : "";
-      const badge = count ? `<span class="gc-unread-badge" style="margin-left:6px;">${count}</span>` : "";
+      const badge = count ? `<span class="unread-dot" style="margin-left:6px;">${count}</span>` : "";
       return `<button class="sup-btn${active}" data-sup="${s.id}" onclick="openThread(${s.id})">${escapeHtml(s.full_name)}${badge}</button>`;
     })
     .join("");

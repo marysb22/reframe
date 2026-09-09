@@ -2228,6 +2228,43 @@
             overflow-y: auto;
             padding: 6px;
             min-height: 0;
+            flex: 1;
+        }
+
+        /* Wraps a search box (fixed) + .gc-room-list (scrolls independently
+           beneath it) -- a search bar pinned above the list, WhatsApp-style,
+           rather than scrolling away with the list's own content. */
+        .gc-room-list-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 0;
+        }
+
+        .chat-search-box {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .chat-search-box i {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .chat-search-box input {
+            width: 100%;
+            height: 36px;
+            padding: 0 12px 0 32px;
+            border-radius: 10px;
+            border: 1px solid var(--border-soft);
+            background: var(--surface-2);
+            font-size: 12.5px;
+            font-family: inherit;
         }
 
         .gc-room-item {
@@ -2274,6 +2311,79 @@
             border-radius: 10px;
             padding: 1px 6px;
             flex-shrink: 0;
+        }
+
+        /* Small circular unread-count dot (Direct Messages) -- distinct from
+           .gc-unread-badge above (Group Chat rooms' own pill-shaped badge,
+           unchanged) since this one must render as a true circle for a
+           single digit rather than a wide pill. */
+        .unread-dot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+            border-radius: 50%;
+            background: var(--danger);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        /* Create Group's member picker (New Room modal) -- a compact row per
+           person. The checkbox needs an explicit size here because the
+           page's global `input { height: 42px }` rule (meant for text
+           inputs) otherwise stretches a checkbox into a large, blank-looking
+           square -- the exact visual bug being fixed. */
+        .member-select-list {
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid var(--border-soft);
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        .member-select-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background .12s;
+        }
+
+        .member-select-row:hover {
+            background: var(--surface-2);
+        }
+
+        .member-select-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            flex-shrink: 0;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .member-select-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .member-select-role {
+            flex-shrink: 0;
+            font-size: 11px;
+            color: var(--muted);
         }
 
         .gc-room-preview {
@@ -2892,7 +3002,7 @@
                 </ul>
                 <div class="nav-label">Communication</div>
                 <ul>
-                    <li><a data-section="chat" href="#chat"><i class="fa fa-comments"></i>Chat<span class="gc-unread-badge" id="chatNavUnreadBadge" style="display:none;margin-left:auto;"></span></a></li>
+                    <li><a data-section="chat" href="#chat"><i class="fa fa-comments"></i>Chat<span class="unread-dot" id="chatNavUnreadBadge" style="display:none;margin-left:auto;"></span></a></li>
                     <li><a data-section="documents" href="#documents"><i class="fa fa-folder-open"></i>Documents</a></li>
                     <li><a data-section="announcements" href="#announcements"><i class="fa fa-bullhorn"></i>Announcements</a></li>
                 </ul>
@@ -3336,15 +3446,19 @@
                         </div>
                     </div>
                     <div class="chat-mode-tabs">
-                        <button type="button" class="chat-mode-tab active" id="chatModeDirectTab" onclick="switchChatMode('direct')">Direct Messages<span class="gc-unread-badge" id="dmTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
+                        <button type="button" class="chat-mode-tab active" id="chatModeDirectTab" onclick="switchChatMode('direct')">Direct Messages<span class="unread-dot" id="dmTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
                         <button type="button" class="chat-mode-tab" id="chatModeGroupTab" onclick="switchChatMode('group')">Group Chats</button>
                     </div>
 
                     <div id="directChatPanel">
                         <p class="card-subtitle">One conversation per assigned trainee.</p>
                         <div class="gc-layout">
-                            <div class="gc-room-list">
-                                <ul class="inbox-list" id="chatInboxList">
+                            <div class="gc-room-list-wrap">
+                                <div class="chat-search-box">
+                                    <i class="fa fa-search"></i>
+                                    <input type="text" id="dmSearchInput" placeholder="Search" oninput="renderChatInboxList(this.value)">
+                                </div>
+                                <ul class="inbox-list gc-room-list" id="chatInboxList">
                                     <li class="empty-state">Loading conversations...</li>
                                 </ul>
                             </div>
@@ -3370,8 +3484,14 @@
                             <button type="button" class="btn" style="width:auto;flex-shrink:0;" onclick="openNewRoomModal()"><i class="fa fa-plus"></i> New Room</button>
                         </div>
                         <div class="gc-layout">
-                            <div class="gc-room-list" id="gcRoomList">
-                                <div class="empty-state">Loading rooms...</div>
+                            <div class="gc-room-list-wrap">
+                                <div class="chat-search-box">
+                                    <i class="fa fa-search"></i>
+                                    <input type="text" id="gcSearchInput" placeholder="Search" oninput="renderGcRoomList(this.value)">
+                                </div>
+                                <div class="gc-room-list" id="gcRoomList">
+                                    <div class="empty-state">Loading rooms...</div>
+                                </div>
                             </div>
                             <div class="gc-thread-panel">
                                 <div class="gc-thread-header" id="gcThreadHeader" style="display:none;">
@@ -3409,7 +3529,7 @@
                         <label>Room name</label>
                         <input type="text" id="newRoomName" required placeholder="e.g. Team Alpha">
                         <label>Members</label>
-                        <div id="newRoomRoster" style="max-height:220px;overflow-y:auto;border:1px solid var(--border-soft);border-radius:10px;padding:8px;">
+                        <div id="newRoomRoster" class="member-select-list">
                             <div class="empty-state">Loading your Group...</div>
                         </div>
                         <button type="submit" class="btn" style="margin-top:16px;">Create Room</button>
@@ -4274,7 +4394,7 @@
             [document.getElementById("chatNavUnreadBadge"), document.getElementById("dmTabUnreadBadge")].forEach((el) => {
                 if (!el) return;
                 el.textContent = label;
-                el.style.display = count > 0 ? "inline-block" : "none";
+                el.style.display = count > 0 ? "inline-flex" : "none";
             });
         }
 
@@ -6007,6 +6127,11 @@ function confirmDeleteMeeting(id) {
   });
 }
 
+// dmConversations holds the full, unfiltered list -- renderChatInboxList()
+// filters and re-renders from this cached copy on every keystroke, so
+// searching never re-fetches from the server.
+let dmConversations = [];
+
 async function loadChatInbox() {
   const list = document.getElementById("chatInboxList");
   list.innerHTML = '<li class="empty-state">Loading conversations...</li>';
@@ -6025,24 +6150,44 @@ async function loadChatInbox() {
   ]);
   const unreadCounts = (unreadData && unreadData.counts) || {};
 
-  const conversations = allStudents.map((s, i) => {
+  dmConversations = allStudents.map((s, i) => {
     const data = previews[i];
     const last = data && data.messages.length ? data.messages[data.messages.length - 1] : null;
     return { student: s, last, unreadCount: unreadCounts[s.id] || 0 };
   });
 
-  conversations.sort((a, b) => {
+  dmConversations.sort((a, b) => {
     const at = a.last ? new Date(a.last.createdAt).getTime() : 0;
     const bt = b.last ? new Date(b.last.createdAt).getTime() : 0;
     return bt - at;
   });
 
-  list.innerHTML = conversations
+  const searchInput = document.getElementById("dmSearchInput");
+  renderChatInboxList(searchInput ? searchInput.value : "");
+}
+
+// WhatsApp-style live filter over the already-fetched dmConversations --
+// matches on the trainee's name only (the one real, authorized identity
+// this list already shows; never a server round trip, never a name/user
+// outside this ToT's own assigned trainees).
+function renderChatInboxList(filterText) {
+  const list = document.getElementById("chatInboxList");
+  const query = (filterText || "").trim().toLowerCase();
+  const filtered = query
+    ? dmConversations.filter((c) => c.student.full_name.toLowerCase().includes(query))
+    : dmConversations;
+
+  if (!filtered.length) {
+    list.innerHTML = `<li class="empty-state">${query ? "No conversations match \u201c" + escapeHtml(filterText.trim()) + "\u201d." : "No trainees assigned yet."}</li>`;
+    return;
+  }
+
+  list.innerHTML = filtered
     .map(({ student, last, unreadCount }) => `
       <li class="inbox-item ${Number(student.id) === Number(dmActiveStudentId) ? "active" : ""}" data-student-id="${student.id}" onclick="openDirectThread(${student.id})">
         <div class="inbox-avatar">${escapeHtml(initials(student.full_name))}</div>
         <div class="inbox-info">
-          <strong>${escapeHtml(student.full_name)}${unreadCount ? `<span class="gc-unread-badge" style="margin-left:8px;">${unreadCount}</span>` : ""}</strong>
+          <strong>${escapeHtml(student.full_name)}${unreadCount ? `<span class="unread-dot" style="margin-left:8px;">${unreadCount}</span>` : ""}</strong>
           <span>${last ? escapeHtml(last.content) : "No messages yet \u2014 say hello"}</span>
         </div>
         <div class="inbox-time">${last ? new Date(last.createdAt).toLocaleDateString() : ""}</div>
@@ -6230,12 +6375,25 @@ async function loadGcRoomList() {
   const data = await apiRequest("/chat-rooms");
   if (!data) return;
   gcRooms = data.rooms;
+  const searchInput = document.getElementById("gcSearchInput");
+  renderGcRoomList(searchInput ? searchInput.value : "");
+}
+
+// WhatsApp-style live filter over the already-fetched gcRooms (room name
+// only) -- no server round trip, no room this ToT isn't already a member of.
+function renderGcRoomList(filterText) {
   const list = document.getElementById("gcRoomList");
   if (!gcRooms.length) {
     list.innerHTML = '<div class="empty-state">Your Master Trainer hasn\'t added you to a room yet.</div>';
     return;
   }
-  list.innerHTML = gcRooms.map((r) => `
+  const query = (filterText || "").trim().toLowerCase();
+  const filtered = query ? gcRooms.filter((r) => r.name.toLowerCase().includes(query)) : gcRooms;
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state">No rooms match “${escapeHtml(filterText.trim())}”.</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map((r) => `
     <button type="button" class="gc-room-item${r.id === gcActiveRoomId ? " active" : ""}" onclick="openGcRoom(${r.id})">
       <div class="gc-room-name">${escapeHtml(r.name)}${r.unreadCount ? `<span class="gc-unread-badge">${r.unreadCount}</span>` : ""}</div>
       <div class="gc-room-preview">${r.lastMessage ? escapeHtml(r.lastMessage.senderName) + ": " + escapeHtml(r.lastMessage.preview) : "No messages yet"}</div>
@@ -6466,9 +6624,10 @@ async function openNewRoomModal() {
     return;
   }
   roster.innerHTML = data.roster.map((p) => `
-    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12.5px;">
+    <label class="member-select-row">
       <input type="checkbox" value="${p.id}" class="new-room-member-cb">
-      ${escapeHtml(p.fullName)} <span style="color:var(--muted);font-size:11px;">(${gcKindLabel(p)})</span>
+      <span class="member-select-name">${escapeHtml(p.fullName)}</span>
+      <span class="member-select-role">${gcKindLabel(p)}</span>
     </label>`).join("");
 }
 

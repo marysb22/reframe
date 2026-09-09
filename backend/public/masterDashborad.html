@@ -659,6 +659,43 @@
             overflow-y: auto;
             padding: 6px;
             min-height: 0;
+            flex: 1;
+        }
+
+        /* Wraps a search box (fixed) + .gc-room-list (scrolls independently
+           beneath it) -- a search bar pinned above the list, WhatsApp-style,
+           rather than scrolling away with the list's own content. */
+        .gc-room-list-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 0;
+        }
+
+        .chat-search-box {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .chat-search-box i {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .chat-search-box input {
+            width: 100%;
+            height: 36px;
+            padding: 0 12px 0 32px;
+            border-radius: 10px;
+            border: 1px solid var(--border-soft);
+            background: var(--surface-2);
+            font-size: 12.5px;
+            font-family: inherit;
         }
 
         .gc-room-item {
@@ -705,6 +742,59 @@
             border-radius: 10px;
             padding: 1px 6px;
             flex-shrink: 0;
+        }
+
+        /* Create Group's member picker (New Room modal) -- a compact row per
+           person. The checkbox needs an explicit size here because the
+           page's global `input { height: 42px }` rule (meant for text
+           inputs) otherwise stretches a checkbox into a large, blank-looking
+           square -- the exact visual bug being fixed. */
+        .member-select-list {
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid var(--border-soft);
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        .member-select-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background .12s;
+        }
+
+        .member-select-row:hover {
+            background: var(--surface-2);
+        }
+
+        .member-select-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            flex-shrink: 0;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .member-select-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .member-select-role {
+            flex-shrink: 0;
+            font-size: 11px;
+            color: var(--muted);
         }
 
         .gc-room-preview {
@@ -3311,8 +3401,14 @@
                     </div>
                     <p class="card-subtitle">Create a room and add your ToTs and Trainees -- everyone in the room can send and receive messages and files.</p>
                     <div class="gc-layout">
-                        <div class="gc-room-list" id="gcRoomList">
-                            <div class="empty-state">Loading rooms...</div>
+                        <div class="gc-room-list-wrap">
+                            <div class="chat-search-box">
+                                <i class="fa fa-search"></i>
+                                <input type="text" id="gcSearchInput" placeholder="Search" oninput="renderGcRoomList(this.value)">
+                            </div>
+                            <div class="gc-room-list" id="gcRoomList">
+                                <div class="empty-state">Loading rooms...</div>
+                            </div>
                         </div>
                         <div class="gc-thread-panel">
                             <div class="gc-thread-header" id="gcThreadHeader" style="display:none;">
@@ -3349,7 +3445,7 @@
                         <label>Room name</label>
                         <input type="text" id="newRoomName" required placeholder="e.g. Team Alpha">
                         <label>Members</label>
-                        <div id="newRoomRoster" style="max-height:220px;overflow-y:auto;border:1px solid var(--border-soft);border-radius:10px;padding:8px;">
+                        <div id="newRoomRoster" class="member-select-list">
                             <div class="empty-state">Loading your Group...</div>
                         </div>
                         <button type="submit" class="btn" style="margin-top:16px;">Create Room</button>
@@ -5482,12 +5578,26 @@
             const data = await apiRequest("/chat-rooms");
             if (!data) return;
             gcRooms = data.rooms;
+            const searchInput = document.getElementById("gcSearchInput");
+            renderGcRoomList(searchInput ? searchInput.value : "");
+        }
+
+        // WhatsApp-style live filter over the already-fetched gcRooms (room
+        // name only) -- no server round trip, no room this Master Trainer
+        // isn't already a member of.
+        function renderGcRoomList(filterText) {
             const list = document.getElementById("gcRoomList");
             if (!gcRooms.length) {
                 list.innerHTML = '<div class="empty-state">No rooms yet. Create one to get started.</div>';
                 return;
             }
-            list.innerHTML = gcRooms.map((r) => `
+            const query = (filterText || "").trim().toLowerCase();
+            const filtered = query ? gcRooms.filter((r) => r.name.toLowerCase().includes(query)) : gcRooms;
+            if (!filtered.length) {
+                list.innerHTML = `<div class="empty-state">No rooms match “${escapeHtml(filterText.trim())}”.</div>`;
+                return;
+            }
+            list.innerHTML = filtered.map((r) => `
         <button type="button" class="gc-room-item${r.id === gcActiveRoomId ? " active" : ""}" onclick="openGcRoom(${r.id})">
           <div class="gc-room-name">${escapeHtml(r.name)}${r.unreadCount ? `<span class="gc-unread-badge">${r.unreadCount}</span>` : ""}</div>
           <div class="gc-room-preview">${r.lastMessage ? escapeHtml(r.lastMessage.senderName) + ": " + escapeHtml(r.lastMessage.preview) : "No messages yet"}</div>
@@ -5720,9 +5830,10 @@
                 return;
             }
             roster.innerHTML = data.roster.map((p) => `
-        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12.5px;">
+        <label class="member-select-row">
           <input type="checkbox" value="${p.id}" class="new-room-member-cb">
-          ${escapeHtml(p.fullName)} <span style="color:var(--muted);font-size:11px;">(${gcKindLabel(p)})</span>
+          <span class="member-select-name">${escapeHtml(p.fullName)}</span>
+          <span class="member-select-role">${gcKindLabel(p)}</span>
         </label>`).join("");
         }
 
