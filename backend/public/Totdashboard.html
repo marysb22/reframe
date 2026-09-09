@@ -3396,14 +3396,10 @@
                         <label>File (PDF, Word, or image)</label>
                         <input type="file" id="adFileInput" accept=".pdf,.doc,.docx,image/*" required>
                         <label>Share With</label>
-                        <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin:0;">
-                            <input type="radio" name="adShareWith" value="trainee" id="adShareTrainee" checked style="width:auto;height:auto;">
-                            Trainee &mdash; only the selected trainee
-                        </label>
-                        <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin:4px 0 0;">
-                            <input type="radio" name="adShareWith" value="group" id="adShareGroup" style="width:auto;height:auto;">
-                            All Group &mdash; every authorized member of the trainee's Group
-                        </label>
+                        <select id="adShareWith">
+                            <option value="trainee" selected>Trainee &mdash; only the selected trainee</option>
+                            <option value="group">All Group &mdash; every authorized member of the trainee's Group</option>
+                        </select>
                         <div class="modal-actions"><button type="submit" class="btn">Upload</button></div>
                     </form>
                 </div>
@@ -6402,7 +6398,7 @@ document.getElementById("addDocumentForm").addEventListener("submit", async (e) 
 
   const form = new FormData();
   form.append("document", file);
-  if (document.getElementById("adShareGroup").checked) form.append("shareWithGroup", "1");
+  if (document.getElementById("adShareWith").value === "group") form.append("shareWithGroup", "1");
 
   try {
     const response = await fetch(`${API}/supervisor/students/${studentId}/documents`, {
