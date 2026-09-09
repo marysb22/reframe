@@ -4557,9 +4557,11 @@
             const container = document.getElementById("sdPanels");
             editingRecordId = null;
 
-            // Give the Messages tab's chat its full space -- the Training
-            // Information card (still shown on every other tab) hides only
-            // here, restored again the moment a different tab is selected.
+            // Give the Messages tab's chat its full space -- both the
+            // progress KPIs and the Training Information card (still shown
+            // on every other tab) hide only here, restored again the
+            // moment a different tab is selected.
+            document.getElementById("sdProgress").style.display = activeTab === "messages" ? "none" : "";
             document.getElementById("sdTraining").style.display =
                 sdTrainingHasData && activeTab !== "messages" ? "" : "none";
 
