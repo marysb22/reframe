@@ -20,6 +20,7 @@ const { checkFileContent } = require("../utils/fileTypeCheck");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
 const { createNotification } = require("../utils/notifications");
+const { broadcastDirectMessage } = require("../realtime/chatSocket");
 const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi, attachSubmissionHistories } = require("../utils/assignmentsQuery");
 const { DOCUMENT_SELECT } = require("../utils/documentsQuery");
@@ -1025,7 +1026,34 @@ async function requireAssignedSupervisor(db, studentId, supervisorId, res) {
   return true;
 }
 
+// GET /api/profile/messages/unread-count -- total unread Direct Messages
+// across every supervisor conversation, for the badge shown outside the
+// Chat section. Reads the same `notifications` table every other
+// notification already lives in (never week-scoped, unlike the general
+// notification-bell count -- an unread message shouldn't stop counting
+// just because a week boundary passed).
+// Registered BEFORE "/messages/:supervisorId" below: Express matches route
+// paths in registration order, and "unread-count" would otherwise be
+// captured as a (NaN) :supervisorId by that route instead of ever reaching
+// this one.
+router.get(
+  "/messages/unread-count",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      "SELECT COUNT(*) AS count FROM notifications WHERE recipient_id = ? AND notification_type = 'message' AND is_read = FALSE",
+      [req.user.id]
+    );
+    res.json({ count: Number(rows[0].count) });
+  })
+);
+
 // GET /api/profile/messages/:supervisorId
+// Also marks this conversation read: every incoming message (not sent by
+// this trainee) and its matching notification, in one place, so opening a
+// conversation is the single source of truth for "I've seen this" --
+// whether the trainee got here from the Chat section directly or by
+// clicking a "new message" notification.
 router.get(
   "/messages/:supervisorId",
   requireStudent,
@@ -1040,6 +1068,17 @@ router.get(
        WHERE m.chat_id = ? ORDER BY m.created_at ASC`,
       [chatId]
     );
+
+    await db.query("UPDATE messages SET is_read = TRUE WHERE chat_id = ? AND sender_id != ? AND is_read = FALSE", [
+      chatId,
+      req.user.id,
+    ]);
+    await db.query(
+      `UPDATE notifications SET is_read = TRUE
+       WHERE recipient_id = ? AND notification_type = 'message' AND related_entity_id = ? AND is_read = FALSE`,
+      [req.user.id, supervisorId]
+    );
+
     res.json({ messages: rows.map((r) => toMessage(r, req.user.id)) });
   })
 );
@@ -1067,7 +1106,36 @@ router.post(
     await db.query("UPDATE chats SET last_message_at = NOW() WHERE id = ?", [chatId]);
 
     const { rows } = await db.query("SELECT * FROM messages WHERE id = ?", [insert.insertId]);
-    res.status(201).json(toMessage({ ...rows[0], sender_name: req.user.member_code }, req.user.id));
+    const message = toMessage({ ...rows[0], sender_name: req.user.member_code }, req.user.id);
+
+    // Notification + live delivery for the supervisor. relatedEntityId is
+    // deliberately the SENDER's (this trainee's) own id, not the message or
+    // chat id -- that's exactly what the supervisor's UI needs to jump
+    // straight into this conversation with one call, no extra lookup, and
+    // it's the same id GET .../messages/:supervisorId above already marks
+    // read by.
+    try {
+      const { rows: meRows } = await db.query("SELECT full_name FROM students WHERE id = ?", [req.user.id]);
+      const traineeName = (meRows[0] && meRows[0].full_name) || req.user.member_code;
+      await createNotification(db, {
+        recipientId: supervisorId,
+        type: "message",
+        title: `${traineeName} sent you a message`,
+        body: content.trim().slice(0, 140),
+        relatedEntityType: "message",
+        relatedEntityId: req.user.id,
+      });
+      // The recipient is the only one who ever receives this (the sender's
+      // own socket is excluded by senderId below), so isMine is always
+      // false from here -- toMessage() above computed it as true (relative
+      // to the sender who just posted), which would be wrong to hand to
+      // the recipient's UI as-is.
+      broadcastDirectMessage(req.app.get("io"), chatId, { ...message, isMine: false, senderId: req.user.id }).catch(() => {});
+    } catch (notifyErr) {
+      console.error("[profile] failed to notify supervisor of new message:", notifyErr);
+    }
+
+    res.status(201).json(message);
   })
 );
 

@@ -3104,7 +3104,7 @@
                 </ul>
                 <div class="nav-label">Communication</div>
                 <ul>
-                    <li><a data-section="chat" href="#chat"><i class="fa fa-comments"></i>Chat</a></li>
+                    <li><a data-section="chat" href="#chat"><i class="fa fa-comments"></i>Chat<span class="gc-unread-badge" id="chatNavUnreadBadge" style="display:none;margin-left:auto;"></span></a></li>
                     <li><a data-section="announcements" href="#announcements"><i class="fa fa-bullhorn"></i>Announcements</a></li>
                 </ul>
                 <div class="nav-label">Account</div>
@@ -3600,7 +3600,7 @@
                         </div>
                     </div>
                     <div class="chat-mode-tabs">
-                        <button type="button" class="chat-mode-tab active" id="chatModeDirectTab" onclick="switchChatMode('direct')">Direct Messages</button>
+                        <button type="button" class="chat-mode-tab active" id="chatModeDirectTab" onclick="switchChatMode('direct')">Direct Messages<span class="gc-unread-badge" id="dmTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
                         <button type="button" class="chat-mode-tab" id="chatModeGroupTab" onclick="switchChatMode('group')">Group Chats</button>
                     </div>
 
@@ -3999,7 +3999,11 @@
             await loadProfile();
             loadNotificationPrefs();
             loadNotifUnreadCount();
-            notifPollTimer = setInterval(loadNotifUnreadCount, 60000);
+            loadDmUnreadBadge();
+            notifPollTimer = setInterval(() => {
+                loadNotifUnreadCount();
+                loadDmUnreadBadge();
+            }, 60000);
             const initialSection = window.location.hash.slice(1) || "dashboard";
             showSection(initialSection);
         });
@@ -4091,6 +4095,25 @@
             dot.style.display = data && data.count > 0 ? "block" : "none";
         }
 
+        // Red badge outside the Direct Message section (sidebar "Chat" link +
+        // the "Direct Messages" tab itself) -- backed by GET
+        // /profile/messages/unread-count, which counts unread 'message'
+        // notifications (never week-scoped, unlike the general notif dot
+        // above). Refreshed on the same 60s heartbeat as that dot, plus
+        // instantly whenever a message arrives over the live socket or is
+        // marked read by opening a conversation -- see openThread() and the
+        // "newDirectMessage" socket listener below.
+        async function loadDmUnreadBadge() {
+            const data = await apiRequest("/profile/messages/unread-count");
+            const count = (data && data.count) || 0;
+            const label = count > 99 ? "99+" : String(count);
+            [document.getElementById("chatNavUnreadBadge"), document.getElementById("dmTabUnreadBadge")].forEach((el) => {
+                if (!el) return;
+                el.textContent = label;
+                el.style.display = count > 0 ? "inline-block" : "none";
+            });
+        }
+
         async function loadNotifList() {
             const list = document.getElementById("notifList");
             if (!list) return;
@@ -4162,6 +4185,7 @@
             if (btn) btn.disabled = false;
             loadNotifList();
             loadNotifUnreadCount();
+            loadDmUnreadBadge();
         }
 
         async function handleNotifClick(id, relatedEntityType, relatedEntityId) {
@@ -4172,6 +4196,16 @@
                 showSection("assignments");
                 await loadAssignments();
                 openAssignmentDetail(Number(relatedEntityId));
+            } else if (relatedEntityType === "message" && relatedEntityId) {
+                // Marking "chat" as already-loaded before showSection() stops
+                // its own lazy loader from also calling loadChat() with no
+                // argument (which would default to the first supervisor's
+                // tab) and racing the specific thread we're opening below.
+                loadedSections.add("chat");
+                showSection("chat");
+                switchChatMode("direct");
+                loadChat(Number(relatedEntityId));
+                loadDmUnreadBadge();
             }
         }
 
@@ -5298,7 +5332,10 @@ async function loadMeetings() {
 
 // ---- Chat -----------------------------------------------------------
 
-function loadChat() {
+// preferredSupervisorId (e.g. from a "message" notification's
+// relatedEntityId) opens that specific conversation instead of defaulting
+// to the first tab -- used by handleNotifClick below.
+function loadChat(preferredSupervisorId) {
   const tabsEl = document.getElementById("supervisorTabs");
   if (!mySupervisors.length) {
     tabsEl.innerHTML = "";
@@ -5308,7 +5345,10 @@ function loadChat() {
   tabsEl.innerHTML = mySupervisors
     .map((s) => `<button class="sup-btn" data-sup="${s.id}" onclick="openThread(${s.id})">${escapeHtml(s.full_name)}</button>`)
     .join("");
-  openThread(mySupervisors[0].id);
+  const targetId = preferredSupervisorId && mySupervisors.some((s) => Number(s.id) === Number(preferredSupervisorId))
+    ? Number(preferredSupervisorId)
+    : mySupervisors[0].id;
+  openThread(targetId);
 }
 
 async function openThread(supervisorId) {
@@ -5317,26 +5357,41 @@ async function openThread(supervisorId) {
 
   const data = await apiRequest(`/profile/messages/${supervisorId}`);
   const thread = document.getElementById("chatThread");
-  if (!data || !data.messages.length) { thread.innerHTML = '<div class="empty-state">No messages yet.</div>'; return; }
+  if (!data) return;
+  // The GET above already marked this conversation's incoming messages (and
+  // their notifications) read server-side -- refresh the badge to match
+  // immediately rather than waiting for the next 60s poll.
+  loadDmUnreadBadge();
+  if (!data.messages.length) { thread.innerHTML = '<div class="empty-state">No messages yet.</div>'; return; }
   thread.innerHTML = data.messages
     .map((m) => `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"}">${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} \u00b7 ${new Date(m.createdAt).toLocaleString()}</div></div>`)
     .join("");
   thread.scrollTop = thread.scrollHeight;
 }
 
+// Guards against a double-Enter or a double-click on Send firing two
+// identical POSTs before the first one's response comes back.
+let dmSendInFlight = false;
+
 async function sendMessage() {
+  if (dmSendInFlight) return;
   if (!activeSupervisorId) return showToast("Select a supervisor first", "error");
   const input = document.getElementById("chatInput");
   const content = input.value.trim();
   if (!content) return;
-  const result = await apiRequest(`/profile/messages/${activeSupervisorId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
-  });
-  if (result) {
-    input.value = "";
-    openThread(activeSupervisorId);
+  dmSendInFlight = true;
+  try {
+    const result = await apiRequest(`/profile/messages/${activeSupervisorId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    if (result) {
+      input.value = "";
+      await openThread(activeSupervisorId);
+    }
+  } finally {
+    dmSendInFlight = false;
   }
 }
 
@@ -5384,6 +5439,17 @@ function connectGcSocket() {
         if (payload.roomId === gcActiveRoomId) {
             appendGcMessage(payload.message);
             markGcRoomRead(gcActiveRoomId);
+        }
+    });
+    // Direct Messages (1:1) share this same socket connection -- a distinct
+    // event name/channel (see chatSocket.js's dmChannel) so it can never be
+    // confused with a Group Chat room message. payload.message.senderId is
+    // the supervisor who just sent it, which is exactly activeSupervisorId
+    // when that conversation is the one currently open.
+    gcSocket.on("newDirectMessage", (payload) => {
+        loadDmUnreadBadge();
+        if (payload.message.senderId === activeSupervisorId) {
+            openThread(activeSupervisorId);
         }
     });
     setTimeout(() => {

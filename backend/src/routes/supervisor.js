@@ -24,6 +24,7 @@ const {
   buildTotHoursBreakdownQuery,
 } = require("../utils/recordsQuery");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
+const { broadcastDirectMessage } = require("../realtime/chatSocket");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi, attachSubmissionHistories } = require("../utils/assignmentsQuery");
 const { resolveWeekRange } = require("../utils/weekPeriod");
 const { DOCUMENT_SELECT } = require("../utils/documentsQuery");
@@ -1291,6 +1292,9 @@ async function getOrCreateChat(db, supervisorId, studentId) {
   return created.insertId;
 }
 
+// Also marks this conversation read (the incoming messages + their matching
+// notification) -- see profile.js's mirror of this same endpoint for the
+// full reasoning; identical here, just from the supervisor's side.
 router.get(
   "/students/:studentId/messages",
   asyncRoute(async (req, res, db) => {
@@ -1306,7 +1310,32 @@ router.get(
        WHERE m.chat_id = ? ORDER BY m.created_at ASC`,
       [chatId]
     );
+
+    await db.query("UPDATE messages SET is_read = TRUE WHERE chat_id = ? AND sender_id != ? AND is_read = FALSE", [
+      chatId,
+      req.user.id,
+    ]);
+    await db.query(
+      `UPDATE notifications SET is_read = TRUE
+       WHERE recipient_id = ? AND notification_type = 'message' AND related_entity_id = ? AND is_read = FALSE`,
+      [req.user.id, studentId]
+    );
+
     res.json({ messages: rows.map((r) => toMessage(r, req.user.id)) });
+  })
+);
+
+// GET /api/supervisor/messages/unread-count -- see profile.js's mirror for
+// the full reasoning (same notifications-table-backed count, never
+// week-scoped).
+router.get(
+  "/messages/unread-count",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      "SELECT COUNT(*) AS count FROM notifications WHERE recipient_id = ? AND notification_type = 'message' AND is_read = FALSE",
+      [req.user.id]
+    );
+    res.json({ count: Number(rows[0].count) });
   })
 );
 
@@ -1330,7 +1359,29 @@ router.post(
     await db.query("UPDATE chats SET last_message_at = NOW() WHERE id = ?", [chatId]);
 
     const { rows } = await db.query("SELECT * FROM messages WHERE id = ?", [insert.insertId]);
-    res.status(201).json(toMessage({ ...rows[0], sender_name: req.user.member_code }, req.user.id));
+    const message = toMessage({ ...rows[0], sender_name: req.user.member_code }, req.user.id);
+
+    // Notification + live delivery for the trainee. relatedEntityId is this
+    // supervisor's own id -- exactly what the trainee's UI needs to open
+    // this conversation with one call, and the same id GET
+    // .../messages/:supervisorId above marks read by.
+    try {
+      const { rows: meRows } = await db.query("SELECT full_name FROM supervisors WHERE id = ?", [req.user.id]);
+      const supervisorName = (meRows[0] && meRows[0].full_name) || req.user.member_code;
+      await createNotification(db, {
+        recipientId: studentId,
+        type: "message",
+        title: `${supervisorName} sent you a message`,
+        body: content.trim().slice(0, 140),
+        relatedEntityType: "message",
+        relatedEntityId: req.user.id,
+      });
+      broadcastDirectMessage(req.app.get("io"), chatId, { ...message, isMine: false, senderId: req.user.id }).catch(() => {});
+    } catch (notifyErr) {
+      console.error("[supervisor] failed to notify trainee of new message:", notifyErr);
+    }
+
+    res.status(201).json(message);
   })
 );
 
