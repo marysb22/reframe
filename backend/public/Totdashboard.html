@@ -2317,20 +2317,44 @@
            .gc-unread-badge above (Group Chat rooms' own pill-shaped badge,
            unchanged) since this one must render as a true circle for a
            single digit rather than a wide pill. */
+        /* !important throughout: this badge is reused inside several
+           unrelated contexts (the inbox row's `.inbox-info span`/`strong`
+           rules, sidebar links, tab buttons), several of which are MORE
+           specific than a single `.unread-dot` class selector and were
+           silently overriding display/color/sizing -- e.g.
+           `.inbox-item .inbox-info span` forcing display:block, which
+           stretched this into a full-width oval instead of a small circle.
+           Locking every property down guarantees this looks identical
+           everywhere it's placed, regardless of ancestor styling. */
         .unread-dot {
-            display: inline-flex;
+            display: inline-flex !important;
             align-items: center;
             justify-content: center;
-            min-width: 16px;
-            height: 16px;
-            padding: 0 4px;
-            border-radius: 50%;
-            background: var(--danger);
-            color: #fff;
-            font-size: 10px;
-            font-weight: 700;
-            line-height: 1;
+            width: 16px !important;
+            min-width: 16px !important;
+            max-width: none !important;
+            height: 16px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            background: var(--danger) !important;
+            color: #fff !important;
+            font-size: 9px !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
             flex-shrink: 0;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            box-sizing: border-box;
+        }
+
+        /* A 2-digit count (e.g. "12") needs a touch more room than a true
+           circle allows -- becomes a small rounded-rect "stadium" shape
+           instead, same convention as most notification badges. */
+        .unread-dot.wide {
+            width: auto !important;
+            min-width: 18px !important;
+            padding: 0 4px !important;
         }
 
         /* Create Group's member picker (New Room modal) -- a compact row per
@@ -4394,6 +4418,7 @@
             [document.getElementById("chatNavUnreadBadge"), document.getElementById("dmTabUnreadBadge")].forEach((el) => {
                 if (!el) return;
                 el.textContent = label;
+                el.classList.toggle("wide", label.length > 1);
                 el.style.display = count > 0 ? "inline-flex" : "none";
             });
         }
@@ -6187,7 +6212,7 @@ function renderChatInboxList(filterText) {
       <li class="inbox-item ${Number(student.id) === Number(dmActiveStudentId) ? "active" : ""}" data-student-id="${student.id}" onclick="openDirectThread(${student.id})">
         <div class="inbox-avatar">${escapeHtml(initials(student.full_name))}</div>
         <div class="inbox-info">
-          <strong>${escapeHtml(student.full_name)}${unreadCount ? `<span class="unread-dot" style="margin-left:8px;">${unreadCount}</span>` : ""}</strong>
+          <strong>${escapeHtml(student.full_name)}${unreadCount ? `<span class="unread-dot${unreadCount > 9 ? " wide" : ""}" style="margin-left:8px;">${unreadCount > 99 ? "99+" : unreadCount}</span>` : ""}</strong>
           <span>${last ? escapeHtml(last.content) : "No messages yet \u2014 say hello"}</span>
         </div>
         <div class="inbox-time">${last ? new Date(last.createdAt).toLocaleDateString() : ""}</div>

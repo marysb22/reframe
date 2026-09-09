@@ -2255,20 +2255,39 @@
            .gc-unread-badge above (Group Chat rooms' own pill-shaped badge,
            unchanged) since this one must render as a true circle for a
            single digit rather than a wide pill. */
+        /* !important throughout: this badge is reused inside several
+           unrelated contexts (sidebar links, tab buttons, and any future
+           per-conversation row), some of which could carry a more specific
+           descendant selector (e.g. a generic "span" rule) that would
+           otherwise silently override its display/size and stretch it into
+           an oval instead of a small circle. Locking every property down
+           guarantees this looks identical everywhere it's placed. */
         .unread-dot {
-            display: inline-flex;
+            display: inline-flex !important;
             align-items: center;
             justify-content: center;
-            min-width: 16px;
-            height: 16px;
-            padding: 0 4px;
-            border-radius: 50%;
-            background: var(--danger);
-            color: #fff;
-            font-size: 10px;
-            font-weight: 700;
-            line-height: 1;
+            width: 16px !important;
+            min-width: 16px !important;
+            max-width: none !important;
+            height: 16px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            background: var(--danger) !important;
+            color: #fff !important;
+            font-size: 9px !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
             flex-shrink: 0;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            box-sizing: border-box;
+        }
+
+        .unread-dot.wide {
+            width: auto !important;
+            min-width: 18px !important;
+            padding: 0 4px !important;
         }
 
         .gc-room-preview {
@@ -4130,6 +4149,7 @@
             [document.getElementById("chatNavUnreadBadge"), document.getElementById("dmTabUnreadBadge")].forEach((el) => {
                 if (!el) return;
                 el.textContent = label;
+                el.classList.toggle("wide", label.length > 1);
                 el.style.display = count > 0 ? "inline-flex" : "none";
             });
         }
@@ -5381,7 +5401,7 @@ async function renderSupervisorTabs() {
     .map((s) => {
       const count = unreadCounts[s.id] || 0;
       const active = Number(s.id) === Number(activeSupervisorId) ? " active" : "";
-      const badge = count ? `<span class="unread-dot" style="margin-left:6px;">${count}</span>` : "";
+      const badge = count ? `<span class="unread-dot${count > 9 ? " wide" : ""}" style="margin-left:6px;">${count > 99 ? "99+" : count}</span>` : "";
       return `<button class="sup-btn${active}" data-sup="${s.id}" onclick="openThread(${s.id})">${escapeHtml(s.full_name)}${badge}</button>`;
     })
     .join("");
