@@ -3388,6 +3388,7 @@
                             <tr>
                                 <th>Title</th>
                                 <th>Trainee</th>
+                                <th>Date</th>
                                 <th>Due date</th>
                                 <th>Content</th>
                                 <th>Status</th>
@@ -3396,7 +3397,7 @@
                         </thead>
                         <tbody id="assignmentsBody">
                             <tr class="loading-row">
-                                <td colspan="6">Loading assignments...</td>
+                                <td colspan="7">Loading assignments...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -3817,6 +3818,7 @@
                 <label id="asgStatusLabel">Status</label>
                 <select id="asgStatus">
 <option value="pending">Pending</option>
+<option value="submitted">Submitted</option>
 <option value="completed">Completed</option>
 </select>
                 <label>Description / instructions</label>
@@ -4025,7 +4027,13 @@
                 label: "Assignments",
                 icon: "fa-list-check",
                 fields: ["title", "date", "status", "content"],
-                statusOptions: ["pending", "completed"]
+                // Same options as the dedicated Assignments section's own
+                // edit modal (#asgStatus) -- both write to the same
+                // PUT /supervisor/records/assignment/:id, so they must stay
+                // in sync. "overdue" is deliberately excluded here too: it's
+                // always computed live from the due date (assignmentRowToApi),
+                // never something a Trainer should be able to force-set.
+                statusOptions: ["pending", "submitted", "completed"]
             },
             note: {
                 label: "Notes",
@@ -5671,7 +5679,7 @@ const ASSIGNMENT_STATUS_PILL = {
 
 async function loadAssignments() {
   const body = document.getElementById("assignmentsBody");
-  body.innerHTML = '<tr class="loading-row"><td colspan="6">Loading assignments...</td></tr>';
+  body.innerHTML = '<tr class="loading-row"><td colspan="7">Loading assignments...</td></tr>';
   const data = await apiRequest("/supervisor/assignments");
   if (!data) return;
   allAssignments = data.assignments;
@@ -5705,7 +5713,7 @@ function renderAssignments() {
 
   const body = document.getElementById("assignmentsBody");
   if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="6" class="empty-state">No assignments match. Create one with "New assignment".</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="empty-state">No assignments match. Create one with "New assignment".</td></tr>';
     return;
   }
 
@@ -5721,6 +5729,7 @@ function renderAssignments() {
       <tr>
         <td><strong>${escapeHtml(a.title || "Untitled")}</strong></td>
         <td>${escapeHtml(a.studentName)}</td>
+        <td>${a.createdAt ? escapeHtml(String(a.createdAt).slice(0, 10)) : "&mdash;"}</td>
         <td>${a.dueDate ? escapeHtml(String(a.dueDate).slice(0, 10)) : "&mdash;"}</td>
         <td>${contentBits.join(" ") || "&mdash;"}</td>
         <td><span class="pill ${ASSIGNMENT_STATUS_PILL[displayStatus] || "pending"}">${escapeHtml(ASSIGNMENT_STATUS_LABEL[displayStatus] || displayStatus)}</span></td>
