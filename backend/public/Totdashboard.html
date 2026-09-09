@@ -3365,7 +3365,10 @@
                     </div>
 
                     <div id="groupChatPanel" style="display:none;">
-                        <p class="card-subtitle">Rooms your Master Trainer has added you to. Everyone in a room can send and receive messages and files.</p>
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+                            <p class="card-subtitle">Create a room and add your fellow ToTs and Trainees -- everyone in the room can send and receive messages and files.</p>
+                            <button type="button" class="btn" style="width:auto;flex-shrink:0;" onclick="openNewRoomModal()"><i class="fa fa-plus"></i> New Room</button>
+                        </div>
                         <div class="gc-layout">
                             <div class="gc-room-list" id="gcRoomList">
                                 <div class="empty-state">Loading rooms...</div>
@@ -3375,6 +3378,10 @@
                                     <div>
                                         <h4 id="gcThreadName">&mdash;</h4>
                                         <div class="gc-member-count" id="gcThreadMemberCount"></div>
+                                    </div>
+                                    <div style="display:flex;gap:6px;">
+                                        <button class="icon-btn" title="Manage members" id="gcManageBtn" onclick="openManageMembersModal()" style="display:none;"><i class="fa fa-user-gear"></i></button>
+                                        <button class="icon-btn danger" title="Delete room" id="gcDeleteBtn" onclick="confirmDeleteRoom()" style="display:none;"><i class="fa fa-trash"></i></button>
                                     </div>
                                 </div>
                                 <div class="chat-thread gc-thread-body" id="gcThread">
@@ -3392,6 +3399,35 @@
                     </div>
                 </section>
             </section>
+
+            <!-- NEW ROOM MODAL -->
+            <div class="modal-overlay" id="newRoomModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('newRoomModal')">&times;</button>
+                    <h3>Create a chat room</h3>
+                    <form id="newRoomForm">
+                        <label>Room name</label>
+                        <input type="text" id="newRoomName" required placeholder="e.g. Team Alpha">
+                        <label>Members</label>
+                        <div id="newRoomRoster" style="max-height:220px;overflow-y:auto;border:1px solid var(--border-soft);border-radius:10px;padding:8px;">
+                            <div class="empty-state">Loading your Group...</div>
+                        </div>
+                        <button type="submit" class="btn" style="margin-top:16px;">Create Room</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- MANAGE MEMBERS MODAL -->
+            <div class="modal-overlay" id="manageMembersModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('manageMembersModal')">&times;</button>
+                    <h3>Manage members</h3>
+                    <p class="card-subtitle">Current members</p>
+                    <div id="gcCurrentMembers"></div>
+                    <p class="card-subtitle" style="margin-top:14px;">Add from your Group</p>
+                    <div id="gcCandidateMembers"></div>
+                </div>
+            </div>
 
             <!-- ============================================================= -->
             <!-- DOCUMENTS                                                      -->
@@ -6154,6 +6190,8 @@ async function openGcRoom(roomId) {
   document.getElementById("gcThreadHeader").style.display = "flex";
   document.getElementById("gcThreadName").textContent = room ? room.name : "";
   document.getElementById("gcThreadMemberCount").textContent = room ? `${room.memberCount} member${room.memberCount === 1 ? "" : "s"}` : "";
+  document.getElementById("gcManageBtn").style.display = room && room.isOwner ? "grid" : "none";
+  document.getElementById("gcDeleteBtn").style.display = room && room.isOwner ? "grid" : "none";
 
   if (gcSocket) gcSocket.emit("joinRoom", roomId);
   await loadGcThread(roomId);
@@ -6339,6 +6377,132 @@ async function sendGcMessage() {
     clearGcAttachment();
     appendGcMessage(result);
     loadGcRoomList();
+  }
+}
+
+// ---- New Room / Manage Members -------------------------------------------
+// Room creation and management (chatRooms.js's requireGroupSupervisor) work
+// identically for a ToT and a Master Trainer -- this is the same logic as
+// masterDashborad.html's own Group Chats, just living under this page's
+// Chat > Group Chats tab instead of its own dedicated section.
+
+// A roster/members/candidates row's kind is 'trainee' or 'supervisor' -- a
+// 'supervisor' row also carries supervisorType so it can be labeled as
+// either "Master Trainer" or "ToT" (a group has exactly one Master Trainer).
+function gcKindLabel(person) {
+  if (person.kind === "trainee") return "Trainee";
+  return person.supervisorType === "primary" ? "Master Trainer" : "ToT";
+}
+
+async function openNewRoomModal() {
+  document.getElementById("newRoomForm").reset();
+  openModal("newRoomModal");
+  const roster = document.getElementById("newRoomRoster");
+  roster.innerHTML = '<div class="empty-state">Loading your Group...</div>';
+  const data = await apiRequest("/chat-rooms/roster");
+  if (!data) return;
+  if (!data.roster.length) {
+    roster.innerHTML = '<div class="empty-state">No one else in your Group yet.</div>';
+    return;
+  }
+  roster.innerHTML = data.roster.map((p) => `
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12.5px;">
+      <input type="checkbox" value="${p.id}" class="new-room-member-cb">
+      ${escapeHtml(p.fullName)} <span style="color:var(--muted);font-size:11px;">(${gcKindLabel(p)})</span>
+    </label>`).join("");
+}
+
+document.getElementById("newRoomForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("newRoomName").value.trim();
+  const memberIds = Array.from(document.querySelectorAll(".new-room-member-cb:checked")).map((cb) => Number(cb.value));
+  const result = await apiRequest("/chat-rooms", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, memberIds }),
+  });
+  if (result) {
+    closeModal("newRoomModal");
+    showToast(`"${name}" is ready`, "success");
+    if (gcSocket) gcSocket.emit("joinRoom", result.id);
+    await loadGcRoomList();
+    openGcRoom(result.id);
+  }
+});
+
+async function openManageMembersModal() {
+  if (!gcActiveRoomId) return;
+  openModal("manageMembersModal");
+  await renderGcMembers();
+}
+
+async function renderGcMembers() {
+  const currentEl = document.getElementById("gcCurrentMembers");
+  const candEl = document.getElementById("gcCandidateMembers");
+  currentEl.innerHTML = '<div class="empty-state">Loading...</div>';
+  candEl.innerHTML = "";
+
+  const [membersData, candData] = await Promise.all([
+    apiRequest(`/chat-rooms/${gcActiveRoomId}/members`),
+    apiRequest(`/chat-rooms/${gcActiveRoomId}/candidates`),
+  ]);
+
+  if (membersData) {
+    currentEl.innerHTML = membersData.members.map((m) => `
+      <div class="gc-member-row">
+        <span>${escapeHtml(m.fullName)} <span style="color:var(--muted);font-size:11px;">(${gcKindLabel(m)}${m.isOwner ? " · Creator" : ""})</span></span>
+        ${m.isOwner ? "" : `<button type="button" class="icon-btn danger" title="Remove" onclick="removeGcMember(${m.id})"><i class="fa fa-user-minus"></i></button>`}
+      </div>`).join("");
+  }
+
+  if (!candData) return;
+  candEl.innerHTML = candData.candidates.length
+    ? candData.candidates.map((c) => `
+      <div class="gc-member-row">
+        <span>${escapeHtml(c.fullName)} <span style="color:var(--muted);font-size:11px;">(${gcKindLabel(c)})</span></span>
+        <button type="button" class="btn btn-secondary" style="width:auto;height:30px;padding:0 10px;font-size:11.5px;" onclick="addGcMember(${c.id})">Add</button>
+      </div>`).join("")
+    : '<div class="empty-state">Everyone in your Group is already in this room.</div>';
+}
+
+async function removeGcMember(userId) {
+  const result = await apiRequest(`/chat-rooms/${gcActiveRoomId}/members/${userId}`, { method: "DELETE" });
+  if (result) {
+    await loadGcRoomList();
+    await renderGcMembers();
+  }
+}
+
+async function addGcMember(userId) {
+  const result = await apiRequest(`/chat-rooms/${gcActiveRoomId}/members`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  });
+  if (result) {
+    await loadGcRoomList();
+    await renderGcMembers();
+    await openGcRoom(gcActiveRoomId);
+  }
+}
+
+function confirmDeleteRoom() {
+  if (!gcActiveRoomId) return;
+  const room = gcRooms.find((r) => r.id === gcActiveRoomId);
+  openConfirm(
+    "Delete this room?",
+    `"${room ? room.name : "This room"}" and all its messages will be permanently deleted for every member.`,
+    deleteGcRoom
+  );
+}
+
+async function deleteGcRoom() {
+  const result = await apiRequest(`/chat-rooms/${gcActiveRoomId}`, { method: "DELETE" });
+  if (result) {
+    gcActiveRoomId = null;
+    document.getElementById("gcThreadHeader").style.display = "none";
+    document.getElementById("gcThread").innerHTML = '<div class="empty-state">Select a room to start chatting.</div>';
+    await loadGcRoomList();
   }
 }
 

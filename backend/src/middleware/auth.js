@@ -76,6 +76,37 @@ async function requireMasterTrainer(req, res, next) {
 }
 
 /**
+ * Like requireMasterTrainer, but accepts EITHER supervisor_type ('primary'
+ * or 'in_training') -- for features a ToT and a Master Trainer share
+ * identically within their own Group (currently: creating/managing Group
+ * Chat rooms in chatRooms.js). Attaches req.groupSupervisor = { id,
+ * groupId, fullName, supervisorType }. Trainees and Admin are still
+ * excluded, same as requireMasterTrainer.
+ */
+async function requireGroupSupervisor(req, res, next) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT sup.id, sup.full_name, sup.group_id, sup.supervisor_type
+         FROM supervisors sup
+        WHERE sup.id = ?`,
+      [req.user.id]
+    );
+    if (!rows.length) {
+      return res.status(403).json({ error: "Supervisor access only" });
+    }
+    req.groupSupervisor = {
+      id: rows[0].id,
+      groupId: rows[0].group_id,
+      fullName: rows[0].full_name,
+      supervisorType: rows[0].supervisor_type,
+    };
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * Wraps a route handler in its own MySQL transaction. Commits on success,
  * rolls back and forwards to the error handler on any thrown error.
  *
@@ -124,4 +155,13 @@ function asyncRoute(handler) {
   };
 }
 
-module.exports = { requireAuth, requireAdmin, requireSupervisor, requireDesigner, requireRole, requireMasterTrainer, asyncRoute };
+module.exports = {
+  requireAuth,
+  requireAdmin,
+  requireSupervisor,
+  requireDesigner,
+  requireRole,
+  requireMasterTrainer,
+  requireGroupSupervisor,
+  asyncRoute,
+};

@@ -5,7 +5,7 @@
 // not by which role hit the route -- mirrors how Notifications ended up
 // centralized in profile.js rather than duplicated per role.
 const express = require("express");
-const { requireAuth, requireMasterTrainer, asyncRoute } = require("../middleware/auth");
+const { requireAuth, requireGroupSupervisor, asyncRoute } = require("../middleware/auth");
 const { pool } = require("../db");
 const { chatAttachmentUpload, checkChatAttachmentContent, optimizeChatAttachmentImage } = require("../utils/uploads");
 const { broadcastMessage, evictMember } = require("../realtime/chatSocket");
@@ -43,9 +43,9 @@ async function loadMemberRoom(db, roomId, userId) {
   return rows[0] || null;
 }
 
-/** Resolves a room only if the caller is the Master Trainer who created it. */
-async function loadOwnedRoom(db, roomId, masterTrainerId) {
-  const { rows } = await db.query("SELECT * FROM chat_rooms WHERE id = ? AND created_by = ?", [roomId, masterTrainerId]);
+/** Resolves a room only if the caller is the one who created it (a Master Trainer or a ToT). */
+async function loadOwnedRoom(db, roomId, creatorId) {
+  const { rows } = await db.query("SELECT * FROM chat_rooms WHERE id = ? AND created_by = ?", [roomId, creatorId]);
   return rows[0] || null;
 }
 
@@ -91,24 +91,25 @@ router.get(
   })
 );
 
-// POST /api/chat-rooms  { name, memberIds: [] } -- Master Trainer only.
-// Every memberId must currently belong to the creator's own group (their
-// own row is always included automatically).
+// POST /api/chat-rooms  { name, memberIds: [] } -- any supervisor (Master
+// Trainer or ToT) in a Group may create a room. Every memberId must
+// currently belong to the creator's own group (their own row is always
+// included automatically).
 router.post(
   "/",
-  requireMasterTrainer,
+  requireGroupSupervisor,
   asyncRoute(async (req, res, db) => {
     const name = String((req.body || {}).name || "").trim();
     if (!name) return res.status(400).json({ error: "Room name is required" });
-    if (!req.masterTrainer.groupId) return res.status(400).json({ error: "You don't have a Group assigned yet" });
+    if (!req.groupSupervisor.groupId) return res.status(400).json({ error: "You don't have a Group assigned yet" });
 
     const memberIds = Array.isArray((req.body || {}).memberIds) ? (req.body.memberIds).map(Number) : [];
 
-    // Only people currently in this Master Trainer's own group are eligible.
+    // Only people currently in the creator's own group are eligible.
     const { rows: eligible } = await db.query(
       `SELECT id FROM supervisors WHERE group_id = ?
        UNION SELECT id FROM students WHERE group_id = ?`,
-      [req.masterTrainer.groupId, req.masterTrainer.groupId]
+      [req.groupSupervisor.groupId, req.groupSupervisor.groupId]
     );
     const eligibleIds = new Set(eligible.map((r) => r.id));
     const invalid = memberIds.filter((id) => !eligibleIds.has(id));
@@ -118,17 +119,17 @@ router.post(
 
     const room = await db.query("INSERT INTO chat_rooms (name, created_by, group_id) VALUES (?, ?, ?)", [
       name,
-      req.masterTrainer.id,
-      req.masterTrainer.groupId,
+      req.groupSupervisor.id,
+      req.groupSupervisor.groupId,
     ]);
     const roomId = room.insertId;
 
-    const allMemberIds = new Set([req.masterTrainer.id, ...memberIds]);
+    const allMemberIds = new Set([req.groupSupervisor.id, ...memberIds]);
     for (const userId of allMemberIds) {
       await db.query("INSERT INTO chat_room_members (room_id, user_id, added_by) VALUES (?, ?, ?)", [
         roomId,
         userId,
-        req.masterTrainer.id,
+        req.groupSupervisor.id,
       ]);
     }
 
@@ -136,22 +137,27 @@ router.post(
   })
 );
 
-// GET /api/chat-rooms/roster -- Master-Trainer-only: everyone in their own
-// Group (every ToT + every Trainee), for the "New Room" member picker
-// before any room exists yet.
+// GET /api/chat-rooms/roster -- any supervisor in a Group: everyone else in
+// that same Group (every other ToT/Master Trainer + every Trainee), for the
+// "New Room" member picker before any room exists yet.
 router.get(
   "/roster",
-  requireMasterTrainer,
+  requireGroupSupervisor,
   asyncRoute(async (req, res, db) => {
-    if (!req.masterTrainer.groupId) return res.json({ roster: [] });
+    if (!req.groupSupervisor.groupId) return res.json({ roster: [] });
+    // supervisor_type distinguishes a Master Trainer from a ToT within the
+    // 'supervisor' kind -- needed once a ToT (not just a Master Trainer) can
+    // see this list, since it may now include their own Master Trainer.
     const { rows } = await db.query(
-      `SELECT sup.id, sup.full_name, 'supervisor' AS kind FROM supervisors sup
+      `SELECT sup.id, sup.full_name, 'supervisor' AS kind, sup.supervisor_type FROM supervisors sup
         WHERE sup.group_id = ? AND sup.id != ?
        UNION
-       SELECT st.id, st.full_name, 'trainee' AS kind FROM students st WHERE st.group_id = ?`,
-      [req.masterTrainer.groupId, req.masterTrainer.id, req.masterTrainer.groupId]
+       SELECT st.id, st.full_name, 'trainee' AS kind, NULL AS supervisor_type FROM students st WHERE st.group_id = ?`,
+      [req.groupSupervisor.groupId, req.groupSupervisor.id, req.groupSupervisor.groupId]
     );
-    res.json({ roster: rows.map((r) => ({ id: r.id, fullName: r.full_name, kind: r.kind })) });
+    res.json({
+      roster: rows.map((r) => ({ id: r.id, fullName: r.full_name, kind: r.kind, supervisorType: r.supervisor_type })),
+    });
   })
 );
 
@@ -159,15 +165,16 @@ router.get(
 // members by name, for the "Manage members" modal's remove-member list.
 router.get(
   "/:id/members",
-  requireMasterTrainer,
+  requireGroupSupervisor,
   asyncRoute(async (req, res, db) => {
     const roomId = Number(req.params.id);
-    const room = await loadOwnedRoom(db, roomId, req.masterTrainer.id);
+    const room = await loadOwnedRoom(db, roomId, req.groupSupervisor.id);
     if (!room) return res.status(404).json({ error: "Room not found" });
 
     const { rows } = await db.query(
       `SELECT crm.user_id AS id, COALESCE(sup.full_name, st.full_name) AS full_name,
-              CASE WHEN sup.id IS NOT NULL THEN 'supervisor' ELSE 'trainee' END AS kind
+              CASE WHEN sup.id IS NOT NULL THEN 'supervisor' ELSE 'trainee' END AS kind,
+              sup.supervisor_type
          FROM chat_room_members crm
          LEFT JOIN supervisors sup ON sup.id = crm.user_id
          LEFT JOIN students st ON st.id = crm.user_id
@@ -175,39 +182,49 @@ router.get(
         ORDER BY full_name`,
       [roomId]
     );
-    res.json({ members: rows.map((r) => ({ id: r.id, fullName: r.full_name, kind: r.kind, isOwner: r.id === room.created_by })) });
+    res.json({
+      members: rows.map((r) => ({
+        id: r.id,
+        fullName: r.full_name,
+        kind: r.kind,
+        supervisorType: r.supervisor_type,
+        isOwner: r.id === room.created_by,
+      })),
+    });
   })
 );
 
-// GET /api/chat-rooms/:id/candidates -- Master-Trainer-only: this room's
+// GET /api/chat-rooms/:id/candidates -- creator only: this room's
 // eligible-but-not-yet-added group members, for the add-member picker.
 router.get(
   "/:id/candidates",
-  requireMasterTrainer,
+  requireGroupSupervisor,
   asyncRoute(async (req, res, db) => {
     const roomId = Number(req.params.id);
-    const room = await loadOwnedRoom(db, roomId, req.masterTrainer.id);
+    const room = await loadOwnedRoom(db, roomId, req.groupSupervisor.id);
     if (!room) return res.status(404).json({ error: "Room not found" });
 
     const { rows } = await db.query(
-      `SELECT sup.id, sup.full_name, 'supervisor' AS kind FROM supervisors sup
+      `SELECT sup.id, sup.full_name, 'supervisor' AS kind, sup.supervisor_type FROM supervisors sup
         WHERE sup.group_id = ? AND sup.id NOT IN (SELECT user_id FROM chat_room_members WHERE room_id = ?)
        UNION
-       SELECT st.id, st.full_name, 'trainee' AS kind FROM students st
+       SELECT st.id, st.full_name, 'trainee' AS kind, NULL AS supervisor_type FROM students st
         WHERE st.group_id = ? AND st.id NOT IN (SELECT user_id FROM chat_room_members WHERE room_id = ?)`,
       [room.group_id, roomId, room.group_id, roomId]
     );
-    res.json({ candidates: rows.map((r) => ({ id: r.id, fullName: r.full_name, kind: r.kind })) });
+    res.json({
+      candidates: rows.map((r) => ({ id: r.id, fullName: r.full_name, kind: r.kind, supervisorType: r.supervisor_type })),
+    });
   })
 );
 
 // POST /api/chat-rooms/:id/members  { userId } -- creator only.
 router.post(
   "/:id/members",
-  requireMasterTrainer,
+  requireGroupSupervisor,
   asyncRoute(async (req, res, db) => {
     const roomId = Number(req.params.id);
-    const room = await loadOwnedRoom(db, roomId, req.masterTrainer.id);
+    const room = await loadOwnedRoom(db, roomId, req.groupSupervisor.id);
     if (!room) return res.status(404).json({ error: "Room not found" });
 
     const userId = Number((req.body || {}).userId);
@@ -220,7 +237,7 @@ router.post(
 
     await db.query(
       "INSERT INTO chat_room_members (room_id, user_id, added_by) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE joined_at = joined_at",
-      [roomId, userId, req.masterTrainer.id]
+      [roomId, userId, req.groupSupervisor.id]
     );
     res.status(201).json({ success: true });
   })
@@ -229,15 +246,15 @@ router.post(
 // DELETE /api/chat-rooms/:id/members/:userId -- creator only.
 router.delete(
   "/:id/members/:userId",
-  requireMasterTrainer,
+  requireGroupSupervisor,
   asyncRoute(async (req, res, db) => {
     const roomId = Number(req.params.id);
-    const room = await loadOwnedRoom(db, roomId, req.masterTrainer.id);
+    const room = await loadOwnedRoom(db, roomId, req.groupSupervisor.id);
     if (!room) return res.status(404).json({ error: "Room not found" });
 
     const userId = Number(req.params.userId);
-    if (userId === req.masterTrainer.id) {
-      return res.status(400).json({ error: "The Master Trainer can't be removed from their own room" });
+    if (userId === req.groupSupervisor.id) {
+      return res.status(400).json({ error: "The room's creator can't be removed from their own room" });
     }
     await db.query("DELETE FROM chat_room_members WHERE room_id = ? AND user_id = ?", [roomId, userId]);
     evictMember(req.app.get("io"), roomId, userId).catch(() => {});
@@ -248,10 +265,10 @@ router.delete(
 // PUT /api/chat-rooms/:id  { name } -- creator only.
 router.put(
   "/:id",
-  requireMasterTrainer,
+  requireGroupSupervisor,
   asyncRoute(async (req, res, db) => {
     const roomId = Number(req.params.id);
-    const room = await loadOwnedRoom(db, roomId, req.masterTrainer.id);
+    const room = await loadOwnedRoom(db, roomId, req.groupSupervisor.id);
     if (!room) return res.status(404).json({ error: "Room not found" });
 
     const name = String((req.body || {}).name || "").trim();
@@ -264,10 +281,10 @@ router.put(
 // DELETE /api/chat-rooms/:id -- creator only.
 router.delete(
   "/:id",
-  requireMasterTrainer,
+  requireGroupSupervisor,
   asyncRoute(async (req, res, db) => {
     const roomId = Number(req.params.id);
-    const room = await loadOwnedRoom(db, roomId, req.masterTrainer.id);
+    const room = await loadOwnedRoom(db, roomId, req.groupSupervisor.id);
     if (!room) return res.status(404).json({ error: "Room not found" });
     await db.query("DELETE FROM chat_rooms WHERE id = ?", [roomId]);
     res.json({ success: true });
