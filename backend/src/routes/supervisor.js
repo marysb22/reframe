@@ -1292,9 +1292,13 @@ async function getOrCreateChat(db, supervisorId, studentId) {
   return created.insertId;
 }
 
-// Also marks this conversation read (the incoming messages + their matching
-// notification) -- see profile.js's mirror of this same endpoint for the
-// full reasoning; identical here, just from the supervisor's side.
+// Marks this conversation read (the incoming messages + their matching
+// notification) UNLESS called with ?peek=1 -- see profile.js's mirror of
+// this same endpoint for the full reasoning. peek=1 exists specifically for
+// loadChatInbox()'s preview-snippet loop below, which fetches every
+// conversation just to show its last message and must never mark anything
+// read just because the inbox *list* was viewed -- only actually opening a
+// conversation should.
 router.get(
   "/students/:studentId/messages",
   asyncRoute(async (req, res, db) => {
@@ -1311,15 +1315,17 @@ router.get(
       [chatId]
     );
 
-    await db.query("UPDATE messages SET is_read = TRUE WHERE chat_id = ? AND sender_id != ? AND is_read = FALSE", [
-      chatId,
-      req.user.id,
-    ]);
-    await db.query(
-      `UPDATE notifications SET is_read = TRUE
-       WHERE recipient_id = ? AND notification_type = 'message' AND related_entity_id = ? AND is_read = FALSE`,
-      [req.user.id, studentId]
-    );
+    if (req.query.peek !== "1") {
+      await db.query("UPDATE messages SET is_read = TRUE WHERE chat_id = ? AND sender_id != ? AND is_read = FALSE", [
+        chatId,
+        req.user.id,
+      ]);
+      await db.query(
+        `UPDATE notifications SET is_read = TRUE
+         WHERE recipient_id = ? AND notification_type = 'message' AND related_entity_id = ? AND is_read = FALSE`,
+        [req.user.id, studentId]
+      );
+    }
 
     res.json({ messages: rows.map((r) => toMessage(r, req.user.id)) });
   })
@@ -1336,6 +1342,28 @@ router.get(
       [req.user.id]
     );
     res.json({ count: Number(rows[0].count) });
+  })
+);
+
+// GET /api/supervisor/messages/unread-by-sender -- per-conversation unread
+// counts (which trainee(s) sent something unread, and how many), for the
+// small red badge shown next to each conversation in the inbox list --
+// distinct from the single aggregate total above. Purely a read: never
+// marks anything as read itself.
+router.get(
+  "/messages/unread-by-sender",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      `SELECT related_entity_id AS sender_id, COUNT(*) AS count FROM notifications
+       WHERE recipient_id = ? AND notification_type = 'message' AND is_read = FALSE
+       GROUP BY related_entity_id`,
+      [req.user.id]
+    );
+    const counts = {};
+    rows.forEach((r) => {
+      counts[r.sender_id] = Number(r.count);
+    });
+    res.json({ counts });
   })
 );
 

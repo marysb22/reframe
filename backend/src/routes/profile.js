@@ -1048,12 +1048,36 @@ router.get(
   })
 );
 
+// GET /api/profile/messages/unread-by-sender -- per-conversation unread
+// counts (which supervisor(s) sent something unread, and how many), for a
+// small red badge next to each conversation/tab -- distinct from the
+// aggregate total above. Purely a read: never marks anything as read.
+router.get(
+  "/messages/unread-by-sender",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      `SELECT related_entity_id AS sender_id, COUNT(*) AS count FROM notifications
+       WHERE recipient_id = ? AND notification_type = 'message' AND is_read = FALSE
+       GROUP BY related_entity_id`,
+      [req.user.id]
+    );
+    const counts = {};
+    rows.forEach((r) => {
+      counts[r.sender_id] = Number(r.count);
+    });
+    res.json({ counts });
+  })
+);
+
 // GET /api/profile/messages/:supervisorId
-// Also marks this conversation read: every incoming message (not sent by
-// this trainee) and its matching notification, in one place, so opening a
-// conversation is the single source of truth for "I've seen this" --
-// whether the trainee got here from the Chat section directly or by
-// clicking a "new message" notification.
+// Marks this conversation read (every incoming message + its matching
+// notification) UNLESS called with ?peek=1 -- reserved for a future
+// preview-snippet use the way supervisor.js's mirror already needs it for
+// its inbox list; this page's own Direct Messages UI is tab-per-supervisor
+// with no such preview fetch today, but the same guard is added here too
+// so this endpoint's read-marking behavior stays identical and predictable
+// on both sides of the same feature.
 router.get(
   "/messages/:supervisorId",
   requireStudent,
@@ -1069,15 +1093,17 @@ router.get(
       [chatId]
     );
 
-    await db.query("UPDATE messages SET is_read = TRUE WHERE chat_id = ? AND sender_id != ? AND is_read = FALSE", [
-      chatId,
-      req.user.id,
-    ]);
-    await db.query(
-      `UPDATE notifications SET is_read = TRUE
-       WHERE recipient_id = ? AND notification_type = 'message' AND related_entity_id = ? AND is_read = FALSE`,
-      [req.user.id, supervisorId]
-    );
+    if (req.query.peek !== "1") {
+      await db.query("UPDATE messages SET is_read = TRUE WHERE chat_id = ? AND sender_id != ? AND is_read = FALSE", [
+        chatId,
+        req.user.id,
+      ]);
+      await db.query(
+        `UPDATE notifications SET is_read = TRUE
+         WHERE recipient_id = ? AND notification_type = 'message' AND related_entity_id = ? AND is_read = FALSE`,
+        [req.user.id, supervisorId]
+      );
+    }
 
     res.json({ messages: rows.map((r) => toMessage(r, req.user.id)) });
   })

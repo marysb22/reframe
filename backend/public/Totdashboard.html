@@ -6016,16 +6016,20 @@ async function loadChatInbox() {
     return;
   }
 
-  const conversations = [];
-  for (const s of allStudents) {
-    const data = await apiRequest(`/supervisor/students/${s.id}/messages`);
-    if (!data || !data.messages.length) {
-      conversations.push({ student: s, last: null });
-      continue;
-    }
-    const last = data.messages[data.messages.length - 1];
-    conversations.push({ student: s, last });
-  }
+  // ?peek=1 fetches each conversation's preview without marking it read --
+  // just opening this LIST must never silently mark every conversation as
+  // read; only actually opening one (openDirectThread, no peek param) does.
+  const [previews, unreadData] = await Promise.all([
+    Promise.all(allStudents.map((s) => apiRequest(`/supervisor/students/${s.id}/messages?peek=1`))),
+    apiRequest("/supervisor/messages/unread-by-sender"),
+  ]);
+  const unreadCounts = (unreadData && unreadData.counts) || {};
+
+  const conversations = allStudents.map((s, i) => {
+    const data = previews[i];
+    const last = data && data.messages.length ? data.messages[data.messages.length - 1] : null;
+    return { student: s, last, unreadCount: unreadCounts[s.id] || 0 };
+  });
 
   conversations.sort((a, b) => {
     const at = a.last ? new Date(a.last.createdAt).getTime() : 0;
@@ -6034,11 +6038,11 @@ async function loadChatInbox() {
   });
 
   list.innerHTML = conversations
-    .map(({ student, last }) => `
+    .map(({ student, last, unreadCount }) => `
       <li class="inbox-item ${Number(student.id) === Number(dmActiveStudentId) ? "active" : ""}" data-student-id="${student.id}" onclick="openDirectThread(${student.id})">
         <div class="inbox-avatar">${escapeHtml(initials(student.full_name))}</div>
         <div class="inbox-info">
-          <strong>${escapeHtml(student.full_name)}</strong>
+          <strong>${escapeHtml(student.full_name)}${unreadCount ? `<span class="gc-unread-badge" style="margin-left:8px;">${unreadCount}</span>` : ""}</strong>
           <span>${last ? escapeHtml(last.content) : "No messages yet \u2014 say hello"}</span>
         </div>
         <div class="inbox-time">${last ? new Date(last.createdAt).toLocaleDateString() : ""}</div>
@@ -6071,9 +6075,11 @@ async function openDirectThread(studentId) {
   const data = await apiRequest(`/supervisor/students/${studentId}/messages`);
   if (!data) return;
   // The GET above already marked this conversation's incoming messages (and
-  // their notifications) read server-side -- refresh the badge to match
+  // their notifications) read server-side -- refresh the nav/tab badge and
+  // this conversation's own per-row badge in the inbox list to match
   // immediately rather than waiting for the next 60s poll.
   loadDmUnreadBadge();
+  loadChatInbox();
   if (!data.messages.length) {
     thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>';
     return;

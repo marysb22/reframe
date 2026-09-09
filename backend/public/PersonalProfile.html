@@ -5335,20 +5335,36 @@ async function loadMeetings() {
 // preferredSupervisorId (e.g. from a "message" notification's
 // relatedEntityId) opens that specific conversation instead of defaulting
 // to the first tab -- used by handleNotifClick below.
-function loadChat(preferredSupervisorId) {
-  const tabsEl = document.getElementById("supervisorTabs");
+async function loadChat(preferredSupervisorId) {
   if (!mySupervisors.length) {
-    tabsEl.innerHTML = "";
+    document.getElementById("supervisorTabs").innerHTML = "";
     document.getElementById("chatThread").innerHTML = '<div class="empty-state">You have no supervisors assigned yet.</div>';
     return;
   }
-  tabsEl.innerHTML = mySupervisors
-    .map((s) => `<button class="sup-btn" data-sup="${s.id}" onclick="openThread(${s.id})">${escapeHtml(s.full_name)}</button>`)
-    .join("");
+  await renderSupervisorTabs();
   const targetId = preferredSupervisorId && mySupervisors.some((s) => Number(s.id) === Number(preferredSupervisorId))
     ? Number(preferredSupervisorId)
     : mySupervisors[0].id;
   openThread(targetId);
+}
+
+// Small red badge per supervisor tab (mirrors the ToT dashboard's inbox-row
+// badge) -- fetched fresh each time so it reflects true unread state, never
+// just "this tab happens to be active." Purely a read (GET
+// .../unread-by-sender never marks anything read), safe to call as often as
+// the tabs need refreshing.
+async function renderSupervisorTabs() {
+  const tabsEl = document.getElementById("supervisorTabs");
+  const unreadData = await apiRequest("/profile/messages/unread-by-sender");
+  const unreadCounts = (unreadData && unreadData.counts) || {};
+  tabsEl.innerHTML = mySupervisors
+    .map((s) => {
+      const count = unreadCounts[s.id] || 0;
+      const active = Number(s.id) === Number(activeSupervisorId) ? " active" : "";
+      const badge = count ? `<span class="gc-unread-badge" style="margin-left:6px;">${count}</span>` : "";
+      return `<button class="sup-btn${active}" data-sup="${s.id}" onclick="openThread(${s.id})">${escapeHtml(s.full_name)}${badge}</button>`;
+    })
+    .join("");
 }
 
 async function openThread(supervisorId) {
@@ -5359,9 +5375,11 @@ async function openThread(supervisorId) {
   const thread = document.getElementById("chatThread");
   if (!data) return;
   // The GET above already marked this conversation's incoming messages (and
-  // their notifications) read server-side -- refresh the badge to match
-  // immediately rather than waiting for the next 60s poll.
+  // their notifications) read server-side -- refresh the nav/tab badge and
+  // this conversation's own tab badge to match immediately rather than
+  // waiting for the next 60s poll.
   loadDmUnreadBadge();
+  renderSupervisorTabs();
   if (!data.messages.length) { thread.innerHTML = '<div class="empty-state">No messages yet.</div>'; return; }
   thread.innerHTML = data.messages
     .map((m) => `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"}">${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} \u00b7 ${new Date(m.createdAt).toLocaleString()}</div></div>`)
