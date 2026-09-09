@@ -6049,18 +6049,24 @@ async function loadAllDocuments() {
   allDocs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
   list.innerHTML = allDocs
-    .map((d) => `
+    .map((d) => {
+      const roleText = d.uploadedByRole ? ` &middot; ${escapeHtml(d.uploadedByRole)}` : "";
+      const sharedText = d.sharedWith
+        ? ` &middot; Shared with ${escapeHtml(d.sharedWith.name)}${d.sharedWith.type === "supervisor" ? " &middot; " + escapeHtml(d.sharedWith.role) : ""}`
+        : "";
+      return `
       <li class="doc-item">
         <div>
           <div class="mrow-title">${escapeHtml(d.originalName)}</div>
-          <div class="rmeta">${escapeHtml(d.studentName)} (${escapeHtml(d.studentCode)}) &middot; uploaded by ${escapeHtml(d.uploadedByName)}</div>
+          <div class="rmeta">${escapeHtml(d.studentName)} (${escapeHtml(d.studentCode)}) &middot; Shared by ${escapeHtml(d.uploadedByName)}${roleText}${sharedText}</div>
           <div class="mrow-actions" style="margin-top:4px;">
             <button type="button" class="mrow-btn primary" onclick="openAllDocumentsPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
             <a class="mrow-btn" href="${UPLOADS}/documents/${d.filename}${TOKEN_Q}" target="_blank" rel="noopener" download><i class="fa fa-download"></i> Download</a>
           </div>
         </div>
       </li>
-    `)
+    `;
+    })
     .join("");
 }
 

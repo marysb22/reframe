@@ -557,20 +557,25 @@ CREATE TABLE videos (
   COMMENT='Distinct from learning_materials: purpose-built for session recordings and lecture video, with duration/thumbnail metadata a generic file share does not need.';
 
 CREATE TABLE documents (
-  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
-  student_id     BIGINT,                        -- NULL = shared with group_id instead of one trainee
-  group_id       BIGINT,                        -- NULL = shared with student_id instead of a whole group
+  id                        BIGINT AUTO_INCREMENT PRIMARY KEY,
+  student_id                BIGINT,             -- NULL = shared with group_id or shared_with_supervisor_id instead of one trainee
+  group_id                  BIGINT,             -- NULL = shared with student_id or shared_with_supervisor_id instead of a whole group
+  shared_with_supervisor_id BIGINT,             -- NULL = shared with student_id or group_id instead of one supervisor (e.g. a Trainee -> their ToT)
   uploaded_by    BIGINT NOT NULL,
   document_type  VARCHAR(20) NOT NULL DEFAULT 'general' CHECK (document_type IN ('general', 'cv', 'certificate', 'assignment')),
   filename       VARCHAR(255) NOT NULL,
   original_name  VARCHAR(255) NOT NULL,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  -- Exactly one of student_id/group_id should be set -- enforced at the
-  -- application layer (not a CHECK: MySQL rejects a CHECK on a column that
-  -- also carries an ON DELETE SET NULL FK action).
+  -- Exactly one of student_id/group_id/shared_with_supervisor_id should be
+  -- set -- enforced at the application layer (not a CHECK: MySQL rejects a
+  -- CHECK on a column that also carries an ON DELETE SET NULL FK action).
+  -- uploaded_by is independent of the share target -- any role (Admin,
+  -- Supervisor, or Trainee) can be the uploader of any share type.
   CONSTRAINT fk_documents_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
   CONSTRAINT fk_documents_group FOREIGN KEY (group_id) REFERENCES trainer_groups(id) ON DELETE SET NULL,
-  CONSTRAINT fk_documents_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES user_credentials(id)
+  CONSTRAINT fk_documents_shared_supervisor FOREIGN KEY (shared_with_supervisor_id) REFERENCES supervisors(id) ON DELETE SET NULL,
+  CONSTRAINT fk_documents_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES user_credentials(id),
+  INDEX idx_documents_shared_supervisor (shared_with_supervisor_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

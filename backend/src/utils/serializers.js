@@ -221,12 +221,46 @@ function toRecord(row) {
   };
 }
 
+// Role label for whoever uploaded a document -- needs row.uploaded_by_role
+// (a joined user_credentials.role) and, for a supervisor uploader,
+// row.uploaded_by_supervisor_type to tell Master Trainer apart from ToT.
+// Undefined (not a guess) when the query didn't select those columns.
+function documentUploaderRole(row) {
+  if (row.uploaded_by_role === undefined) return undefined;
+  if (row.uploaded_by_role === "admin") return "Admin";
+  if (row.uploaded_by_role === "trainee") return "Trainee";
+  if (row.uploaded_by_role === "designer") return "Designer";
+  if (row.uploaded_by_role === "supervisor") {
+    return row.uploaded_by_supervisor_type === "primary" ? "Master Trainer" : "ToT";
+  }
+  return undefined;
+}
+
+// Who a document is shared with, beyond the existing isGroupShared flag --
+// a named group (row.shared_group_name) or a specific supervisor
+// (row.shared_supervisor_name/_type, e.g. a Trainee's "My ToT" share).
+// Undefined when neither was selected -- a plain personal student_id share,
+// which every existing caller already knows the recipient of from context.
+function documentSharedWith(row) {
+  if (row.shared_group_name) return { type: "group", name: row.shared_group_name };
+  if (row.shared_supervisor_name) {
+    return {
+      type: "supervisor",
+      name: row.shared_supervisor_name,
+      role: row.shared_supervisor_type === "primary" ? "Master Trainer" : "ToT",
+    };
+  }
+  return undefined;
+}
+
 function toDocument(row) {
   return {
     id: row.id,
     filename: row.filename,
     originalName: row.original_name,
     uploadedByName: row.uploaded_by_name,
+    uploadedByRole: documentUploaderRole(row),
+    sharedWith: documentSharedWith(row),
     // Same convention as toMaterial()'s isGroupShared: undefined (not just
     // false) on any query that doesn't select student_id.
     isGroupShared: row.student_id === undefined ? undefined : row.student_id === null,

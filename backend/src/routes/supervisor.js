@@ -173,12 +173,27 @@ router.get(
     const records = await attachSupervisorNames(db, recordRows);
 
     const { rows: documents } = await db.query(
-      `SELECT d.*, COALESCE(a.full_name, sup.full_name) AS uploaded_by_name FROM documents d
+      `SELECT d.*,
+              COALESCE(a.full_name, sup.full_name, st_up.full_name) AS uploaded_by_name,
+              uc.role AS uploaded_by_role,
+              sup.supervisor_type AS uploaded_by_supervisor_type,
+              tg.name AS shared_group_name,
+              shsup.full_name AS shared_supervisor_name,
+              shsup.supervisor_type AS shared_supervisor_type
+       FROM documents d
+       JOIN user_credentials uc ON uc.id = d.uploaded_by
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE (d.student_id = ? OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?)))
+       LEFT JOIN students st_up ON st_up.id = d.uploaded_by
+       LEFT JOIN trainer_groups tg ON tg.id = d.group_id
+       LEFT JOIN supervisors shsup ON shsup.id = d.shared_with_supervisor_id
+       WHERE (
+         d.student_id = ?
+         OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?))
+         OR (d.uploaded_by = ? AND d.shared_with_supervisor_id = ?)
+       )
        ORDER BY d.created_at DESC LIMIT 500`,
-      [studentId, studentId]
+      [studentId, studentId, studentId, req.user.id]
     );
 
     res.json({

@@ -82,10 +82,17 @@ const AUTHORIZERS = {
   },
 
   documents: async (user, filename) => {
-    const { rows } = await pool.query("SELECT student_id, group_id FROM documents WHERE filename = ?", [filename]);
+    const { rows } = await pool.query(
+      "SELECT student_id, group_id, shared_with_supervisor_id, uploaded_by FROM documents WHERE filename = ?",
+      [filename]
+    );
     if (!rows.length) return false;
-    const { student_id: studentId, group_id: groupId } = rows[0];
+    const { student_id: studentId, group_id: groupId, shared_with_supervisor_id: sharedWithSupervisorId, uploaded_by: uploadedBy } = rows[0];
     if (user.role === "admin") return true;
+    // The uploader can always reach their own file, regardless of who they
+    // shared it with -- closes the gap a Trainee-uploaded, ToT-only-shared
+    // document would otherwise fall into (matches neither branch below).
+    if (Number(user.id) === Number(uploadedBy)) return true;
     if (user.role === "trainee") {
       // NULL student_id = shared with the whole group instead of one
       // trainee -- authorized if this trainee actually belongs to it.
@@ -95,6 +102,9 @@ const AUTHORIZERS = {
       return srows.length > 0;
     }
     if (user.role === "supervisor") {
+      // A Trainee -> ToT share: only the exact supervisor it was shared
+      // with may access it -- never inferred from caseload or group.
+      if (sharedWithSupervisorId) return Number(user.id) === Number(sharedWithSupervisorId);
       if (studentId) return isCaseloadMatch(user.id, studentId);
       if (!groupId) return false;
       const { rows: srows } = await pool.query("SELECT 1 FROM supervisors WHERE id = ? AND group_id = ?", [user.id, groupId]);

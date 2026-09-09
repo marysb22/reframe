@@ -15,7 +15,7 @@ const {
   computeProgressSummary,
 } = require("../utils/serializers");
 const { hashPassword, verifyPassword } = require("../utils/authUtils");
-const { photoUpload, cvUpload, submissionUpload } = require("../utils/uploads");
+const { photoUpload, cvUpload, submissionUpload, documentUpload } = require("../utils/uploads");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
@@ -83,12 +83,15 @@ function inClause(ids) {
 // their profile even though nothing about their assignment had changed.
 async function attachTraineeSupervisors(db, profile, userId) {
   const { rows: supRows } = await db.query(
-    `SELECT sup.id, sup.full_name FROM supervisor_students ss
+    `SELECT sup.id, sup.full_name, sup.supervisor_type FROM supervisor_students ss
      JOIN supervisors sup ON sup.id = ss.supervisor_id
      WHERE ss.student_id = ? ORDER BY sup.full_name`,
     [userId]
   );
-  profile.supervisors = supRows.map((r) => ({ id: r.id, full_name: r.full_name }));
+  // supervisorType ('primary' = Master Trainer, 'in_training' = ToT) is what
+  // lets the Documents "Share with my ToT" picker show only real ToTs --
+  // additive field, existing callers reading just .full_name are unaffected.
+  profile.supervisors = supRows.map((r) => ({ id: r.id, full_name: r.full_name, supervisorType: r.supervisor_type }));
 }
 
 // Attaches the trainee's own Health & Emergency info to a profile object in
@@ -533,25 +536,145 @@ router.get(
   requireStudent,
   asyncRoute(async (req, res, db) => {
     const { supervisorId } = req.query;
-    const params = [req.user.id];
+    const params = [req.user.id, req.user.id, req.user.id];
     let filter = "";
     if (supervisorId) {
       params.push(supervisorId);
       filter = `AND d.uploaded_by = ?`;
     }
     const { rows } = await db.query(
-      `SELECT d.*, COALESCE(a.full_name, sup.full_name) AS uploaded_by_name
+      `SELECT d.*,
+              COALESCE(a.full_name, sup.full_name, st_up.full_name) AS uploaded_by_name,
+              uc.role AS uploaded_by_role,
+              sup.supervisor_type AS uploaded_by_supervisor_type,
+              tg.name AS shared_group_name,
+              shsup.full_name AS shared_supervisor_name,
+              shsup.supervisor_type AS shared_supervisor_type
        FROM documents d
        JOIN user_credentials uc ON uc.id = d.uploaded_by
        LEFT JOIN admin_users a ON a.id = d.uploaded_by
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
-       WHERE (d.student_id = ? OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?)))
+       LEFT JOIN students st_up ON st_up.id = d.uploaded_by
+       LEFT JOIN trainer_groups tg ON tg.id = d.group_id
+       LEFT JOIN supervisors shsup ON shsup.id = d.shared_with_supervisor_id
+       WHERE (
+         d.student_id = ?
+         OR (d.student_id IS NULL AND d.group_id = (SELECT group_id FROM students WHERE id = ?))
+         OR d.uploaded_by = ?
+       )
          ${filter} ORDER BY d.created_at DESC LIMIT 500`,
-      [req.user.id, req.user.id, ...params.slice(1)]
+      params
     );
     res.json({ documents: rows.map(toDocument) });
   })
 );
+
+// POST /api/profile/documents -- Trainee-only upload. The uploader is
+// always the authenticated trainee (req.user.id); the only client input
+// that matters for authorization is `shareWith`, and even that is resolved
+// against the trainee's own real relationships (their own group_id, their
+// own supervisor_students row) -- never a client-supplied group/supervisor
+// id. A trainee may only target their own Group or their own ToT, never an
+// arbitrary trainee, an arbitrary supervisor, or a Master Trainer directly.
+router.post("/documents", requireStudent, (req, res) => {
+  documentUpload.single("document")(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const cleanup = () => fs.unlink(req.file.path, () => {});
+
+    const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
+    if (!check.safe) {
+      cleanup();
+      return res.status(400).json({ error: check.reason });
+    }
+
+    const { shareWith, totId } = req.body || {};
+    if (shareWith !== "group" && shareWith !== "tot") {
+      cleanup();
+      return res.status(400).json({ error: "Choose who to share this document with: your Group or your Trainer (ToT)" });
+    }
+
+    try {
+      const { pool } = require("../db");
+      await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
+
+      let groupId = null;
+      let groupName = null;
+      let sharedWithSupervisorId = null;
+      let sharedWithSupervisorName = null;
+
+      if (shareWith === "group") {
+        const { rows: stuRows } = await pool.query(
+          `SELECT st.group_id, tg.name AS group_name FROM students st
+           LEFT JOIN trainer_groups tg ON tg.id = st.group_id
+           WHERE st.id = ?`,
+          [req.user.id]
+        );
+        groupId = stuRows[0] && stuRows[0].group_id;
+        groupName = stuRows[0] && stuRows[0].group_name;
+        if (!groupId) {
+          cleanup();
+          return res.status(400).json({ error: "You don't have a group to share with" });
+        }
+      } else {
+        // "tot" -- resolved from the trainee's OWN supervisor_students rows,
+        // filtered to supervisor_type = 'in_training'. A client-supplied
+        // totId is only ever used to pick among the trainee's real ToTs; it
+        // can never grant access to a supervisor not already assigned here.
+        const { rows: totRows } = await pool.query(
+          `SELECT sup.id, sup.full_name FROM supervisor_students ss
+           JOIN supervisors sup ON sup.id = ss.supervisor_id
+           WHERE ss.student_id = ? AND sup.supervisor_type = 'in_training'
+           ORDER BY sup.full_name`,
+          [req.user.id]
+        );
+        if (!totRows.length) {
+          cleanup();
+          return res.status(400).json({ error: "You don't have a Trainer (ToT) assigned to share with" });
+        }
+        let target = totRows[0];
+        if (totRows.length > 1) {
+          if (!totId) {
+            cleanup();
+            return res.status(400).json({ error: "Choose which of your Trainers (ToT) to share with" });
+          }
+          const match = totRows.find((r) => Number(r.id) === Number(totId));
+          if (!match) {
+            cleanup();
+            return res.status(403).json({ error: "That Trainer (ToT) is not assigned to you" });
+          }
+          target = match;
+        }
+        sharedWithSupervisorId = target.id;
+        sharedWithSupervisorName = target.full_name;
+      }
+
+      const insert = await pool.query(
+        `INSERT INTO documents (student_id, group_id, shared_with_supervisor_id, uploaded_by, filename, original_name)
+         VALUES (NULL, ?, ?, ?, ?, ?)`,
+        [groupId, sharedWithSupervisorId, req.user.id, req.file.filename, req.file.originalname]
+      );
+      const { rows } = await pool.query("SELECT * FROM documents WHERE id = ?", [insert.insertId]);
+      const { rows: meRows } = await pool.query("SELECT full_name FROM students WHERE id = ?", [req.user.id]);
+
+      res.status(201).json(
+        toDocument({
+          ...rows[0],
+          uploaded_by_name: (meRows[0] && meRows[0].full_name) || req.user.member_code,
+          uploaded_by_role: "trainee",
+          shared_group_name: groupName,
+          shared_supervisor_name: sharedWithSupervisorName,
+          shared_supervisor_type: sharedWithSupervisorId ? "in_training" : null,
+        })
+      );
+    } catch (e) {
+      console.error("[profile] failed to upload document:", e);
+      cleanup();
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+});
 
 // ---- Assignments (richer than the generic /records?type=assignment view --
 // carries attachment/content link + submission + grade/feedback, none of

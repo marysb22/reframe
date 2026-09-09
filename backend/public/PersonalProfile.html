@@ -3301,8 +3301,9 @@
                         <div class="card-title-left"><i class="fa fa-book-open"></i>
                             <h2>Learning Materials / Documents</h2>
                         </div>
+                        <button type="button" class="btn btn-secondary" onclick="openAddDocumentModal()"><i class="fa fa-plus"></i> Add Document</button>
                     </div>
-                    <p class="card-subtitle">Documents, resources and files shared with you. View here &mdash; you can't edit or remove these.</p>
+                    <p class="card-subtitle">Learning materials are shared by your Trainers -- view only. Documents you upload here can be shared with your Group or your Trainer (ToT).</p>
                     <div class="toolbar">
                         <input type="text" id="materialsSearch" placeholder="Search materials and documents..." oninput="onMaterialsControlsChanged()">
                         <select id="materialsSort" onchange="onMaterialsControlsChanged()">
@@ -3327,6 +3328,39 @@
                     <h3 id="matPreviewTitle">&mdash;</h3>
                     <div class="material-preview-meta" id="matPreviewMeta"></div>
                     <div class="material-preview-body" id="matPreviewBody"></div>
+                </div>
+            </div>
+
+            <!-- ADD DOCUMENT MODAL -->
+            <div class="modal-overlay" id="addDocumentModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('addDocumentModal')">&times;</button>
+                    <h3>Add a Document</h3>
+                    <form id="addDocumentForm">
+                        <label style="margin-top:0;">Document file *</label>
+                        <div class="upload-box" id="docUploadBox">
+                            <i class="fa fa-file-arrow-up"></i>
+                            <p id="docFileLabel">PDF, Word, or image &middot; max 15MB</p>
+                            <input type="file" id="docFileInput" accept=".pdf,.doc,.docx,image/*" style="width:auto;height:auto;">
+                        </div>
+                        <label>Share with *</label>
+                        <div id="docShareOptions" style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">
+                            <label id="docShareGroupLabel" style="display:flex;align-items:center;gap:8px;font-weight:400;margin:0;">
+                                <input type="radio" name="docShareWith" value="group" id="docShareGroup" style="width:auto;height:auto;">
+                                <span>My Group</span>
+                                <span id="docShareGroupNote" style="color:var(--muted);font-size:11.5px;display:none;">(you're not in a group yet)</span>
+                            </label>
+                            <label id="docShareTotLabel" style="display:flex;align-items:center;gap:8px;font-weight:400;margin:0;">
+                                <input type="radio" name="docShareWith" value="tot" id="docShareTot" style="width:auto;height:auto;">
+                                <span>My Trainer (ToT)</span>
+                            </label>
+                            <select id="docShareTotSelect" style="display:none;"></select>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('addDocumentModal')">Cancel</button>
+                            <button type="submit" class="btn">Upload &amp; Share</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -4422,6 +4456,8 @@ async function loadMaterials() {
         originalName: d.originalName,
         externalUrl: null,
         supervisorName: d.uploadedByName,
+        uploadedByRole: d.uploadedByRole,
+        sharedWith: d.sharedWith,
         isGroupShared: d.isGroupShared,
         createdAt: d.createdAt,
     }));
@@ -4526,17 +4562,28 @@ function renderMaterialRows(list, groupByType) {
     loadMoreBtn.style.display = list.length > materialsShownCount ? "block" : "none";
 }
 
+// For a plain Material row, m.sharedWith/m.uploadedByRole are always
+// undefined (that feed never sets them), so these both fall back to
+// exactly the same text this row rendered before -- Materials' own
+// rendering is unaffected either way.
+function documentShareLabel(m) {
+    if (m.sharedWith && m.sharedWith.type === "group") return `Shared with ${escapeHtml(m.sharedWith.name)}`;
+    if (m.sharedWith && m.sharedWith.type === "supervisor") return `Shared with ${escapeHtml(m.sharedWith.name)} &middot; ${escapeHtml(m.sharedWith.role)}`;
+    return m.isGroupShared ? "Shared with your group" : "Shared with you";
+}
+
 function materialRowHtml(m) {
     const fileHref = m.__isDocument
         ? `${UPLOADS}/documents/${m.filename}${TOKEN_Q}`
         : (m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`);
     const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+    const sharedByText = `Shared by ${escapeHtml(m.supervisorName)}${m.uploadedByRole ? " &middot; " + escapeHtml(m.uploadedByRole) : ""}`;
     return `
     <div class="material-row">
       <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
       <div class="mrow-body">
         <div class="mrow-title">${escapeHtml(m.title)}</div>
-        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; ${m.isGroupShared ? "Shared with your group" : "Shared with you"} &middot; Shared by ${escapeHtml(m.supervisorName)}${dateStr ? " &middot; " + dateStr : ""} &middot; Access: Read &amp; Download</div>
+        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; ${documentShareLabel(m)} &middot; ${sharedByText}${dateStr ? " &middot; " + dateStr : ""} &middot; Access: Read &amp; Download</div>
       </div>
       <div class="mrow-actions">
         <button type="button" class="mrow-btn primary" onclick="openLibraryItem('${m.id}')"><i class="fa fa-eye"></i> Open</button>
@@ -5278,11 +5325,19 @@ async function sendGcMessage() {
     }
 }
 
-// ---- Documents (read-only) ----------------------------------------------
+// ---- Documents -----------------------------------------------------------
 // Fetched inline by loadMaterials() (above) as part of the combined
-// Learning Materials Library -- documentsRaw is populated there.
+// Learning Materials Library -- documentsRaw is populated there. A trainee
+// can now also upload one here (see openAddDocumentModal/addDocumentForm
+// below), but this preview path is unchanged either way.
 
 let documentsRaw = [];
+
+function documentShareLabelPlain(d) {
+  if (d.sharedWith && d.sharedWith.type === "group") return `Shared with ${d.sharedWith.name}`;
+  if (d.sharedWith && d.sharedWith.type === "supervisor") return `Shared with ${d.sharedWith.name} · ${d.sharedWith.role}`;
+  return d.isGroupShared ? "Shared with your group" : "Shared with you";
+}
 
 /** Same type-by-extension preview pattern as openMaterialPreview() (below),
  *  applied to Documents -- which has no materialType field of its own, so
@@ -5294,7 +5349,8 @@ function openDocumentPreview(id) {
   const name = d.originalName || d.filename || "";
 
   document.getElementById("matPreviewTitle").textContent = name;
-  document.getElementById("matPreviewMeta").textContent = `Shared by ${d.uploadedByName}`;
+  document.getElementById("matPreviewMeta").textContent =
+    `Shared by ${d.uploadedByName}${d.uploadedByRole ? " · " + d.uploadedByRole : ""} · ${documentShareLabelPlain(d)}`;
 
   const body = document.getElementById("matPreviewBody");
   if (/\.(png|jpe?g|gif|webp|svg)$/i.test(name)) {
@@ -5314,6 +5370,79 @@ function openDocumentPreview(id) {
   }
   openModal("materialPreviewModal");
 }
+
+// ---- Add Document (Trainee upload + share) --------------------------------
+// The uploader is always the authenticated trainee -- this form never asks
+// who uploaded it. "Share with" is limited to the trainee's own real
+// relationships: their own group (from currentProfile.groupName) and their
+// own assigned ToT(s) (from mySupervisors, filtered to supervisorType ===
+// "in_training" -- never a Master Trainer, and never an arbitrary user).
+
+function openAddDocumentModal() {
+  const form = document.getElementById("addDocumentForm");
+  form.reset();
+  document.getElementById("docUploadBox").classList.remove("has-file");
+  document.getElementById("docFileLabel").textContent = "PDF, Word, or image · max 15MB";
+
+  const hasGroup = !!(currentProfile && currentProfile.groupName);
+  document.getElementById("docShareGroup").disabled = !hasGroup;
+  document.getElementById("docShareGroupNote").style.display = hasGroup ? "none" : "inline";
+
+  const tots = mySupervisors.filter((s) => s.supervisorType === "in_training");
+  const totLabel = document.getElementById("docShareTotLabel");
+  const totSelect = document.getElementById("docShareTotSelect");
+  totLabel.style.display = tots.length ? "flex" : "none";
+  totSelect.innerHTML = tots.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
+  totSelect.style.display = "none";
+
+  openModal("addDocumentModal");
+}
+
+function updateDocShareTotSelectVisibility() {
+  const tots = mySupervisors.filter((s) => s.supervisorType === "in_training");
+  const totChosen = document.getElementById("docShareTot").checked;
+  document.getElementById("docShareTotSelect").style.display = totChosen && tots.length > 1 ? "block" : "none";
+}
+document.getElementById("docShareTot").addEventListener("change", updateDocShareTotSelectVisibility);
+document.getElementById("docShareGroup").addEventListener("change", updateDocShareTotSelectVisibility);
+
+document.getElementById("docFileInput").addEventListener("change", () => {
+  const f = document.getElementById("docFileInput").files[0];
+  if (!f) return;
+  document.getElementById("docUploadBox").classList.add("has-file");
+  document.getElementById("docFileLabel").textContent = f.name;
+});
+
+document.getElementById("addDocumentForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = document.getElementById("docFileInput").files[0];
+  if (!file) return showToast("Choose a file to upload", "error");
+  const shareChoice = document.querySelector('input[name="docShareWith"]:checked');
+  if (!shareChoice) return showToast("Choose who to share this document with", "error");
+
+  const form = new FormData();
+  form.append("document", file);
+  form.append("shareWith", shareChoice.value);
+  if (shareChoice.value === "tot") {
+    const totSelect = document.getElementById("docShareTotSelect");
+    if (totSelect.style.display !== "none" && totSelect.value) form.append("totId", totSelect.value);
+  }
+
+  try {
+    const response = await fetch(`${API}/profile/documents`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) throw new Error((body && body.error) || "Failed to upload document");
+    closeModal("addDocumentModal");
+    await loadMaterials();
+    showSuccessNotification("Document Added", "Your document has been uploaded and shared.");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
 
 // ---- Announcements (read-only) -------------------------------------------
 
