@@ -3021,7 +3021,7 @@
                 <ul>
                     <li><a data-section="materials" href="#materials"><i class="fa fa-book-open"></i>Learning materials</a></li>
                     <li><a data-section="assignments" href="#assignments"><i class="fa fa-list-check"></i>Assignments</a></li>
-                    <li><a data-section="sessions" href="#sessions"><i class="fa fa-chalkboard-user"></i>Sessions</a></li>
+                    <li><a data-section="sessions" href="#sessions"><i class="fa fa-chalkboard-user"></i>Training Activities</a></li>
                     <li><a data-section="meetings" href="#meetings"><i class="fa fa-video"></i>Meetings</a></li>
                 </ul>
                 <div class="nav-label">Communication</div>
@@ -3124,14 +3124,14 @@
                             <div class="kpi-card"><label>Total hours</label><h2 id="trDeliveredTotal">&mdash;</h2></div>
                             <div class="kpi-card"><label>Trainee attendance</label><h2 id="trDeliveredAttendance">&mdash;</h2></div>
                         </div>
-                        <p class="hint" style="margin:0;">Sessions conducted: <strong id="trDeliveredSessions">&mdash;</strong> &middot; Trainees trained: <strong id="trDeliveredTrainees">&mdash;</strong></p>
+                        <p class="hint" style="margin:0;">Training activities conducted: <strong id="trDeliveredSessions">&mdash;</strong> &middot; Trainees trained: <strong id="trDeliveredTrainees">&mdash;</strong></p>
                     </div>
                 </section>
 
                 <section class="widget-row">
                     <div class="widget">
                         <div class="widget-title">
-                            <h3><i class="fa fa-calendar-day"></i>Today &amp; upcoming sessions</h3><span class="tag" id="schedCount">&mdash;</span></div>
+                            <h3><i class="fa fa-calendar-day"></i>Today &amp; upcoming training activities</h3><span class="tag" id="schedCount">&mdash;</span></div>
                         <ul class="sched-list" id="scheduleList">
                             <li class="empty-state">Loading schedule...</li>
                         </ul>
@@ -3407,15 +3407,15 @@
             <!-- ============================================================= -->
             <!-- SESSIONS                                                       -->
             <!-- ============================================================= -->
-            <section class="dash-section" id="section-sessions" data-title="Sessions" data-eyebrow="Training">
+            <section class="dash-section" id="section-sessions" data-title="Training Activities" data-eyebrow="Training">
                 <section class="system-card">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-chalkboard-user"></i>
-                            <h2>Sessions</h2>
+                            <h2>Training Activities</h2>
                         </div>
-                        <button class="btn" onclick="openSessionModal()"><i class="fa fa-plus"></i>Schedule session</button>
+                        <button class="btn" onclick="openSessionModal()"><i class="fa fa-plus"></i>Log Training Activity</button>
                     </div>
-                    <p class="card-subtitle">Training and supervision sessions across your whole caseload. Attendance and hours can still be logged from each trainee's profile.</p>
+                    <p class="card-subtitle">Training and supervision activity across your whole caseload. Attendance and hours can still be logged from each trainee's profile.</p>
                     <div class="toolbar">
                         <input type="text" id="sessionSearch" placeholder="Search by title or trainee...">
                         <select id="sessionTypeFilter">
@@ -3435,7 +3435,7 @@
                         </thead>
                         <tbody id="sessionsBody">
                             <tr class="loading-row">
-                                <td colspan="6">Loading sessions...</td>
+                                <td colspan="6">Loading training activities...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -3692,7 +3692,7 @@
                             <label class="switch"><input type="checkbox" id="notifAssignments" checked><span class="switch-track"></span></label>
                         </div>
                         <div class="toggle-row">
-                            <div><strong>Upcoming sessions</strong><span>Get a reminder before scheduled sessions.</span></div>
+                            <div><strong>Upcoming training activities</strong><span>Get a reminder before scheduled training activities.</span></div>
                             <label class="switch"><input type="checkbox" id="notifSessions" checked><span class="switch-track"></span></label>
                         </div>
                         <button class="btn" style="width:auto;" onclick="saveNotificationPrefs()">Save preferences</button>
@@ -3863,13 +3863,13 @@
     <div class="modal-overlay" id="sessionModal">
         <div class="modal-box">
             <button class="close-modal" onclick="closeModal('sessionModal')">&times;</button>
-            <h3 id="sessionModalTitle">Schedule session</h3>
+            <h3 id="sessionModalTitle">Log Training Activity</h3>
             <form id="sessionModalForm">
                 <input type="hidden" id="sesEditId">
                 <input type="hidden" id="sesEditType">
                 <label>Trainee</label>
                 <select id="sesStudent" required></select>
-                <label>Session type</label>
+                <label>Activity type</label>
                 <select id="sesType"></select>
                 <label>Title</label>
                 <input type="text" id="sesTitle" required>
@@ -3883,7 +3883,7 @@
                 <textarea id="sesContent"></textarea>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('sessionModal')">Cancel</button>
-                    <button type="submit" class="btn">Save session</button>
+                    <button type="submit" class="btn">Save</button>
                 </div>
             </form>
         </div>
@@ -4008,12 +4008,12 @@
                 statusOptions: ["present", "partial", "absent", "excused"]
             },
             training_session: {
-                label: "Training sessions",
+                label: "Training activities",
                 icon: "fa-chalkboard-user",
                 fields: ["date", "time", "duration", "title", "attendanceStatus", "content"]
             },
             supervision_session: {
-                label: "Supervision sessions",
+                label: "Supervision activities",
                 icon: "fa-user-doctor",
                 fields: ["date", "time", "duration", "title", "attendanceStatus", "content"]
             },
@@ -4067,7 +4067,7 @@
                 .filter((ht) => ht.code !== "training" && ht.code !== "supervision")
                 .forEach((ht) => {
                     RECORD_TYPES[`hour_session:${ht.code}`] = {
-                        label: `${ht.label} sessions`,
+                        label: `${ht.label} activities`,
                         icon: "fa-clock",
                         fields: ["date", "time", "duration", "title", "attendanceStatus", "content"],
                         apiRecordType: "hour_session",
@@ -4096,12 +4096,12 @@
         function renderSessionTypeOptions(selectEl, withAllOption) {
             const opts = [];
             if (withAllOption) opts.push('<option value="">All types</option>');
-            opts.push(`<option value="training_session">Training session${withAllOption ? "s" : ""}</option>`);
-            opts.push(`<option value="supervision_session">Supervision session${withAllOption ? "s" : ""}</option>`);
+            opts.push(`<option value="training_session">Training activit${withAllOption ? "ies" : "y"}</option>`);
+            opts.push(`<option value="supervision_session">Supervision activit${withAllOption ? "ies" : "y"}</option>`);
             activeHourTypes
                 .filter((ht) => ht.code !== "training" && ht.code !== "supervision")
                 .forEach((ht) => {
-                    opts.push(`<option value="hour_session:${ht.code}">${escapeHtml(ht.label)} session${withAllOption ? "s" : ""}</option>`);
+                    opts.push(`<option value="hour_session:${ht.code}">${escapeHtml(ht.label)} activit${withAllOption ? "ies" : "y"}</option>`);
                 });
             selectEl.innerHTML = opts.join("");
         }
@@ -4643,7 +4643,7 @@
             document.getElementById("schedCount").textContent = `${data.today.length} today`;
 
             if (!items.length) {
-                list.innerHTML = '<li class="empty-state">No upcoming sessions scheduled.</li>';
+                list.innerHTML = '<li class="empty-state">No upcoming training activities scheduled.</li>';
                 return;
             }
 
@@ -4651,7 +4651,7 @@
                 .map((i) => `
       <li class="sched-item">
         <div class="sched-time">${i.time || "--:--"}<small>${i.isToday ? "Today" : i.date}</small></div>
-        <div class="sinfo"><strong>${escapeHtml(i.title || hourTypeLabel(i.hourTypeCode) + " session")}</strong><span>${escapeHtml(i.studentName)} &middot; ${escapeHtml(i.studentCode)}</span></div>
+        <div class="sinfo"><strong>${escapeHtml(i.title || hourTypeLabel(i.hourTypeCode) + " activity")}</strong><span>${escapeHtml(i.studentName)} &middot; ${escapeHtml(i.studentCode)}</span></div>
         <span class="sched-badge ${i.recordType}">${hourTypeLabel(i.hourTypeCode)}</span>
       </li>
     `)
@@ -4729,8 +4729,8 @@
             const cells = [
                 ["Training hours", p.clinicalHours],
                 ["Attendance", p.attendanceRate != null ? p.attendanceRate + "%" : "&mdash;"],
-                ["Training sessions", p.trainingSessions],
-                ["Supervision sessions", p.supervisionSessions],
+                ["Training activities", p.trainingSessions],
+                ["Supervision activities", p.supervisionSessions],
                 ["Assignments", `${p.assignmentsCompleted}/${p.assignmentsTotal}`],
                 ["Avg. evaluation", nc(p.averageEvaluationScore, "&mdash;")],
             ];
@@ -4801,7 +4801,7 @@
             document.getElementById("sdTraining").style.display = sdTrainingHasData ? "" : "none";
 
             if (activeTab === "overview") {
-                container.innerHTML = `<p style="color:var(--muted);font-size:13px;">Use the tabs above to log attendance, sessions, hours, assignments, notes, and evaluations. Everything you add here appears immediately on the trainee's My Profile page.</p>`;
+                container.innerHTML = `<p style="color:var(--muted);font-size:13px;">Use the tabs above to log attendance, training activities, hours, assignments, notes, and evaluations. Everything you add here appears immediately on the trainee's My Profile page.</p>`;
                 return;
             }
 
@@ -4886,7 +4886,7 @@
       .join("")}</select></div>${partialBlock}`;
   }
   if (field === "attendanceStatus") {
-    return `<div><label>Attendance (leave blank to schedule a future session)</label><select id="rf_attendance" onchange="togglePartialHoursField(this.value)">
+    return `<div><label>Attendance (leave blank to schedule a future activity)</label><select id="rf_attendance" onchange="togglePartialHoursField(this.value)">
       <option value="">Select... (required if the date is today or earlier)</option>
       <option value="present" ${value === "present" ? "selected" : ""}>Present</option>
       <option value="partial" ${value === "partial" ? "selected" : ""}>Partially attended</option>
@@ -4925,7 +4925,7 @@ function renderRecordPanel(container, type) {
   // corrected (Present -> Absent etc.) via its own edit button below.
   if (type === "attendance") {
     container.innerHTML = `
-      <div class="notice-banner"><i class="fa fa-circle-info"></i><span>Attendance is recorded together with its training/supervision session now (see those tabs), so hours are always traceable to a real session. You can still correct an existing entry below.</span></div>
+      <div class="notice-banner"><i class="fa fa-circle-info"></i><span>Attendance is recorded together with its training/supervision activity now (see those tabs), so hours are always traceable to a real training activity. You can still correct an existing entry below.</span></div>
       ${editing ? `
       <form class="record-form" id="recordForm">
         <div class="record-form-grid">
@@ -4974,7 +4974,7 @@ async function renderHourAdjustmentPanel(container, hourType) {
   const adjustments = ((data && data.adjustments) || []).filter((a) => a.hour_type === hourType);
 
   container.innerHTML = `
-    <div class="notice-banner"><i class="fa fa-circle-info"></i><span>Hours are calculated automatically from sessions and attendance. Use this only to add or correct hours for a genuine exception -- it never changes past attendance or session records.</span></div>
+    <div class="notice-banner"><i class="fa fa-circle-info"></i><span>Hours are calculated automatically from training activities and attendance. Use this only to add or correct hours for a genuine exception -- it never changes past attendance or activity records.</span></div>
     <form class="record-form" id="hourAdjForm">
       <div class="record-form-grid">
         <div><label>Hours (negative to correct a prior entry)</label><input type="number" step="0.25" id="haf_hours" required></div>
@@ -5934,7 +5934,7 @@ let allSessions = [];
 
 async function loadSessions() {
   const body = document.getElementById("sessionsBody");
-  body.innerHTML = '<tr class="loading-row"><td colspan="6">Loading sessions...</td></tr>';
+  body.innerHTML = '<tr class="loading-row"><td colspan="6">Loading training activities...</td></tr>';
   allSessions = [];
   for (const s of allStudents) {
     const detail = await apiRequest(`/supervisor/students/${s.id}`);
@@ -5958,7 +5958,7 @@ function renderSessions() {
 
   const body = document.getElementById("sessionsBody");
   if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="6" class="empty-state">No sessions match. Create one with "Schedule session".</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No training activities match. Create one with "Log Training Activity".</td></tr>';
     return;
   }
 
@@ -5991,11 +5991,11 @@ function openSessionModal(session) {
   renderSessionTypeOptions(document.getElementById("sesType"), false);
   document.getElementById("sesEditId").value = "";
   document.getElementById("sesEditType").value = "";
-  document.getElementById("sessionModalTitle").textContent = "Schedule session";
+  document.getElementById("sessionModalTitle").textContent = "Log Training Activity";
   if (session) {
     document.getElementById("sesEditId").value = session.id;
     document.getElementById("sesEditType").value = session.recordType;
-    document.getElementById("sessionModalTitle").textContent = "Edit session";
+    document.getElementById("sessionModalTitle").textContent = "Edit Training Activity";
     document.getElementById("sesStudent").value = session.studentId;
     document.getElementById("sesType").value =
       session.recordType === "hour_session" ? `hour_session:${session.hourTypeCode}` : session.recordType;
@@ -6017,7 +6017,7 @@ document.getElementById("sessionModalForm").addEventListener("submit", async (e)
   e.preventDefault();
   const editId = document.getElementById("sesEditId").value;
   // FIX (rename pass): use the record's actual stored type for the PUT URL,
-  // not whatever the "Session type" dropdown currently shows -- the backend
+  // not whatever the "Activity type" dropdown currently shows -- the backend
   // can't move a record between tables on update, and a training_session's
   // stored type never actually changes on edit.
   const editType = document.getElementById("sesEditType").value;
@@ -6040,8 +6040,8 @@ document.getElementById("sessionModalForm").addEventListener("submit", async (e)
 
   if (result) {
     showSuccessNotification(
-      editId ? "Session Updated" : "Session Created",
-      editId ? "The session has been updated successfully." : "The session has been scheduled successfully."
+      editId ? "Training Activity Updated" : "Training Activity Created",
+      editId ? "The training activity has been updated successfully." : "The training activity has been scheduled successfully."
     );
     closeModal("sessionModal");
     loadSessions();
@@ -6053,11 +6053,11 @@ document.getElementById("sessionModalForm").addEventListener("submit", async (e)
 function confirmDeleteSession(id) {
   const s = allSessions.find((x) => x.id === id);
   const type = s ? s.recordType : "training_session";
-  openConfirm("Delete this session?", "This can't be undone.", async () => {
+  openConfirm("Delete this training activity?", "This can't be undone.", async () => {
     // FIX (rename pass): type-scoped URL to match the real backend.
     const result = await apiRequest(`/supervisor/records/${type}/${id}`, { method: "DELETE" });
     if (result) {
-      showToast("Session deleted", "success");
+      showToast("Training activity deleted", "success");
       loadSessions();
       loadSchedule();
     }
@@ -6956,7 +6956,7 @@ async function loadCalendar() {
   calItems = [];
   if (schedule) {
     [...schedule.today, ...schedule.upcoming].forEach((i) => {
-      calItems.push({ date: i.date, title: i.title || hourTypeLabel(i.hourTypeCode) + " session", type: i.recordType });
+      calItems.push({ date: i.date, title: i.title || hourTypeLabel(i.hourTypeCode) + " activity", type: i.recordType });
     });
   }
   const meetings = await apiRequest("/supervisor/meetings");

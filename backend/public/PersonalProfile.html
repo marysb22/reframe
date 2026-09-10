@@ -3138,7 +3138,7 @@
                 <ul>
                     <li><a data-section="materials" href="#materials"><i class="fa fa-book-open"></i>Learning Materials / Documents</a></li>
                     <li><a data-section="assignments" href="#assignments"><i class="fa fa-list-check"></i>Assignments</a></li>
-                    <li><a data-section="sessions" href="#sessions"><i class="fa fa-chalkboard-user"></i>Sessions &amp; attendance</a></li>
+                    <li><a data-section="sessions" href="#sessions"><i class="fa fa-chalkboard-user"></i>Attendance &amp; Hours</a></li>
                     <li><a data-section="meetings" href="#meetings"><i class="fa fa-video"></i>Meetings</a></li>
                 </ul>
                 <div class="nav-label">Communication</div>
@@ -3229,7 +3229,7 @@
                 <section class="widget-row">
                     <div class="widget">
                         <div class="widget-title">
-                            <h3><i class="fa fa-calendar-day"></i>Upcoming sessions &amp; meetings</h3><span class="tag" id="schedCount">&mdash;</span></div>
+                            <h3><i class="fa fa-calendar-day"></i>Upcoming training activities &amp; meetings</h3><span class="tag" id="schedCount">&mdash;</span></div>
                         <ul class="sched-list" id="scheduleList">
                             <li class="empty-state">Loading schedule...</li>
                         </ul>
@@ -3386,7 +3386,7 @@
                             <h2>Calendar</h2>
                         </div>
                     </div>
-                    <div class="readonly-banner"><i class="fa fa-eye"></i><span>Sessions and meetings are scheduled by Trainers and Supervisors.</span></div>
+                    <div class="readonly-banner"><i class="fa fa-eye"></i><span>Training activities and meetings are scheduled by Trainers and Supervisors.</span></div>
                     <div class="cal-topbar">
                         <h3 class="cal-title" id="calTitle">&mdash;</h3>
                         <div class="cal-nav">
@@ -3585,22 +3585,22 @@
             </div>
 
             <!-- ============================================================= -->
-            <!-- SESSIONS & ATTENDANCE                                          -->
+            <!-- ATTENDANCE & HOURS                                             -->
             <!-- ============================================================= -->
-            <section class="dash-section" id="section-sessions" data-title="Sessions & attendance" data-eyebrow="Learning">
+            <section class="dash-section" id="section-sessions" data-title="Attendance & Hours" data-eyebrow="Learning">
                 <section class="system-card">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-chalkboard-user"></i>
-                            <h2>Sessions, attendance &amp; hours</h2>
+                            <h2>Attendance &amp; Hours</h2>
                         </div>
                     </div>
-                    <p class="card-subtitle">Everything your supervisor has logged for you: training sessions, supervision sessions, attendance, hours, notes and evaluations.</p>
+                    <p class="card-subtitle">Everything your supervisor has logged for you: training activities, supervision activities, attendance, hours, notes and evaluations.</p>
                     <div class="toolbar">
                         <input type="text" id="sessionSearch" placeholder="Search by title...">
                         <select id="sessionTypeFilter">
 <option value="">All types</option>
-<option value="training_session">Training sessions</option>
-<option value="supervision_session">Supervision sessions</option>
+<option value="training_session">Training activities</option>
+<option value="supervision_session">Supervision activities</option>
 <option value="hour_adjustment">Manual adjustments</option>
 <option value="note">Notes</option>
 <option value="evaluation">Evaluations</option>
@@ -3766,7 +3766,7 @@
                             <label class="switch"><input type="checkbox" id="notifAssignments" checked><span class="switch-track"></span></label>
                         </div>
                         <div class="toggle-row">
-                            <div><strong>Upcoming sessions</strong><span>Get a reminder before scheduled sessions.</span></div>
+                            <div><strong>Upcoming training activities</strong><span>Get a reminder before scheduled training activities.</span></div>
                             <label class="switch"><input type="checkbox" id="notifSessions" checked><span class="switch-track"></span></label>
                         </div>
                         <button class="btn" style="width:auto;" onclick="saveNotificationPrefs()">Save preferences</button>
@@ -3818,9 +3818,9 @@
 
         const RECORD_LABELS = {
             attendance: "Attendance",
-            training_session: "Training session",
-            supervision_session: "Supervision session",
-            hour_session: "Additional hours session",
+            training_session: "Training activity",
+            supervision_session: "Supervision activity",
+            hour_session: "Additional hours activity",
             training_hours: "Training hours (legacy entry)",
             supervision_hours: "Supervision hours (legacy entry)",
             hour_adjustment: "Manual hour adjustment",
@@ -4446,7 +4446,7 @@
             document.getElementById("schedCount").textContent = `${upcoming.length} upcoming`;
 
             if (!upcoming.length) {
-                list.innerHTML = '<li class="empty-state">No upcoming sessions scheduled.</li>';
+                list.innerHTML = '<li class="empty-state">No upcoming training activities scheduled.</li>';
                 return;
             }
 

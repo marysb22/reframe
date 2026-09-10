@@ -2867,7 +2867,7 @@
                 </ul>
                 <div class="nav-label">Monitoring</div>
                 <ul>
-                    <li><a data-section="sessions" href="#sessions"><i class="fa fa-chalkboard-user"></i>Sessions</a></li>
+                    <li><a data-section="sessions" href="#sessions"><i class="fa fa-chalkboard-user"></i>Training Activities</a></li>
                     <li><a data-section="meetings" href="#meetings"><i class="fa fa-video"></i>Meetings</a></li>
                     <li><a data-section="materials" href="#materials"><i class="fa fa-book-open"></i>Materials</a></li>
                     <li><a data-section="documents" href="#documents"><i class="fa fa-folder-open"></i>Documents</a></li>
@@ -2954,7 +2954,7 @@
                     <div class="kpi-card">
                         <div class="kpi-top">
                             <div class="kpi-icon"><i class="fa fa-chalkboard-user"></i></div>
-                        </div><label>Sessions logged</label>
+                        </div><label>Training activities logged</label>
                         <h2 id="kpiSessions">&mdash;</h2>
                     </div>
                 </section>
@@ -2963,15 +2963,15 @@
                 <section class="kpi-grid" id="kpiPerformanceGrid">
                     <div class="kpi-card">
                         <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-circle-check"></i></div></div>
-                        <label>Sessions completed</label><h2 id="kpiSessionsCompleted">&mdash;</h2>
+                        <label>Training activities completed</label><h2 id="kpiSessionsCompleted">&mdash;</h2>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-calendar-plus"></i></div></div>
-                        <label>Upcoming sessions</label><h2 id="kpiSessionsUpcoming">&mdash;</h2>
+                        <label>Upcoming training activities</label><h2 id="kpiSessionsUpcoming">&mdash;</h2>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-calendar-xmark"></i></div></div>
-                        <label>Cancelled sessions</label><h2 id="kpiSessionsCancelled">&mdash;</h2>
+                        <label>Cancelled training activities</label><h2 id="kpiSessionsCancelled">&mdash;</h2>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-top"><div class="kpi-icon"><i class="fa fa-list-check"></i></div></div>
@@ -3051,7 +3051,7 @@
                             <h2>My Trainers in Training</h2>
                         </div>
                     </div>
-                    <p class="card-subtitle">Open a Trainer to see their trainees, sessions, hours, documents, materials, meetings and recent activity.</p>
+                    <p class="card-subtitle">Open a Trainer to see their trainees, training activities, hours, documents, materials, meetings and recent activity.</p>
                     <div class="toolbar">
                         <input type="text" id="totSearch" placeholder="Search by name or ID...">
                     </div>
@@ -3061,7 +3061,7 @@
                                 <th>Name</th>
                                 <th>ID</th>
                                 <th>Trainees</th>
-                                <th>Sessions</th>
+                                <th>Training Activities</th>
                                 <th>Hours delivered</th>
                                 <th>Hours received</th>
                                 <th>Completion</th>
@@ -3152,14 +3152,14 @@
             <!-- ============================================================= -->
             <!-- SESSIONS (group-wide, read-only)                               -->
             <!-- ============================================================= -->
-            <section class="dash-section" id="section-sessions" data-title="Sessions" data-eyebrow="Monitoring">
+            <section class="dash-section" id="section-sessions" data-title="Training Activities" data-eyebrow="Monitoring">
                 <section class="system-card">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-chalkboard-user"></i>
-                            <h2>Sessions across your Group</h2>
+                            <h2>Training Activities across your Group</h2>
                         </div>
                     </div>
-                    <div class="mt-readonly-note"><i class="fa fa-eye"></i> View-only &mdash; sessions are created and edited by each Trainer in Training from their own dashboard.</div>
+                    <div class="mt-readonly-note"><i class="fa fa-eye"></i> View-only &mdash; training activities are created and edited by each Trainer in Training from their own dashboard.</div>
                     <div class="toolbar">
                         <input type="text" id="sessionSearch" placeholder="Search by title or trainee...">
                         <select id="sessionStatusFilter">
@@ -3183,7 +3183,7 @@
                             </tr>
                         </thead>
                         <tbody id="allSessionsBody">
-                            <tr class="loading-row"><td colspan="8">Loading sessions...</td></tr>
+                            <tr class="loading-row"><td colspan="8">Loading training activities...</td></tr>
                         </tbody>
                     </table>
                 </section>
@@ -3532,7 +3532,7 @@
                         </div>
                         <span class="tag" id="attentionCount">&mdash;</span>
                     </div>
-                    <p class="card-subtitle">Automatically identified from real data in your Group -- overdue assignments, low attendance, inactive Trainers, and sessions that were never marked complete or cancelled.</p>
+                    <p class="card-subtitle">Automatically identified from real data in your Group -- overdue assignments, low attendance, inactive Trainers, and training activities that were never marked complete or cancelled.</p>
                     <div id="attentionList">
                         <div class="empty-state">Loading...</div>
                     </div>
@@ -3563,7 +3563,7 @@
 
                 <section class="widget-row">
                     <div class="widget">
-                        <div class="widget-title"><h3><i class="fa fa-chalkboard-user"></i>Sessions by status</h3></div>
+                        <div class="widget-title"><h3><i class="fa fa-chalkboard-user"></i>Training activities by status</h3></div>
                         <div id="chartSessionsStatus"></div>
                     </div>
                     <div class="widget">
@@ -3573,11 +3573,11 @@
                 </section>
                 <section class="widget-row">
                     <div class="widget">
-                        <div class="widget-title"><h3><i class="fa fa-scale-balanced"></i>Trainer (ToT) comparison &mdash; sessions completed</h3></div>
+                        <div class="widget-title"><h3><i class="fa fa-scale-balanced"></i>Trainer (ToT) comparison &mdash; training activities completed</h3></div>
                         <div id="chartTotComparison"></div>
                     </div>
                     <div class="widget">
-                        <div class="widget-title"><h3><i class="fa fa-chart-line"></i>Daily sessions completed</h3></div>
+                        <div class="widget-title"><h3><i class="fa fa-chart-line"></i>Daily training activities completed</h3></div>
                         <div id="chartDailySessions"></div>
                     </div>
                 </section>
@@ -4005,13 +4005,13 @@
             })), ...data.upcoming];
             document.getElementById("schedCount").textContent = `${data.today.length} today`;
             if (!items.length) {
-                list.innerHTML = '<li class="empty-state">No upcoming sessions in your Group.</li>';
+                list.innerHTML = '<li class="empty-state">No upcoming training activities in your Group.</li>';
                 return;
             }
             list.innerHTML = items.map((i) => `
         <li class="sched-item">
           <div class="sched-time">${i.time || "--:--"}<small>${i.isToday ? "Today" : i.date}</small></div>
-          <div class="sinfo"><strong>${escapeHtml(i.title || (i.recordType === "training_session" ? "Training session" : "Supervision session"))}</strong><span>${escapeHtml(i.studentName)} &middot; with ${escapeHtml(i.trainerName)}</span></div>
+          <div class="sinfo"><strong>${escapeHtml(i.title || (i.recordType === "training_session" ? "Training activity" : "Supervision activity"))}</strong><span>${escapeHtml(i.studentName)} &middot; with ${escapeHtml(i.trainerName)}</span></div>
           <span class="sched-badge ${i.recordType}">${i.recordType === "training_session" ? "Training" : "Supervision"}</span>
         </li>`).join("");
         }
@@ -4344,8 +4344,8 @@
             const r = data.trainingReceived || {};
             document.getElementById("totProgress").innerHTML = [
                 ["Trainees", data.students.length],
-                ["Training sessions", s.training_sessions],
-                ["Supervision sessions", s.supervision_sessions],
+                ["Training activities", s.training_sessions],
+                ["Supervision activities", s.supervision_sessions],
                 ["Hours delivered (training)", s.training_hours],
                 ["Hours delivered (supervision)", s.supervision_hours],
                 ["Hours received (from me)", Math.round((r.totalHours || 0) * 10) / 10],
@@ -4480,13 +4480,13 @@
             const adjustments = (adjRes && adjRes.adjustments) || [];
 
             c.innerHTML = `
-        <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Log a training session</h4>
+        <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted);">Log a Training Activity</h4>
         <form class="record-form" id="totSessionForm">
           <div class="record-form-grid">
             <div><label>Date</label><input type="date" id="tsf_date" required></div>
             <div><label>Time</label><input type="time" id="tsf_time"></div>
             <div><label>Duration (minutes)</label><input type="number" min="0" id="tsf_duration" required></div>
-            <div><label>Attendance (leave blank to schedule a future session)</label><select id="tsf_attendance">
+            <div><label>Attendance (leave blank to schedule a future activity)</label><select id="tsf_attendance">
               <option value="">Select... (required if the date is today or earlier)</option>
               <option value="present">Present</option>
               <option value="absent">Absent</option>
@@ -4495,7 +4495,7 @@
             <div class="full"><label>Title</label><input type="text" id="tsf_title"></div>
             <div class="full"><label>Notes (optional)</label><textarea id="tsf_notes"></textarea></div>
           </div>
-          <div class="modal-actions"><button type="submit" class="btn">Log session</button></div>
+          <div class="modal-actions"><button type="submit" class="btn">Log Activity</button></div>
         </form>
 
         <h4 style="margin:20px 0 10px;font-size:13px;color:var(--muted);">Add manual hours (exception only -- never changes past attendance)</h4>
@@ -4508,19 +4508,19 @@
           <div class="modal-actions"><button type="submit" class="btn">Add adjustment</button></div>
         </form>
 
-        <h4 style="margin:20px 0 10px;font-size:13px;color:var(--muted);">Session history</h4>
+        <h4 style="margin:20px 0 10px;font-size:13px;color:var(--muted);">Training Activity history</h4>
         <ul class="record-list">
           ${sessions.length ? sessions.map((s) => `
             <li class="record-item">
               <div>
-                <strong>${escapeHtml(s.title || "Training session")}</strong>
+                <strong>${escapeHtml(s.title || "Training activity")}</strong>
                 <div class="rmeta">${escapeHtml(s.session_date)} ${s.session_time ? escapeHtml(s.session_time) : ""} &middot; ${s.duration_minutes} min &middot; <span class="pill ${s.attendance_status || ""}">${escapeHtml(s.attendance_status || "—")}</span> ${s.status === "cancelled" ? '<span class="pill absent">cancelled</span>' : ""}</div>
                 ${s.notes ? `<div class="rcontent">${escapeHtml(s.notes)}</div>` : ""}
               </div>
               <div class="row-actions">
-                ${s.status !== "cancelled" ? `<button class="icon-btn danger" title="Cancel session" onclick="cancelTotSession(${s.id})"><i class="fa fa-ban"></i></button>` : ""}
+                ${s.status !== "cancelled" ? `<button class="icon-btn danger" title="Cancel activity" onclick="cancelTotSession(${s.id})"><i class="fa fa-ban"></i></button>` : ""}
               </div>
-            </li>`).join("") : '<li class="empty-state">No sessions logged yet.</li>'}
+            </li>`).join("") : '<li class="empty-state">No training activities logged yet.</li>'}
         </ul>
 
         <h4 style="margin:20px 0 10px;font-size:13px;color:var(--muted);">Manual adjustments</h4>
@@ -4554,7 +4554,7 @@
                 body: JSON.stringify(payload),
             });
             if (result) {
-                showToast("Session logged", "success");
+                showToast("Training activity logged", "success");
                 await openTot(currentTot.trainer.id);
                 totActiveTab = "training";
                 renderTotTabs();
@@ -4586,14 +4586,14 @@
         }
 
         async function cancelTotSession(sessionId) {
-            if (!confirm("Cancel this session? It will be excluded from hours but kept for the record.")) return;
+            if (!confirm("Cancel this training activity? It will be excluded from hours but kept for the record.")) return;
             const result = await apiRequest(`/master-trainer/tots/${currentTot.trainer.id}/sessions/${sessionId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ status: "cancelled" }),
             });
             if (result) {
-                showToast("Session cancelled", "success");
+                showToast("Training activity cancelled", "success");
                 renderTotTrainingPanel(document.getElementById("totPanels"));
                 await loadDashboardHours();
             }
@@ -4707,7 +4707,7 @@
             const container = document.getElementById("reportContent");
 
             const summaryTiles = [
-                ["Total sessions", es.sessionsTotal],
+                ["Total training activities", es.sessionsTotal],
                 ["Completed", es.sessionsCompleted],
                 ["Cancelled", es.sessionsCancelled],
                 ["Active trainees", es.activeTrainees],
@@ -4729,13 +4729,13 @@
               <td>${s.durationMinutes ? s.durationMinutes + " min" : "&mdash;"}</td>
               <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td>
             </tr>`).join("")
-                : '<tr><td colspan="7" class="empty-state">No sessions this week.</td></tr>';
+                : '<tr><td colspan="7" class="empty-state">No training activities this week.</td></tr>';
 
             const totCards = d.totPerformance.map((t) => `
         <div class="trainer-card">
           <div class="trainer-name-row"><strong>${escapeHtml(t.fullName)}</strong></div>
           <div class="trainer-detail">
-            <div><i class="fa fa-chalkboard-user"></i> ${t.sessionsCompleted} of ${t.sessionsTotal} sessions completed</div>
+            <div><i class="fa fa-chalkboard-user"></i> ${t.sessionsCompleted} of ${t.sessionsTotal} training activities completed</div>
             ${t.outstandingItems.length ? t.outstandingItems.map((o) => `<div><i class="fa fa-triangle-exclamation"></i> ${escapeHtml(o)}</div>`).join("") : '<div><i class="fa fa-circle-check"></i> No outstanding items</div>'}
           </div>
         </div>`).join("");
@@ -4780,7 +4780,7 @@
         </section>
 
         <section class="system-card report-card">
-          <h3 style="margin:0 0 12px;"><i class="fa fa-chalkboard-user"></i> Training Activity &mdash; Sessions</h3>
+          <h3 style="margin:0 0 12px;"><i class="fa fa-chalkboard-user"></i> Training Activities</h3>
           <table>
             <thead><tr><th>Date</th><th>Time</th><th>Trainer</th><th>Trainee</th><th>Topic</th><th>Duration</th><th>Status</th></tr></thead>
             <tbody>${sessionsRows}</tbody>
@@ -4973,7 +4973,7 @@
 
         async function loadAllSessions() {
             const body = document.getElementById("allSessionsBody");
-            body.innerHTML = '<tr class="loading-row"><td colspan="8">Loading sessions...</td></tr>';
+            body.innerHTML = '<tr class="loading-row"><td colspan="8">Loading training activities...</td></tr>';
             const data = await apiRequest("/master-trainer/sessions");
             if (!data) return;
             allSessions = data.sessions;
@@ -4993,11 +4993,11 @@
             });
             const body = document.getElementById("allSessionsBody");
             if (!allSessions.length) {
-                body.innerHTML = '<tr><td colspan="8" class="empty-state">No sessions found for your Group.</td></tr>';
+                body.innerHTML = '<tr><td colspan="8" class="empty-state">No training activities found for your Group.</td></tr>';
                 return;
             }
             if (!filtered.length) {
-                body.innerHTML = '<tr><td colspan="8" class="empty-state">No sessions match your filters.</td></tr>';
+                body.innerHTML = '<tr><td colspan="8" class="empty-state">No training activities match your filters.</td></tr>';
                 return;
             }
             body.innerHTML = filtered.map((s) => `
@@ -6004,7 +6004,7 @@
             overdue_assignment: "Overdue assignment",
             low_attendance: "Low attendance",
             tot_inactive: "Trainer inactivity",
-            unmarked_session: "Unmarked session",
+            unmarked_session: "Unmarked training activity",
         };
 
         async function loadNeedsAttention() {
