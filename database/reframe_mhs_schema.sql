@@ -226,6 +226,12 @@ CREATE TABLE students (
   -- current_year (a plain Admin-set label used only by Payments), and of
   -- cohorts.start_date/end_date (never actually written to by any route).
   training_start_date DATE DEFAULT '2026-09-15',
+  -- Administrative training-lifecycle status (added in migration 020), set only
+  -- by Admin/Master Trainer. Distinct from user_credentials.status (account
+  -- active/suspended) and from the computed `trainingStatus` timeline concept
+  -- (scheduled/active/completed, trainingTimeline.js) -- neither of those changes.
+  lifecycle_status    VARCHAR(20) NOT NULL DEFAULT 'active'
+    CHECK (lifecycle_status IN ('active', 'inactive', 'on_hold', 'withdrawn', 'in_progress', 'completed')),
   created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_students_credentials FOREIGN KEY (id) REFERENCES user_credentials(id) ON DELETE CASCADE,
@@ -421,7 +427,8 @@ CREATE TABLE tot_training_attendance (
   id            BIGINT AUTO_INCREMENT PRIMARY KEY,
   session_id    BIGINT NOT NULL,
   tot_id        BIGINT NOT NULL,
-  status        VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'excused')),
+  status        VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'excused', 'partial')),
+  minutes_completed INT,        -- actual minutes attended when status='partial' (added in migration 019, mirrors attendance.minutes_completed)
   notes         TEXT,
   recorded_by   BIGINT NOT NULL,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

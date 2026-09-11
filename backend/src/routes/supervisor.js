@@ -99,70 +99,12 @@ router.get(
   })
 );
 
-// POST /api/supervisor/students  { studentCode: "TTR001" }
-router.post(
-  "/students",
-  asyncRoute(async (req, res, db) => {
-    const { studentCode } = req.body || {};
-    if (!studentCode || !String(studentCode).trim()) {
-      return res.status(400).json({ error: "Trainee ID is required" });
-    }
-
-    const { rows: studentRows } = await db.query(
-      `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.current_year, st.group_id, c.name AS cohort_name
-       FROM user_credentials uc JOIN students st ON st.id = uc.id LEFT JOIN cohorts c ON c.id = st.cohort_id
-       WHERE uc.member_code = ?`,
-      [String(studentCode).trim().toUpperCase()]
-    );
-    if (!studentRows.length) {
-      return res.status(404).json({ error: "This Trainee ID does not exist. Please contact the Administrator." });
-    }
-    const student = studentRows[0];
-
-    // A supervisor may only self-assign to a trainee already in their own
-    // Group -- without this, any supervisor could add themself to any
-    // trainee system-wide just by knowing (or guessing, since codes are
-    // sequential) their ID, bypassing every Group/caseload boundary the
-    // rest of the app enforces.
-    const { rows: callerRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
-    const callerGroupId = callerRows[0] && callerRows[0].group_id;
-    if (!callerGroupId || student.group_id !== callerGroupId) {
-      return res.status(403).json({ error: "This trainee is not in your Group. Ask your Master Trainer or Admin to assign you." });
-    }
-
-    await db.query(
-      `INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE assigned_at = assigned_at`,
-      [req.user.id, student.id, req.user.id]
-    );
-    await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'supervisor_assigned', 'supervisor_students', ?)",
-      [req.user.id, student.id]
-    );
-
-    res.status(201).json({ student: toStudentSummary(student) });
-  })
-);
-
-// DELETE /api/supervisor/students/:studentId — unassign only, history stays intact
-router.delete(
-  "/students/:studentId",
-  asyncRoute(async (req, res, db) => {
-    const studentId = Number(req.params.studentId);
-    const student = await loadAssignedStudent(db, req.user.id, studentId, res);
-    if (!student) return;
-
-    await db.query("DELETE FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?", [
-      req.user.id,
-      studentId,
-    ]);
-    await db.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'supervisor_unassigned', 'supervisor_students', ?)",
-      [req.user.id, studentId]
-    );
-    res.json({ success: true });
-  })
-);
+// Caseload assignment (which trainee belongs to which ToT) is managed only
+// by Admin/Master Trainer, not self-service by a ToT -- see
+// PATCH /master-trainer/trainees/:studentId/tots and Admin's group-detail
+// UI. A ToT-facing POST /students (add-by-ID) / DELETE /students/:studentId
+// used to exist here; removed so a ToT can no longer grant or revoke their
+// own caseload assignment.
 
 // GET /api/supervisor/students/:studentId
 router.get(
@@ -748,15 +690,16 @@ router.get(
       db.query(
         `SELECT
            COALESCE((
-             SELECT SUM(ts.duration_minutes) / 60 FROM tot_training_sessions ts
-             JOIN tot_training_attendance ta ON ta.session_id = ts.id AND ta.status = 'present'
+             SELECT SUM(CASE WHEN ta.status = 'partial' THEN ta.minutes_completed ELSE ts.duration_minutes END) / 60
+             FROM tot_training_sessions ts
+             JOIN tot_training_attendance ta ON ta.session_id = ts.id AND ta.status IN ('present', 'partial')
              WHERE ts.tot_id = ? AND ts.status != 'cancelled'
            ), 0) AS session_hours,
            COALESCE((SELECT SUM(hours) FROM tot_hour_adjustments WHERE tot_id = ?), 0) AS adjustment_hours`,
         [totId, totId]
       ),
       db.query(
-        `SELECT COUNT(CASE WHEN status = 'present' THEN 1 END) AS present, COUNT(*) AS total
+        `SELECT COUNT(CASE WHEN status IN ('present', 'partial') THEN 1 END) AS present, COUNT(*) AS total
          FROM tot_training_attendance WHERE tot_id = ?`,
         [totId]
       ),

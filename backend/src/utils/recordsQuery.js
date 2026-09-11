@@ -192,7 +192,9 @@ function buildTotHoursBreakdownQuery(totId) {
     SELECT * FROM (
       SELECT ts.session_date AS hour_date, ts.title AS title,
              ts.duration_minutes AS duration_minutes, ta.status AS attendance_status,
-             CASE WHEN ta.status = 'present' AND ts.status != 'cancelled' THEN ROUND(ts.duration_minutes / 60, 2) ELSE 0 END AS hours,
+             CASE WHEN ta.status = 'present' AND ts.status != 'cancelled' THEN ROUND(ts.duration_minutes / 60, 2)
+                  WHEN ta.status = 'partial' AND ts.status != 'cancelled' THEN ROUND(ta.minutes_completed / 60, 2)
+                  ELSE 0 END AS hours,
              'session' AS source, ts.created_at
       FROM tot_training_sessions ts
       JOIN tot_training_attendance ta ON ta.session_id = ts.id

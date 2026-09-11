@@ -51,7 +51,7 @@ const USER_SELECT = `
     COALESCE(sup.photo, st.photo) AS photo,
     sup.specialization, sup.bio, sup.supervisor_type,
     st.gender, st.date_of_birth, st.marital_status, st.address, st.certifications, st.cv_file,
-    st.cohort_id, c.name AS cohort_name, st.current_year, st.highest_degree, st.institution,
+    st.cohort_id, c.name AS cohort_name, st.current_year, st.highest_degree, st.institution, st.lifecycle_status,
     sup.group_id AS supervisor_group_id, st.group_id AS student_group_id,
     tg.id AS group_id, tg.name AS group_name,
     COALESCE(sup.training_start_date, st.training_start_date) AS training_start_date,
@@ -811,7 +811,7 @@ router.get(
     // trainee can be linked to more than one Trainer (ToT) at once (Create
     // Group, Create Member, Add Trainee, and Edit Member all support
     // selecting several).
-    const traineeExtraFields = `'tots', COALESCE((
+    const traineeExtraFields = `'lifecycle_status', member.lifecycle_status, 'tots', COALESCE((
       SELECT JSON_ARRAYAGG(JSON_OBJECT('id', tot.id, 'full_name', tot.full_name))
       FROM supervisor_students ss2
       JOIN supervisors tot ON tot.id = ss2.supervisor_id
@@ -1381,6 +1381,77 @@ router.get(
       totTrainers,
       trainingHours,
     });
+  })
+);
+
+// PATCH /api/admin/students/:id/status  { status: "on_hold" }
+// Sets a trainee's administrative lifecycle status (students.lifecycle_status).
+// Restricted to Admin/Master Trainer (see the Group-scoped equivalent at
+// PATCH /master-trainer/trainees/:id/status) -- never a ToT.
+router.patch(
+  "/students/:id/status",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid student id" });
+
+    const { status } = req.body || {};
+    const ALLOWED = ["active", "inactive", "on_hold", "withdrawn", "in_progress", "completed"];
+    if (!ALLOWED.includes(status)) {
+      return res.status(400).json({ error: `status must be one of: ${ALLOWED.join(", ")}` });
+    }
+
+    const { rows } = await db.query("SELECT id FROM students WHERE id = ?", [id]);
+    if (!rows.length) return res.status(404).json({ error: "Trainee not found" });
+
+    await db.query("UPDATE students SET lifecycle_status = ? WHERE id = ?", [status, id]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'trainee_status_updated', 'students', ?, ?)",
+      [req.user.id, id, JSON.stringify({ status })]
+    );
+    res.json({ success: true, status });
+  })
+);
+
+// PATCH /api/admin/students/:id/tots  { totIds: [1,2] }
+// Sets exactly which TOT(s) are responsible for one trainee (replaces the
+// previous set), Admin-wide (any group) -- see the Group-scoped equivalent
+// at PATCH /master-trainer/trainees/:id/tots.
+router.patch(
+  "/students/:id/tots",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid student id" });
+
+    const { rows: studentRows } = await db.query("SELECT id, group_id FROM students WHERE id = ?", [id]);
+    if (!studentRows.length) return res.status(404).json({ error: "Trainee not found" });
+    const { group_id: groupId } = studentRows[0];
+
+    const totIds = Array.isArray(req.body && req.body.totIds) ? req.body.totIds.map(Number) : null;
+    if (!totIds) return res.status(400).json({ error: "totIds must be an array" });
+
+    if (totIds.length) {
+      const { rows: eligibleRows } = await db.query(
+        "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training'",
+        [groupId]
+      );
+      const eligibleIds = new Set(eligibleRows.map((r) => r.id));
+      if (totIds.some((tid) => !eligibleIds.has(tid))) {
+        return res.status(403).json({ error: "One or more selected TOTs are not in this trainee's Group" });
+      }
+    }
+
+    await db.query("DELETE FROM supervisor_students WHERE student_id = ?", [id]);
+    for (const totId of totIds) {
+      await db.query(
+        "INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)",
+        [totId, id, req.user.id]
+      );
+    }
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'trainee_tots_reassigned', 'supervisor_students', ?, ?)",
+      [req.user.id, id, JSON.stringify({ totIds })]
+    );
+    res.json({ success: true, totIds });
   })
 );
 
@@ -2111,5 +2182,82 @@ router.put(
 // backend/src/routes/supervisor.js's "Hour type definitions" section.
 // Admin still has read access like every other role, via the shared
 // GET /api/profile/hour-types in profile.js.
+
+// ---- Calendar events (Admin's own) ----------------------------------------
+// Mirrors supervisor.js's ToT calendar-events CRUD (owner_id = req.user.id).
+// Admin has no Group scoping, so a targeted studentId is accepted as-is
+// (Admin already has unrestricted trainee visibility elsewhere in this file).
+
+// GET /api/admin/calendar-events?start=&end=
+router.get(
+  "/calendar-events",
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    const params = [req.user.id];
+    let dateFilter = "";
+    if (start && end) {
+      params.push(start, end);
+      dateFilter = "AND ce.event_date BETWEEN ? AND ?";
+    }
+    const { rows } = await db.query(
+      `SELECT ce.*, st.full_name AS student_name FROM calendar_events ce
+       LEFT JOIN students st ON st.id = ce.student_id
+       WHERE ce.owner_id = ? ${dateFilter}
+       ORDER BY ce.event_date ASC, (ce.event_time IS NULL), ce.event_time ASC`,
+      params
+    );
+    res.json({ events: rows });
+  })
+);
+
+// POST /api/admin/calendar-events  { title, description, date, time, studentId, eventType }
+router.post(
+  "/calendar-events",
+  asyncRoute(async (req, res, db) => {
+    const { title, description, date, time, studentId, eventType } = req.body || {};
+    if (!title || !date) return res.status(400).json({ error: "title and date are required" });
+
+    const type = ["session", "meeting", "assignment_deadline", "custom", "holiday"].includes(eventType) ? eventType : "custom";
+
+    const insert = await db.query(
+      `INSERT INTO calendar_events (owner_id, student_id, event_type, title, description, event_date, event_time)
+       VALUES (?,?,?,?,?,?,?)`,
+      [req.user.id, studentId || null, type, title, description || null, date, time || null]
+    );
+    const { rows } = await db.query("SELECT * FROM calendar_events WHERE id = ?", [insert.insertId]);
+    res.status(201).json(rows[0]);
+  })
+);
+
+// PUT /api/admin/calendar-events/:id
+router.put(
+  "/calendar-events/:id",
+  asyncRoute(async (req, res, db) => {
+    const eventId = req.params.id;
+    const { rows: existingRows } = await db.query("SELECT * FROM calendar_events WHERE id = ? AND owner_id = ?", [eventId, req.user.id]);
+    if (!existingRows.length) return res.status(404).json({ error: "Event not found" });
+
+    const { title, description, date, time } = req.body || {};
+    await db.query(
+      `UPDATE calendar_events SET
+        title = COALESCE(?, title), description = COALESCE(?, description),
+        event_date = COALESCE(?, event_date), event_time = COALESCE(?, event_time)
+       WHERE id = ?`,
+      [title ?? null, description ?? null, date ?? null, time ?? null, eventId]
+    );
+    const { rows } = await db.query("SELECT * FROM calendar_events WHERE id = ?", [eventId]);
+    res.json(rows[0]);
+  })
+);
+
+// DELETE /api/admin/calendar-events/:id
+router.delete(
+  "/calendar-events/:id",
+  asyncRoute(async (req, res, db) => {
+    const { affectedRows } = await db.query("DELETE FROM calendar_events WHERE id = ? AND owner_id = ?", [req.params.id, req.user.id]);
+    if (!affectedRows) return res.status(404).json({ error: "Event not found" });
+    res.json({ success: true });
+  })
+);
 
 module.exports = router;

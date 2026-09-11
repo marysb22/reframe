@@ -3157,11 +3157,10 @@
                             <h2>Trainee Profiles</h2>
                         </div>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <button class="btn btn-secondary" onclick="openAssignModal()"><i class="fa fa-plus"></i>Assign trainee by ID</button>
                             <button class="btn" onclick="openGroupSessionModal()"><i class="fa fa-people-group"></i>Add Session</button>
                         </div>
                     </div>
-                    <p class="card-subtitle">Only Admin can create Trainee IDs. Assign an existing ID to add that trainee to your caseload. "Add Session" logs one training/supervision activity for your whole Group at once, with attendance set individually per trainee.</p>
+                    <p class="card-subtitle">Trainee-to-Trainer assignment is managed by Admin or the Master Trainer. "Add Session" logs one training/supervision activity for your whole Group at once, with attendance set individually per trainee.</p>
 
                     <div class="toolbar">
                         <input type="text" id="studentSearch" placeholder="Search by name or trainee ID...">
@@ -3229,6 +3228,7 @@
                         <div class="card-title-left"><i class="fa fa-calendar"></i>
                             <h2>Calendar</h2>
                         </div>
+                        <button class="btn" onclick="openAddEventModal()"><i class="fa fa-plus"></i>Add Event</button>
                     </div>
                     <div class="cal-topbar">
                         <h3 class="cal-title" id="calTitle">&mdash;</h3>
@@ -3725,18 +3725,23 @@
         </main>
     </div>
 
-    <!-- ASSIGN STUDENT MODAL -->
-    <div class="modal-overlay" id="assignModal">
+    <!-- ADD CALENDAR EVENT MODAL -->
+    <div class="modal-overlay" id="addEventModal">
         <div class="modal-box">
-            <button class="close-modal" onclick="closeModal('assignModal')">&times;</button>
-            <h3>Assign trainee by ID</h3>
-            <p style="color:var(--muted);font-size:12.5px;margin:-8px 0 0;">Enter the trainee's ID (e.g. TTR002). They'll appear in your list immediately, and you'll appear on their profile.</p>
-            <form id="assignForm">
-                <label>Trainee ID</label>
-                <input type="text" id="assignStudentCode" required placeholder="TTR002">
+            <button class="close-modal" onclick="closeModal('addEventModal')">&times;</button>
+            <h3>Add Event</h3>
+            <form id="addEventForm">
+                <label>Title</label>
+                <input type="text" id="evTitle" required>
+                <label>Date</label>
+                <input type="date" id="evDate" required>
+                <label>Time <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
+                <input type="time" id="evTime">
+                <label>Description <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
+                <textarea id="evDescription"></textarea>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('assignModal')">Cancel</button>
-                    <button type="submit" class="btn">Assign</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addEventModal')">Cancel</button>
+                    <button type="submit" class="btn">Save</button>
                 </div>
             </form>
         </div>
@@ -3908,7 +3913,7 @@
                 <label>Notes <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
                 <textarea id="gsNotes"></textarea>
 
-                <label style="margin-top:14px;">Attendance <span style="font-weight:400;color:var(--faint);">(your Group's trainees, loaded automatically)</span></label>
+                <label style="margin-top:14px;">Attendance <span style="font-weight:400;color:var(--faint);">(everyone in your Group is checked in by default -- untick anyone absent, or enter their actual hours if they only attended part of the session)</span></label>
                 <div id="gsAttendanceList" class="member-select-list" style="max-height:320px;">
                     <div class="empty-state">Loading trainees...</div>
                 </div>
@@ -4620,7 +4625,7 @@
 
             const body = document.getElementById("studentsBody");
             if (!filtered.length) {
-                body.innerHTML = `<tr><td colspan="6" class="empty-state">No trainees match. Use "Assign trainee by ID" to add one.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="6" class="empty-state">No trainees match.</td></tr>`;
                 return;
             }
 
@@ -4712,31 +4717,6 @@
       </li>
     `)
                 .join("");
-        }
-
-        document.getElementById("assignForm").addEventListener("submit", async(e) => {
-            e.preventDefault();
-            const studentCode = document.getElementById("assignStudentCode").value.trim();
-            const result = await apiRequest("/supervisor/students", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    studentCode
-                }),
-            });
-            if (result) {
-                showToast(`${result.student.full_name} added to your trainees`, "success");
-                closeModal("assignModal");
-                document.getElementById("assignForm").reset();
-                loadStudents();
-            }
-        });
-
-        function openAssignModal() {
-            document.getElementById("assignForm").reset();
-            openModal("assignModal");
         }
 
         document.getElementById("studentSearch").addEventListener("input", renderStudents);
@@ -6045,23 +6025,24 @@ function renderGroupAttendanceList() {
     .map(
       (s) => `
     <div class="member-select-row" style="align-items:center;flex-wrap:wrap;">
+      <input type="checkbox" class="gs-att-check" data-student-id="${s.id}" checked onchange="toggleGsPartialHours(${s.id}, this.checked)">
       <span class="member-select-name" style="flex:1 1 180px;">${escapeHtml(s.full_name)}</span>
       <span class="member-select-role" style="flex-shrink:0;">${escapeHtml(s.memberCode)}</span>
-      <select class="gs-att-status" data-student-id="${s.id}" onchange="toggleGsPartialHours(${s.id}, this.value)" style="width:auto;height:34px;">
-        <option value="present">Present</option>
-        <option value="absent">Absent</option>
-        <option value="excused">Excused</option>
-        <option value="partial">Partial</option>
-      </select>
-      <input type="number" min="0" step="0.25" class="gs-att-hours" data-student-id="${s.id}" placeholder="Hours attended" style="width:110px;height:34px;display:none;">
+      <input type="number" min="0" step="0.25" class="gs-att-hours" data-student-id="${s.id}" placeholder="Actual hours (if partial)" style="width:160px;height:34px;">
     </div>`
     )
     .join("");
 }
 
-function toggleGsPartialHours(studentId, status) {
+// A checked trainee stays present/partial (the hours field, when left blank
+// or equal to the full session duration, means "present" -- Number.isFinite
+// on an empty string is guarded in the submit handler below); unchecking
+// disables and clears their hours field since an absent trainee has none.
+function toggleGsPartialHours(studentId, checked) {
   const input = document.querySelector(`.gs-att-hours[data-student-id="${studentId}"]`);
-  if (input) input.style.display = status === "partial" ? "" : "none";
+  if (!input) return;
+  input.disabled = !checked;
+  if (!checked) input.value = "";
 }
 
 document.getElementById("groupSessionForm").addEventListener("submit", async (e) => {
@@ -6079,22 +6060,29 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
   const hours = Number(document.getElementById("gsHours").value);
   const durationMinutes = Math.round(hours * 60);
 
-  const attendance = Array.from(document.querySelectorAll(".gs-att-status")).map((sel) => {
-    const studentId = Number(sel.dataset.studentId);
-    const status = sel.value;
-    const entry = { studentId, status };
-    if (status === "partial") {
-      const hoursInput = document.querySelector(`.gs-att-hours[data-student-id="${studentId}"]`);
-      const attendedHours = hoursInput && hoursInput.value ? Number(hoursInput.value) : null;
-      if (attendedHours == null || Number.isNaN(attendedHours)) {
-        showToast(`Enter actual hours attended for a Partial trainee`, "error");
-        return null;
-      }
-      entry.minutesCompleted = Math.round(attendedHours * 60);
+  // Ticked + blank/full-duration hours = present; ticked + a smaller number
+  // of hours entered = partial; unticked = absent. The session's own
+  // duration is never applied to everyone blindly -- each trainee's actual
+  // hours come only from what's entered for them here.
+  let hadError = false;
+  const attendance = Array.from(document.querySelectorAll(".gs-att-check")).map((cb) => {
+    const studentId = Number(cb.dataset.studentId);
+    if (!cb.checked) return { studentId, status: "absent" };
+
+    const hoursInput = document.querySelector(`.gs-att-hours[data-student-id="${studentId}"]`);
+    const raw = hoursInput && hoursInput.value.trim();
+    if (!raw) return { studentId, status: "present" };
+
+    const attendedHours = Number(raw);
+    if (!Number.isFinite(attendedHours) || attendedHours < 0) {
+      showToast("Enter a valid number of hours attended, or leave it blank for full attendance", "error");
+      hadError = true;
+      return null;
     }
-    return entry;
+    if (attendedHours >= hours) return { studentId, status: "present" };
+    return { studentId, status: "partial", minutesCompleted: Math.round(attendedHours * 60) };
   });
-  if (attendance.includes(null)) return;
+  if (hadError) return;
 
   const attachmentFile = document.getElementById("gsAttachment").files[0];
   const payload = {
@@ -7116,8 +7104,37 @@ async function loadCalendar() {
     });
   }
 
+  const events = await apiRequest("/supervisor/calendar-events");
+  if (events && events.events) {
+    events.events.forEach((ev) => calItems.push({ date: ev.event_date, title: ev.title, type: "custom" }));
+  }
+
   renderCalendar();
 }
+
+function openAddEventModal() {
+  document.getElementById("addEventForm").reset();
+  openModal("addEventModal");
+}
+
+document.getElementById("addEventForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const result = await apiRequest("/supervisor/calendar-events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: document.getElementById("evTitle").value.trim(),
+      date: document.getElementById("evDate").value,
+      time: document.getElementById("evTime").value || undefined,
+      description: document.getElementById("evDescription").value.trim() || undefined,
+    }),
+  });
+  if (result) {
+    showToast("Event added", "success");
+    closeModal("addEventModal");
+    loadCalendar();
+  }
+});
 
 function renderCalendar() {
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];

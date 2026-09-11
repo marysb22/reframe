@@ -98,6 +98,9 @@ function toProfileResponse(row) {
     cohort: row.cohort_name,
     cohortId: row.cohort_id,
     currentYear: row.current_year,
+    // Administrative training-lifecycle status (undefined for a
+    // supervisor/admin row, whose queries never select it).
+    lifecycleStatus: row.lifecycle_status,
     // Trainee/Supervisor only (undefined for admin/designer rows, whose
     // queries never select training_start_date at all).
     trainingStartDate: trainingStartDate === undefined ? undefined : trainingStartDate || null,

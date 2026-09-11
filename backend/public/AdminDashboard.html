@@ -321,6 +321,17 @@ tr:hover td{background:var(--surface-2);}
   .mobile-toggle{display:flex;}
   table{display:block;overflow-x:auto;white-space:nowrap;}
 }
+
+/* Compact per-person checkbox row, used by the trainee-to-TOT assignment
+   picker. The page's global `input { height: 42px }` rule (meant for text
+   inputs) otherwise stretches a checkbox into a large, blank-looking
+   square, so it needs an explicit size here. */
+.member-select-list{max-height:240px;overflow-y:auto;border:1px solid var(--border-soft);border-radius:10px;padding:4px;}
+.member-select-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s;}
+.member-select-row:hover{background:var(--surface-2);}
+.member-select-row input[type="checkbox"]{width:16px;height:16px;margin:0;flex-shrink:0;accent-color:var(--primary);cursor:pointer;}
+.member-select-name{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.member-select-role{flex-shrink:0;font-size:11px;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -1077,6 +1088,22 @@ tr:hover td{background:var(--surface-2);}
   </div>
 </div>
 
+<!-- TRAINEE-TO-TOT ASSIGNMENT MODAL (see PATCH /admin/students/:id/tots) -->
+<div class="modal-overlay" id="traineeTotsModal">
+  <div class="modal-box">
+    <button class="close-modal" onclick="closeTraineeTotsModal()">&times;</button>
+    <h3>Assigned TOT(s)</h3>
+    <p class="hint" style="margin:0 0 12px;">Choose which TOT(s) are responsible for <strong id="traineeTotsModalName"></strong>.</p>
+    <form id="traineeTotsForm">
+      <div id="traineeTotsList" class="member-select-list" style="max-height:280px;"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeTraineeTotsModal()">Cancel</button>
+        <button type="submit" class="btn">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- EDIT MEMBER (Master Trainer / Trainer (ToT) / Trainee) -->
 <div class="modal-overlay" id="editMemberModal">
   <div class="modal-box">
@@ -1523,12 +1550,17 @@ function renderGroupDetail() {
     <tr>
       <td>${escapeHtml(t.full_name)}</td>
       <td>${escapeHtml(t.member_code)}</td>
+      <td>
+        <span>${(t.tots || []).map((x) => escapeHtml(x.full_name)).join(", ") || "&mdash;"}</span>
+        <button class="icon-btn" title="Reassign TOT(s)" onclick="openTraineeTotsModal(${t.id}, ${g.id})"><i class="fa fa-pen"></i></button>
+      </td>
+      <td>${renderTraineeLifecycleSelect(t)}</td>
       <td><span class="pill ${t.status}">${escapeHtml(t.status)}</span></td>
       <td>${memberActions(t, "trainee")}</td>
     </tr>`
         )
         .join("")
-    : '<tr><td colspan="4" class="empty-state">No trainees.</td></tr>';
+    : '<tr><td colspan="6" class="empty-state">No trainees.</td></tr>';
 
   wrap.innerHTML = `
     <div class="group-header">
@@ -1561,11 +1593,75 @@ function renderGroupDetail() {
       <button class="btn btn-sm" style="width:auto;margin-top:0;" onclick="openAddTraineeModal(${g.id})"><i class="fa fa-plus"></i> Add Trainee</button>
     </div>
     <table>
-      <thead><tr><th>Name</th><th>ID</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>ID</th><th>Assigned TOT(s)</th><th>Status</th><th>Account Status</th><th></th></tr></thead>
       <tbody>${traineesRows}</tbody>
     </table>
   `;
 }
+
+// ---- Trainee lifecycle Status (administrative, Admin/Master Trainer only)
+// -- replaces the previous "Completion" figure elsewhere in the app, which
+// was actually an assignment-completion percentage. See
+// PATCH /admin/students/:id/status.
+const LIFECYCLE_STATUSES = ["active", "inactive", "on_hold", "withdrawn", "in_progress", "completed"];
+function lifecycleStatusLabel(v) {
+  return { active: "Active", inactive: "Inactive", on_hold: "On Hold", withdrawn: "Withdrawn", in_progress: "In Progress", completed: "Completed" }[v] || v;
+}
+function renderTraineeLifecycleSelect(t) {
+  return `<select onchange="updateTraineeLifecycleStatus(${t.id}, this.value)" style="width:auto;height:30px;">
+    ${LIFECYCLE_STATUSES.map((v) => `<option value="${v}" ${t.lifecycle_status === v ? "selected" : ""}>${lifecycleStatusLabel(v)}</option>`).join("")}
+  </select>`;
+}
+async function updateTraineeLifecycleStatus(studentId, status) {
+  const result = await apiRequest(`/admin/students/${studentId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (result) showToast("Status updated", "success");
+}
+
+// ---- Trainee-to-TOT assignment (Admin/Master Trainer only -- see
+// PATCH /admin/students/:id/tots). A trainee starts assigned to every TOT
+// in the Group automatically; this is the manual override.
+let traineeTotsModalStudentId = null;
+function openTraineeTotsModal(studentId, groupId) {
+  traineeTotsModalStudentId = studentId;
+  const g = allGroups.find((x) => x.id === groupId);
+  const trainee = g && g.trainees.find((x) => x.id === studentId);
+  if (!g || !trainee) return;
+  const assignedIds = new Set((trainee.tots || []).map((x) => x.id));
+  document.getElementById("traineeTotsModalName").textContent = trainee.full_name;
+  document.getElementById("traineeTotsList").innerHTML = g.trainers
+    .map(
+      (tr) => `
+    <label class="member-select-row">
+      <input type="checkbox" value="${tr.id}" class="trainee-tots-cb" ${assignedIds.has(tr.id) ? "checked" : ""}>
+      <span class="member-select-name">${escapeHtml(tr.full_name)}</span>
+      <span class="member-select-role">${escapeHtml(tr.member_code)}</span>
+    </label>`
+    )
+    .join("");
+  document.getElementById("traineeTotsModal").classList.add("show");
+}
+function closeTraineeTotsModal() {
+  document.getElementById("traineeTotsModal").classList.remove("show");
+  traineeTotsModalStudentId = null;
+}
+document.getElementById("traineeTotsForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const totIds = Array.from(document.querySelectorAll(".trainee-tots-cb:checked")).map((cb) => Number(cb.value));
+  const result = await apiRequest(`/admin/students/${traineeTotsModalStudentId}/tots`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ totIds }),
+  });
+  if (result) {
+    showToast("Trainee's assigned TOT(s) updated", "success");
+    closeTraineeTotsModal();
+    loadGroups();
+  }
+});
 
 function startGroupRename() {
   document.getElementById("gdNameView").style.display = "none";

@@ -10,6 +10,7 @@ const { checkFileContent } = require("../utils/fileTypeCheck");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
 const { createGroupSession } = require("../utils/groupSessions");
+const { createGroupTotSession } = require("../utils/groupTotSessions");
 
 const router = express.Router();
 
@@ -348,10 +349,14 @@ router.get(
                (SELECT COALESCE(SUM(tha.hours), 0) FROM trainee_hour_adjustments tha
                   WHERE tha.hour_type = 'supervision' AND tha.added_by = sup.id)) AS supervision_hours,
               (SELECT COALESCE((
-                 SELECT SUM(ts.duration_minutes) / 60 FROM tot_training_sessions ts
-                 JOIN tot_training_attendance ta ON ta.session_id = ts.id AND ta.status = 'present'
+                 SELECT SUM(CASE WHEN ta.status = 'partial' THEN ta.minutes_completed ELSE ts.duration_minutes END) / 60
+                 FROM tot_training_sessions ts
+                 JOIN tot_training_attendance ta ON ta.session_id = ts.id AND ta.status IN ('present', 'partial')
                  WHERE ts.tot_id = sup.id AND ts.status != 'cancelled'
                ), 0) + COALESCE((SELECT SUM(hours) FROM tot_hour_adjustments WHERE tot_id = sup.id), 0)) AS training_received_hours,
+              (SELECT COUNT(*) FROM tot_training_sessions ts
+                 JOIN tot_training_attendance ta ON ta.session_id = ts.id AND ta.status IN ('present', 'partial')
+                 WHERE ts.tot_id = sup.id AND ts.status != 'cancelled') AS sessions_attended,
               (SELECT MAX(al.created_at) FROM audit_logs al WHERE al.actor_id = sup.id) AS last_activity_at,
               (SELECT COUNT(*) FROM assignments a WHERE a.supervisor_id = sup.id) AS assignments_total,
               (SELECT COUNT(*) FROM assignments a WHERE a.supervisor_id = sup.id AND a.status = 'completed') AS assignments_completed,
@@ -450,12 +455,13 @@ router.get(
         const { rows: receivedRows } = await db.query(
             `SELECT
         COALESCE((
-          SELECT SUM(ts.duration_minutes) / 60 FROM tot_training_sessions ts
-          JOIN tot_training_attendance ta ON ta.session_id = ts.id AND ta.status = 'present'
+          SELECT SUM(CASE WHEN ta.status = 'partial' THEN ta.minutes_completed ELSE ts.duration_minutes END) / 60
+          FROM tot_training_sessions ts
+          JOIN tot_training_attendance ta ON ta.session_id = ts.id AND ta.status IN ('present', 'partial')
           WHERE ts.tot_id = ? AND ts.status != 'cancelled'
         ), 0) AS session_hours,
         COALESCE((SELECT SUM(hours) FROM tot_hour_adjustments WHERE tot_id = ?), 0) AS adjustment_hours,
-        (SELECT COUNT(CASE WHEN status = 'present' THEN 1 END) FROM tot_training_attendance WHERE tot_id = ?) AS sessions_attended,
+        (SELECT COUNT(CASE WHEN status IN ('present', 'partial') THEN 1 END) FROM tot_training_attendance WHERE tot_id = ?) AS sessions_attended,
         (SELECT COUNT(*) FROM tot_training_attendance WHERE tot_id = ?) AS sessions_total`,
             Array(4).fill(totId)
         );
@@ -793,7 +799,7 @@ router.get(
         if (!groupId) return noGroupResponse(res, { trainees: [] });
 
         const { rows } = await db.query(
-            `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.current_year, c.name AS cohort_name,
+            `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.current_year, st.lifecycle_status, c.name AS cohort_name,
               COALESCE(
                 (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', sup.id, 'fullName', sup.full_name))
                  FROM supervisor_students ss
@@ -881,6 +887,75 @@ router.get(
             documents: documents.map(toDocument),
             milestones,
         });
+    })
+);
+
+// PATCH /api/master-trainer/trainees/:studentId/tots  { totIds: [1,2] }
+// Sets exactly which TOT(s) in this Master Trainer's own Group are
+// responsible for one trainee (replaces the previous set for that trainee).
+// A trainee normally starts assigned to every TOT in the Group automatically
+// (see admin.js's linkTraineeToSupervisors) -- this is the manual override,
+// restricted to Admin/Master Trainer only (never a ToT, who has no route to
+// change their own or another ToT's caseload -- see supervisor.js's removed
+// POST/DELETE /students).
+router.patch(
+    "/trainees/:studentId/tots",
+    asyncRoute(async(req, res, db) => {
+        const { groupId, id: masterTrainerId } = req.masterTrainer;
+        const studentId = Number(req.params.studentId);
+        const student = await loadGroupStudent(db, groupId, studentId, res);
+        if (!student) return;
+
+        const totIds = Array.isArray(req.body && req.body.totIds) ? req.body.totIds.map(Number) : null;
+        if (!totIds) return res.status(400).json({ error: "totIds must be an array" });
+
+        const { rows: eligibleRows } = await db.query(
+            "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training'",
+            [groupId]
+        );
+        const eligibleIds = new Set(eligibleRows.map((r) => r.id));
+        if (totIds.some((id) => !eligibleIds.has(id))) {
+            return res.status(403).json({ error: "One or more selected TOTs are not in your Group" });
+        }
+
+        await db.query("DELETE FROM supervisor_students WHERE student_id = ?", [studentId]);
+        for (const totId of totIds) {
+            await db.query(
+                "INSERT INTO supervisor_students (supervisor_id, student_id, assigned_by) VALUES (?, ?, ?)",
+                [totId, studentId, masterTrainerId]
+            );
+        }
+        await db.query(
+            "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'trainee_tots_reassigned', 'supervisor_students', ?, ?)",
+            [masterTrainerId, studentId, JSON.stringify({ totIds })]
+        );
+        res.json({ success: true, totIds });
+    })
+);
+
+// PATCH /api/master-trainer/trainees/:studentId/status  { status: "on_hold" }
+// Sets the trainee's administrative lifecycle status (students.lifecycle_status).
+// Restricted to Admin/Master Trainer, same as the assignment route above.
+router.patch(
+    "/trainees/:studentId/status",
+    asyncRoute(async(req, res, db) => {
+        const { groupId, id: masterTrainerId } = req.masterTrainer;
+        const studentId = Number(req.params.studentId);
+        const student = await loadGroupStudent(db, groupId, studentId, res);
+        if (!student) return;
+
+        const { status } = req.body || {};
+        const ALLOWED = ["active", "inactive", "on_hold", "withdrawn", "in_progress", "completed"];
+        if (!ALLOWED.includes(status)) {
+            return res.status(400).json({ error: `status must be one of: ${ALLOWED.join(", ")}` });
+        }
+
+        await db.query("UPDATE students SET lifecycle_status = ? WHERE id = ?", [status, studentId]);
+        await db.query(
+            "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'trainee_status_updated', 'students', ?, ?)",
+            [masterTrainerId, studentId, JSON.stringify({ status })]
+        );
+        res.json({ success: true, status });
     })
 );
 
@@ -985,6 +1060,60 @@ router.post("/group-sessions", (req, res) => {
         });
     }
 });
+
+// POST /api/master-trainer/group-tot-sessions -- the TOT-level equivalent of
+// POST /group-sessions above: logs one Master-Trainer-delivered training
+// session for every selected TOT in this Master Trainer's own Group at
+// once, each TOT's own attendance/actual-hours set individually. Writes to
+// tot_training_sessions/tot_training_attendance (see "Training sessions the
+// Master Trainer conducts FOR a ToT" note at the top of this file) via
+// createGroupTotSession, the exact multi-attendee generalization of the
+// existing single-ToT POST /tots/:totId/sessions route above -- same
+// validation/INSERT shape, so the two can never compute hours differently.
+// No attachment/session type here, matching the single-ToT form (Master
+// Trainer -> ToT training was never typed by hour bucket).
+router.post(
+    "/group-tot-sessions",
+    asyncRoute(async (req, res, db) => {
+        const { groupId, id: masterTrainerId } = req.masterTrainer;
+        if (!groupId) return res.status(400).json({ error: "You don't have a Group assigned yet" });
+
+        const { title, date, time, durationMinutes, notes, attendance } = req.body || {};
+        if (!Array.isArray(attendance) || !attendance.length) {
+            return res.status(400).json({ error: "attendance must be a non-empty array" });
+        }
+
+        const { rows: eligibleRows } = await db.query(
+            "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training'",
+            [groupId]
+        );
+        const eligibleIds = new Set(eligibleRows.map((r) => r.id));
+        const invalid = attendance.filter((a) => !eligibleIds.has(Number(a.totId)));
+        if (invalid.length) {
+            return res.status(403).json({ error: "One or more selected TOTs are not in your Group" });
+        }
+
+        const result = await createGroupTotSession(db, {
+            masterTrainerId,
+            title,
+            date,
+            time,
+            durationMinutes,
+            notes,
+            attendance,
+        });
+        if (result.error) return res.status(400).json({ error: result.error });
+
+        for (const { totId, sessionId } of result.created) {
+            await db.query(
+                "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'tot_training_session_added', 'tot_training_sessions', ?, ?)",
+                [masterTrainerId, sessionId, JSON.stringify({ totId, durationMinutes: Number(durationMinutes), date })]
+            );
+        }
+
+        res.status(201).json({ created: result.created, skipped: attendance.length - result.created.length });
+    })
+);
 
 // ---- Group-wide monitoring lists -------------------------------------------
 
@@ -1872,6 +2001,67 @@ router.get(
             params
         );
         res.json({ events: rows });
+    })
+);
+
+// POST /api/master-trainer/calendar-events  { title, description, date, time, studentId, eventType }
+// Mirrors supervisor.js's ToT equivalent -- a Master Trainer creating their
+// own calendar entries (owner_id = their own id), optionally targeting one
+// trainee in their own Group.
+router.post(
+    "/calendar-events",
+    asyncRoute(async(req, res, db) => {
+        const { id: masterTrainerId, groupId } = req.masterTrainer;
+        const { title, description, date, time, studentId, eventType } = req.body || {};
+        if (!title || !date) return res.status(400).json({ error: "title and date are required" });
+
+        const type = ["session", "meeting", "assignment_deadline", "custom", "holiday"].includes(eventType) ? eventType : "custom";
+
+        if (studentId) {
+            const { rows: studentRows } = await db.query("SELECT id FROM students WHERE id = ? AND group_id = ?", [studentId, groupId]);
+            if (!studentRows.length) return res.status(403).json({ error: "This trainee is not in your Group" });
+        }
+
+        const insert = await db.query(
+            `INSERT INTO calendar_events (owner_id, student_id, event_type, title, description, event_date, event_time)
+       VALUES (?,?,?,?,?,?,?)`,
+            [masterTrainerId, studentId || null, type, title, description || null, date, time || null]
+        );
+        const { rows } = await db.query("SELECT * FROM calendar_events WHERE id = ?", [insert.insertId]);
+        res.status(201).json(rows[0]);
+    })
+);
+
+// PUT /api/master-trainer/calendar-events/:id
+router.put(
+    "/calendar-events/:id",
+    asyncRoute(async(req, res, db) => {
+        const { id: masterTrainerId } = req.masterTrainer;
+        const eventId = req.params.id;
+        const { rows: existingRows } = await db.query("SELECT * FROM calendar_events WHERE id = ? AND owner_id = ?", [eventId, masterTrainerId]);
+        if (!existingRows.length) return res.status(404).json({ error: "Event not found" });
+
+        const { title, description, date, time } = req.body || {};
+        await db.query(
+            `UPDATE calendar_events SET
+        title = COALESCE(?, title), description = COALESCE(?, description),
+        event_date = COALESCE(?, event_date), event_time = COALESCE(?, event_time)
+       WHERE id = ?`,
+            [title ?? null, description ?? null, date ?? null, time ?? null, eventId]
+        );
+        const { rows } = await db.query("SELECT * FROM calendar_events WHERE id = ?", [eventId]);
+        res.json(rows[0]);
+    })
+);
+
+// DELETE /api/master-trainer/calendar-events/:id
+router.delete(
+    "/calendar-events/:id",
+    asyncRoute(async(req, res, db) => {
+        const { id: masterTrainerId } = req.masterTrainer;
+        const { affectedRows } = await db.query("DELETE FROM calendar_events WHERE id = ? AND owner_id = ?", [req.params.id, masterTrainerId]);
+        if (!affectedRows) return res.status(404).json({ error: "Event not found" });
+        res.json({ success: true });
     })
 );
 

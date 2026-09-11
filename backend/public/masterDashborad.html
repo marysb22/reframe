@@ -2856,8 +2856,8 @@
                 <ul>
                     <li><a data-section="dashboard" class="active" href="#dashboard"><i class="fa fa-gauge"></i>Dashboard</a></li>
                     <li><a data-section="library" href="#library"><i class="fa fa-building-columns"></i>Library</a></li>
-                    <li><a data-section="group" href="#group"><i class="fa fa-diagram-project"></i>My Group</a></li>
-                    <li><a data-section="tots" href="#tots"><i class="fa fa-user-tie"></i>My ToTs</a></li>
+                    <li><a data-section="group" href="#group"><i class="fa fa-diagram-project"></i>Groups</a></li>
+                    <li><a data-section="tots" href="#tots"><i class="fa fa-user-tie"></i>TOTs</a></li>
                     <li><a data-section="trainees" href="#trainees"><i class="fa fa-user-graduate"></i>Trainee Profiles</a></li>
                     <li><a data-section="calendar" href="#calendar"><i class="fa fa-calendar"></i>Calendar</a></li>
                 </ul>
@@ -2865,7 +2865,7 @@
                 <ul>
                     <li><a data-section="group-chats" href="#group-chats"><i class="fa fa-people-group"></i>Group Chats</a></li>
                 </ul>
-                <div class="nav-label">Monitoring</div>
+                <div class="nav-label">Session Monitoring</div>
                 <ul>
                     <li><a data-section="meetings" href="#meetings"><i class="fa fa-video"></i>Meetings</a></li>
                     <li><a data-section="materials" href="#materials"><i class="fa fa-book-open"></i>Materials</a></li>
@@ -3025,32 +3025,38 @@
             <!-- ============================================================= -->
             <!-- MY GROUP                                                       -->
             <!-- ============================================================= -->
-            <section class="dash-section" id="section-group" data-title="My Group" data-eyebrow="Workspace">
+            <section class="dash-section" id="section-group" data-title="Groups" data-eyebrow="Workspace">
                 <section class="system-card">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-diagram-project"></i>
-                            <h2 id="groupNameHeading">My Group</h2>
+                            <h2 id="groupNameHeading">Groups</h2>
                         </div>
                         <span class="mt-scope-badge" id="groupScopeBadge"><i class="fa fa-shield-halved"></i> Scoped to your group only</span>
                     </div>
-                    <p class="card-subtitle">Your Group is assigned by the Admin. Trainers in Training and trainees shown across this dashboard are always limited to this Group.</p>
+                    <p class="card-subtitle">Groups are assigned by the admin. Trainers and trainees are displayed separately within each group.</p>
+                    <h3 style="margin:18px 0 8px;font-size:14px;">TOTs</h3>
                     <div id="groupTotsList">
+                        <div class="empty-state">Loading group...</div>
+                    </div>
+                    <h3 style="margin:22px 0 8px;font-size:14px;">Trainees</h3>
+                    <div id="groupTraineesList">
                         <div class="empty-state">Loading group...</div>
                     </div>
                 </section>
             </section>
 
             <!-- ============================================================= -->
-            <!-- MY TOTS                                                        -->
+            <!-- TOTS                                                           -->
             <!-- ============================================================= -->
-            <section class="dash-section" id="section-tots" data-title="My ToTs" data-eyebrow="Workspace">
+            <section class="dash-section" id="section-tots" data-title="TOTs" data-eyebrow="Workspace">
                 <section class="system-card">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-user-tie"></i>
-                            <h2>My Trainers in Training</h2>
+                            <h2>Trainers in Training</h2>
                         </div>
+                        <button class="btn" onclick="openGroupTotSessionModal()"><i class="fa fa-people-group"></i>Add Session</button>
                     </div>
-                    <p class="card-subtitle">Open a Trainer to see their trainees, training activities, hours, documents, materials, meetings and recent activity.</p>
+                    <p class="card-subtitle">Open a Trainer to see their trainees, training activities, hours, documents, materials, meetings and recent activity. "Add Session" logs one training session you delivered to your whole Group of TOTs at once, with attendance set individually per TOT.</p>
                     <div class="toolbar">
                         <input type="text" id="totSearch" placeholder="Search by name or ID...">
                     </div>
@@ -3063,7 +3069,8 @@
                                 <th>Training Activities</th>
                                 <th>Hours delivered</th>
                                 <th>Hours received</th>
-                                <th>Completion</th>
+                                <th>Sessions Attended</th>
+                                <th>Assignments Completed</th>
                                 <th>Attendance</th>
                                 <th>Status</th>
                                 <th></th>
@@ -3071,7 +3078,7 @@
                         </thead>
                         <tbody id="totsBody">
                             <tr class="loading-row">
-                                <td colspan="9">Loading trainers...</td>
+                                <td colspan="11">Loading trainers...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -3100,7 +3107,6 @@
                         </select>
                         <select id="traineeSort">
                             <option value="name">Sort: Name</option>
-                            <option value="completion">Sort: Completion %</option>
                             <option value="attendance">Sort: Attendance %</option>
                         </select>
                     </div>
@@ -3112,9 +3118,9 @@
                                 <th>Cohort</th>
                                 <th>Year</th>
                                 <th>Assigned ToT(s)</th>
-                                <th>Completion</th>
-                                <th>Attendance</th>
                                 <th>Status</th>
+                                <th>Attendance</th>
+                                <th>Account Status</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -3171,6 +3177,7 @@
                         <div class="card-title-left"><i class="fa fa-calendar"></i>
                             <h2>Calendar</h2>
                         </div>
+                        <button class="btn" onclick="openAddEventModal()"><i class="fa fa-plus"></i>Add Event</button>
                     </div>
                     <div class="cal-topbar">
                         <h3 class="cal-title" id="calTitle">&mdash;</h3>
@@ -3622,7 +3629,7 @@
                 <section class="system-card">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-id-card-clip"></i>
-                            <h2>Your Trainers in Training</h2>
+                            <h2>Trainers in Training</h2>
                         </div>
                     </div>
                     <p class="card-subtitle">Read-only professional profiles. Only sections with actual information are shown.</p>
@@ -3711,13 +3718,86 @@
                 <label>Notes <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
                 <textarea id="gsNotes"></textarea>
 
-                <label style="margin-top:14px;">Attendance <span style="font-weight:400;color:var(--muted);">(your Group's trainees, loaded automatically)</span></label>
+                <label style="margin-top:14px;">Attendance <span style="font-weight:400;color:var(--muted);">(everyone in your Group is checked in by default -- untick anyone absent, or enter their actual hours if they only attended part of the session)</span></label>
                 <div id="gsAttendanceList" class="member-select-list" style="max-height:320px;">
                     <div class="empty-state">Loading trainees...</div>
                 </div>
 
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('groupSessionModal')">Cancel</button>
+                    <button type="submit" class="btn">Save Session</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD CALENDAR EVENT MODAL -->
+    <div class="modal-overlay" id="addEventModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('addEventModal')">&times;</button>
+            <h3>Add Event</h3>
+            <form id="addEventForm">
+                <label>Title</label>
+                <input type="text" id="evTitle" required>
+                <label>Date</label>
+                <input type="date" id="evDate" required>
+                <label>Time <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+                <input type="time" id="evTime">
+                <label>Description <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+                <textarea id="evDescription"></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addEventModal')">Cancel</button>
+                    <button type="submit" class="btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TRAINEE-TO-TOT ASSIGNMENT MODAL (Admin/Master Trainer only -- see
+         PATCH /master-trainer/trainees/:id/tots) -->
+    <div class="modal-overlay" id="traineeTotsModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('traineeTotsModal')">&times;</button>
+            <h3>Assigned TOT(s)</h3>
+            <p class="card-subtitle" style="margin-top:0;">Choose which TOT(s) are responsible for <strong id="traineeTotsModalName"></strong>.</p>
+            <form id="traineeTotsForm">
+                <div id="traineeTotsList" class="member-select-list" style="max-height:280px;"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('traineeTotsModal')">Cancel</button>
+                    <button type="submit" class="btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD SESSION (TOT-level, one training session you personally
+         delivered to every TOT in your Group at once, attendance set
+         individually per TOT -- see POST /master-trainer/group-tot-sessions).
+         Unrelated to the trainee-level groupSessionModal above, and to the
+         single-TOT "Training Provided" tab inside the ToT detail modal,
+         which stays as-is. -->
+    <div class="modal-overlay" id="groupTotSessionModal">
+        <div class="modal-box wide">
+            <button class="close-modal" onclick="closeModal('groupTotSessionModal')">&times;</button>
+            <h3>Add Session</h3>
+            <p class="card-subtitle" style="margin-top:0;">Logs one training session you delivered to your whole Group of TOTs at once. Attendance and actual hours are set per TOT below before saving.</p>
+            <form id="groupTotSessionForm">
+                <div class="record-form-grid">
+                    <div><label>Session Title</label><input type="text" id="gtsTitle" required></div>
+                    <div><label>Date</label><input type="date" id="gtsDate" required></div>
+                    <div><label>Starting Time <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="time" id="gtsTime"></div>
+                    <div><label>Number of Hours</label><input type="number" min="0" step="0.25" id="gtsHours" required></div>
+                </div>
+                <label>Notes <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+                <textarea id="gtsNotes"></textarea>
+
+                <label style="margin-top:14px;">Attendance <span style="font-weight:400;color:var(--muted);">(everyone in your Group is checked in by default -- untick anyone absent, or enter their actual hours if they only attended part of the session)</span></label>
+                <div id="gtsAttendanceList" class="member-select-list" style="max-height:320px;">
+                    <div class="empty-state">Loading TOTs...</div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('groupTotSessionModal')">Cancel</button>
                     <button type="submit" class="btn">Save Session</button>
                 </div>
             </form>
@@ -4273,9 +4353,8 @@
             document.getElementById("groupNameHeading").textContent = data.groupLabel;
             if (!data.tots.length) {
                 wrap.innerHTML = '<div class="empty-state">No Trainers in Training assigned to your Group yet.</div>';
-                return;
-            }
-            wrap.innerHTML = data.tots.map((t) => `
+            } else {
+                wrap.innerHTML = data.tots.map((t) => `
         <div class="mt-tot-card" onclick="openTot(${t.id})">
           <div class="avatar-circle">${escapeHtml(initials(t.full_name))}</div>
           <div style="flex:1;min-width:0;">
@@ -4287,6 +4366,31 @@
             </div>
           </div>
           <span class="pill ${t.status}">${escapeHtml(t.status)}</span>
+        </div>`).join("");
+            }
+
+            // Trainees are displayed separately within the same Group view
+            // (fetched fresh here rather than relying on the lazily-loaded
+            // Trainee Profiles section's own `allTrainees`, since the two
+            // sections can be opened in either order).
+            const traineesWrap = document.getElementById("groupTraineesList");
+            traineesWrap.innerHTML = '<div class="empty-state">Loading trainees...</div>';
+            const traineeData = await apiRequest("/master-trainer/trainees");
+            if (!traineeData) return;
+            if (!traineeData.trainees.length) {
+                traineesWrap.innerHTML = '<div class="empty-state">No trainees in your Group yet.</div>';
+                return;
+            }
+            traineesWrap.innerHTML = traineeData.trainees.map((s) => `
+        <div class="mt-tot-card" onclick="openTrainee(${s.id})">
+          <div class="avatar-circle">${escapeHtml(initials(s.full_name))}</div>
+          <div style="flex:1;min-width:0;">
+            <strong>${escapeHtml(s.full_name)}</strong>
+            <div class="mt-tot-stats">
+              <span>${escapeHtml(s.member_code)}</span>
+            </div>
+          </div>
+          <span class="pill ${s.lifecycle_status}">${escapeHtml(s.lifecycle_status)}</span>
         </div>`).join("");
         }
 
@@ -4302,11 +4406,11 @@
             const filtered = allTots.filter((t) => (t.full_name || "").toLowerCase().includes(search) || (t.member_code || "").toLowerCase().includes(search));
             const body = document.getElementById("totsBody");
             if (!allTots.length) {
-                body.innerHTML = '<tr><td colspan="10" class="empty-state">No Trainers in Training in your Group yet.</td></tr>';
+                body.innerHTML = '<tr><td colspan="11" class="empty-state">No Trainers in Training in your Group yet.</td></tr>';
                 return;
             }
             if (!filtered.length) {
-                body.innerHTML = '<tr><td colspan="10" class="empty-state">No trainers match your search.</td></tr>';
+                body.innerHTML = '<tr><td colspan="11" class="empty-state">No trainers match your search.</td></tr>';
                 return;
             }
             body.innerHTML = filtered.map((t) => `
@@ -4317,6 +4421,7 @@
           <td>${t.session_count}</td>
           <td>${Math.round((Number(t.training_hours || 0) + Number(t.supervision_hours || 0)) * 10) / 10}</td>
           <td>${Math.round(Number(t.training_received_hours || 0) * 10) / 10}</td>
+          <td>${t.sessions_attended}</td>
           <td>${fmtPct(t.completion_pct)}</td>
           <td>${fmtPct(t.attendance_rate)}</td>
           <td><span class="pill ${t.status}">${escapeHtml(t.status)}</span></td>
@@ -4391,7 +4496,7 @@
         function renderTotTabs() {
             const tabs = [
                 ["trainees", "Trainees"],
-                ["training", "Training I gave"],
+                ["training", "Training Provided"],
                 ["records", "Recent records"],
                 ["documents", "Documents"],
                 ["materials", "Materials"],
@@ -4900,9 +5005,7 @@
                 if (statusFilter && s.status !== statusFilter) return false;
                 return true;
             });
-            if (sortBy === "completion") {
-                filtered = [...filtered].sort((a, b) => (b.completion_pct ?? -1) - (a.completion_pct ?? -1));
-            } else if (sortBy === "attendance") {
+            if (sortBy === "attendance") {
                 filtered = [...filtered].sort((a, b) => (b.attendance_rate ?? -1) - (a.attendance_rate ?? -1));
             } else {
                 filtered = [...filtered].sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
@@ -4923,8 +5026,11 @@
           <td>${escapeHtml(s.member_code)}</td>
           <td>${escapeHtml(s.cohort_name || "&mdash;")}</td>
           <td>${s.current_year ? "Year " + s.current_year : "&mdash;"}</td>
-          <td>${(s.tots || []).map((t) => escapeHtml(t.fullName)).join(", ") || "&mdash;"}</td>
-          <td>${fmtPct(s.completion_pct)}</td>
+          <td>
+            <span>${(s.tots || []).map((t) => escapeHtml(t.fullName)).join(", ") || "&mdash;"}</span>
+            <button class="icon-btn" title="Reassign TOT(s)" onclick="openTraineeTotsModal(${s.id})"><i class="fa fa-pen"></i></button>
+          </td>
+          <td>${renderTraineeLifecycleSelect(s)}</td>
           <td>${fmtPct(s.attendance_rate)}</td>
           <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td>
           <td><button class="icon-btn" title="Open profile" onclick="openTrainee(${s.id})"><i class="fa fa-eye"></i></button></td>
@@ -4934,6 +5040,72 @@
         document.getElementById("traineeTotFilter").addEventListener("change", renderTrainees);
         document.getElementById("traineeStatusFilter").addEventListener("change", renderTrainees);
         document.getElementById("traineeSort").addEventListener("change", renderTrainees);
+
+        // ---- Trainee lifecycle Status (administrative, Admin/Master Trainer
+        // only) -- replaces the previous "Completion" figure, which was
+        // actually an assignment-completion percentage and misleading as a
+        // lifecycle indicator (see the TOTs table's "Assignments Completed"
+        // column for that same figure, correctly labeled). See
+        // PATCH /master-trainer/trainees/:id/status.
+        const LIFECYCLE_STATUSES = ["active", "inactive", "on_hold", "withdrawn", "in_progress", "completed"];
+        function lifecycleStatusLabel(v) {
+            return { active: "Active", inactive: "Inactive", on_hold: "On Hold", withdrawn: "Withdrawn", in_progress: "In Progress", completed: "Completed" }[v] || v;
+        }
+        function renderTraineeLifecycleSelect(s) {
+            return `<select onchange="updateTraineeLifecycleStatus(${s.id}, this.value)" style="width:auto;height:30px;">
+        ${LIFECYCLE_STATUSES.map((v) => `<option value="${v}" ${s.lifecycle_status === v ? "selected" : ""}>${lifecycleStatusLabel(v)}</option>`).join("")}
+      </select>`;
+        }
+        async function updateTraineeLifecycleStatus(studentId, status) {
+            const result = await apiRequest(`/master-trainer/trainees/${studentId}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status }),
+            });
+            if (result) {
+                showToast("Status updated", "success");
+                const trainee = allTrainees.find((t) => t.id === studentId);
+                if (trainee) trainee.lifecycle_status = status;
+            }
+        }
+
+        // ---- Trainee-to-TOT assignment (Admin/Master Trainer only, never a
+        // ToT -- see PATCH /master-trainer/trainees/:id/tots). A trainee
+        // starts assigned to every TOT in the Group automatically; this is
+        // the manual override.
+        let traineeTotsModalStudentId = null;
+        function openTraineeTotsModal(studentId) {
+            traineeTotsModalStudentId = studentId;
+            const trainee = allTrainees.find((t) => t.id === studentId);
+            if (!trainee) return;
+            const assignedIds = new Set((trainee.tots || []).map((t) => t.id));
+            document.getElementById("traineeTotsModalName").textContent = trainee.full_name;
+            document.getElementById("traineeTotsList").innerHTML = allTots
+                .map(
+                    (t) => `
+        <label class="member-select-row">
+          <input type="checkbox" value="${t.id}" class="trainee-tots-cb" ${assignedIds.has(t.id) ? "checked" : ""}>
+          <span class="member-select-name">${escapeHtml(t.full_name)}</span>
+          <span class="member-select-role">${escapeHtml(t.member_code)}</span>
+        </label>`
+                )
+                .join("");
+            openModal("traineeTotsModal");
+        }
+        document.getElementById("traineeTotsForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const totIds = Array.from(document.querySelectorAll(".trainee-tots-cb:checked")).map((cb) => Number(cb.value));
+            const result = await apiRequest(`/master-trainer/trainees/${traineeTotsModalStudentId}/tots`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ totIds }),
+            });
+            if (result) {
+                showToast("Trainee's assigned TOT(s) updated", "success");
+                closeModal("traineeTotsModal");
+                loadTrainees();
+            }
+        });
 
         // ---- Add Session (group-wide: one activity for every trainee in
         // your Group at once, attendance + actual hours set individually
@@ -4963,23 +5135,23 @@
                 .map(
                     (s) => `
         <div class="member-select-row" style="align-items:center;flex-wrap:wrap;">
+          <input type="checkbox" class="gs-att-check" data-student-id="${s.id}" checked onchange="toggleGsPartialHours(${s.id}, this.checked)">
           <span class="member-select-name" style="flex:1 1 180px;">${escapeHtml(s.full_name)}</span>
           <span class="member-select-role" style="flex-shrink:0;">${escapeHtml(s.member_code)}</span>
-          <select class="gs-att-status" data-student-id="${s.id}" onchange="toggleGsPartialHours(${s.id}, this.value)" style="width:auto;height:34px;">
-            <option value="present">Present</option>
-            <option value="absent">Absent</option>
-            <option value="excused">Excused</option>
-            <option value="partial">Partial</option>
-          </select>
-          <input type="number" min="0" step="0.25" class="gs-att-hours" data-student-id="${s.id}" placeholder="Hours attended" style="width:110px;height:34px;display:none;">
+          <input type="number" min="0" step="0.25" class="gs-att-hours" data-student-id="${s.id}" placeholder="Actual hours (if partial)" style="width:160px;height:34px;">
         </div>`
                 )
                 .join("");
         }
 
-        function toggleGsPartialHours(studentId, status) {
+        // A checked trainee stays present/partial (a blank or full-duration
+        // hours field means "present"); unchecking disables and clears their
+        // hours field since an absent trainee has none.
+        function toggleGsPartialHours(studentId, checked) {
             const input = document.querySelector(`.gs-att-hours[data-student-id="${studentId}"]`);
-            if (input) input.style.display = status === "partial" ? "" : "none";
+            if (!input) return;
+            input.disabled = !checked;
+            if (!checked) input.value = "";
         }
 
         document.getElementById("groupSessionForm").addEventListener("submit", async (e) => {
@@ -4989,22 +5161,28 @@
             const hours = Number(document.getElementById("gsHours").value);
             const durationMinutes = Math.round(hours * 60);
 
-            const attendance = Array.from(document.querySelectorAll(".gs-att-status")).map((sel) => {
-                const studentId = Number(sel.dataset.studentId);
-                const status = sel.value;
-                const entry = { studentId, status };
-                if (status === "partial") {
-                    const hoursInput = document.querySelector(`.gs-att-hours[data-student-id="${studentId}"]`);
-                    const attendedHours = hoursInput && hoursInput.value ? Number(hoursInput.value) : null;
-                    if (attendedHours == null || Number.isNaN(attendedHours)) {
-                        showToast("Enter actual hours attended for a Partial trainee", "error");
-                        return null;
-                    }
-                    entry.minutesCompleted = Math.round(attendedHours * 60);
+            // Session/activity duration is never applied to everyone blindly --
+            // each trainee's actual hours come only from what's entered for
+            // them here.
+            let hadError = false;
+            const attendance = Array.from(document.querySelectorAll(".gs-att-check")).map((cb) => {
+                const studentId = Number(cb.dataset.studentId);
+                if (!cb.checked) return { studentId, status: "absent" };
+
+                const hoursInput = document.querySelector(`.gs-att-hours[data-student-id="${studentId}"]`);
+                const raw = hoursInput && hoursInput.value.trim();
+                if (!raw) return { studentId, status: "present" };
+
+                const attendedHours = Number(raw);
+                if (!Number.isFinite(attendedHours) || attendedHours < 0) {
+                    showToast("Enter a valid number of hours attended, or leave it blank for full attendance", "error");
+                    hadError = true;
+                    return null;
                 }
-                return entry;
+                if (attendedHours >= hours) return { studentId, status: "present" };
+                return { studentId, status: "partial", minutesCompleted: Math.round(attendedHours * 60) };
             });
-            if (attendance.includes(null)) return;
+            if (hadError) return;
 
             const attachmentFile = document.getElementById("gsAttachment").files[0];
             const payload = {
@@ -5042,6 +5220,94 @@
                 loadAllSessions();
                 loadSchedule();
                 loadDashboardHours();
+            }
+        });
+
+        // ---- Add Session (TOT-level: one session you personally delivered
+        // to every TOT in your Group at once, attendance + actual hours set
+        // individually per TOT). See POST /master-trainer/group-tot-sessions.
+        // "Select all TOTs" is simply this Group's full roster, checked by
+        // default -- a Master Trainer only ever has one Group, so there is
+        // no separate "all groups" scope to offer.
+        function openGroupTotSessionModal() {
+            const form = document.getElementById("groupTotSessionForm");
+            form.reset();
+            renderGroupTotAttendanceList();
+            openModal("groupTotSessionModal");
+        }
+
+        function renderGroupTotAttendanceList() {
+            const wrap = document.getElementById("gtsAttendanceList");
+            if (!allTots.length) {
+                wrap.innerHTML = '<div class="empty-state">No Trainers in Training in your Group yet.</div>';
+                return;
+            }
+            wrap.innerHTML = allTots
+                .map(
+                    (t) => `
+        <div class="member-select-row" style="align-items:center;flex-wrap:wrap;">
+          <input type="checkbox" class="gts-att-check" data-tot-id="${t.id}" checked onchange="toggleGtsPartialHours(${t.id}, this.checked)">
+          <span class="member-select-name" style="flex:1 1 180px;">${escapeHtml(t.full_name)}</span>
+          <span class="member-select-role" style="flex-shrink:0;">${escapeHtml(t.member_code)}</span>
+          <input type="number" min="0" step="0.25" class="gts-att-hours" data-tot-id="${t.id}" placeholder="Actual hours (if partial)" style="width:160px;height:34px;">
+        </div>`
+                )
+                .join("");
+        }
+
+        function toggleGtsPartialHours(totId, checked) {
+            const input = document.querySelector(`.gts-att-hours[data-tot-id="${totId}"]`);
+            if (!input) return;
+            input.disabled = !checked;
+            if (!checked) input.value = "";
+        }
+
+        document.getElementById("groupTotSessionForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const hours = Number(document.getElementById("gtsHours").value);
+            const durationMinutes = Math.round(hours * 60);
+
+            let hadError = false;
+            const attendance = Array.from(document.querySelectorAll(".gts-att-check")).map((cb) => {
+                const totId = Number(cb.dataset.totId);
+                if (!cb.checked) return { totId, status: "absent" };
+
+                const hoursInput = document.querySelector(`.gts-att-hours[data-tot-id="${totId}"]`);
+                const raw = hoursInput && hoursInput.value.trim();
+                if (!raw) return { totId, status: "present" };
+
+                const attendedHours = Number(raw);
+                if (!Number.isFinite(attendedHours) || attendedHours < 0) {
+                    showToast("Enter a valid number of hours attended, or leave it blank for full attendance", "error");
+                    hadError = true;
+                    return null;
+                }
+                if (attendedHours >= hours) return { totId, status: "present" };
+                return { totId, status: "partial", minutesCompleted: Math.round(attendedHours * 60) };
+            });
+            if (hadError) return;
+
+            const result = await apiRequest("/master-trainer/group-tot-sessions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: document.getElementById("gtsTitle").value,
+                    date: document.getElementById("gtsDate").value,
+                    time: document.getElementById("gtsTime").value || undefined,
+                    durationMinutes,
+                    notes: document.getElementById("gtsNotes").value || undefined,
+                    attendance,
+                }),
+            });
+
+            if (result) {
+                showSuccessNotification(
+                    "Session Saved",
+                    `Logged for ${result.created.length} TOT${result.created.length === 1 ? "" : "s"}${result.skipped ? ` (${result.skipped} skipped as a likely duplicate)` : ""}.`
+                );
+                closeModal("groupTotSessionModal");
+                loadTots();
             }
         });
 
@@ -6277,8 +6543,36 @@
                     if (m.scheduled_at) calItems.push({ date: String(m.scheduled_at).slice(0, 10), title: m.title, type: "meeting" });
                 });
             }
+            const events = await apiRequest("/master-trainer/calendar-events");
+            if (events && events.events) {
+                events.events.forEach((ev) => calItems.push({ date: ev.event_date, title: ev.title, type: "custom" }));
+            }
             renderCalendar();
         }
+
+        function openAddEventModal() {
+            document.getElementById("addEventForm").reset();
+            openModal("addEventModal");
+        }
+
+        document.getElementById("addEventForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const result = await apiRequest("/master-trainer/calendar-events", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: document.getElementById("evTitle").value.trim(),
+                    date: document.getElementById("evDate").value,
+                    time: document.getElementById("evTime").value || undefined,
+                    description: document.getElementById("evDescription").value.trim() || undefined,
+                }),
+            });
+            if (result) {
+                showToast("Event added", "success");
+                closeModal("addEventModal");
+                loadCalendar();
+            }
+        });
 
         function renderCalendar() {
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
