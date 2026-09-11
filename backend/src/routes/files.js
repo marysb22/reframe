@@ -178,6 +178,23 @@ const AUTHORIZERS = {
     return false;
   },
 
+  // Training/supervision activity attachments (the group-based "Add
+  // Session" flow) -- same ownership shape as assignments above: the
+  // trainee it's for, or the exact supervisor (ToT/Master Trainer) who
+  // logged it.
+  sessions: async (user, filename) => {
+    const { rows } = await pool.query(
+      "SELECT student_id, supervisor_id FROM sessions WHERE attachment_filename = ?",
+      [filename]
+    );
+    if (!rows.length) return false;
+    const { student_id: studentId, supervisor_id: supervisorId } = rows[0];
+    if (user.role === "admin") return true;
+    if (user.role === "trainee") return Number(user.id) === studentId;
+    if (user.role === "supervisor") return Number(user.id) === supervisorId;
+    return false;
+  },
+
   chat: async (user, filename) => {
     const { rows } = await pool.query("SELECT room_id FROM chat_room_messages WHERE attachment_filename = ?", [
       filename,

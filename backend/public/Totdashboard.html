@@ -3014,14 +3014,13 @@
                 <ul>
                     <li><a data-section="dashboard" class="active" href="#dashboard"><i class="fa fa-gauge"></i>Dashboard</a></li>
                     <li><a data-section="library" href="#library"><i class="fa fa-building-columns"></i>Library</a></li>
-                    <li><a data-section="students" href="#students"><i class="fa fa-user-graduate"></i>Assigned Group</a></li>
+                    <li><a data-section="students" href="#students"><i class="fa fa-user-graduate"></i>Trainee Profiles</a></li>
                     <li><a data-section="calendar" href="#calendar"><i class="fa fa-calendar"></i>Calendar</a></li>
                 </ul>
                 <div class="nav-label">Training</div>
                 <ul>
                     <li><a data-section="materials" href="#materials"><i class="fa fa-book-open"></i>Learning materials</a></li>
                     <li><a data-section="assignments" href="#assignments"><i class="fa fa-list-check"></i>Assignments</a></li>
-                    <li><a data-section="sessions" href="#sessions"><i class="fa fa-chalkboard-user"></i>Training Activities</a></li>
                     <li><a data-section="meetings" href="#meetings"><i class="fa fa-video"></i>Meetings</a></li>
                 </ul>
                 <div class="nav-label">Communication</div>
@@ -3151,15 +3150,18 @@
             <!-- ============================================================= -->
             <!-- MY STUDENTS                                                    -->
             <!-- ============================================================= -->
-            <section class="dash-section" id="section-students" data-title="Assigned Group" data-eyebrow="Caseload">
+            <section class="dash-section" id="section-students" data-title="Trainee Profiles" data-eyebrow="Caseload">
                 <section class="system-card">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-user-graduate"></i>
-                            <h2>Assigned Group</h2>
+                            <h2>Trainee Profiles</h2>
                         </div>
-                        <button class="btn" onclick="openAssignModal()"><i class="fa fa-plus"></i>Assign trainee by ID</button>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn btn-secondary" onclick="openAssignModal()"><i class="fa fa-plus"></i>Assign trainee by ID</button>
+                            <button class="btn" onclick="openGroupSessionModal()"><i class="fa fa-people-group"></i>Add Session</button>
+                        </div>
                     </div>
-                    <p class="card-subtitle">Only Admin can create Trainee IDs. Assign an existing ID to add that trainee to your caseload.</p>
+                    <p class="card-subtitle">Only Admin can create Trainee IDs. Assign an existing ID to add that trainee to your caseload. "Add Session" logs one training/supervision activity for your whole Group at once, with attendance set individually per trainee.</p>
 
                     <div class="toolbar">
                         <input type="text" id="studentSearch" placeholder="Search by name or trainee ID...">
@@ -3179,6 +3181,39 @@
                         <tbody id="studentsBody">
                             <tr class="loading-row">
                                 <td colspan="6">Loading trainees...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-chalkboard-user"></i>
+                            <h2>Training Activities</h2>
+                        </div>
+                        <button class="btn btn-secondary" onclick="openSessionModal()"><i class="fa fa-plus"></i>Log Single Activity</button>
+                    </div>
+                    <p class="card-subtitle">Training and supervision activity across your whole caseload. "Log Single Activity" logs one trainee at a time; "Add Session" above covers your whole Group in one go.</p>
+                    <div class="toolbar">
+                        <input type="text" id="sessionSearch" placeholder="Search by title or trainee...">
+                        <select id="sessionTypeFilter">
+<option value="">All types</option>
+</select>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Trainee</th>
+                                <th>Type</th>
+                                <th>Date &amp; time</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsBody">
+                            <tr class="loading-row">
+                                <td colspan="6">Loading training activities...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -3398,44 +3433,6 @@
                         <tbody id="assignmentsBody">
                             <tr class="loading-row">
                                 <td colspan="7">Loading assignments...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </section>
-            </section>
-
-            <!-- ============================================================= -->
-            <!-- SESSIONS                                                       -->
-            <!-- ============================================================= -->
-            <section class="dash-section" id="section-sessions" data-title="Training Activities" data-eyebrow="Training">
-                <section class="system-card">
-                    <div class="card-title">
-                        <div class="card-title-left"><i class="fa fa-chalkboard-user"></i>
-                            <h2>Training Activities</h2>
-                        </div>
-                        <button class="btn" onclick="openSessionModal()"><i class="fa fa-plus"></i>Log Training Activity</button>
-                    </div>
-                    <p class="card-subtitle">Training and supervision activity across your whole caseload. Attendance and hours can still be logged from each trainee's profile.</p>
-                    <div class="toolbar">
-                        <input type="text" id="sessionSearch" placeholder="Search by title or trainee...">
-                        <select id="sessionTypeFilter">
-<option value="">All types</option>
-</select>
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Trainee</th>
-                                <th>Type</th>
-                                <th>Date &amp; time</th>
-                                <th>Duration</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sessionsBody">
-                            <tr class="loading-row">
-                                <td colspan="6">Loading training activities...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -3889,6 +3886,41 @@
         </div>
     </div>
 
+    <!-- ADD SESSION (group-wide, one activity for every trainee in your
+         caseload/Group at once, attendance set individually per trainee --
+         see POST /supervisor/group-sessions). The single-trainee
+         "Log Single Activity" modal above is unchanged and still the place
+         for one trainee at a time. -->
+    <div class="modal-overlay" id="groupSessionModal">
+        <div class="modal-box wide">
+            <button class="close-modal" onclick="closeModal('groupSessionModal')">&times;</button>
+            <h3>Add Session</h3>
+            <p class="card-subtitle" style="margin-top:0;">Logs one training/supervision activity for your whole Group at once. Attendance and actual hours are set per trainee below before saving.</p>
+            <form id="groupSessionForm">
+                <div class="record-form-grid">
+                    <div><label>Session Title</label><input type="text" id="gsTitle" required></div>
+                    <div><label>Session Type</label><select id="gsType" required></select></div>
+                    <div><label>Date</label><input type="date" id="gsDate" required></div>
+                    <div><label>Starting Time <span style="font-weight:400;color:var(--faint);">(optional)</span></label><input type="time" id="gsTime"></div>
+                    <div><label>Number of Hours</label><input type="number" min="0" step="0.25" id="gsHours" required></div>
+                    <div><label>Attachment <span style="font-weight:400;color:var(--faint);">(optional)</span></label><input type="file" id="gsAttachment" accept=".pdf,.doc,.docx,image/*"></div>
+                </div>
+                <label>Notes <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
+                <textarea id="gsNotes"></textarea>
+
+                <label style="margin-top:14px;">Attendance <span style="font-weight:400;color:var(--faint);">(your Group's trainees, loaded automatically)</span></label>
+                <div id="gsAttendanceList" class="member-select-list" style="max-height:320px;">
+                    <div class="empty-state">Loading trainees...</div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('groupSessionModal')">Cancel</button>
+                    <button type="submit" class="btn">Save Session</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- NEW MEETING MODAL -->
     <div class="modal-overlay" id="meetingModal">
         <div class="modal-box">
@@ -4210,7 +4242,7 @@
         }
 
         const SECTION_IDS = [
-            "dashboard", "library", "students", "calendar", "materials", "assignments", "sessions",
+            "dashboard", "library", "students", "calendar", "materials", "assignments",
             "meetings", "chat", "documents", "announcements", "settings",
         ];
 
@@ -4218,7 +4250,6 @@
             library: () => loadLibrary(),
             calendar: () => loadCalendar(),
             assignments: () => loadAssignments(),
-            sessions: () => loadSessions(),
             meetings: () => loadMeetings(),
             chat: () => loadChatInbox(),
             documents: () => loadAllDocuments(),
@@ -4534,6 +4565,10 @@
             loadKpis();
             loadTrainingHoursSummary();
             populateStudentPickers();
+            // "Training Activities" now lives inside this same Trainee
+            // Profiles section (no longer its own lazily-loaded nav
+            // section), so it loads eagerly right alongside the roster.
+            loadSessions();
         }
 
         // "Received" (from my Master Trainer) and "delivered" (to my
@@ -5098,7 +5133,9 @@ async function submitRecordForm(e, type) {
     await refreshCurrentStudent();
     loadSchedule();
     loadedSections.delete("assignments");
-    loadedSections.delete("sessions");
+    // "Training Activities" is no longer a lazy section -- refresh it
+    // directly instead of just invalidating a cache flag.
+    loadSessions();
   }
 }
 
@@ -5984,6 +6021,119 @@ function renderSessions() {
 
 document.getElementById("sessionSearch").addEventListener("input", renderSessions);
 document.getElementById("sessionTypeFilter").addEventListener("change", renderSessions);
+
+// ---- Add Session (group-wide: one activity for your whole caseload/Group
+// at once, attendance + actual hours set individually per trainee) --------
+// See POST /supervisor/group-sessions. The single-trainee openSessionModal
+// below is unrelated and unchanged.
+
+function openGroupSessionModal() {
+  const form = document.getElementById("groupSessionForm");
+  form.reset();
+  renderSessionTypeOptions(document.getElementById("gsType"), false);
+  renderGroupAttendanceList();
+  openModal("groupSessionModal");
+}
+
+function renderGroupAttendanceList() {
+  const wrap = document.getElementById("gsAttendanceList");
+  if (!allStudents.length) {
+    wrap.innerHTML = '<div class="empty-state">No trainees in your caseload yet.</div>';
+    return;
+  }
+  wrap.innerHTML = allStudents
+    .map(
+      (s) => `
+    <div class="member-select-row" style="align-items:center;flex-wrap:wrap;">
+      <span class="member-select-name" style="flex:1 1 180px;">${escapeHtml(s.full_name)}</span>
+      <span class="member-select-role" style="flex-shrink:0;">${escapeHtml(s.memberCode)}</span>
+      <select class="gs-att-status" data-student-id="${s.id}" onchange="toggleGsPartialHours(${s.id}, this.value)" style="width:auto;height:34px;">
+        <option value="present">Present</option>
+        <option value="absent">Absent</option>
+        <option value="excused">Excused</option>
+        <option value="partial">Partial</option>
+      </select>
+      <input type="number" min="0" step="0.25" class="gs-att-hours" data-student-id="${s.id}" placeholder="Hours attended" style="width:110px;height:34px;display:none;">
+    </div>`
+    )
+    .join("");
+}
+
+function toggleGsPartialHours(studentId, status) {
+  const input = document.querySelector(`.gs-att-hours[data-student-id="${studentId}"]`);
+  if (input) input.style.display = status === "partial" ? "" : "none";
+}
+
+document.getElementById("groupSessionForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const rawType = document.getElementById("gsType").value;
+  const sessionType = rawType.startsWith("hour_session:")
+    ? rawType.slice("hour_session:".length)
+    : rawType === "training_session"
+    ? "training"
+    : rawType === "supervision_session"
+    ? "supervision"
+    : rawType;
+
+  const hours = Number(document.getElementById("gsHours").value);
+  const durationMinutes = Math.round(hours * 60);
+
+  const attendance = Array.from(document.querySelectorAll(".gs-att-status")).map((sel) => {
+    const studentId = Number(sel.dataset.studentId);
+    const status = sel.value;
+    const entry = { studentId, status };
+    if (status === "partial") {
+      const hoursInput = document.querySelector(`.gs-att-hours[data-student-id="${studentId}"]`);
+      const attendedHours = hoursInput && hoursInput.value ? Number(hoursInput.value) : null;
+      if (attendedHours == null || Number.isNaN(attendedHours)) {
+        showToast(`Enter actual hours attended for a Partial trainee`, "error");
+        return null;
+      }
+      entry.minutesCompleted = Math.round(attendedHours * 60);
+    }
+    return entry;
+  });
+  if (attendance.includes(null)) return;
+
+  const attachmentFile = document.getElementById("gsAttachment").files[0];
+  const payload = {
+    sessionType,
+    title: document.getElementById("gsTitle").value,
+    date: document.getElementById("gsDate").value,
+    time: document.getElementById("gsTime").value || undefined,
+    durationMinutes,
+    notes: document.getElementById("gsNotes").value || undefined,
+  };
+
+  let result;
+  if (attachmentFile) {
+    const form = new FormData();
+    Object.entries(payload).forEach(([k, v]) => {
+      if (v !== undefined) form.append(k, v);
+    });
+    form.append("attendance", JSON.stringify(attendance));
+    form.append("attachment", attachmentFile);
+    result = await apiRequest("/supervisor/group-sessions", { method: "POST", body: form });
+  } else {
+    result = await apiRequest("/supervisor/group-sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, attendance }),
+    });
+  }
+
+  if (result) {
+    showSuccessNotification(
+      "Session Saved",
+      `Logged for ${result.created.length} trainee${result.created.length === 1 ? "" : "s"}${result.skipped ? ` (${result.skipped} skipped as a likely duplicate)` : ""}.`
+    );
+    closeModal("groupSessionModal");
+    loadSessions();
+    loadSchedule();
+    loadTrainingHoursSummary();
+  }
+});
 
 function openSessionModal(session) {
   const form = document.getElementById("sessionModalForm");

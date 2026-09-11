@@ -329,6 +329,8 @@ CREATE TABLE sessions (
   status             VARCHAR(20) NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
   created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  attachment_filename       VARCHAR(255),        -- optional file attached to this activity (added in migration 018)
+  attachment_original_name  VARCHAR(255),
   CONSTRAINT fk_sessions_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
   CONSTRAINT fk_sessions_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
   CONSTRAINT fk_sessions_hour_type FOREIGN KEY (session_type) REFERENCES hour_types(code) ON UPDATE CASCADE

@@ -1,9 +1,15 @@
 const express = require("express");
+const fs = require("fs");
 const { requireAuth, requireMasterTrainer, asyncRoute } = require("../middleware/auth");
 const { toRecord, toDocument, toMaterial, computeTrainingProgress, computeHoursByType } = require("../utils/serializers");
 const { resolveWeekRange, getCurrentWeekRange, listRecentWeeks, shiftDate } = require("../utils/weekPeriod");
 const { buildTotHoursBreakdownQuery, TRAINEE_ACTIVITY_ENTITY_TYPES } = require("../utils/recordsQuery");
 const { TRAINING_DURATION_YEARS, calculateTrainingProgress } = require("../utils/trainingTimeline");
+const { sessionAttachmentUpload } = require("../utils/uploads");
+const { checkFileContent } = require("../utils/fileTypeCheck");
+const { optimizeImageIfPossible } = require("../utils/imageOptimize");
+const { createNotification, getUserContactInfo } = require("../utils/notifications");
+const { createGroupSession } = require("../utils/groupSessions");
 
 const router = express.Router();
 
@@ -877,6 +883,108 @@ router.get(
         });
     })
 );
+
+// POST /api/master-trainer/group-sessions -- logs one training/supervision
+// activity for every selected trainee in this Master Trainer's own Group in
+// a single submission, each trainee's own attendance/actual-hours set
+// individually. No groupId in the URL -- always this Master Trainer's own
+// group (req.masterTrainer.groupId, already resolved by requireMasterTrainer).
+// Unlike the ToT equivalent (supervisor.js), this is NOT narrowed to a
+// personal caseload -- a Master Trainer already has group-wide authority
+// over every trainee in their own Group elsewhere (e.g. GET /assignments
+// above), so every trainee with this group_id is eligible. Reuses the exact
+// same createGroupSession helper (and therefore the exact same validation/
+// INSERT shape) as the ToT's route, so the two can never compute hours
+// differently. multipart-or-JSON handling mirrors supervisor.js's
+// POST /assignments (one shared optional attachment).
+router.post("/group-sessions", (req, res) => {
+    const contentType = req.headers["content-type"] || "";
+
+    const handle = async (attachmentFilename, attachmentOriginalName) => {
+        const { pool } = require("../db");
+        const groupId = req.masterTrainer.groupId;
+        if (!groupId) {
+            return res.status(400).json({ error: "You don't have a Group assigned yet" });
+        }
+
+        const { sessionType, title, date, time, durationMinutes, notes } = req.body || {};
+        let attendance = req.body && req.body.attendance;
+        try {
+            if (typeof attendance === "string") attendance = JSON.parse(attendance);
+        } catch {
+            attendance = null;
+        }
+        if (!Array.isArray(attendance) || !attendance.length) {
+            return res.status(400).json({ error: "attendance must be a non-empty array" });
+        }
+
+        const { rows: eligibleRows } = await pool.query("SELECT id FROM students WHERE group_id = ?", [groupId]);
+        const eligibleIds = new Set(eligibleRows.map((r) => r.id));
+        const invalid = attendance.filter((a) => !eligibleIds.has(Number(a.studentId)));
+        if (invalid.length) {
+            return res.status(403).json({ error: "One or more selected trainees are not in your Group" });
+        }
+
+        const result = await createGroupSession(pool, {
+            supervisorId: req.masterTrainer.id,
+            sessionType,
+            title,
+            date,
+            time,
+            durationMinutes,
+            notes,
+            attachmentFilename,
+            attachmentOriginalName,
+            attendance,
+        });
+        if (result.error) return res.status(400).json({ error: result.error });
+
+        if (!result.isFuture) {
+            const trainer = await getUserContactInfo(pool, req.masterTrainer.id);
+            for (const { studentId, sessionId } of result.created) {
+                await createNotification(pool, {
+                    recipientId: studentId,
+                    type: "session",
+                    title: `New ${result.sessionTypeLabel} session logged`,
+                    body: title || null,
+                    relatedEntityType: "session",
+                    relatedEntityId: sessionId,
+                    email: {
+                        template: "newSession",
+                        data: { sessionTitle: title, sessionType: result.sessionTypeLabel, trainerName: (trainer && trainer.fullName) || "Your Master Trainer", date },
+                    },
+                });
+            }
+        }
+
+        res.status(201).json({ created: result.created, skipped: attendance.length - result.created.length });
+    };
+
+    if (contentType.includes("multipart/form-data")) {
+        sessionAttachmentUpload.single("attachment")(req, res, async (err) => {
+            if (err) return res.status(400).json({ error: err.message });
+            if (req.file) {
+                const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
+                if (!check.safe) {
+                    fs.unlink(req.file.path, () => {});
+                    return res.status(400).json({ error: check.reason });
+                }
+                await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
+            }
+            try {
+                await handle(req.file ? req.file.filename : null, req.file ? req.file.originalname : null);
+            } catch (err) {
+                console.error("[Mastertrainer] failed to create group session:", err);
+                if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+            }
+        });
+    } else {
+        handle(null, null).catch((err) => {
+            console.error("[Mastertrainer] failed to create group session:", err);
+            if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+        });
+    }
+});
 
 // ---- Group-wide monitoring lists -------------------------------------------
 

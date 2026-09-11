@@ -13,7 +13,7 @@ const {
   toAnnouncement,
   computeProgressSummary,
 } = require("../utils/serializers");
-const { documentUpload, materialUpload, assignmentAttachmentUpload } = require("../utils/uploads");
+const { documentUpload, materialUpload, assignmentAttachmentUpload, sessionAttachmentUpload } = require("../utils/uploads");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const {
@@ -27,6 +27,7 @@ const { createNotification, getUserContactInfo } = require("../utils/notificatio
 const { broadcastDirectMessage } = require("../realtime/chatSocket");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi, attachSubmissionHistories } = require("../utils/assignmentsQuery");
 const { resolveWeekRange } = require("../utils/weekPeriod");
+const { createGroupSession } = require("../utils/groupSessions");
 const { DOCUMENT_SELECT } = require("../utils/documentsQuery");
 
 const router = express.Router();
@@ -382,6 +383,116 @@ router.post(
     res.status(201).json(responseBody);
   })
 );
+
+// POST /api/supervisor/group-sessions -- logs one training/supervision
+// activity for every selected trainee in this ToT's own Group (narrowed to
+// this ToT's own caseload -- see loadAssignedStudent's use elsewhere; a ToT
+// never logs hours for a trainee not actually assigned to them, even one in
+// the same Group) in a single submission, with each trainee's own
+// attendance/actual-hours set individually. No groupId in the URL -- a ToT
+// only ever has one Group, always resolved server-side from their own
+// account, same as everywhere else this app does this (chatRooms.js, etc.).
+// Reuses the exact same per-student validation/INSERT shape as the
+// single-student POST /students/:studentId/records path above via
+// createGroupSession, so the two can never compute hours differently.
+// multipart-or-JSON dance mirrors POST /assignments above (one shared
+// optional attachment).
+router.post("/group-sessions", (req, res) => {
+  const contentType = req.headers["content-type"] || "";
+
+  const handle = async (attachmentFilename, attachmentOriginalName) => {
+    const { pool } = require("../db");
+
+    const { rows: meRows } = await pool.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
+    const groupId = meRows.length ? meRows[0].group_id : null;
+    if (!groupId) {
+      return res.status(400).json({ error: "You don't have a Group assigned yet" });
+    }
+
+    const { sessionType, title, date, time, durationMinutes, notes } = req.body || {};
+    let attendance = req.body && req.body.attendance;
+    try {
+      if (typeof attendance === "string") attendance = JSON.parse(attendance);
+    } catch {
+      attendance = null;
+    }
+    if (!Array.isArray(attendance) || !attendance.length) {
+      return res.status(400).json({ error: "attendance must be a non-empty array" });
+    }
+
+    // Narrowed to this ToT's own caseload within the Group, not just Group
+    // membership -- preserves the existing rule (loadAssignedStudent) that
+    // a ToT only ever logs hours for a trainee actually assigned to them.
+    const { rows: eligibleRows } = await pool.query(
+      `SELECT id FROM students WHERE group_id = ? AND id IN (SELECT student_id FROM supervisor_students WHERE supervisor_id = ?)`,
+      [groupId, req.user.id]
+    );
+    const eligibleIds = new Set(eligibleRows.map((r) => r.id));
+    const invalid = attendance.filter((a) => !eligibleIds.has(Number(a.studentId)));
+    if (invalid.length) {
+      return res.status(403).json({ error: "One or more selected trainees are not in your caseload for this Group" });
+    }
+
+    const result = await createGroupSession(pool, {
+      supervisorId: req.user.id,
+      sessionType,
+      title,
+      date,
+      time,
+      durationMinutes,
+      notes,
+      attachmentFilename,
+      attachmentOriginalName,
+      attendance,
+    });
+    if (result.error) return res.status(400).json({ error: result.error });
+
+    if (!result.isFuture) {
+      const trainer = await getUserContactInfo(pool, req.user.id);
+      for (const { studentId, sessionId } of result.created) {
+        await createNotification(pool, {
+          recipientId: studentId,
+          type: "session",
+          title: `New ${result.sessionTypeLabel} session logged`,
+          body: title || null,
+          relatedEntityType: "session",
+          relatedEntityId: sessionId,
+          email: {
+            template: "newSession",
+            data: { sessionTitle: title, sessionType: result.sessionTypeLabel, trainerName: (trainer && trainer.fullName) || "Your trainer", date },
+          },
+        });
+      }
+    }
+
+    res.status(201).json({ created: result.created, skipped: attendance.length - result.created.length });
+  };
+
+  if (contentType.includes("multipart/form-data")) {
+    sessionAttachmentUpload.single("attachment")(req, res, async (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (req.file) {
+        const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
+        if (!check.safe) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(400).json({ error: check.reason });
+        }
+        await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
+      }
+      try {
+        await handle(req.file ? req.file.filename : null, req.file ? req.file.originalname : null);
+      } catch (err) {
+        console.error("[supervisor] failed to create group session:", err);
+        if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+      }
+    });
+  } else {
+    handle(null, null).catch((err) => {
+      console.error("[supervisor] failed to create group session:", err);
+      if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+    });
+  }
+});
 
 // PUT /api/supervisor/records/:recordType/:recordId
 router.put(
