@@ -176,9 +176,16 @@ const ALLOWED_MATERIAL_TYPES = new Set([
   "audio/mpeg",
   "audio/wav",
 ]);
+// Was a flat 100MB, which silently rejected real training videos past
+// roughly 20-30 minutes at typical recording bitrates -- the actual cause
+// of "long videos sometimes fail to share" (there was no request/server
+// timeout involved; disk storage already streams the upload rather than
+// buffering it in memory, so the file size itself was the only ceiling).
+// See config.materialUploadMaxMb.
+const MATERIAL_UPLOAD_MAX_BYTES = config.materialUploadMaxMb * 1024 * 1024;
 const materialUpload = multer({
   storage: makeDiskStorage("materials"),
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB (video/audio need headroom)
+  limits: { fileSize: MATERIAL_UPLOAD_MAX_BYTES },
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_MATERIAL_TYPES.has(file.mimetype)) {
       return cb(new Error("File type not allowed for learning materials"));
@@ -260,6 +267,7 @@ module.exports = {
   cvUpload,
   documentUpload,
   materialUpload,
+  MATERIAL_UPLOAD_MAX_BYTES,
   submissionUpload,
   assignmentAttachmentUpload,
   sessionAttachmentUpload,

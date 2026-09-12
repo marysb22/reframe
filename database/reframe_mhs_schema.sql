@@ -551,11 +551,32 @@ CREATE TABLE learning_materials (
                      )),
   -- SHA-256 of the uploaded file's content (added in migration 021), used
   -- to detect a duplicate Library book upload by content rather than by
-  -- filename -- see routes/library.js's POST /books. Not a UNIQUE
-  -- constraint: Materials (non-book) rows can legitimately share identical
-  -- content, so uniqueness is checked in application code, scoped to
-  -- material_type='book'.
+  -- filename -- see routes/library.js's POST /books. Plain (non-unique)
+  -- column: Materials (non-book) rows can legitimately share identical
+  -- content (the same handout shared with two different trainees isn't a
+  -- duplicate). book_hash_key below is what actually enforces uniqueness,
+  -- scoped correctly to material_type='book' only.
   file_hash      VARCHAR(64),
+  -- Client-supplied idempotency key (added in migration 022): the frontend
+  -- generates one UUID per logical Add/Share/Upload attempt and resends
+  -- the SAME key on any retry of that attempt (a double-click, a browser
+  -- retry, a slow-network resubmit). UNIQUE here means the database itself
+  -- -- not just app code -- guarantees one such attempt can never produce
+  -- two rows, closing the race a plain check-then-insert can't. NULL for
+  -- every row inserted before this column existed (MySQL permits any
+  -- number of NULLs in a UNIQUE index), so no existing material is
+  -- affected. See routes/supervisor.js's POST /materials.
+  idempotency_key VARCHAR(64),
+  -- Generated (not stored by the app) column added in migration 022:
+  -- carries file_hash's value ONLY for material_type='book' rows, NULL for
+  -- everything else. The UNIQUE index on THIS column -- rather than on
+  -- file_hash directly -- gives Library book uploads a real DB-enforced
+  -- duplicate guarantee (closing a TOCTOU race in the app-level check in
+  -- routes/library.js) while leaving ordinary Materials, which can
+  -- legitimately share identical file content, completely unconstrained.
+  book_hash_key VARCHAR(64) GENERATED ALWAYS AS (
+    CASE WHEN material_type = 'book' THEN file_hash ELSE NULL END
+  ) VIRTUAL,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_material_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
   CONSTRAINT fk_material_admin FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE SET NULL,
@@ -563,7 +584,9 @@ CREATE TABLE learning_materials (
   CONSTRAINT chk_material_has_file CHECK (filename IS NOT NULL OR external_url IS NOT NULL),
   CONSTRAINT chk_publication_year CHECK (publication_year IS NULL OR publication_year BETWEEN 1000 AND 2100),
   INDEX idx_materials_type_created (material_type, created_at),
-  INDEX idx_materials_file_hash (file_hash)
+  INDEX idx_materials_file_hash (file_hash),
+  UNIQUE INDEX uniq_materials_idempotency_key (idempotency_key),
+  UNIQUE INDEX uniq_materials_book_hash (book_hash_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE videos (
@@ -602,6 +625,14 @@ CREATE TABLE documents (
   approval_status VARCHAR(20) NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending', 'approved')),
   approved_by     BIGINT,
   approved_at     DATETIME,
+  -- Client-supplied idempotency key (added in migration 022) -- same
+  -- purpose and reasoning as learning_materials.idempotency_key: the
+  -- frontend generates one UUID per "Share Document" attempt and resends
+  -- it on any retry, so a double-click/browser retry/slow resubmit can
+  -- never create two document rows. NULL for rows inserted before this
+  -- column existed. See routes/supervisor.js's POST
+  -- /students/:studentId/documents and routes/profile.js's POST /documents.
+  idempotency_key VARCHAR(64),
   -- Exactly one of student_id/group_id/shared_with_supervisor_id should be
   -- set -- enforced at the application layer (not a CHECK: MySQL rejects a
   -- CHECK on a column that also carries an ON DELETE SET NULL FK action).
@@ -612,7 +643,8 @@ CREATE TABLE documents (
   CONSTRAINT fk_documents_shared_supervisor FOREIGN KEY (shared_with_supervisor_id) REFERENCES supervisors(id) ON DELETE SET NULL,
   CONSTRAINT fk_documents_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES user_credentials(id),
   CONSTRAINT fk_documents_approved_by FOREIGN KEY (approved_by) REFERENCES supervisors(id) ON DELETE SET NULL,
-  INDEX idx_documents_shared_supervisor (shared_with_supervisor_id)
+  INDEX idx_documents_shared_supervisor (shared_with_supervisor_id),
+  UNIQUE INDEX uniq_documents_idempotency_key (idempotency_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

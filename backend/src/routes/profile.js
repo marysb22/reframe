@@ -18,6 +18,7 @@ const { hashPassword, verifyPassword } = require("../utils/authUtils");
 const { photoUpload, cvUpload, submissionUpload, documentUpload } = require("../utils/uploads");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
+const { createUploadGuard } = require("../utils/uploadGuard");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
 const { createNotification } = require("../utils/notifications");
 const { broadcastDirectMessage } = require("../realtime/chatSocket");
@@ -569,27 +570,61 @@ router.get(
 // own supervisor_students row) -- never a client-supplied group/supervisor
 // id. A trainee may only target their own Group or their own ToT, never an
 // arbitrary trainee, an arbitrary supervisor, or a Master Trainer directly.
+// Own guard instance, keyed by the trainee's own id -- independent of
+// every other feature's upload guard.
+const profileDocumentsUploadGuard = createUploadGuard();
+
+async function findDocumentByIdempotencyKey(pool, idempotencyKey) {
+  if (!idempotencyKey) return null;
+  const { rows } = await pool.query("SELECT * FROM documents WHERE idempotency_key = ?", [idempotencyKey]);
+  return rows[0] || null;
+}
+
 router.post("/documents", requireStudent, (req, res) => {
+  if (!profileDocumentsUploadGuard.markStarted(req.user.id)) {
+    return res.status(409).json({ error: "Upload already in progress." });
+  }
   documentUpload.single("document")(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    if (err) {
+      profileDocumentsUploadGuard.markFinished(req.user.id);
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({ error: "File is too large." });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.file) {
+      profileDocumentsUploadGuard.markFinished(req.user.id);
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
     const cleanup = () => fs.unlink(req.file.path, () => {});
 
     const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
     if (!check.safe) {
       cleanup();
+      profileDocumentsUploadGuard.markFinished(req.user.id);
       return res.status(400).json({ error: check.reason });
     }
 
-    const { shareWith, totId } = req.body || {};
+    const { shareWith, totId, idempotencyKey } = req.body || {};
     if (shareWith !== "group" && shareWith !== "tot") {
       cleanup();
+      profileDocumentsUploadGuard.markFinished(req.user.id);
       return res.status(400).json({ error: "Choose who to share this document with: your Group or your Trainer (ToT)" });
     }
 
     try {
       const { pool } = require("../db");
+
+      const existing = await findDocumentByIdempotencyKey(pool, idempotencyKey);
+      if (existing) {
+        cleanup();
+        return res.status(200).json({
+          ...toDocument({ ...existing, uploaded_by_role: "trainee" }),
+          canManage: true,
+        });
+      }
+
       await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
 
       let groupId = null;
@@ -649,48 +684,24 @@ router.post("/documents", requireStudent, (req, res) => {
       // this task's approval gate is explicitly Group-sharing only.
       const approvalStatus = shareWith === "group" ? "pending" : "approved";
 
-      const insert = await pool.query(
-        `INSERT INTO documents (student_id, group_id, shared_with_supervisor_id, uploaded_by, filename, original_name, approval_status)
-         VALUES (NULL, ?, ?, ?, ?, ?, ?)`,
-        [groupId, sharedWithSupervisorId, req.user.id, req.file.filename, req.file.originalname, approvalStatus]
-      );
+      let insert;
+      try {
+        insert = await pool.query(
+          `INSERT INTO documents (student_id, group_id, shared_with_supervisor_id, uploaded_by, filename, original_name, approval_status, idempotency_key)
+           VALUES (NULL, ?, ?, ?, ?, ?, ?, ?)`,
+          [groupId, sharedWithSupervisorId, req.user.id, req.file.filename, req.file.originalname, approvalStatus, idempotencyKey || null]
+        );
+      } catch (dbErr) {
+        if (dbErr.code === "ER_DUP_ENTRY" && idempotencyKey) {
+          cleanup();
+          const winner = await findDocumentByIdempotencyKey(pool, idempotencyKey);
+          if (winner) return res.status(200).json({ ...toDocument({ ...winner, uploaded_by_role: "trainee" }), canManage: true });
+        }
+        throw dbErr;
+      }
       const { rows } = await pool.query("SELECT * FROM documents WHERE id = ?", [insert.insertId]);
       const { rows: meRows } = await pool.query("SELECT full_name FROM students WHERE id = ?", [req.user.id]);
       const traineeName = (meRows[0] && meRows[0].full_name) || req.user.member_code;
-
-      // Notify only the ToT(s) actually responsible for this trainee --
-      // never the rest of the Group. A failure here must never turn an
-      // already-successful upload into a 500, so it's isolated in its own
-      // try/catch rather than sharing the outer one.
-      try {
-        if (shareWith === "group") {
-          const { rows: groupTots } = await pool.query(
-            "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training'",
-            [groupId]
-          );
-          for (const tot of groupTots) {
-            await createNotification(pool, {
-              recipientId: tot.id,
-              type: "document",
-              title: `${traineeName} added a document to your Group`,
-              body: `${req.file.originalname} · Pending Approval`,
-              relatedEntityType: "document",
-              relatedEntityId: insert.insertId,
-            });
-          }
-        } else {
-          await createNotification(pool, {
-            recipientId: sharedWithSupervisorId,
-            type: "document",
-            title: `${traineeName} shared a document with you`,
-            body: req.file.originalname,
-            relatedEntityType: "document",
-            relatedEntityId: insert.insertId,
-          });
-        }
-      } catch (notifyErr) {
-        console.error("[profile] failed to notify ToT(s) of new document:", notifyErr);
-      }
 
       res.status(201).json({
         ...toDocument({
@@ -703,10 +714,50 @@ router.post("/documents", requireStudent, (req, res) => {
         }),
         canManage: true,
       });
+
+      // Notify only the ToT(s) actually responsible for this trainee --
+      // never the rest of the Group. Deliberately not awaited before the
+      // response above: the document is already fully committed by this
+      // point, so a slow or failed notification can never affect whether
+      // it exists or looks duplicated, only how quickly people hear about
+      // it. isolated so one rejected notification can't obscure another.
+      (async () => {
+        if (shareWith === "group") {
+          const { rows: groupTots } = await pool.query(
+            "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training'",
+            [groupId]
+          );
+          await Promise.allSettled(
+            groupTots.map((tot) =>
+              createNotification(pool, {
+                recipientId: tot.id,
+                type: "document",
+                title: `${traineeName} added a document to your Group`,
+                body: `${req.file.originalname} · Pending Approval`,
+                relatedEntityType: "document",
+                relatedEntityId: insert.insertId,
+              })
+            )
+          );
+        } else {
+          await createNotification(pool, {
+            recipientId: sharedWithSupervisorId,
+            type: "document",
+            title: `${traineeName} shared a document with you`,
+            body: req.file.originalname,
+            relatedEntityType: "document",
+            relatedEntityId: insert.insertId,
+          });
+        }
+      })().catch((notifyErr) => {
+        console.error("[profile] failed to notify ToT(s) of new document:", notifyErr);
+      });
     } catch (e) {
       console.error("[profile] failed to upload document:", e);
       cleanup();
-      res.status(500).json({ error: "Internal server error" });
+      if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+    } finally {
+      profileDocumentsUploadGuard.markFinished(req.user.id);
     }
   });
 });

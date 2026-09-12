@@ -5822,6 +5822,20 @@ async function openDocumentPreview(id) {
 // own assigned ToT(s) (from mySupervisors, filtered to supervisorType ===
 // "in_training" -- never a Master Trainer, and never an arbitrary user).
 
+// One fresh id per "share a document" attempt, generated when the modal
+// opens and reused across retries of that same attempt (double-click, a
+// slow-connection resubmit) so the backend can recognize a repeat and
+// return the original document instead of creating a second one -- see
+// routes/profile.js's POST /documents.
+function generateIdempotencyKey() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+let addDocumentIdempotencyKey = null;
+
 function openAddDocumentModal() {
   const form = document.getElementById("addDocumentForm");
   form.reset();
@@ -5839,6 +5853,7 @@ function openAddDocumentModal() {
   totSelect.innerHTML = tots.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
   totSelect.style.display = "none";
 
+  addDocumentIdempotencyKey = generateIdempotencyKey();
   openModal("addDocumentModal");
 }
 
@@ -5864,9 +5879,15 @@ document.getElementById("addDocumentForm").addEventListener("submit", async (e) 
   const shareChoice = document.querySelector('input[name="docShareWith"]:checked');
   if (!shareChoice) return showToast("Choose who to share this document with", "error");
 
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalLabel = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Uploading…";
+
   const form = new FormData();
   form.append("document", file);
   form.append("shareWith", shareChoice.value);
+  form.append("idempotencyKey", addDocumentIdempotencyKey || generateIdempotencyKey());
   if (shareChoice.value === "tot") {
     const totSelect = document.getElementById("docShareTotSelect");
     if (totSelect.style.display !== "none" && totSelect.value) form.append("totId", totSelect.value);
@@ -5885,6 +5906,9 @@ document.getElementById("addDocumentForm").addEventListener("submit", async (e) 
     showSuccessNotification("Document Added", "Your document has been uploaded and shared.");
   } catch (err) {
     showToast(err.message, "error");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
   }
 });
 

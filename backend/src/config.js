@@ -19,4 +19,12 @@ module.exports = {
   // database rows referencing them survive, leaving broken links. Set
   // UPLOADS_DIR to the same path a persistent Volume is mounted at.
   uploadsDir: process.env.UPLOADS_DIR || path.join(__dirname, "../uploads"),
+  // Learning materials (and Library books, which share the same upload
+  // pipeline) are streamed straight to disk, never buffered in memory, so
+  // this cap exists only to keep obviously-wrong uploads and disk usage in
+  // check -- not because large files are unsafe to handle. 2GB comfortably
+  // covers real multi-hour training videos; raise via env if a hosting
+  // platform's own request-size limit ever needs to match a different
+  // number (that outer limit, if any, lives outside this repo).
+  materialUploadMaxMb: Number(process.env.MATERIAL_UPLOAD_MAX_MB) || 2048,
 };

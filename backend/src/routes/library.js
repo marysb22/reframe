@@ -6,7 +6,6 @@
 // add or remove a book -- enforced here, not just by hiding a button.
 const express = require("express");
 const fs = require("fs");
-const crypto = require("crypto");
 const path = require("path");
 const config = require("../config");
 const { pool } = require("../db");
@@ -14,6 +13,7 @@ const { requireAuth, asyncRoute } = require("../middleware/auth");
 const { materialUpload } = require("../utils/uploads");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
+const { createUploadGuard, hashFile } = require("../utils/uploadGuard");
 
 const router = express.Router();
 
@@ -32,40 +32,11 @@ const RESOURCE_TYPES = [
 const CURRENT_YEAR = new Date().getFullYear();
 
 // Blocks a double-click/rapid-repeat book upload from the SAME account
-// before the second request even starts streaming its file to disk --
-// this app runs as a single Node process, so a plain in-memory Map is
-// enough (no cross-instance coordination needed). Keyed by uploader id ->
-// the time their upload started, so a request that crashes without
-// reaching the finally-release below can't wedge that account forever;
-// anything older than STALE_UPLOAD_MS is treated as abandoned, not
-// in-progress.
-const uploadsInFlight = new Map();
-const STALE_UPLOAD_MS = 5 * 60 * 1000;
-
-function markUploadStarted(userId) {
-  const startedAt = uploadsInFlight.get(userId);
-  if (startedAt && Date.now() - startedAt < STALE_UPLOAD_MS) return false;
-  uploadsInFlight.set(userId, Date.now());
-  return true;
-}
-function markUploadFinished(userId) {
-  uploadsInFlight.delete(userId);
-}
-
-// SHA-256 of the file's actual bytes -- used to recognize "the same book"
-// regardless of filename (a rename shouldn't defeat duplicate detection),
-// and to correctly NOT flag two different files that merely share a
-// filename (streamed, not loaded whole into memory, so this scales fine
-// to large book files).
-function hashFile(filePath) {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash("sha256");
-    const stream = fs.createReadStream(filePath);
-    stream.on("data", (chunk) => hash.update(chunk));
-    stream.on("end", () => resolve(hash.digest("hex")));
-    stream.on("error", reject);
-  });
-}
+// before the second request even starts streaming its file to disk. Its
+// own guard instance -- independent from the one routes/supervisor.js
+// uses for Materials -- so a book upload and a material upload from the
+// same account never block each other.
+const { markStarted: markUploadStarted, markFinished: markUploadFinished } = createUploadGuard();
 
 function toBook(row) {
   const createdByRole = row.admin_id ? "Admin" : row.supervisor_type === "primary" ? "Master Trainer" : "ToT";

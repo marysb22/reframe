@@ -5149,6 +5149,10 @@ async function refreshCurrentStudent() {
 
 function renderDocumentsPanel(container) {
   const docs = currentStudentData.documents;
+  // Fresh per render (i.e. fresh every time this tab is (re)opened), reused
+  // across retries of the same submit -- see generateIdempotencyKey's
+  // comment near the Materials form for why.
+  const docIdempotencyKey = generateIdempotencyKey();
   container.innerHTML = `
     <form class="record-form" id="docForm">
       <label>Upload a document (PDF, Word, or image)</label>
@@ -5180,8 +5184,13 @@ function renderDocumentsPanel(container) {
     e.preventDefault();
     const file = document.getElementById("docFile").files[0];
     if (!file) return;
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalLabel = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Uploading…";
     const form = new FormData();
     form.append("document", file);
+    form.append("idempotencyKey", docIdempotencyKey);
     if (document.getElementById("docShareGroup").checked) form.append("shareWithGroup", "1");
     try {
       const response = await fetch(`${API}/supervisor/students/${currentStudentId}/documents`, {
@@ -5198,6 +5207,8 @@ function renderDocumentsPanel(container) {
       loadedSections.delete("documents");
     } catch (err) {
       showToast(err.message, "error");
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
     }
   });
 }
@@ -5542,9 +5553,27 @@ function openAllDocumentsPreview(id) {
   openDocumentPreviewGeneric(allDocumentsRaw.find((d) => d.id === id));
 }
 
+// One fresh id per logical "share a material" attempt -- generated ONCE
+// when the modal opens, then reused unchanged across every retry of THAT
+// attempt (a double-click, a slow-connection resubmit while the button is
+// still enabled for a moment, a network error the user retries without
+// closing the modal). The backend treats a repeat of the same key as "this
+// already happened" and returns the original material instead of creating
+// a second one -- see routes/supervisor.js's POST /materials. Reopening
+// the modal for a genuinely new share starts a new attempt with a new key.
+function generateIdempotencyKey() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+let materialIdempotencyKey = null;
+
 function openMaterialModal() {
   document.getElementById("materialForm").reset();
   toggleMaterialTypeFields();
+  materialIdempotencyKey = generateIdempotencyKey();
   openModal("materialModal");
 }
 
@@ -5554,50 +5583,99 @@ function toggleMaterialTypeFields() {
   document.getElementById("matUrlWrap").style.display = isLink ? "block" : "none";
 }
 
+// Uploads via XMLHttpRequest (not fetch) specifically so a large video's
+// progress can be reported as it goes -- with the 100MB cap removed
+// server-side (see uploads.js), a real training video can take a while,
+// and a button that just says "Uploading..." with no percentage for
+// minutes at a time reads exactly like the "did my click even work?"
+// stall this whole fix exists to prevent.
+function uploadMaterialWithProgress(form, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API}/supervisor/materials`);
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.upload.onprogress = (evt) => {
+      if (evt.lengthComputable) onProgress(Math.round((evt.loaded / evt.total) * 100));
+    };
+    xhr.onload = () => {
+      let body = null;
+      try { body = JSON.parse(xhr.responseText); } catch (e) {}
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+      else reject(new Error((body && body.error) || "Upload failed"));
+    };
+    xhr.onerror = () => reject(new Error("Connection error"));
+    xhr.send(form);
+  });
+}
+
+// Matches uploads.js's default MATERIAL_UPLOAD_MAX_MB (2048) so an
+// oversized file is rejected instantly client-side instead of the user
+// waiting through a long upload only to have the server reject it at the
+// very end. Informational only -- the server's own limit is authoritative.
+const MATERIAL_UPLOAD_MAX_MB_HINT = 2048;
+
 document.getElementById("materialForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const title = document.getElementById("matTitle").value;
   const description = document.getElementById("matDescription").value;
   const materialType = document.getElementById("matType").value;
+  const idempotencyKey = materialIdempotencyKey || generateIdempotencyKey();
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalLabel = submitBtn.textContent;
+  submitBtn.disabled = true;
 
   let result;
-  if (materialType === "link") {
-    const externalUrl = document.getElementById("matUrl").value;
-    if (!externalUrl) return showToast("Enter a URL", "error");
-    result = await apiRequest("/supervisor/materials", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, materialType, externalUrl }),
-    });
-  } else {
-    const file = document.getElementById("matFile").files[0];
-    if (!file) return showToast("Choose a file", "error");
-    const form = new FormData();
-    form.append("title", title);
-    form.append("description", description);
-    form.append("materialType", materialType);
-    form.append("file", file);
-    try {
-      const response = await fetch(`${API}/supervisor/materials`, {
+  try {
+    if (materialType === "link") {
+      const externalUrl = document.getElementById("matUrl").value;
+      if (!externalUrl) { showToast("Enter a URL", "error"); return; }
+      submitBtn.textContent = "Sharing…";
+      result = await apiRequest("/supervisor/materials", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, materialType, externalUrl, idempotencyKey }),
       });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error((body && body.error) || "Upload failed");
+      if (!result) return; // apiRequest already toasted the error
+    } else {
+      const file = document.getElementById("matFile").files[0];
+      if (!file) { showToast("Choose a file", "error"); return; }
+      if (file.size > MATERIAL_UPLOAD_MAX_MB_HINT * 1024 * 1024) {
+        showToast(`File is too large. The maximum allowed size is ${MATERIAL_UPLOAD_MAX_MB_HINT}MB.`, "error");
+        return;
       }
-      result = await response.json();
-    } catch (err) {
-      showToast(err.message, "error");
-      return;
+      const form = new FormData();
+      form.append("title", title);
+      form.append("description", description);
+      form.append("materialType", materialType);
+      form.append("idempotencyKey", idempotencyKey);
+      form.append("file", file);
+      submitBtn.textContent = "Uploading… 0%";
+      try {
+        result = await uploadMaterialWithProgress(form, (pct) => {
+          submitBtn.textContent = `Uploading… ${pct}%`;
+        });
+      } catch (err) {
+        showToast(err.message, "error");
+        return;
+      }
     }
-  }
 
-  if (result) {
-    showSuccessNotification("Material Uploaded", "The material has been shared with your trainees successfully.");
-    closeModal("materialModal");
-    loadMaterials();
+    if (result) {
+      // Same attempt succeeding twice (a retry whose earlier response
+      // never arrived) would otherwise show the same material twice in
+      // this list even though the database only ever has one row.
+      if (!materialsRaw.some((m) => m.id === result.id)) {
+        materialsRaw.unshift(result);
+        renderMaterialTypePills();
+        applyMaterialsFilters();
+      }
+      showSuccessNotification("Material Shared", "The material has been shared with your trainees successfully.");
+      closeModal("materialModal");
+    }
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
   }
 });
 
@@ -6990,11 +7068,13 @@ async function loadAllDocuments() {
 }
 
 // ---- Add Document (from the general Documents section) -------------------
+let addDocumentIdempotencyKey = null;
 function openAddDocumentModal() {
   const form = document.getElementById("addDocumentForm");
   form.reset();
   const select = document.getElementById("adTraineeSelect");
   select.innerHTML = allStudents.map((s) => `<option value="${s.id}">${escapeHtml(s.full_name)} (${escapeHtml(s.memberCode)})</option>`).join("");
+  addDocumentIdempotencyKey = generateIdempotencyKey();
   openModal("addDocumentModal");
 }
 
@@ -7004,8 +7084,14 @@ document.getElementById("addDocumentForm").addEventListener("submit", async (e) 
   const file = document.getElementById("adFileInput").files[0];
   if (!studentId || !file) return showToast("Choose a trainee and a file", "error");
 
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalLabel = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Uploading…";
+
   const form = new FormData();
   form.append("document", file);
+  form.append("idempotencyKey", addDocumentIdempotencyKey || generateIdempotencyKey());
   if (document.getElementById("adShareWith").value === "group") form.append("shareWithGroup", "1");
 
   try {
@@ -7022,6 +7108,9 @@ document.getElementById("addDocumentForm").addEventListener("submit", async (e) 
     loadedSections.delete("documents");
   } catch (err) {
     showToast(err.message, "error");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
   }
 });
 

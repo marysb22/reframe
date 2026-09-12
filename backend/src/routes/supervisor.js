@@ -16,7 +16,8 @@ const {
   toPublicEvent,
   toEventDetail,
 } = require("../utils/serializers");
-const { documentUpload, materialUpload, assignmentAttachmentUpload, sessionAttachmentUpload, eventImageUpload } = require("../utils/uploads");
+const { documentUpload, materialUpload, MATERIAL_UPLOAD_MAX_BYTES, assignmentAttachmentUpload, sessionAttachmentUpload, eventImageUpload } = require("../utils/uploads");
+const { createUploadGuard, hashFile } = require("../utils/uploadGuard");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
@@ -1119,46 +1120,104 @@ router.put(
 
 // ---- Documents -----------------------------------------------------------
 
+// Its own guard instance -- independent from Materials' and Library's --
+// so sharing a document and adding a material from the same account never
+// block each other.
+const documentsUploadGuard = createUploadGuard();
+
+async function findDocumentByIdempotencyKey(pool, idempotencyKey) {
+  if (!idempotencyKey) return null;
+  const { rows } = await pool.query("SELECT * FROM documents WHERE idempotency_key = ?", [idempotencyKey]);
+  return rows[0] || null;
+}
+
 router.post("/students/:studentId/documents", (req, res) => {
+  if (!documentsUploadGuard.markStarted(req.user.id)) {
+    return res.status(409).json({ error: "Upload already in progress." });
+  }
   documentUpload.single("document")(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
-    if (!check.safe) {
-      fs.unlink(req.file.path, () => {});
-      return res.status(400).json({ error: check.reason });
+    if (err) {
+      documentsUploadGuard.markFinished(req.user.id);
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({ error: "File is too large." });
+      }
+      return res.status(400).json({ error: err.message });
     }
-    await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
+    // Previously had no try/catch here at all: a thrown error from any of
+    // the awaited queries below left the request permanently unanswered
+    // (an unhandled rejection -- server.js only logs those, it never sends
+    // a response), which read to the user as "my click didn't work" and
+    // was the actual root cause of duplicate document shares, not just
+    // slowness.
+    try {
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
+      if (!check.safe) {
+        fs.unlink(req.file.path, () => {});
+        return res.status(400).json({ error: check.reason });
+      }
 
-    const { pool } = require("../db");
-    const studentId = Number(req.params.studentId);
-    const assigned = await pool.query(
-      "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
-      [req.user.id, studentId]
-    );
-    if (!assigned.rows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
+      const { pool } = require("../db");
+      const studentId = Number(req.params.studentId);
+      const idempotencyKey = req.body && req.body.idempotencyKey;
 
-    // "Share with the whole group" resolves to that trainee's own group --
-    // there's no separate group picker, matching the "auto-determine, don't
-    // make the user select" convention used elsewhere on this page.
-    let insert;
-    if (req.body && (req.body.shareWithGroup === "1" || req.body.shareWithGroup === "true")) {
-      const { rows: stuRows } = await pool.query("SELECT group_id FROM students WHERE id = ?", [studentId]);
-      const groupId = stuRows[0] && stuRows[0].group_id;
-      if (!groupId) return res.status(400).json({ error: "This trainee has no group to share with" });
-      insert = await pool.query(
-        `INSERT INTO documents (student_id, group_id, uploaded_by, filename, original_name) VALUES (NULL,?,?,?,?)`,
-        [groupId, req.user.id, req.file.filename, req.file.originalname]
+      const existing = await findDocumentByIdempotencyKey(pool, idempotencyKey);
+      if (existing) {
+        fs.unlink(req.file.path, () => {});
+        return res.status(200).json({ ...toDocument({ ...existing, uploaded_by_name: req.user.member_code }), canManage: true });
+      }
+
+      const assigned = await pool.query(
+        "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
+        [req.user.id, studentId]
       );
-    } else {
-      insert = await pool.query(
-        `INSERT INTO documents (student_id, uploaded_by, filename, original_name) VALUES (?,?,?,?)`,
-        [studentId, req.user.id, req.file.filename, req.file.originalname]
-      );
+      if (!assigned.rows.length) {
+        fs.unlink(req.file.path, () => {});
+        return res.status(403).json({ error: "You are not assigned to this trainee" });
+      }
+
+      await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
+
+      // "Share with the whole group" resolves to that trainee's own group --
+      // there's no separate group picker, matching the "auto-determine, don't
+      // make the user select" convention used elsewhere on this page.
+      let insert;
+      try {
+        if (req.body && (req.body.shareWithGroup === "1" || req.body.shareWithGroup === "true")) {
+          const { rows: stuRows } = await pool.query("SELECT group_id FROM students WHERE id = ?", [studentId]);
+          const groupId = stuRows[0] && stuRows[0].group_id;
+          if (!groupId) {
+            fs.unlink(req.file.path, () => {});
+            return res.status(400).json({ error: "This trainee has no group to share with" });
+          }
+          insert = await pool.query(
+            `INSERT INTO documents (student_id, group_id, uploaded_by, filename, original_name, idempotency_key) VALUES (NULL,?,?,?,?,?)`,
+            [groupId, req.user.id, req.file.filename, req.file.originalname, idempotencyKey || null]
+          );
+        } else {
+          insert = await pool.query(
+            `INSERT INTO documents (student_id, uploaded_by, filename, original_name, idempotency_key) VALUES (?,?,?,?,?)`,
+            [studentId, req.user.id, req.file.filename, req.file.originalname, idempotencyKey || null]
+          );
+        }
+      } catch (dbErr) {
+        if (dbErr.code === "ER_DUP_ENTRY" && idempotencyKey) {
+          fs.unlink(req.file.path, () => {});
+          const winner = await findDocumentByIdempotencyKey(pool, idempotencyKey);
+          if (winner) return res.status(200).json({ ...toDocument({ ...winner, uploaded_by_name: req.user.member_code }), canManage: true });
+        }
+        throw dbErr;
+      }
+
+      const { rows } = await pool.query("SELECT * FROM documents WHERE id = ?", [insert.insertId]);
+      res.status(201).json({ ...toDocument({ ...rows[0], uploaded_by_name: req.user.member_code }), canManage: true });
+    } catch (e) {
+      console.error("POST /students/:studentId/documents failed:", e);
+      if (req.file) fs.unlink(req.file.path, () => {});
+      if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+    } finally {
+      documentsUploadGuard.markFinished(req.user.id);
     }
-    const { rows } = await pool.query("SELECT * FROM documents WHERE id = ?", [insert.insertId]);
-
-    res.status(201).json({ ...toDocument({ ...rows[0], uploaded_by_name: req.user.member_code }), canManage: true });
   });
 });
 
@@ -1477,6 +1536,17 @@ router.post(
 // below, never the file-upload one this list validates.
 const MATERIAL_TYPES = ["document", "image", "video", "audio", "assignment", "worksheet", "reading"];
 
+// Blocks a double-click/rapid-repeat Add-Material submit from the SAME
+// account before a second request even starts streaming a file to disk.
+// Its own guard instance -- independent from Library's -- so adding a
+// material and uploading a book from the same account never block each
+// other. This is the fast, immediate line of defense; idempotencyKey
+// (below) is what makes duplicate PREVENTION actually correct at the
+// database level even if this in-memory check is ever bypassed (a
+// deployment with more than one Node process, a retried request that
+// arrives after the lock already cleared, etc).
+const materialsUploadGuard = createUploadGuard();
+
 router.get(
   "/materials",
   asyncRoute(async (req, res, db) => {
@@ -1501,6 +1571,18 @@ router.get(
  * trainee if the material was scoped to them, or the supervisor's whole
  * current caseload if it wasn't (materials with no studentId are shared
  * with every assigned trainee -- see the materials-feed read side).
+ *
+ * Deliberately called WITHOUT awaiting it before responding to the client
+ * (see the two call sites below) -- this fan-out was previously the main
+ * cause of "Add/Share takes several seconds": one caseload of N trainees
+ * meant N sequential awaited notification inserts (each itself 2-3 DB
+ * round trips) before the HTTP response was ever sent. The material is
+ * already fully committed by the time this runs, so a slow or partially
+ * failed notification run can never affect whether the material exists or
+ * looks duplicated -- it can only affect how quickly people are told about
+ * it, which is why it's safe to move off the response's critical path.
+ * Uses allSettled (not a sequential loop or Promise.all) so one
+ * recipient's failed notification can't stop the others from going out.
  */
 async function notifyMaterialRecipients(pool, supervisorId, studentId, materialTitle, materialId) {
   const trainer = await getUserContactInfo(pool, supervisorId);
@@ -1512,16 +1594,39 @@ async function notifyMaterialRecipients(pool, supervisorId, studentId, materialT
     const { rows } = await pool.query("SELECT student_id FROM supervisor_students WHERE supervisor_id = ?", [supervisorId]);
     recipientIds = rows.map((r) => r.student_id);
   }
-  for (const recipientId of recipientIds) {
-    await createNotification(pool, {
-      recipientId,
-      type: "document",
-      title: `New material: ${materialTitle}`,
-      relatedEntityType: "learning_material",
-      relatedEntityId: materialId,
-      email: { template: "newMaterial", data: { materialTitle, trainerName } },
-    });
+  const results = await Promise.allSettled(
+    recipientIds.map((recipientId) =>
+      createNotification(pool, {
+        recipientId,
+        type: "document",
+        title: `New material: ${materialTitle}`,
+        relatedEntityType: "learning_material",
+        relatedEntityId: materialId,
+        email: { template: "newMaterial", data: { materialTitle, trainerName } },
+      })
+    )
+  );
+  const failed = results.filter((r) => r.status === "rejected");
+  if (failed.length) {
+    console.error(
+      `notifyMaterialRecipients: ${failed.length}/${recipientIds.length} notifications failed for material ${materialId}`,
+      failed.map((f) => f.reason)
+    );
   }
+}
+
+/**
+ * Looks up a material by its client-supplied idempotency key. The
+ * frontend generates one UUID per logical Add/Share attempt and resends
+ * the SAME key on every retry of that attempt (double-click, browser
+ * retry, slow-network resubmit) -- if a row already exists for that key,
+ * the earlier attempt already succeeded, so the correct response to a
+ * retry is that SAME material, not a new one and not an error.
+ */
+async function findByIdempotencyKey(pool, idempotencyKey) {
+  if (!idempotencyKey) return null;
+  const { rows } = await pool.query("SELECT * FROM learning_materials WHERE idempotency_key = ?", [idempotencyKey]);
+  return rows[0] || null;
 }
 
 router.post("/materials", (req, res) => {
@@ -1529,60 +1634,142 @@ router.post("/materials", (req, res) => {
   const { pool } = require("../db");
 
   if (contentType.includes("multipart/form-data")) {
+    // Checked BEFORE multer starts streaming the file to disk, so a
+    // double-click's second request is rejected almost instantly instead
+    // of after wastefully uploading the whole file again.
+    if (!materialsUploadGuard.markStarted(req.user.id)) {
+      return res.status(409).json({ error: "Upload already in progress." });
+    }
     materialUpload.single("file")(req, res, async (err) => {
-      if (err) return res.status(400).json({ error: err.message });
-      const { title, description, materialType, studentId } = req.body || {};
-      if (!title || !materialType) return res.status(400).json({ error: "title and materialType are required" });
-      // The schema's own CHECK constraint on learning_materials.material_type
-      // is silently unenforced on MySQL below 8.0.16 (its own header
-      // comment says so) -- this route never validated independently, so a
-      // bad value would either fail with a raw DB error on a version that
-      // does enforce it, or corrupt the column silently on one that doesn't.
-      if (!MATERIAL_TYPES.includes(materialType)) {
-        return res.status(400).json({ error: `materialType must be one of: ${MATERIAL_TYPES.join(", ")}` });
+      if (err) {
+        materialsUploadGuard.markFinished(req.user.id);
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ error: `File is too large. The maximum allowed size is ${config.materialUploadMaxMb}MB.` });
+        }
+        return res.status(400).json({ error: err.message });
       }
-      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-      const check = checkFileContent(req.file.path, ["pdf", "office", "image", "media"]);
-      if (!check.safe) {
-        fs.unlink(req.file.path, () => {});
-        return res.status(400).json({ error: check.reason });
-      }
-      await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
+      // Everything from here on always reaches the finally block below,
+      // so a thrown error (a DB blip, anything unexpected) still sends a
+      // real response instead of leaving the request hanging forever --
+      // that silent hang, not just slowness, was what made users think
+      // their click "didn't work" and click Add/Share again.
+      try {
+        const { title, description, materialType, studentId, idempotencyKey } = req.body || {};
+        if (!title || !materialType) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(400).json({ error: "title and materialType are required" });
+        }
+        // The schema's own CHECK constraint on learning_materials.material_type
+        // is silently unenforced on MySQL below 8.0.16 (its own header
+        // comment says so) -- this route never validated independently, so a
+        // bad value would either fail with a raw DB error on a version that
+        // does enforce it, or corrupt the column silently on one that doesn't.
+        if (!MATERIAL_TYPES.includes(materialType)) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(400).json({ error: `materialType must be one of: ${MATERIAL_TYPES.join(", ")}` });
+        }
 
-      const insert = await pool.query(
-        `INSERT INTO learning_materials (supervisor_id, student_id, title, description, material_type, filename, original_name)
-         VALUES (?,?,?,?,?,?,?)`,
-        [req.user.id, studentId || null, title, description || null, materialType, req.file.filename, req.file.originalname]
-      );
-      const { rows } = await pool.query("SELECT * FROM learning_materials WHERE id = ?", [insert.insertId]);
-      await pool.query(
-        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'material added', 'learning_materials', ?)",
-        [req.user.id, insert.insertId]
-      );
-      await notifyMaterialRecipients(pool, req.user.id, studentId, title, insert.insertId);
-      res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
+        const existing = await findByIdempotencyKey(pool, idempotencyKey);
+        if (existing) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(200).json(toMaterial({ ...existing, supervisor_name: req.user.member_code }));
+        }
+
+        const check = checkFileContent(req.file.path, ["pdf", "office", "image", "media"]);
+        if (!check.safe) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(400).json({ error: check.reason });
+        }
+        await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
+        const fileHash = await hashFile(req.file.path);
+
+        let insert;
+        try {
+          insert = await pool.query(
+            `INSERT INTO learning_materials (supervisor_id, student_id, title, description, material_type, filename, original_name, file_hash, idempotency_key)
+             VALUES (?,?,?,?,?,?,?,?,?)`,
+            [req.user.id, studentId || null, title, description || null, materialType, req.file.filename, req.file.originalname, fileHash, idempotencyKey || null]
+          );
+        } catch (dbErr) {
+          // Lost a race against a near-simultaneous request carrying the
+          // SAME idempotency key (both passed the findByIdempotencyKey
+          // check above before either committed) -- the database's own
+          // unique constraint is what actually closes that race; return
+          // the winner's row instead of a confusing duplicate-key error.
+          if (dbErr.code === "ER_DUP_ENTRY" && idempotencyKey) {
+            fs.unlink(req.file.path, () => {});
+            const winner = await findByIdempotencyKey(pool, idempotencyKey);
+            if (winner) return res.status(200).json(toMaterial({ ...winner, supervisor_name: req.user.member_code }));
+          }
+          throw dbErr;
+        }
+
+        const { rows } = await pool.query("SELECT * FROM learning_materials WHERE id = ?", [insert.insertId]);
+        await pool.query(
+          "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'material added', 'learning_materials', ?)",
+          [req.user.id, insert.insertId]
+        );
+        res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
+        notifyMaterialRecipients(pool, req.user.id, studentId, title, insert.insertId).catch((notifyErr) => {
+          console.error("Failed to notify material recipients:", notifyErr);
+        });
+      } catch (e) {
+        console.error("POST /materials failed:", e);
+        if (req.file) fs.unlink(req.file.path, () => {});
+        if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+      } finally {
+        materialsUploadGuard.markFinished(req.user.id);
+      }
     });
     return;
   }
 
   (async () => {
-    const { title, description, materialType, externalUrl, studentId } = req.body || {};
-    if (!title || materialType !== "link" || !externalUrl) {
-      return res.status(400).json({ error: "For non-file materials, materialType must be 'link' and externalUrl is required" });
+    if (!materialsUploadGuard.markStarted(req.user.id)) {
+      return res.status(409).json({ error: "Upload already in progress." });
     }
-    const insert = await pool.query(
-      `INSERT INTO learning_materials (supervisor_id, student_id, title, description, material_type, external_url)
-       VALUES (?,?,?,?,'link',?)`,
-      [req.user.id, studentId || null, title, description || null, externalUrl]
-    );
-    const { rows } = await pool.query("SELECT * FROM learning_materials WHERE id = ?", [insert.insertId]);
-    await pool.query(
-      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'material added', 'learning_materials', ?)",
-      [req.user.id, insert.insertId]
-    );
-    await notifyMaterialRecipients(pool, req.user.id, studentId, title, insert.insertId);
-    res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
-  })().catch((err) => res.status(500).json({ error: "Internal server error" }));
+    try {
+      const { title, description, materialType, externalUrl, studentId, idempotencyKey } = req.body || {};
+      if (!title || materialType !== "link" || !externalUrl) {
+        return res.status(400).json({ error: "For non-file materials, materialType must be 'link' and externalUrl is required" });
+      }
+
+      const existing = await findByIdempotencyKey(pool, idempotencyKey);
+      if (existing) {
+        return res.status(200).json(toMaterial({ ...existing, supervisor_name: req.user.member_code }));
+      }
+
+      let insert;
+      try {
+        insert = await pool.query(
+          `INSERT INTO learning_materials (supervisor_id, student_id, title, description, material_type, external_url, idempotency_key)
+           VALUES (?,?,?,?,'link',?,?)`,
+          [req.user.id, studentId || null, title, description || null, externalUrl, idempotencyKey || null]
+        );
+      } catch (dbErr) {
+        if (dbErr.code === "ER_DUP_ENTRY" && idempotencyKey) {
+          const winner = await findByIdempotencyKey(pool, idempotencyKey);
+          if (winner) return res.status(200).json(toMaterial({ ...winner, supervisor_name: req.user.member_code }));
+        }
+        throw dbErr;
+      }
+
+      const { rows } = await pool.query("SELECT * FROM learning_materials WHERE id = ?", [insert.insertId]);
+      await pool.query(
+        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'material added', 'learning_materials', ?)",
+        [req.user.id, insert.insertId]
+      );
+      res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
+      notifyMaterialRecipients(pool, req.user.id, studentId, title, insert.insertId).catch((notifyErr) => {
+        console.error("Failed to notify material recipients:", notifyErr);
+      });
+    } catch (err) {
+      console.error("POST /materials (link) failed:", err);
+      if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+    } finally {
+      materialsUploadGuard.markFinished(req.user.id);
+    }
+  })();
 });
 
 router.delete(
@@ -1594,7 +1781,10 @@ router.delete(
     );
     if (!existingRows.length) return res.status(404).json({ error: "Material not found" });
 
-    await db.query("DELETE FROM learning_materials WHERE id = ?", [req.params.materialId]);
+    // Re-asserting supervisor_id here (not just id) means this statement's
+    // own safety no longer depends on the SELECT above never changing --
+    // each is independently scoped to the caller's own materials.
+    await db.query("DELETE FROM learning_materials WHERE id = ? AND supervisor_id = ?", [req.params.materialId, req.user.id]);
     if (existingRows[0].filename) {
       const filePath = path.join(config.uploadsDir, "materials", existingRows[0].filename);
       fs.unlink(filePath, (err) => {
