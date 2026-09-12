@@ -5,6 +5,14 @@ const pool = mysql.createPool({
   uri: config.db.connectionString,
   waitForConnections: true,
   connectionLimit: 10,
+  // Shared hosting's MySQL/MariaDB server closes an idle connection after
+  // its own wait_timeout, but a pooled connection sitting unused doesn't
+  // find out until the next query is attempted on it -- surfacing as a
+  // sporadic ECONNRESET on an otherwise-healthy request. Enabling TCP
+  // keep-alive keeps idle pooled connections from going stale in the first
+  // place.
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
   // Without this, mysql2 auto-converts DATE columns to JS Date objects in
   // the caller's local timezone, which then serializes to a shifted
   // calendar date over JSON for anyone not in UTC (a DATE column has no
