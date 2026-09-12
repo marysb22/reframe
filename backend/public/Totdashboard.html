@@ -1498,36 +1498,43 @@
             font-size: 12.5px;
         }
 
-        .book-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 18px;
-            margin-top: 16px;
+        /* Compact list rows -- a dense, scannable library (built for
+           hundreds/thousands of entries), not cover-art cards. One row per
+           book: a small icon/thumbnail, the title as the one dominant
+           line, and every other detail (author, type, category, year,
+           added-by) collapsed into a single small green italic line
+           beneath it. */
+        .book-list {
+            display: flex;
+            flex-direction: column;
+            margin-top: 10px;
+            border-top: 1px solid var(--border-soft);
         }
 
         .book-card {
             display: flex;
-            flex-direction: column;
-            background: var(--surface);
-            border: 1px solid var(--border-soft);
-            border-radius: 14px;
-            overflow: hidden;
-            transition: box-shadow .15s ease, transform .15s ease;
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 4px;
+            border-bottom: 1px solid var(--border-soft);
+            transition: background .1s ease;
         }
 
         .book-card:hover {
-            box-shadow: 0 10px 26px rgba(0, 0, 0, .09);
-            transform: translateY(-2px);
+            background: var(--surface-2);
         }
 
         .book-cover {
-            aspect-ratio: 3 / 4;
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+            border-radius: 6px;
             background: var(--surface-2);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            border-bottom: 1px solid var(--border-soft);
             cursor: pointer;
         }
 
@@ -1538,16 +1545,15 @@
         }
 
         .book-cover i {
-            font-size: 30px;
+            font-size: 14px;
             color: var(--faint);
         }
 
         .book-info {
-            padding: 10px 12px 6px;
+            flex: 1;
+            min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 3px;
-            flex: 1;
         }
 
         .book-title {
@@ -1555,44 +1561,34 @@
             font-weight: 700;
             color: var(--text);
             line-height: 1.3;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            line-clamp: 2;
-            -webkit-box-orient: vertical;
+            white-space: nowrap;
             overflow: hidden;
-        }
-
-        .book-author {
-            font-size: 11.5px;
-            color: var(--muted);
+            text-overflow: ellipsis;
         }
 
         .book-meta {
             font-size: 10.5px;
-            color: var(--faint);
-            margin-top: auto;
-            padding-top: 4px;
-        }
-
-        .book-added-by {
-            font-size: 10px;
-            color: var(--faint);
+            color: var(--success);
+            font-style: italic;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .book-actions {
             display: flex;
-            gap: 6px;
-            padding: 8px 12px 12px;
+            gap: 5px;
+            flex-shrink: 0;
         }
 
         .book-open-btn {
-            flex: 1;
-            height: 30px;
-            border-radius: 8px;
+            height: 26px;
+            padding: 0 10px;
+            border-radius: 7px;
             border: 1px solid var(--primary);
             background: var(--primary);
             color: #fff;
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             font-family: inherit;
@@ -1603,18 +1599,13 @@
         }
 
         .book-menu-btn {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
             border: 1px solid var(--border);
             background: var(--surface);
             color: var(--muted);
             cursor: pointer;
-        }
-
-        .book-year {
-            font-size: 10.5px;
-            color: var(--faint);
         }
 
         .book-details-layout {
@@ -3257,24 +3248,11 @@
                     </div>
                     <div class="toolbar" style="margin-top:14px;">
                         <input type="text" id="librarySearch" placeholder="Search by title, author, publisher, category, or type..." oninput="applyLibraryFilters()">
-                        <select id="libraryTypeFilter" onchange="applyLibraryFilters()">
-                            <option value="">All types</option>
-                        </select>
-                        <select id="librarySort" onchange="applyLibraryFilters()">
-                            <option value="newest">Recently added</option>
-                            <option value="oldest">Oldest added</option>
-                            <option value="title-az">Title A&ndash;Z</option>
-                            <option value="title-za">Title Z&ndash;A</option>
-                            <option value="author-az">Author A&ndash;Z</option>
-                            <option value="author-za">Author Z&ndash;A</option>
-                            <option value="year-newest">Publication year (newest)</option>
-                            <option value="year-oldest">Publication year (oldest)</option>
-                        </select>
                     </div>
-                    <div class="type-pills" id="libraryCategoryPills" style="margin-top:12px;"></div>
-                    <div class="book-grid" id="libraryGrid">
+                    <div class="book-list" id="libraryGrid">
                         <div class="empty-state">Loading library...</div>
                     </div>
+                    <button type="button" class="btn btn-secondary" id="libraryLoadMoreBtn" style="width:auto;margin-top:14px;display:none;" onclick="libraryLoadMore()">Load more</button>
                 </section>
             </section>
 
@@ -7381,7 +7359,9 @@ async function saveNotificationPrefs() {
 // ==========================================================================
 
 let libraryBooksRaw = [];
-let libraryCategoryFilter = "all";
+let libraryLastFilteredList = [];
+let libraryShownCount = 40;
+const LIBRARY_PAGE_SIZE = 40;
 
 // The controlled Type list -- mirrors RESOURCE_TYPES in backend/src/routes/library.js.
 // Adding a new type later means updating both lists, not touching the DB schema.
@@ -7403,8 +7383,6 @@ function populateLibraryTypeSelects() {
   const optionsHtml = RESOURCE_TYPES.map((t) => `<option value="${t.value}">${t.label}</option>`).join("");
   const formSelect = document.getElementById("bookResourceType");
   if (formSelect) formSelect.innerHTML = `<option value="">Select a type...</option>${optionsHtml}`;
-  const filterSelect = document.getElementById("libraryTypeFilter");
-  if (filterSelect) filterSelect.innerHTML = `<option value="">All types</option>${optionsHtml}`;
 }
 populateLibraryTypeSelects();
 
@@ -7417,70 +7395,54 @@ async function loadLibrary() {
   const data = await apiRequest("/library/books");
   if (!data) return;
   libraryBooksRaw = data.books;
-  libraryCategoryFilter = "all";
-  renderLibraryCategoryPills();
+  libraryShownCount = LIBRARY_PAGE_SIZE;
   applyLibraryFilters();
 }
 
-function renderLibraryCategoryPills() {
-  const categories = Array.from(new Set(libraryBooksRaw.map((b) => b.category).filter(Boolean))).sort();
-  const groups = ["all", ...categories];
-  document.getElementById("libraryCategoryPills").innerHTML = groups
-    .map((c) => `<button type="button" class="type-pill${c === libraryCategoryFilter ? " active" : ""}" onclick="setLibraryCategoryFilter('${escapeHtml(c).replace(/'/g, "&#39;")}')">${c === "all" ? "All" : escapeHtml(c)}</button>`)
-    .join("");
-}
-
-function setLibraryCategoryFilter(category) {
-  libraryCategoryFilter = category;
-  renderLibraryCategoryPills();
-  applyLibraryFilters();
-}
-
+// Search-only now (category pills / type filter / sort dropdown removed --
+// a library meant to hold hundreds or thousands of books needs one simple
+// control, not several). Newest-first, matching the API's own default order.
 function applyLibraryFilters() {
   const search = (document.getElementById("librarySearch").value || "").trim().toLowerCase();
-  const sort = document.getElementById("librarySort").value;
-  const typeFilter = document.getElementById("libraryTypeFilter").value;
 
-  let list = libraryBooksRaw.filter((b) => {
-    if (libraryCategoryFilter !== "all" && (b.category || "") !== libraryCategoryFilter) return false;
-    if (typeFilter && b.resourceType !== typeFilter) return false;
-    if (search) {
-      const hay = `${b.title || ""} ${b.author || ""} ${b.publisher || ""} ${b.category || ""} ${RESOURCE_TYPE_LABELS[b.resourceType] || ""}`.toLowerCase();
-      if (!hay.includes(search)) return false;
-    }
-    return true;
+  const list = libraryBooksRaw.filter((b) => {
+    if (!search) return true;
+    const hay = `${b.title || ""} ${b.author || ""} ${b.publisher || ""} ${b.category || ""} ${RESOURCE_TYPE_LABELS[b.resourceType] || ""}`.toLowerCase();
+    return hay.includes(search);
   });
 
-  list = list.slice().sort((a, b) => {
-    if (sort === "title-az") return (a.title || "").localeCompare(b.title || "");
-    if (sort === "title-za") return (b.title || "").localeCompare(a.title || "");
-    if (sort === "author-az") return (a.author || "").localeCompare(b.author || "");
-    if (sort === "author-za") return (b.author || "").localeCompare(a.author || "");
-    if (sort === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
-    // Books without a publication year sink to the bottom of either
-    // direction rather than clustering unpredictably at whichever end
-    // the missing-value fallback happens to sort toward.
-    if (sort === "year-newest") return (b.publicationYear || 0) - (a.publicationYear || 0);
-    if (sort === "year-oldest") return (a.publicationYear || 9999) - (b.publicationYear || 9999);
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  });
-
+  libraryShownCount = LIBRARY_PAGE_SIZE;
   renderLibraryGrid(list);
 }
 
+function libraryLoadMore() {
+  libraryShownCount += LIBRARY_PAGE_SIZE;
+  renderLibraryGrid(libraryLastFilteredList);
+}
+
 function renderLibraryGrid(list) {
+  libraryLastFilteredList = list;
   const root = document.getElementById("libraryGrid");
+  const loadMoreBtn = document.getElementById("libraryLoadMoreBtn");
   if (!list.length) {
     root.innerHTML = `
-      <div class="library-empty" style="grid-column:1/-1;">
+      <div class="library-empty">
         <i class="fa fa-book"></i>
         <h4>No books found</h4>
-        <p>${libraryBooksRaw.length ? "Try another title, author, publisher, category, or type." : "No books have been added to the Library yet."}</p>
+        <p>${libraryBooksRaw.length ? "Try another title, author, or publisher." : "No books have been added to the Library yet."}</p>
       </div>`;
+    loadMoreBtn.style.display = "none";
     return;
   }
-  root.innerHTML = list.map((b) => {
-    const typeCategory = [RESOURCE_TYPE_LABELS[b.resourceType], b.category].filter(Boolean).join(" · ");
+  const visible = list.slice(0, libraryShownCount);
+  root.innerHTML = visible.map((b) => {
+    const metaParts = [
+      RESOURCE_TYPE_LABELS[b.resourceType],
+      b.category,
+      b.author,
+      b.publicationYear ? String(b.publicationYear) : null,
+      `Added by ${b.createdByName}`,
+    ].filter(Boolean);
     const fileUrl = `${UPLOADS}/materials/${b.filename}${TOKEN_Q}`;
     return `
     <div class="book-card">
@@ -7489,19 +7451,17 @@ function renderLibraryGrid(list) {
       </div>
       <div class="book-info">
         <div class="book-title" onclick="openBookDetails(${b.id})" style="cursor:pointer;">${escapeHtml(b.title)}</div>
-        ${b.author ? `<div class="book-author">${escapeHtml(b.author)}</div>` : ""}
-        ${typeCategory ? `<div class="book-meta">${escapeHtml(typeCategory)}</div>` : ""}
-        ${b.publicationYear ? `<div class="book-year">${escapeHtml(String(b.publicationYear))}</div>` : ""}
-        <div class="book-added-by">Added by: ${escapeHtml(b.createdByName)} &middot; ${escapeHtml(b.createdByRole)}</div>
+        <div class="book-meta">${escapeHtml(metaParts.join(" · "))}</div>
       </div>
       <div class="book-actions">
-        <button type="button" class="book-open-btn" onclick="openBookReader(${b.id})">Open &amp; Read</button>
+        <button type="button" class="book-open-btn" onclick="openBookReader(${b.id})">Open</button>
         <a class="book-menu-btn" title="Download" href="${fileUrl}" download="${escapeHtml(b.originalName || "")}" style="display:flex;align-items:center;justify-content:center;text-decoration:none;"><i class="fa fa-download"></i></a>
         ${b.canDelete ? `<button type="button" class="book-menu-btn" title="Remove this book" onclick="deleteLibraryBook(${b.id})"><i class="fa fa-trash"></i></button>` : ""}
       </div>
     </div>
   `;
   }).join("");
+  loadMoreBtn.style.display = list.length > libraryShownCount ? "block" : "none";
 }
 
 function bookFileInfo(b) {
@@ -7652,6 +7612,14 @@ document.getElementById("addBookForm").addEventListener("submit", async (e) => {
   const cover = document.getElementById("bookCoverInput").files[0];
   if (cover) form.append("coverImage", cover);
 
+  // Disabled for the whole request, not just visually styled -- the real
+  // duplicate/in-progress protection is server-side (see routes/library.js),
+  // this just avoids firing an obviously-redundant second request from a
+  // double-click or impatient re-click while the first is still uploading.
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalLabel = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Uploading…";
   try {
     const response = await fetch(`${API}/library/books`, {
       method: "POST",
@@ -7665,12 +7633,14 @@ document.getElementById("addBookForm").addEventListener("submit", async (e) => {
     const book = await response.json();
     book.canDelete = true;
     libraryBooksRaw.unshift(book);
-    renderLibraryCategoryPills();
     applyLibraryFilters();
     closeModal("addBookModal");
     showSuccessNotification("Book Added", "The book has been added to the Library.");
   } catch (err) {
     showToast(err.message, "error");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
   }
 });
 
@@ -7679,7 +7649,6 @@ async function deleteLibraryBook(id) {
   const result = await apiRequest(`/library/books/${id}`, { method: "DELETE" });
   if (result) {
     libraryBooksRaw = libraryBooksRaw.filter((b) => b.id !== id);
-    renderLibraryCategoryPills();
     applyLibraryFilters();
     showToast("Book removed", "success");
   }

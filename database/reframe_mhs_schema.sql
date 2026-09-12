@@ -549,13 +549,21 @@ CREATE TABLE learning_materials (
                        'book', 'article', 'research_paper', 'academic_paper', 'thesis',
                        'ebook', 'reference', 'guide', 'report', 'other'
                      )),
+  -- SHA-256 of the uploaded file's content (added in migration 021), used
+  -- to detect a duplicate Library book upload by content rather than by
+  -- filename -- see routes/library.js's POST /books. Not a UNIQUE
+  -- constraint: Materials (non-book) rows can legitimately share identical
+  -- content, so uniqueness is checked in application code, scoped to
+  -- material_type='book'.
+  file_hash      VARCHAR(64),
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_material_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
   CONSTRAINT fk_material_admin FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE SET NULL,
   CONSTRAINT fk_material_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
   CONSTRAINT chk_material_has_file CHECK (filename IS NOT NULL OR external_url IS NOT NULL),
   CONSTRAINT chk_publication_year CHECK (publication_year IS NULL OR publication_year BETWEEN 1000 AND 2100),
-  INDEX idx_materials_type_created (material_type, created_at)
+  INDEX idx_materials_type_created (material_type, created_at),
+  INDEX idx_materials_file_hash (file_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE videos (

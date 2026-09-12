@@ -6,6 +6,7 @@
 // add or remove a book -- enforced here, not just by hiding a button.
 const express = require("express");
 const fs = require("fs");
+const crypto = require("crypto");
 const path = require("path");
 const config = require("../config");
 const { pool } = require("../db");
@@ -29,6 +30,42 @@ const RESOURCE_TYPES = [
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
+
+// Blocks a double-click/rapid-repeat book upload from the SAME account
+// before the second request even starts streaming its file to disk --
+// this app runs as a single Node process, so a plain in-memory Map is
+// enough (no cross-instance coordination needed). Keyed by uploader id ->
+// the time their upload started, so a request that crashes without
+// reaching the finally-release below can't wedge that account forever;
+// anything older than STALE_UPLOAD_MS is treated as abandoned, not
+// in-progress.
+const uploadsInFlight = new Map();
+const STALE_UPLOAD_MS = 5 * 60 * 1000;
+
+function markUploadStarted(userId) {
+  const startedAt = uploadsInFlight.get(userId);
+  if (startedAt && Date.now() - startedAt < STALE_UPLOAD_MS) return false;
+  uploadsInFlight.set(userId, Date.now());
+  return true;
+}
+function markUploadFinished(userId) {
+  uploadsInFlight.delete(userId);
+}
+
+// SHA-256 of the file's actual bytes -- used to recognize "the same book"
+// regardless of filename (a rename shouldn't defeat duplicate detection),
+// and to correctly NOT flag two different files that merely share a
+// filename (streamed, not loaded whole into memory, so this scales fine
+// to large book files).
+function hashFile(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash("sha256");
+    const stream = fs.createReadStream(filePath);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("error", reject);
+  });
+}
 
 function toBook(row) {
   const createdByRole = row.admin_id ? "Admin" : row.supervisor_type === "primary" ? "Master Trainer" : "ToT";
@@ -79,17 +116,27 @@ router.post("/books", (req, res) => {
     return res.status(403).json({ error: "You don't have permission to add to the Library" });
   }
 
+  // Stops a double-click/rapid-repeat submission from this account before
+  // its file is even streamed to disk -- see markUploadStarted above.
+  if (!markUploadStarted(req.user.id)) {
+    return res.status(409).json({ error: "Upload already in progress." });
+  }
+
   materialUpload.fields([
     { name: "file", maxCount: 1 },
     { name: "coverImage", maxCount: 1 },
   ])(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message });
+    if (err) {
+      markUploadFinished(req.user.id);
+      return res.status(400).json({ error: err.message });
+    }
 
     const file = req.files && req.files.file && req.files.file[0];
     const cover = req.files && req.files.coverImage && req.files.coverImage[0];
     const fail = (status, error) => {
       if (file) fs.unlink(file.path, () => {});
       if (cover) fs.unlink(cover.path, () => {});
+      markUploadFinished(req.user.id);
       return res.status(status).json({ error });
     };
     try {
@@ -118,6 +165,18 @@ router.post("/books", (req, res) => {
       }
       await optimizeImageIfPossible(file.path, { maxDimension: 1920 });
 
+      // Same book already in the Library, by content -- not filename, so a
+      // rename can't defeat this and two different files that happen to
+      // share a filename are correctly NOT flagged. Checked globally
+      // (across every uploader), scoped to material_type='book' -- the
+      // whole point of a shared Library is one entry per real book.
+      const fileHash = await hashFile(file.path);
+      const { rows: existingRows } = await pool.query(
+        "SELECT id FROM learning_materials WHERE material_type = 'book' AND file_hash = ?",
+        [fileHash]
+      );
+      if (existingRows.length) return fail(409, "This book already exists in the Library.");
+
       // Creator comes ONLY from the authenticated session -- never a
       // client-supplied field.
       let supervisorId = null;
@@ -138,18 +197,19 @@ router.post("/books", (req, res) => {
 
       const insert = await pool.query(
         `INSERT INTO learning_materials
-           (supervisor_id, admin_id, student_id, title, author, description, category, material_type, filename, original_name, cover_image, publisher, publication_year, resource_type)
-         VALUES (?,?,NULL,?,?,?,?,'book',?,?,?,?,?,?)`,
+           (supervisor_id, admin_id, student_id, title, author, description, category, material_type, filename, original_name, cover_image, publisher, publication_year, resource_type, file_hash)
+         VALUES (?,?,NULL,?,?,?,?,'book',?,?,?,?,?,?,?)`,
         [
           supervisorId, adminId, title.trim(), author.trim(), description || null, category || null,
           file.filename, file.originalname, cover ? cover.filename : null,
-          publisher || null, publicationYear, resourceType,
+          publisher || null, publicationYear, resourceType, fileHash,
         ]
       );
       await pool.query(
         "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'book added', 'learning_materials', ?)",
         [req.user.id, insert.insertId]
       );
+      markUploadFinished(req.user.id);
 
       res.status(201).json({
         id: insert.insertId,
@@ -172,6 +232,7 @@ router.post("/books", (req, res) => {
       console.error("[library] failed to add book:", e);
       if (file) fs.unlink(file.path, () => {});
       if (cover) fs.unlink(cover.path, () => {});
+      markUploadFinished(req.user.id);
       res.status(500).json({ error: "Internal server error" });
     }
   });
