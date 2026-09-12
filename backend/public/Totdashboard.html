@@ -3016,6 +3016,7 @@
                     <li><a data-section="library" href="#library"><i class="fa fa-building-columns"></i>Library</a></li>
                     <li><a data-section="students" href="#students"><i class="fa fa-user-graduate"></i>Trainee Profiles</a></li>
                     <li><a data-section="calendar" href="#calendar"><i class="fa fa-calendar"></i>Calendar</a></li>
+                    <li><a href="supervisor-events.html"><i class="fa fa-calendar-days"></i>Events</a></li>
                 </ul>
                 <div class="nav-label">Training</div>
                 <ul>
@@ -4014,11 +4015,16 @@
             if (!storedUser) return;
             const isToT = storedUser.role === "supervisor" && storedUser.supervisorType !== "primary";
             if (isToT) return;
-            window.location.href =
+            const destination =
                 storedUser.role === "admin" ? "AdminDashboard.html" :
                 storedUser.role === "supervisor" ? "masterDashborad.html" :
                 storedUser.role === "designer" ? "DesignerDashboard.html" :
                 "PersonalProfile.html";
+            // Carry the current section (#hash) over to the correct
+            // dashboard instead of dropping it -- otherwise this bounce
+            // silently lands the user on that dashboard's default section
+            // instead of wherever they actually were.
+            window.location.href = destination + window.location.hash;
         })();
         // Every /uploads/* file (except event images) now requires a valid
         // session -- <img src>/<a href> can't send an Authorization header,
@@ -4567,13 +4573,23 @@
             if (!data) return;
             allStudents = data.students;
             renderStudents();
-            loadKpis();
-            loadTrainingHoursSummary();
             populateStudentPickers();
-            // "Training Activities" now lives inside this same Trainee
-            // Profiles section (no longer its own lazily-loaded nav
-            // section), so it loads eagerly right alongside the roster.
-            loadSessions();
+            // Previously fire-and-forget: the caller (DOMContentLoaded's init
+            // chain) treated loadStudents() as "done" as soon as this
+            // function returned, while these three kept fetching in the
+            // background -- occasionally still in flight by the time
+            // showSection() ran for the restored section, showing stale/
+            // empty names and numbers for a moment after a refresh. Awaiting
+            // them here means loadStudents() genuinely isn't done until its
+            // data is.
+            await Promise.all([
+                loadKpis(),
+                loadTrainingHoursSummary(),
+                // "Training Activities" now lives inside this same Trainee
+                // Profiles section (no longer its own lazily-loaded nav
+                // section), so it loads eagerly right alongside the roster.
+                loadSessions(),
+            ]);
         }
 
         // "Received" (from my Master Trainer) and "delivered" (to my
@@ -4737,7 +4753,14 @@
             activeTab = initialTab || "overview";
             await renderActivePanel();
             openModal("studentModal");
-            showSection("students");
+            // Deliberately does NOT call showSection("students") -- this is
+            // called from other sections too (e.g. Chat's "Open full
+            // profile" icon), and forcing a section switch as a side effect
+            // silently changed the user's persisted section/hash, so a
+            // later refresh would land them on Trainee Profiles instead of
+            // wherever they actually were. The modal is a top-level overlay
+            // (not nested inside #section-students), so it displays
+            // correctly on top of whichever section is already active.
         }
 
         function renderProgress(p) {

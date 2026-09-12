@@ -2860,6 +2860,7 @@
                     <li><a data-section="tots" href="#tots"><i class="fa fa-user-tie"></i>TOTs</a></li>
                     <li><a data-section="trainees" href="#trainees"><i class="fa fa-user-graduate"></i>Trainee Profiles</a></li>
                     <li><a data-section="calendar" href="#calendar"><i class="fa fa-calendar"></i>Calendar</a></li>
+                    <li><a href="supervisor-events.html"><i class="fa fa-calendar-days"></i>Events</a></li>
                 </ul>
                 <div class="nav-label">Communication</div>
                 <ul>
@@ -3859,11 +3860,16 @@
             if (!storedUser) return;
             const isMasterTrainer = storedUser.role === "supervisor" && storedUser.supervisorType === "primary";
             if (isMasterTrainer) return;
-            window.location.href =
+            const destination =
                 storedUser.role === "admin" ? "AdminDashboard.html" :
                 storedUser.role === "supervisor" ? "Totdashboard.html" :
                 storedUser.role === "designer" ? "DesignerDashboard.html" :
                 "PersonalProfile.html";
+            // Carry the current section (#hash) over to the correct
+            // dashboard instead of dropping it -- otherwise this bounce
+            // silently lands the user on that dashboard's default section
+            // instead of wherever they actually were.
+            window.location.href = destination + window.location.hash;
         })();
         // Every /uploads/* file (except event images) now requires a valid
         // session -- <img src>/<a href> can't send an Authorization header,
@@ -4979,10 +4985,16 @@
             allTrainees = data.trainees;
             populateTraineeTotFilter();
             renderTrainees();
+            // Previously fire-and-forget: a caller awaiting loadTrainees()
+            // (e.g. on refresh, when "trainees" is the restored section)
+            // would treat it as "done" before this actually finished
+            // fetching, occasionally showing a stale/empty Training
+            // Activities table for a moment. Awaiting it here means
+            // loadTrainees() genuinely isn't done until its data is.
             // "Training Activities" now lives inside this same Trainee
             // Profiles section (no longer its own lazily-loaded nav
             // section), so it loads eagerly right alongside the roster.
-            loadAllSessions();
+            await loadAllSessions();
         }
 
         function populateTraineeTotFilter() {
