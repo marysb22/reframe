@@ -3569,22 +3569,18 @@
             </section>
 
             <!-- ADD DOCUMENT MODAL (from the general Documents section --
-                 uploads via the same POST /supervisor/students/:id/documents
-                 the per-trainee profile's own Documents tab already uses) -->
+                 shares with the caller's whole Group via POST
+                 /supervisor/documents; a document meant for just one
+                 trainee is still uploaded from that trainee's own profile
+                 page, via POST /supervisor/students/:id/documents) -->
             <div class="modal-overlay" id="addDocumentModal">
                 <div class="modal-box">
                     <button class="close-modal" onclick="closeModal('addDocumentModal')">&times;</button>
                     <h3>Add a Document</h3>
+                    <div class="field-hint" style="margin-bottom:12px;">This will be shared with every authorized member of your Group -- no need to pick a trainee.</div>
                     <form id="addDocumentForm">
-                        <label>Trainee</label>
-                        <select id="adTraineeSelect" required></select>
                         <label>File (PDF, Word, or image)</label>
                         <input type="file" id="adFileInput" accept=".pdf,.doc,.docx,image/*" required>
-                        <label>Share With</label>
-                        <select id="adShareWith">
-                            <option value="trainee" selected>Trainee &mdash; only the selected trainee</option>
-                            <option value="group">All Group &mdash; every authorized member of the trainee's Group</option>
-                        </select>
                         <div class="modal-actions"><button type="submit" class="btn">Upload</button></div>
                     </form>
                 </div>
@@ -3783,11 +3779,7 @@
             <form id="assignmentModalForm">
                 <input type="hidden" id="asgEditId">
                 <input type="hidden" id="asgEditStudentId">
-                <div id="asgStudentMultiWrap">
-                    <label>Target trainee(s)</label>
-                    <select id="asgStudentMulti" multiple size="5" required style="height:auto;"></select>
-                    <div class="field-hint">Hold Ctrl (Cmd on Mac) to select more than one. Creates one assignment per selected trainee.</div>
-                </div>
+                <div id="asgGroupTargetNote" class="field-hint" style="margin:0 0 12px;">This assignment will be created for every trainee in your Group -- no need to pick anyone.</div>
                 <div id="asgStudentSingleWrap" style="display:none;">
                     <label>Trainee</label>
                     <div id="asgStudentSingleName" style="padding:10px 0;color:var(--muted);"></div>
@@ -3796,12 +3788,14 @@
                 <input type="text" id="asgTitle" required>
                 <label>Due date</label>
                 <input type="date" id="asgDeadline">
-                <label id="asgStatusLabel">Status</label>
-                <select id="asgStatus">
+                <div id="asgStatusWrap" style="display:none;">
+                    <label id="asgStatusLabel">Status</label>
+                    <select id="asgStatus">
 <option value="pending">Pending</option>
 <option value="submitted">Submitted</option>
 <option value="completed">Completed</option>
 </select>
+                </div>
                 <label>Description / instructions</label>
                 <textarea id="asgContent"></textarea>
                 <div id="asgCreateOnlyFields">
@@ -4598,9 +4592,7 @@
             const options = allStudents
                 .map((s) => `<option value="${s.id}">${escapeHtml(s.full_name)} (${escapeHtml(s.memberCode)})</option>`)
                 .join("");
-            const asgMultiSel = document.getElementById("asgStudentMulti");
             const sesSel = document.getElementById("sesStudent");
-            if (asgMultiSel) asgMultiSel.innerHTML = options || '<option value="" disabled>No trainees assigned yet</option>';
             if (sesSel) sesSel.innerHTML = options || '<option value="">No trainees assigned yet</option>';
 
             const mtgSel = document.getElementById("mtgStudent");
@@ -5851,10 +5843,13 @@ function openAssignmentModal(assignment) {
   document.getElementById("asgEditId").value = "";
   document.getElementById("assignmentModalTitle").textContent = "New assignment";
   const isEdit = !!assignment;
-  document.getElementById("asgStudentMultiWrap").style.display = isEdit ? "none" : "block";
+  document.getElementById("asgGroupTargetNote").style.display = isEdit ? "none" : "block";
   document.getElementById("asgStudentSingleWrap").style.display = isEdit ? "block" : "none";
   document.getElementById("asgCreateOnlyFields").style.display = isEdit ? "none" : "block";
-  document.getElementById("asgStudentMulti").required = !isEdit;
+  // Status is only ever meaningfully editable on an EXISTING assignment
+  // (correcting it during review) -- on create it's always 'pending' for
+  // everyone, decided by the backend, never a form choice.
+  document.getElementById("asgStatusWrap").style.display = isEdit ? "block" : "none";
   if (assignment) {
     document.getElementById("asgEditId").value = assignment.id;
     document.getElementById("asgEditStudentId").value = assignment.studentId;
@@ -5901,18 +5896,12 @@ document.getElementById("assignmentModalForm").addEventListener("submit", async 
     return;
   }
 
-  const studentIds = Array.from(document.getElementById("asgStudentMulti").selectedOptions).map((o) => Number(o.value));
-  if (!studentIds.length) {
-    showToast("Select at least one trainee", "error");
-    return;
-  }
   const attachmentFile = document.getElementById("asgAttachment").files[0];
   const contentUrl = document.getElementById("asgContentUrl").value;
 
   let result;
   if (attachmentFile) {
     const form = new FormData();
-    form.append("studentIds", JSON.stringify(studentIds));
     form.append("title", title);
     form.append("description", description);
     form.append("dueDate", dueDate);
@@ -5924,7 +5913,7 @@ document.getElementById("assignmentModalForm").addEventListener("submit", async 
   } else {
     result = await apiRequest("/supervisor/assignments", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentIds, title, description, dueDate, contentUrl }),
+      body: JSON.stringify({ title, description, dueDate, contentUrl }),
     });
   }
 
@@ -7072,17 +7061,14 @@ let addDocumentIdempotencyKey = null;
 function openAddDocumentModal() {
   const form = document.getElementById("addDocumentForm");
   form.reset();
-  const select = document.getElementById("adTraineeSelect");
-  select.innerHTML = allStudents.map((s) => `<option value="${s.id}">${escapeHtml(s.full_name)} (${escapeHtml(s.memberCode)})</option>`).join("");
   addDocumentIdempotencyKey = generateIdempotencyKey();
   openModal("addDocumentModal");
 }
 
 document.getElementById("addDocumentForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const studentId = document.getElementById("adTraineeSelect").value;
   const file = document.getElementById("adFileInput").files[0];
-  if (!studentId || !file) return showToast("Choose a trainee and a file", "error");
+  if (!file) return showToast("Choose a file", "error");
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const originalLabel = submitBtn.textContent;
@@ -7092,10 +7078,9 @@ document.getElementById("addDocumentForm").addEventListener("submit", async (e) 
   const form = new FormData();
   form.append("document", file);
   form.append("idempotencyKey", addDocumentIdempotencyKey || generateIdempotencyKey());
-  if (document.getElementById("adShareWith").value === "group") form.append("shareWithGroup", "1");
 
   try {
-    const response = await fetch(`${API}/supervisor/students/${studentId}/documents`, {
+    const response = await fetch(`${API}/supervisor/documents`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: form,

@@ -888,39 +888,37 @@ router.put(
 // submission, which previously had no route at all despite the submission
 // upload itself (routes/profile.js) already working.
 
-// POST /api/supervisor/assignments — create one assignment for one or more
-// trainees at once. Accepts multipart (field "attachment") or plain JSON;
-// "studentIds" is a JSON-array string either way (FormData can't carry a
-// real array field).
+// POST /api/supervisor/assignments — create an assignment for a Trainer
+// (ToT)'s WHOLE current caseload at once (one `assignments` row per
+// trainee, looped -- the schema has no group_id of its own, see comment
+// above). No trainee picker on the client: every mutation path that ever
+// builds supervisor_students (admin.js's group-move logic,
+// Mastertrainer.js's per-trainee ToT override) scopes it to exactly one
+// Group's roster, so "my caseload" and "my Group's trainees" are always
+// the same set today -- the Group you're working in already determines
+// who this goes to. Accepts multipart (field "attachment") or plain JSON.
 router.post("/assignments", (req, res) => {
   const contentType = req.headers["content-type"] || "";
 
   const handle = async (attachmentFilename) => {
-    const { studentIds, title, description, dueDate, contentUrl } = req.body || {};
-    let ids;
-    try {
-      ids = typeof studentIds === "string" ? JSON.parse(studentIds) : studentIds;
-    } catch {
-      ids = null;
-    }
-    if (!Array.isArray(ids) || !ids.length) {
-      return res.status(400).json({ error: "studentIds must be a non-empty array" });
-    }
+    const { title, description, dueDate, contentUrl } = req.body || {};
     if (!title || !String(title).trim()) {
       return res.status(400).json({ error: "title is required" });
     }
 
     const { pool } = require("../db");
     const trainer = await getUserContactInfo(pool, req.user.id);
-    const created = [];
-    for (const rawId of ids) {
-      const studentId = Number(rawId);
-      const { rows: assignRows } = await pool.query(
-        "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
-        [req.user.id, studentId]
-      );
-      if (!assignRows.length) continue; // silently skip a trainee not assigned to this Trainer -- never assign outside your own caseload
+    const { rows: caseloadRows } = await pool.query(
+      "SELECT student_id FROM supervisor_students WHERE supervisor_id = ?",
+      [req.user.id]
+    );
+    const ids = caseloadRows.map((r) => r.student_id);
+    if (!ids.length) {
+      return res.status(400).json({ error: "You don't have any trainees assigned yet" });
+    }
 
+    const created = [];
+    for (const studentId of ids) {
       const insert = await pool.query(
         `INSERT INTO assignments (student_id, supervisor_id, title, description, attachment_filename, content_url, due_date, status)
          VALUES (?,?,?,?,?,?,?,'pending')`,
@@ -945,10 +943,7 @@ router.post("/assignments", (req, res) => {
       created.push(insert.insertId);
     }
 
-    if (!created.length) {
-      return res.status(403).json({ error: "None of the selected trainees are assigned to you" });
-    }
-    res.status(201).json({ createdIds: created, skipped: ids.length - created.length });
+    res.status(201).json({ createdIds: created });
   };
 
   if (contentType.includes("multipart/form-data")) {
@@ -1213,6 +1208,79 @@ router.post("/students/:studentId/documents", (req, res) => {
       res.status(201).json({ ...toDocument({ ...rows[0], uploaded_by_name: req.user.member_code }), canManage: true });
     } catch (e) {
       console.error("POST /students/:studentId/documents failed:", e);
+      if (req.file) fs.unlink(req.file.path, () => {});
+      if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+    } finally {
+      documentsUploadGuard.markFinished(req.user.id);
+    }
+  });
+});
+
+// POST /api/supervisor/documents -- share a document with the caller's
+// WHOLE Group directly, no trainee picker: there is nothing to pick from,
+// since a Trainer (ToT) or Master Trainer only ever has one Group (see the
+// comment on POST /assignments above for why that's always true). Replaces
+// the old "pick a trainee, then optionally check 'share with group instead'"
+// flow for the general Add-a-Document action -- the per-trainee upload
+// (POST /students/:studentId/documents, above) still exists unchanged for
+// the genuinely different case of a document meant for just one trainee.
+router.post("/documents", (req, res) => {
+  if (!documentsUploadGuard.markStarted(req.user.id)) {
+    return res.status(409).json({ error: "Upload already in progress." });
+  }
+  documentUpload.single("document")(req, res, async (err) => {
+    if (err) {
+      documentsUploadGuard.markFinished(req.user.id);
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({ error: "File is too large." });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    try {
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
+      if (!check.safe) {
+        fs.unlink(req.file.path, () => {});
+        return res.status(400).json({ error: check.reason });
+      }
+
+      const { pool } = require("../db");
+      const idempotencyKey = req.body && req.body.idempotencyKey;
+
+      const existing = await findDocumentByIdempotencyKey(pool, idempotencyKey);
+      if (existing) {
+        fs.unlink(req.file.path, () => {});
+        return res.status(200).json({ ...toDocument({ ...existing, uploaded_by_name: req.user.member_code }), canManage: true });
+      }
+
+      const { rows: meRows } = await pool.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
+      const groupId = meRows[0] && meRows[0].group_id;
+      if (!groupId) {
+        fs.unlink(req.file.path, () => {});
+        return res.status(400).json({ error: "You don't have a Group assigned yet" });
+      }
+
+      await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
+
+      let insert;
+      try {
+        insert = await pool.query(
+          `INSERT INTO documents (student_id, group_id, uploaded_by, filename, original_name, idempotency_key) VALUES (NULL,?,?,?,?,?)`,
+          [groupId, req.user.id, req.file.filename, req.file.originalname, idempotencyKey || null]
+        );
+      } catch (dbErr) {
+        if (dbErr.code === "ER_DUP_ENTRY" && idempotencyKey) {
+          fs.unlink(req.file.path, () => {});
+          const winner = await findDocumentByIdempotencyKey(pool, idempotencyKey);
+          if (winner) return res.status(200).json({ ...toDocument({ ...winner, uploaded_by_name: req.user.member_code }), canManage: true });
+        }
+        throw dbErr;
+      }
+
+      const { rows } = await pool.query("SELECT * FROM documents WHERE id = ?", [insert.insertId]);
+      res.status(201).json({ ...toDocument({ ...rows[0], uploaded_by_name: req.user.member_code }), canManage: true });
+    } catch (e) {
+      console.error("POST /documents failed:", e);
       if (req.file) fs.unlink(req.file.path, () => {});
       if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
     } finally {
