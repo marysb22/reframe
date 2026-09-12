@@ -265,11 +265,12 @@ tr:hover td{background:var(--surface-2);}
       <div id="eventFormWrap" style="display:none;margin-top:20px;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:18px;">
         <form id="eventForm">
           <input type="hidden" id="evId">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-            <div>
-              <label>Date &amp; time</label>
-              <input type="datetime-local" id="evDate" required>
-            </div>
+          <input type="hidden" id="evDate">
+          <label>Date(s) &amp; time(s) <span style="font-weight:400;color:var(--muted);">(add more than one for an event that spans several days, e.g. a training week)</span></label>
+          <div id="evDatesList"></div>
+          <button type="button" class="btn btn-secondary" style="width:auto;margin-top:0;" onclick="addEventDateRow()"><i class="fa fa-plus"></i> Add another date</button>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
             <div>
               <label>Status</label>
               <input list="statusOptions" id="evStatus" value="upcoming">
@@ -556,12 +557,52 @@ async function uploadEventImage() {
   }
 }
 
+// ---- Date(s) editor -----------------------------------------------------
+// An Event keeps its single required events.event_date column (set to the
+// earliest entered date, for backward-compatible sorting/list display) but
+// can now carry any number of dates via event_agenda_items -- an existing,
+// already-fully-wired-server-side table (utils/eventChildren.js) that had
+// no UI anywhere until now. One row here = one occurrence date, with an
+// optional time. A single-date event is just this list with one row --
+// no separate code path.
+function addEventDateRow(dateVal, timeVal) {
+  const list = document.getElementById("evDatesList");
+  const row = document.createElement("div");
+  row.className = "ev-date-row";
+  row.style.cssText = "display:flex;gap:8px;margin-bottom:8px;align-items:center;";
+  row.innerHTML = `
+    <input type="date" class="ev-date-input" required style="flex:1;">
+    <input type="time" class="ev-time-input" style="flex:1;" placeholder="Time (optional)">
+    <button type="button" class="icon-btn danger" title="Remove this date" onclick="removeEventDateRow(this)"><i class="fa fa-trash"></i></button>
+  `;
+  list.appendChild(row);
+  if (dateVal) row.querySelector(".ev-date-input").value = dateVal;
+  if (timeVal) row.querySelector(".ev-time-input").value = timeVal;
+}
+function removeEventDateRow(btn) {
+  const list = document.getElementById("evDatesList");
+  if (list.children.length > 1) btn.closest(".ev-date-row").remove();
+}
+function clearEventDateRows() {
+  document.getElementById("evDatesList").innerHTML = "";
+}
+function getEventDatesPayload() {
+  return Array.from(document.querySelectorAll("#evDatesList .ev-date-row"))
+    .map((r) => ({
+      date: r.querySelector(".ev-date-input").value,
+      startTime: r.querySelector(".ev-time-input").value || undefined,
+    }))
+    .filter((d) => d.date);
+}
+
 function openEventForm() {
   editingEventId = null;
   document.getElementById("eventForm").reset();
   document.getElementById("evStatus").value = "upcoming";
   document.getElementById("evImage").value = "";
   document.getElementById("evImagePreviewWrap").style.display = "none";
+  clearEventDateRows();
+  addEventDateRow();
   document.getElementById("eventFormWrap").style.display = "block";
   clearEventDraft();
 }
@@ -572,8 +613,12 @@ function closeEventForm() {
 
 // ---- Draft auto-save --------------------------------------------------
 const EVENT_DRAFT_KEY = "eventFormDraft";
+// evDate is intentionally excluded -- it's now computed from the dates
+// editor on submit, not a field a person types into directly. The dates
+// editor's own rows aren't draft-autosaved (a small, accepted gap: a lost
+// draft only needs the date(s) re-entered, everything else restores fine).
 const EVENT_FORM_FIELD_IDS = [
-  "evId", "evDate", "evStatus", "evImage", "evFee", "evRegister",
+  "evId", "evStatus", "evImage", "evFee", "evRegister",
   "evTitleEn", "evFormatEn", "evFacilitatorEn", "evAboutEn",
   "evLearnEn", "evWhoEn", "evOutcomesEn", "evFacilitatorBioEn",
   "evTitleAr", "evFormatAr", "evFacilitatorAr", "evAboutAr",
@@ -609,6 +654,11 @@ function restoreEventDraftIfAny() {
         : API_BASE + draft.evImage;
       document.getElementById("evImagePreviewWrap").style.display = "block";
     }
+    // The dates editor isn't part of the autosaved draft (see the comment on
+    // EVENT_FORM_FIELD_IDS) -- seed one empty row so the form isn't left
+    // with no way to enter a date at all.
+    clearEventDateRows();
+    addEventDateRow();
     document.getElementById("eventFormWrap").style.display = "block";
     showToast("Restored your unsaved event draft", "success");
   } catch (err) {
@@ -618,12 +668,21 @@ function restoreEventDraftIfAny() {
 
 document.getElementById("eventForm").addEventListener("input", saveEventDraft);
 
-function editEvent(id) {
-  const ev = allEvents.find((e) => e.id === id);
+// Async now: the list endpoint (toPublicEvent) never included child data
+// (agenda/speakers/etc, kept lightweight on purpose), so the actual list
+// of dates needs the single-event detail endpoint (toEventDetail).
+async function editEvent(id) {
+  const ev = await apiRequest(`/admin/events/${id}`);
   if (!ev) return;
   editingEventId = id;
 
-  document.getElementById("evDate").value = ev.date ? ev.date.slice(0, 16) : "";
+  clearEventDateRows();
+  if (ev.agenda && ev.agenda.length) {
+    ev.agenda.forEach((a) => addEventDateRow(a.item_date ? String(a.item_date).slice(0, 10) : "", a.start_time ? String(a.start_time).slice(0, 5) : ""));
+  } else {
+    addEventDateRow(ev.date ? ev.date.slice(0, 10) : "", ev.date && ev.date.length > 10 ? ev.date.slice(11, 16) : "");
+  }
+
   document.getElementById("evStatus").value = ev.status;
   document.getElementById("evImage").value = ev.image || "";
   if (ev.image) {
@@ -672,8 +731,19 @@ async function deleteEvent(id) {
 
 document.getElementById("eventForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  const dates = getEventDatesPayload();
+  if (!dates.length) {
+    showToast("At least one date is required", "error");
+    return;
+  }
+  const sortedDates = [...dates].sort((a, b) => a.date.localeCompare(b.date));
+  const primary = sortedDates[0];
+
   const payload = {
-    date: document.getElementById("evDate").value,
+    date: primary.startTime ? `${primary.date}T${primary.startTime}` : `${primary.date}T00:00`,
+    agenda: dates.map((d) => ({ date: d.date, startTime: d.startTime })),
+    ...(dates.length > 1 ? { showAgenda: true } : {}),
     status: document.getElementById("evStatus").value,
     image: document.getElementById("evImage").value,
     fee: document.getElementById("evFee").value,

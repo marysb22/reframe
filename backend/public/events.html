@@ -797,16 +797,23 @@
         const d = new Date(dateString);
         return isNaN(d.getTime()) ? null : d;
       }
+      // An event with more than one occurrence date (event.dates, see
+      // routes/public.js's GET /events) must light up on EVERY one of its
+      // dates, not just its single primary event.date -- otherwise a
+      // 4-date training week would only ever appear on the calendar on
+      // its earliest day. Falls back to the single event.date exactly as
+      // before for a plain single-date event (event.dates absent).
       function getEventsForDay(year, month, day) {
+        const matchesDay = (dateString) => {
+          const d = normalizeEventDate(dateString);
+          return !!d && d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+        };
         return cmsEvents.filter((event) => {
-          const eventDate = normalizeEventDate(event.date);
-          if (!eventDate) return false;
-          return (
-            eventDate.getFullYear() === year &&
-            eventDate.getMonth() === month &&
-            eventDate.getDate() === day &&
-            event.status !== "concluded"
-          );
+          if (event.status === "concluded") return false;
+          if (Array.isArray(event.dates) && event.dates.length) {
+            return event.dates.some(matchesDay);
+          }
+          return matchesDay(event.date);
         });
       }
       function buildEmptyCell() {
@@ -985,6 +992,21 @@
           year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
         });
       }
+      // Multi-date events (event.dates, see routes/public.js) show every
+      // date they occur on instead of just the single primary event.date.
+      function formatEventDates(event) {
+        if (Array.isArray(event.dates) && event.dates.length > 1) {
+          return event.dates
+            .map((dateString) => {
+              const d = new Date(dateString);
+              if (isNaN(d.getTime())) return "";
+              return d.toLocaleDateString(isArabic() ? "ar-LB" : "en-US", { year: "numeric", month: "long", day: "numeric" });
+            })
+            .filter(Boolean)
+            .join(" · ");
+        }
+        return formatDate(event.date);
+      }
       function escapeHtml(str) {
         return String(str || "")
           .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -1039,7 +1061,7 @@
         }
 
         setTextOrHide(modalTitle, content.title || "");
-        setTextOrHide(modalDate, formatDate(event.date));
+        setTextOrHide(modalDate, formatEventDates(event));
         setTextOrHide(modalFormat, content.format ? `${c.format}: ${content.format}` : "");
         setTextOrHide(modalFacilitator, content.facilitator ? `${c.facilitator}: ${content.facilitator}` : "");
         setTextOrHide(modalAbout, content.about || "");

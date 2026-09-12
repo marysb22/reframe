@@ -45,7 +45,7 @@ const PROFILE_SELECT = `
     st.highest_degree, st.institution, st.certifications, st.cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year,
     st.group_id, tg.name AS group_name,
-    sup.specialization, sup.bio,
+    sup.specialization, sup.bio, sup.supervisor_type,
     COALESCE(sup.training_start_date, st.training_start_date) AS training_start_date,
     CURDATE() AS training_today
   FROM user_credentials uc

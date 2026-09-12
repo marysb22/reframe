@@ -14,7 +14,35 @@ const router = express.Router();
 router.get("/events", async (req, res, next) => {
   try {
     const { rows } = await pool.query("SELECT * FROM events ORDER BY event_date DESC");
-    res.json({ events: rows.map(toPublicEvent) });
+    const events = rows.map(toPublicEvent);
+
+    // An event with more than one occurrence date (event_agenda_items,
+    // reused as-is -- see utils/eventChildren.js) needs every date exposed
+    // here, not just the single primary event_date, so the public
+    // calendar can light up each day it actually occurs on. One extra
+    // batched query (never N+1), and only for events that opted in via
+    // show_agenda -- same visibility gate as the detail page's agenda
+    // section, so there's a single consistent rule for "are this event's
+    // extra dates public" across the whole site.
+    const agendaEventIds = rows.filter((r) => r.show_agenda).map((r) => r.id);
+    if (agendaEventIds.length) {
+      const placeholders = agendaEventIds.map(() => "?").join(",");
+      const { rows: agendaRows } = await pool.query(
+        `SELECT event_id, item_date FROM event_agenda_items
+         WHERE event_id IN (${placeholders}) AND item_date IS NOT NULL
+         ORDER BY item_date`,
+        agendaEventIds
+      );
+      const datesByEvent = {};
+      agendaRows.forEach((r) => {
+        (datesByEvent[r.event_id] = datesByEvent[r.event_id] || []).push(r.item_date);
+      });
+      events.forEach((e) => {
+        if (datesByEvent[e.id]) e.dates = datesByEvent[e.id];
+      });
+    }
+
+    res.json({ events });
   } catch (err) {
     next(err);
   }
