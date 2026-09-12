@@ -2851,7 +2851,7 @@
                     <li><a data-section="tots" href="#tots"><i class="fa fa-user-tie"></i>TOTs</a></li>
                     <li><a data-section="trainees" href="#trainees"><i class="fa fa-user-graduate"></i>Trainee Profiles</a></li>
                     <li><a data-section="calendar" href="#calendar"><i class="fa fa-calendar"></i>Calendar</a></li>
-                    <li><a href="supervisor-events.html"><i class="fa fa-calendar-days"></i>Events</a></li>
+                    <li><a data-section="events" href="#events"><i class="fa fa-calendar-days"></i>Events</a></li>
                 </ul>
                 <div class="nav-label">Communication</div>
                 <ul>
@@ -3197,6 +3197,86 @@
                     <div id="allMeetingsList">
                         <div class="empty-state">Loading meetings...</div>
                     </div>
+                </section>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- EVENTS (public site) -- own events on reframemhs.com's public -->
+            <!-- Events page. Same CRUD logic/markup as admin-events.html and  -->
+            <!-- DesignerDashboard.html/Totdashboard.html, pointed at          -->
+            <!-- /supervisor/events (own routes/supervisor.js routes,          -->
+            <!-- ownership-scoped). Lives here as an ordinary section (not a   -->
+            <!-- separate page) so the full Master Trainer sidebar stays      -->
+            <!-- visible while managing events.                               -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-events" data-title="Events" data-eyebrow="Content">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-calendar-days"></i>
+                            <h2>Your events (public site)</h2>
+                        </div>
+                        <button class="btn" onclick="openEventForm()"><i class="fa fa-plus"></i>New event</button>
+                    </div>
+                    <p style="color:var(--muted);font-size:12px;margin:0 0 16px;">Create, edit, or remove events you own. Changes appear on the public events page instantly.</p>
+
+                    <div id="eventFormWrap" style="display:none;margin-top:20px;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:18px;">
+                        <form id="eventForm">
+                            <label>Date(s) &amp; time(s) <span style="font-weight:400;color:var(--muted);">(add more than one for an event that spans several days, e.g. a training week)</span></label>
+                            <div id="evDatesList"></div>
+                            <button type="button" class="btn btn-secondary" style="width:auto;margin-top:0;" onclick="addEventDateRow()"><i class="fa fa-plus"></i> Add another date</button>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+                                <div>
+                                    <label>Status</label>
+                                    <input list="eventStatusOptions" id="evStatus" value="upcoming">
+                                    <datalist id="eventStatusOptions"><option value="upcoming"><option value="concluded"></datalist>
+                                </div>
+                                <div>
+                                    <label>Image</label>
+                                    <input type="file" id="evImageFile" accept="image/*" onchange="uploadEventImage()">
+                                    <input type="hidden" id="evImage">
+                                    <div id="evImagePreviewWrap" style="margin-top:8px;display:none;">
+                                        <img id="evImagePreview" style="max-width:160px;border-radius:8px;display:block;">
+                                        <span id="evImageStatus" style="font-size:11px;color:var(--muted);"></span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label>Fee</label>
+                                    <input type="text" id="evFee" placeholder="$150 or Free">
+                                </div>
+                                <div style="grid-column:1/-1;">
+                                    <label>Registration link</label>
+                                    <input type="text" id="evRegister" placeholder="https://... or # if not ready yet">
+                                </div>
+                            </div>
+
+                            <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">English content</h4>
+                            <label>Title (optional)</label><input type="text" id="evTitleEn">
+                            <label>Format</label><input type="text" id="evFormatEn" placeholder="In-person, 3 days">
+                            <label>Facilitator</label><input type="text" id="evFacilitatorEn">
+                            <label>About</label><input type="text" id="evAboutEn">
+                            <label>What you'll learn (one per line)</label><textarea id="evLearnEn" style="height:70px;"></textarea>
+                            <label>Who should attend (one per line)</label><textarea id="evWhoEn" style="height:70px;"></textarea>
+                            <label>Outcomes (one per line)</label><textarea id="evOutcomesEn" style="height:70px;"></textarea>
+                            <label>Facilitator bio</label><input type="text" id="evFacilitatorBioEn">
+
+                            <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Arabic content (optional)</h4>
+                            <label>العنوان</label><input type="text" id="evTitleAr">
+                            <label>الصيغة</label><input type="text" id="evFormatAr">
+                            <label>الميسّر</label><input type="text" id="evFacilitatorAr">
+                            <label>نبذة</label><input type="text" id="evAboutAr">
+
+                            <div class="modal-actions" style="margin-top:16px;">
+                                <button type="button" class="btn btn-secondary" onclick="closeEventForm()">Cancel</button>
+                                <button type="submit" class="btn">Save event</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <table style="margin-top:20px;">
+                        <thead><tr><th>Title</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="eventsBody"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
+                    </table>
                 </section>
             </section>
 
@@ -3970,7 +4050,7 @@
 
         // ---- Section switching --------------------------------------------
 
-        const SECTION_IDS = ["dashboard", "library", "group", "tots", "trainees", "calendar", "group-chats", "meetings", "materials", "documents", "activity", "assignments", "needs-attention", "analytics", "milestones", "reports", "cvs", "settings"];
+        const SECTION_IDS = ["dashboard", "library", "group", "tots", "trainees", "calendar", "events", "group-chats", "meetings", "materials", "documents", "activity", "assignments", "needs-attention", "analytics", "milestones", "reports", "cvs", "settings"];
 
         const SECTION_LOADERS = {
             library: () => loadLibrary(),
@@ -3979,6 +4059,7 @@
             tots: () => loadTots(),
             trainees: () => loadTrainees(),
             calendar: () => loadCalendar(),
+            events: () => loadEvents(),
             meetings: () => loadAllMeetings(),
             materials: () => loadAllMaterials(),
             documents: () => loadAllDocuments(),
@@ -6509,6 +6590,302 @@
             document.getElementById("analyticsTo").value = range.to;
             loadAnalytics(range.from, range.to);
         }
+
+        // ---- Events (public site content) -- identical logic to
+        // admin-events.html/DesignerDashboard.html/Totdashboard.html, pointed
+        // at /supervisor/events. Distinct from the Calendar section's own
+        // "Add Event" (an internal calendar_events entry, addEventModal/
+        // openAddEventModal above) -- these are the public reframemhs.com
+        // Events page's entries. Uses this file's plain confirm() convention
+        // for the delete prompt (there is no openConfirm/confirm-overlay
+        // modal defined in this file). --------------------------------------
+
+        let allEvents = [];
+        let editingEventId = null;
+
+        async function loadEvents() {
+            const data = await apiRequest("/supervisor/events");
+            if (!data) return;
+            allEvents = data.events;
+            renderEvents();
+        }
+
+        function renderEvents() {
+            const body = document.getElementById("eventsBody");
+            if (!allEvents.length) {
+                body.innerHTML = '<tr><td colspan="4" class="empty-state">You haven\'t created any events yet. Click "New event" above to add your first one.</td></tr>';
+                return;
+            }
+            body.innerHTML = allEvents
+                .map(
+                    (e) => `
+    <tr>
+      <td><strong>${e.english.title ? escapeHtml(e.english.title) : "<em>Untitled event</em>"}</strong></td>
+      <td>${new Date(e.date).toLocaleString()}</td>
+      <td><span class="pill ${e.status === "upcoming" ? "active" : "pending"}">${escapeHtml(e.status)}</span></td>
+      <td>
+        <button class="icon-btn" onclick='editEvent(${e.id})'><i class="fa fa-pen"></i></button>
+        <button class="icon-btn danger" onclick="confirmDeleteEvent(${e.id})"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>
+  `
+                )
+                .join("");
+        }
+
+        function linesToArray(text) {
+            return text.split("\n").map((s) => s.trim()).filter(Boolean);
+        }
+        function arrayToLines(arr) {
+            return (arr || []).join("\n");
+        }
+
+        async function uploadEventImage() {
+            const fileInput = document.getElementById("evImageFile");
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const statusEl = document.getElementById("evImageStatus");
+            statusEl.textContent = "Uploading...";
+            document.getElementById("evImagePreviewWrap").style.display = "block";
+
+            const form = new FormData();
+            form.append("image", file);
+            try {
+                const response = await fetch(`${API}/supervisor/events/upload-image`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: form,
+                });
+                if (!response.ok) {
+                    const body = await response.json().catch(() => null);
+                    throw new Error((body && body.error) || "Upload failed");
+                }
+                const data = await response.json();
+                document.getElementById("evImage").value = data.url;
+                document.getElementById("evImagePreview").src = API_BASE + data.url;
+                statusEl.textContent = "Uploaded";
+                saveEventDraft();
+            } catch (err) {
+                statusEl.textContent = "";
+                showToast(err.message, "error");
+            }
+        }
+
+        // ---- Date(s) editor -------------------------------------------------
+        // An Event keeps its single required events.event_date column (set to
+        // the earliest entered date, for backward-compatible sorting/list
+        // display) but can now carry any number of dates via
+        // event_agenda_items -- an existing, already-fully-wired-server-side
+        // table (utils/eventChildren.js). One row here = one occurrence date,
+        // with an optional time. A single-date event is just this list with
+        // one row -- no separate code path.
+        function addEventDateRow(dateVal, timeVal) {
+            const list = document.getElementById("evDatesList");
+            const row = document.createElement("div");
+            row.className = "ev-date-row";
+            row.style.cssText = "display:flex;gap:8px;margin-bottom:8px;align-items:center;";
+            row.innerHTML = `
+    <input type="date" class="ev-date-input" required style="flex:1;">
+    <input type="time" class="ev-time-input" style="flex:1;" placeholder="Time (optional)">
+    <button type="button" class="icon-btn danger" title="Remove this date" onclick="removeEventDateRow(this)"><i class="fa fa-trash"></i></button>
+  `;
+            list.appendChild(row);
+            if (dateVal) row.querySelector(".ev-date-input").value = dateVal;
+            if (timeVal) row.querySelector(".ev-time-input").value = timeVal;
+        }
+        function removeEventDateRow(btn) {
+            const list = document.getElementById("evDatesList");
+            // Always keep at least one row -- a date is required, and an empty
+            // list with only the "Add another date" button left is a confusing
+            // dead end.
+            if (list.children.length > 1) btn.closest(".ev-date-row").remove();
+        }
+        function clearEventDateRows() {
+            document.getElementById("evDatesList").innerHTML = "";
+        }
+        function getEventDatesPayload() {
+            return Array.from(document.querySelectorAll("#evDatesList .ev-date-row"))
+                .map((r) => ({
+                    date: r.querySelector(".ev-date-input").value,
+                    startTime: r.querySelector(".ev-time-input").value || undefined,
+                }))
+                .filter((d) => d.date);
+        }
+
+        function openEventForm() {
+            editingEventId = null;
+            document.getElementById("eventForm").reset();
+            document.getElementById("evStatus").value = "upcoming";
+            document.getElementById("evImage").value = "";
+            document.getElementById("evImagePreviewWrap").style.display = "none";
+            clearEventDateRows();
+            addEventDateRow();
+            document.getElementById("eventFormWrap").style.display = "block";
+            clearEventDraft();
+        }
+        function closeEventForm() {
+            document.getElementById("eventFormWrap").style.display = "none";
+            clearEventDraft();
+        }
+
+        // ---- Draft auto-save --------------------------------------------
+        // Distinct key from admin-events.html's "eventFormDraft",
+        // DesignerDashboard.html's "designerEventFormDraft", and
+        // Totdashboard.html's "supervisorEventFormDraft" (used by ToTs on the
+        // very same backend routes) -- sessionStorage is already
+        // per-browser-tab, but a distinct key also means an account that
+        // happens to open more than one of these in different tabs of the
+        // same session can never have one draft clobber the other.
+        const EVENT_DRAFT_KEY = "masterTrainerEventFormDraft";
+        const EVENT_FORM_FIELD_IDS = [
+            "evStatus", "evImage", "evFee", "evRegister",
+            "evTitleEn", "evFormatEn", "evFacilitatorEn", "evAboutEn",
+            "evLearnEn", "evWhoEn", "evOutcomesEn", "evFacilitatorBioEn",
+            "evTitleAr", "evFormatAr", "evFacilitatorAr", "evAboutAr",
+        ];
+
+        function saveEventDraft() {
+            const draft = {};
+            EVENT_FORM_FIELD_IDS.forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) draft[id] = el.value;
+            });
+            sessionStorage.setItem(EVENT_DRAFT_KEY, JSON.stringify(draft));
+        }
+        function clearEventDraft() {
+            sessionStorage.removeItem(EVENT_DRAFT_KEY);
+        }
+        function restoreEventDraftIfAny() {
+            const raw = sessionStorage.getItem(EVENT_DRAFT_KEY);
+            if (!raw) return;
+            try {
+                const draft = JSON.parse(raw);
+                const hasContent = Object.values(draft).some((v) => v && v !== "upcoming");
+                if (!hasContent) return;
+
+                EVENT_FORM_FIELD_IDS.forEach((id) => {
+                    const el = document.getElementById(id);
+                    if (el && draft[id] !== undefined) el.value = draft[id];
+                });
+                if (draft.evImage) {
+                    document.getElementById("evImagePreview").src = draft.evImage.startsWith("http")
+                        ? draft.evImage
+                        : API_BASE + draft.evImage;
+                    document.getElementById("evImagePreviewWrap").style.display = "block";
+                }
+                clearEventDateRows();
+                addEventDateRow();
+                document.getElementById("eventFormWrap").style.display = "block";
+                showToast("Restored your unsaved event draft", "success");
+            } catch (err) {
+                clearEventDraft();
+            }
+        }
+        document.getElementById("eventForm").addEventListener("input", saveEventDraft);
+        restoreEventDraftIfAny();
+
+        async function editEvent(id) {
+            const ev = await apiRequest(`/supervisor/events/${id}`);
+            if (!ev) return;
+            editingEventId = id;
+
+            clearEventDateRows();
+            if (ev.agenda && ev.agenda.length) {
+                ev.agenda.forEach((a) => addEventDateRow(a.item_date ? String(a.item_date).slice(0, 10) : "", a.start_time ? String(a.start_time).slice(0, 5) : ""));
+            } else {
+                addEventDateRow(ev.date ? ev.date.slice(0, 10) : "", ev.date && ev.date.length > 10 ? ev.date.slice(11, 16) : "");
+            }
+
+            document.getElementById("evStatus").value = ev.status;
+            document.getElementById("evImage").value = ev.image || "";
+            if (ev.image) {
+                document.getElementById("evImagePreview").src = ev.image.startsWith("http") ? ev.image : API_BASE + ev.image;
+                document.getElementById("evImageStatus").textContent = "Current image";
+                document.getElementById("evImagePreviewWrap").style.display = "block";
+            } else {
+                document.getElementById("evImagePreviewWrap").style.display = "none";
+            }
+            document.getElementById("evFee").value = ev.fee || "";
+            document.getElementById("evRegister").value = ev.register || "";
+
+            document.getElementById("evTitleEn").value = ev.english.title || "";
+            document.getElementById("evFormatEn").value = ev.english.format || "";
+            document.getElementById("evFacilitatorEn").value = ev.english.facilitator || "";
+            document.getElementById("evAboutEn").value = ev.english.about || "";
+            document.getElementById("evLearnEn").value = arrayToLines(ev.english.learn);
+            document.getElementById("evWhoEn").value = arrayToLines(ev.english.who);
+            document.getElementById("evOutcomesEn").value = arrayToLines(ev.english.outcomes);
+            document.getElementById("evFacilitatorBioEn").value = ev.english.facilitatorBio || "";
+
+            document.getElementById("evTitleAr").value = ev.arabic.title || "";
+            document.getElementById("evFormatAr").value = ev.arabic.format || "";
+            document.getElementById("evFacilitatorAr").value = ev.arabic.facilitator || "";
+            document.getElementById("evAboutAr").value = ev.arabic.about || "";
+
+            document.getElementById("eventFormWrap").style.display = "block";
+            document.getElementById("eventFormWrap").scrollIntoView({ behavior: "smooth" });
+        }
+
+        function confirmDeleteEvent(id) {
+            if (!confirm("Delete this event? This removes it from the public events page immediately. This can't be undone.")) return;
+            deleteEvent(id);
+        }
+
+        async function deleteEvent(id) {
+            const result = await apiRequest(`/supervisor/events/${id}`, { method: "DELETE" });
+            if (result) {
+                showToast("Event deleted", "success");
+                loadEvents();
+            }
+        }
+
+        document.getElementById("eventForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const dates = getEventDatesPayload();
+            if (!dates.length) {
+                showToast("At least one date is required", "error");
+                return;
+            }
+            const sortedDates = [...dates].sort((a, b) => a.date.localeCompare(b.date));
+            const primary = sortedDates[0];
+
+            const payload = {
+                date: primary.startTime ? `${primary.date}T${primary.startTime}` : `${primary.date}T00:00`,
+                agenda: dates.map((d) => ({ date: d.date, startTime: d.startTime })),
+                ...(dates.length > 1 ? { showAgenda: true } : {}),
+                status: document.getElementById("evStatus").value,
+                image: document.getElementById("evImage").value,
+                fee: document.getElementById("evFee").value,
+                register: document.getElementById("evRegister").value,
+                englishTitle: document.getElementById("evTitleEn").value,
+                englishFormat: document.getElementById("evFormatEn").value,
+                englishFacilitator: document.getElementById("evFacilitatorEn").value,
+                englishAbout: document.getElementById("evAboutEn").value,
+                englishLearn: linesToArray(document.getElementById("evLearnEn").value),
+                englishWho: linesToArray(document.getElementById("evWhoEn").value),
+                englishOutcomes: linesToArray(document.getElementById("evOutcomesEn").value),
+                englishFacilitatorBio: document.getElementById("evFacilitatorBioEn").value,
+                arabicTitle: document.getElementById("evTitleAr").value,
+                arabicFormat: document.getElementById("evFormatAr").value,
+                arabicFacilitator: document.getElementById("evFacilitatorAr").value,
+                arabicAbout: document.getElementById("evAboutAr").value,
+            };
+
+            const url = editingEventId ? `/supervisor/events/${editingEventId}` : "/supervisor/events";
+            const method = editingEventId ? "PUT" : "POST";
+
+            const result = await apiRequest(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            if (result) {
+                showSuccessNotification(
+                    editingEventId ? "Event Updated" : "Event Created",
+                    editingEventId ? "The event has been updated successfully." : "The new event has been created successfully."
+                );
+                closeEventForm();
+                loadEvents();
+            }
+        });
 
         // ---- Calendar (mirrors the Trainer dashboard's calendar) -----------
 
