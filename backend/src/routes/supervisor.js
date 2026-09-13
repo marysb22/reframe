@@ -1217,13 +1217,14 @@ router.post("/students/:studentId/documents", (req, res) => {
 });
 
 // POST /api/supervisor/documents -- share a document with the caller's
-// WHOLE Group directly, no trainee picker: there is nothing to pick from,
-// since a Trainer (ToT) or Master Trainer only ever has one Group (see the
-// comment on POST /assignments above for why that's always true). Replaces
-// the old "pick a trainee, then optionally check 'share with group instead'"
-// flow for the general Add-a-Document action -- the per-trainee upload
-// (POST /students/:studentId/documents, above) still exists unchanged for
-// the genuinely different case of a document meant for just one trainee.
+// WHOLE Group by default (no trainee picker needed: a Trainer/Master
+// Trainer only ever has one Group, see the comment on POST /assignments),
+// or with one specific ToT in that Group via targetSupervisorId (checked
+// server-side against real group membership, never trusted from the
+// client). Replaces the old "pick a trainee, then optionally check 'share
+// with group instead'" flow for the general Add-a-Document action -- the
+// per-trainee upload (POST /students/:studentId/documents, above) still
+// exists unchanged for a document meant for just one trainee.
 router.post("/documents", (req, res) => {
   if (!documentsUploadGuard.markStarted(req.user.id)) {
     return res.status(409).json({ error: "Upload already in progress." });
@@ -1246,6 +1247,7 @@ router.post("/documents", (req, res) => {
 
       const { pool } = require("../db");
       const idempotencyKey = req.body && req.body.idempotencyKey;
+      const targetSupervisorId = req.body && req.body.targetSupervisorId;
 
       const existing = await findDocumentByIdempotencyKey(pool, idempotencyKey);
       if (existing) {
@@ -1260,13 +1262,31 @@ router.post("/documents", (req, res) => {
         return res.status(400).json({ error: "You don't have a Group assigned yet" });
       }
 
+      // Sharing with one specific ToT instead of the whole Group -- that
+      // ToT must actually belong to the caller's own Group; never trust a
+      // client-supplied id without checking it against real membership.
+      let finalGroupId = groupId;
+      let finalTargetSupervisorId = null;
+      if (targetSupervisorId) {
+        const { rows: targetRows } = await pool.query(
+          "SELECT id FROM supervisors WHERE id = ? AND group_id = ? AND supervisor_type = 'in_training'",
+          [targetSupervisorId, groupId]
+        );
+        if (!targetRows.length) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(403).json({ error: "That Trainer (ToT) is not in your Group" });
+        }
+        finalGroupId = null;
+        finalTargetSupervisorId = targetSupervisorId;
+      }
+
       await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
 
       let insert;
       try {
         insert = await pool.query(
-          `INSERT INTO documents (student_id, group_id, uploaded_by, filename, original_name, idempotency_key) VALUES (NULL,?,?,?,?,?)`,
-          [groupId, req.user.id, req.file.filename, req.file.originalname, idempotencyKey || null]
+          `INSERT INTO documents (student_id, group_id, shared_with_supervisor_id, uploaded_by, filename, original_name, idempotency_key) VALUES (NULL,?,?,?,?,?,?)`,
+          [finalGroupId, finalTargetSupervisorId, req.user.id, req.file.filename, req.file.originalname, idempotencyKey || null]
         );
       } catch (dbErr) {
         if (dbErr.code === "ER_DUP_ENTRY" && idempotencyKey) {
@@ -1386,9 +1406,9 @@ router.get(
 
     const { rows } = await db.query(
       `${DOCUMENT_SELECT}
-       WHERE d.group_id = ?
+       WHERE d.group_id = ? OR d.shared_with_supervisor_id = ?
        ORDER BY d.created_at DESC LIMIT 500`,
-      [groupId]
+      [groupId, req.user.id]
     );
     res.json({
       documents: rows.map((r) => ({ ...toDocument(r), canManage: Number(r.uploaded_by) === Number(req.user.id) })),
@@ -1619,18 +1639,30 @@ router.get(
   "/materials",
   asyncRoute(async (req, res, db) => {
     const { rows } = await db.query(
-      `SELECT lm.*,
+      `SELECT lm.*, author_sup.full_name AS supervisor_name,
+              tg.name AS shared_group_name,
+              shsup.full_name AS shared_supervisor_name, shsup.supervisor_type AS shared_supervisor_type,
               (SELECT a.id FROM assignments a
                 WHERE a.student_id = lm.student_id AND a.supervisor_id = lm.supervisor_id
                   AND LOWER(a.title) = LOWER(lm.title)
                 ORDER BY a.id DESC LIMIT 1) AS matched_assignment_id
        FROM learning_materials lm
-       WHERE lm.supervisor_id = ? AND lm.material_type != 'book'
+       JOIN supervisors author_sup ON author_sup.id = lm.supervisor_id
+       LEFT JOIN trainer_groups tg ON tg.id = lm.group_id
+       LEFT JOIN supervisors shsup ON shsup.id = lm.shared_with_supervisor_id
+       WHERE lm.material_type != 'book'
+         AND (
+           lm.supervisor_id = ?
+           OR lm.shared_with_supervisor_id = ?
+           OR lm.group_id = (SELECT group_id FROM supervisors WHERE id = ?)
+         )
        ORDER BY lm.created_at DESC
        LIMIT 200`,
-      [req.user.id]
+      [req.user.id, req.user.id, req.user.id]
     );
-    res.json({ materials: rows.map((r) => toMaterial({ ...r, supervisor_name: req.user.member_code })) });
+    res.json({
+      materials: rows.map((r) => ({ ...toMaterial(r), canDelete: Number(r.supervisor_id) === Number(req.user.id) })),
+    });
   })
 );
 
@@ -1652,11 +1684,49 @@ router.get(
  * Uses allSettled (not a sequential loop or Promise.all) so one
  * recipient's failed notification can't stop the others from going out.
  */
-async function notifyMaterialRecipients(pool, supervisorId, studentId, materialTitle, materialId) {
+/**
+ * Resolves an optional Materials-sharing target beyond the existing
+ * trainee-facing studentId/whole-caseload convention: share with one
+ * specific ToT (targetSupervisorId, checked against real Group membership
+ * -- never trusted from the client) or the caller's whole Group
+ * (shareWithGroup, always derived from the caller's own row, never a
+ * client-supplied group id). Mirrors POST /documents' identical guard.
+ * Returns { groupId, sharedWithSupervisorId } (both null for the existing
+ * trainee-targeted/whole-caseload behavior) or { error, status }.
+ */
+async function resolveMaterialTarget(pool, callerId, targetSupervisorId, shareWithGroup) {
+  if (targetSupervisorId) {
+    const { rows: meRows } = await pool.query("SELECT group_id FROM supervisors WHERE id = ?", [callerId]);
+    const myGroupId = meRows[0] && meRows[0].group_id;
+    const { rows: targetRows } = await pool.query(
+      "SELECT id FROM supervisors WHERE id = ? AND group_id = ? AND supervisor_type = 'in_training'",
+      [targetSupervisorId, myGroupId]
+    );
+    if (!targetRows.length) return { error: "That Trainer (ToT) is not in your Group", status: 403 };
+    return { groupId: null, sharedWithSupervisorId: targetSupervisorId };
+  }
+  if (shareWithGroup) {
+    const { rows: meRows } = await pool.query("SELECT group_id FROM supervisors WHERE id = ?", [callerId]);
+    const myGroupId = meRows[0] && meRows[0].group_id;
+    if (!myGroupId) return { error: "You don't have a Group assigned yet", status: 400 };
+    return { groupId: myGroupId, sharedWithSupervisorId: null };
+  }
+  return { groupId: null, sharedWithSupervisorId: null };
+}
+
+async function notifyMaterialRecipients(pool, supervisorId, studentId, materialTitle, materialId, target) {
   const trainer = await getUserContactInfo(pool, supervisorId);
   const trainerName = (trainer && trainer.fullName) || "Your trainer";
   let recipientIds;
-  if (studentId) {
+  if (target && target.sharedWithSupervisorId) {
+    recipientIds = [Number(target.sharedWithSupervisorId)];
+  } else if (target && target.groupId) {
+    const { rows } = await pool.query(
+      "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training'",
+      [target.groupId]
+    );
+    recipientIds = rows.map((r) => r.id);
+  } else if (studentId) {
     recipientIds = [Number(studentId)];
   } else {
     const { rows } = await pool.query("SELECT student_id FROM supervisor_students WHERE supervisor_id = ?", [supervisorId]);
@@ -1722,7 +1792,7 @@ router.post("/materials", (req, res) => {
       // that silent hang, not just slowness, was what made users think
       // their click "didn't work" and click Add/Share again.
       try {
-        const { title, description, materialType, studentId, idempotencyKey } = req.body || {};
+        const { title, description, materialType, studentId, idempotencyKey, targetSupervisorId, shareWithGroup } = req.body || {};
         if (!title || !materialType) {
           fs.unlink(req.file.path, () => {});
           return res.status(400).json({ error: "title and materialType are required" });
@@ -1743,6 +1813,15 @@ router.post("/materials", (req, res) => {
           return res.status(200).json(toMaterial({ ...existing, supervisor_name: req.user.member_code }));
         }
 
+        // Share with one specific ToT, or the caller's whole Group, instead
+        // of the trainee-facing studentId/whole-caseload targeting -- see
+        // resolveMaterialTarget's comment.
+        const target = await resolveMaterialTarget(pool, req.user.id, targetSupervisorId, shareWithGroup);
+        if (target.error) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(target.status).json({ error: target.error });
+        }
+
         const check = checkFileContent(req.file.path, ["pdf", "office", "image", "media"]);
         if (!check.safe) {
           fs.unlink(req.file.path, () => {});
@@ -1751,12 +1830,13 @@ router.post("/materials", (req, res) => {
         await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
         const fileHash = await hashFile(req.file.path);
 
+        const finalStudentId = target.groupId || target.sharedWithSupervisorId ? null : studentId || null;
         let insert;
         try {
           insert = await pool.query(
-            `INSERT INTO learning_materials (supervisor_id, student_id, title, description, material_type, filename, original_name, file_hash, idempotency_key)
-             VALUES (?,?,?,?,?,?,?,?,?)`,
-            [req.user.id, studentId || null, title, description || null, materialType, req.file.filename, req.file.originalname, fileHash, idempotencyKey || null]
+            `INSERT INTO learning_materials (supervisor_id, student_id, group_id, shared_with_supervisor_id, title, description, material_type, filename, original_name, file_hash, idempotency_key)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+            [req.user.id, finalStudentId, target.groupId, target.sharedWithSupervisorId, title, description || null, materialType, req.file.filename, req.file.originalname, fileHash, idempotencyKey || null]
           );
         } catch (dbErr) {
           // Lost a race against a near-simultaneous request carrying the
@@ -1778,7 +1858,7 @@ router.post("/materials", (req, res) => {
           [req.user.id, insert.insertId]
         );
         res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
-        notifyMaterialRecipients(pool, req.user.id, studentId, title, insert.insertId).catch((notifyErr) => {
+        notifyMaterialRecipients(pool, req.user.id, finalStudentId, title, insert.insertId, target).catch((notifyErr) => {
           console.error("Failed to notify material recipients:", notifyErr);
         });
       } catch (e) {
@@ -1797,7 +1877,7 @@ router.post("/materials", (req, res) => {
       return res.status(409).json({ error: "Upload already in progress." });
     }
     try {
-      const { title, description, materialType, externalUrl, studentId, idempotencyKey } = req.body || {};
+      const { title, description, materialType, externalUrl, studentId, idempotencyKey, targetSupervisorId, shareWithGroup } = req.body || {};
       if (!title || materialType !== "link" || !externalUrl) {
         return res.status(400).json({ error: "For non-file materials, materialType must be 'link' and externalUrl is required" });
       }
@@ -1807,12 +1887,16 @@ router.post("/materials", (req, res) => {
         return res.status(200).json(toMaterial({ ...existing, supervisor_name: req.user.member_code }));
       }
 
+      const target = await resolveMaterialTarget(pool, req.user.id, targetSupervisorId, shareWithGroup);
+      if (target.error) return res.status(target.status).json({ error: target.error });
+      const finalStudentId = target.groupId || target.sharedWithSupervisorId ? null : studentId || null;
+
       let insert;
       try {
         insert = await pool.query(
-          `INSERT INTO learning_materials (supervisor_id, student_id, title, description, material_type, external_url, idempotency_key)
-           VALUES (?,?,?,?,'link',?,?)`,
-          [req.user.id, studentId || null, title, description || null, externalUrl, idempotencyKey || null]
+          `INSERT INTO learning_materials (supervisor_id, student_id, group_id, shared_with_supervisor_id, title, description, material_type, external_url, idempotency_key)
+           VALUES (?,?,?,?,?,?,'link',?,?)`,
+          [req.user.id, finalStudentId, target.groupId, target.sharedWithSupervisorId, title, description || null, externalUrl, idempotencyKey || null]
         );
       } catch (dbErr) {
         if (dbErr.code === "ER_DUP_ENTRY" && idempotencyKey) {
@@ -1828,7 +1912,7 @@ router.post("/materials", (req, res) => {
         [req.user.id, insert.insertId]
       );
       res.status(201).json(toMaterial({ ...rows[0], supervisor_name: req.user.member_code }));
-      notifyMaterialRecipients(pool, req.user.id, studentId, title, insert.insertId).catch((notifyErr) => {
+      notifyMaterialRecipients(pool, req.user.id, finalStudentId, title, insert.insertId, target).catch((notifyErr) => {
         console.error("Failed to notify material recipients:", notifyErr);
       });
     } catch (err) {
@@ -2003,20 +2087,37 @@ function toMeeting(row) {
     durationMinutes: row.duration_minutes,
     studentId: row.student_id,
     studentName: row.student_name || null,
+    // A meeting the caller organized always has organizerName === null
+    // (it's their own) -- set only when this meeting was created BY
+    // someone else and targeted at the viewer (their Master Trainer, via
+    // targetSupervisorId or targetGroupId).
+    organizerName: row.organizer_name || null,
+    targetSupervisorId: row.target_supervisor_id || null,
+    targetSupervisorName: row.target_supervisor_name || null,
+    isGroupMeeting: row.target_group_id != null,
     createdAt: row.created_at,
   };
 }
 
-// GET /api/supervisor/meetings
+// GET /api/supervisor/meetings -- every meeting the caller organized,
+// PLUS (added alongside Master Trainer meeting creation) any meeting
+// someone else targeted directly at them or at their whole Group.
 router.get(
   "/meetings",
   asyncRoute(async (req, res, db) => {
     const { rows } = await db.query(
-      `SELECT m.*, st.full_name AS student_name FROM meetings m
-       LEFT JOIN students st ON st.id = m.student_id
-       WHERE m.supervisor_id = ?
-       ORDER BY (m.scheduled_at IS NULL), m.scheduled_at ASC`,
-      [req.user.id]
+      `SELECT m.*, st.full_name AS student_name,
+              tsup.full_name AS target_supervisor_name,
+              osup.full_name AS organizer_name
+         FROM meetings m
+         LEFT JOIN students st ON st.id = m.student_id
+         LEFT JOIN supervisors tsup ON tsup.id = m.target_supervisor_id
+         LEFT JOIN supervisors osup ON osup.id = m.supervisor_id AND osup.id != ?
+        WHERE m.supervisor_id = ?
+           OR m.target_supervisor_id = ?
+           OR m.target_group_id = (SELECT group_id FROM supervisors WHERE id = ?)
+        ORDER BY (m.scheduled_at IS NULL), m.scheduled_at ASC`,
+      [req.user.id, req.user.id, req.user.id, req.user.id]
     );
     res.json({ meetings: rows.map(toMeeting) });
   })
@@ -2037,10 +2138,15 @@ function isValidMeetingUrl(value) {
 }
 
 // POST /api/supervisor/meetings  { title, studentId, platform, meetingUrl, scheduledAt, durationMinutes }
+// -- or, for a meeting with no trainee at all: { targetSupervisorId } (one
+// specific ToT in the caller's own Group) or { shareWithGroup: true } (the
+// caller's whole Group). shareWithGroup never trusts a client-supplied
+// group id -- it's always derived from the caller's own row, exactly like
+// POST /documents above.
 router.post(
   "/meetings",
   asyncRoute(async (req, res, db) => {
-    const { title, studentId, platform, meetingUrl, scheduledAt, durationMinutes } = req.body || {};
+    const { title, studentId, platform, meetingUrl, scheduledAt, durationMinutes, targetSupervisorId, shareWithGroup } = req.body || {};
     if (!title || !meetingUrl) return res.status(400).json({ error: "title and meetingUrl are required" });
     if (!isValidMeetingUrl(meetingUrl)) {
       return res.status(400).json({ error: "meetingUrl must be a valid http:// or https:// link" });
@@ -2049,18 +2155,38 @@ router.post(
       return res.status(400).json({ error: "platform must be one of: zoom, teams, meet, other" });
     }
 
-    if (studentId) {
+    let finalStudentId = null;
+    let finalTargetGroupId = null;
+    let finalTargetSupervisorId = null;
+
+    if (targetSupervisorId) {
+      const { rows: meRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
+      const myGroupId = meRows[0] && meRows[0].group_id;
+      const { rows: targetRows } = await db.query(
+        "SELECT id FROM supervisors WHERE id = ? AND group_id = ? AND supervisor_type = 'in_training'",
+        [targetSupervisorId, myGroupId]
+      );
+      if (!targetRows.length) return res.status(403).json({ error: "That Trainer (ToT) is not in your Group" });
+      finalTargetSupervisorId = targetSupervisorId;
+    } else if (shareWithGroup) {
+      const { rows: meRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
+      const myGroupId = meRows[0] && meRows[0].group_id;
+      if (!myGroupId) return res.status(400).json({ error: "You don't have a Group assigned yet" });
+      finalTargetGroupId = myGroupId;
+    } else if (studentId) {
       const { rows: assignRows } = await db.query(
         "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
         [req.user.id, studentId]
       );
       if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
+      finalStudentId = studentId;
     }
+    // else: no target at all given -> the existing "my whole caseload" default.
 
     const insert = await db.query(
-      `INSERT INTO meetings (supervisor_id, student_id, title, platform, meeting_url, scheduled_at, duration_minutes)
-       VALUES (?,?,?,?,?,?,?)`,
-      [req.user.id, studentId || null, title, platform, meetingUrl, scheduledAt || null, durationMinutes || null]
+      `INSERT INTO meetings (supervisor_id, student_id, target_group_id, target_supervisor_id, title, platform, meeting_url, scheduled_at, duration_minutes)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [req.user.id, finalStudentId, finalTargetGroupId, finalTargetSupervisorId, title, platform, meetingUrl, scheduledAt || null, durationMinutes || null]
     );
     await db.query(
       "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'meeting scheduled', 'meetings', ?)",
@@ -2070,26 +2196,59 @@ router.post(
     {
       const trainer = await getUserContactInfo(db, req.user.id);
       const trainerName = (trainer && trainer.fullName) || "Your trainer";
-      let recipientIds;
-      if (studentId) {
-        recipientIds = [Number(studentId)];
-      } else {
-        const { rows: caseloadRows } = await db.query("SELECT student_id FROM supervisor_students WHERE supervisor_id = ?", [req.user.id]);
-        recipientIds = caseloadRows.map((r) => r.student_id);
-      }
-      for (const recipientId of recipientIds) {
+      if (finalTargetSupervisorId) {
         await createNotification(db, {
-          recipientId,
+          recipientId: finalTargetSupervisorId,
           type: "meeting",
           title: `New meeting scheduled: ${title}`,
           relatedEntityType: "meeting",
           relatedEntityId: insert.insertId,
           email: { template: "newMeeting", data: { meetingTitle: title, trainerName, platform, scheduledAt } },
         });
+      } else if (finalTargetGroupId) {
+        const { rows: totRows } = await db.query(
+          "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training'",
+          [finalTargetGroupId]
+        );
+        await Promise.allSettled(
+          totRows.map((t) =>
+            createNotification(db, {
+              recipientId: t.id,
+              type: "meeting",
+              title: `New meeting scheduled: ${title}`,
+              relatedEntityType: "meeting",
+              relatedEntityId: insert.insertId,
+              email: { template: "newMeeting", data: { meetingTitle: title, trainerName, platform, scheduledAt } },
+            })
+          )
+        );
+      } else {
+        let recipientIds;
+        if (finalStudentId) {
+          recipientIds = [Number(finalStudentId)];
+        } else {
+          const { rows: caseloadRows } = await db.query("SELECT student_id FROM supervisor_students WHERE supervisor_id = ?", [req.user.id]);
+          recipientIds = caseloadRows.map((r) => r.student_id);
+        }
+        for (const recipientId of recipientIds) {
+          await createNotification(db, {
+            recipientId,
+            type: "meeting",
+            title: `New meeting scheduled: ${title}`,
+            relatedEntityType: "meeting",
+            relatedEntityId: insert.insertId,
+            email: { template: "newMeeting", data: { meetingTitle: title, trainerName, platform, scheduledAt } },
+          });
+        }
       }
     }
 
-    const { rows } = await db.query("SELECT * FROM meetings WHERE id = ?", [insert.insertId]);
+    const { rows } = await db.query(
+      `SELECT m.*, tsup.full_name AS target_supervisor_name FROM meetings m
+       LEFT JOIN supervisors tsup ON tsup.id = m.target_supervisor_id
+       WHERE m.id = ?`,
+      [insert.insertId]
+    );
     res.status(201).json(toMeeting(rows[0]));
   })
 );

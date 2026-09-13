@@ -311,6 +311,24 @@ function toMessage(row, viewerId) {
   };
 }
 
+// Who a material is shared with, beyond the existing isGroupShared flag --
+// a named Group (row.shared_group_name) or a specific supervisor/ToT
+// (row.shared_supervisor_name/_type) -- added alongside Master Trainer
+// Group/ToT sharing. Undefined when neither was selected (the existing
+// trainee-facing student_id/whole-caseload case), same convention as
+// documentSharedWith().
+function materialSharedWith(row) {
+  if (row.shared_group_name) return { type: "group", name: row.shared_group_name };
+  if (row.shared_supervisor_name) {
+    return {
+      type: "supervisor",
+      name: row.shared_supervisor_name,
+      role: row.shared_supervisor_type === "primary" ? "Master Trainer" : "ToT",
+    };
+  }
+  return undefined;
+}
+
 function toMaterial(row) {
   return {
     id: row.id,
@@ -327,6 +345,7 @@ function toMaterial(row) {
     // of people, so the frontend can safely label this "your group".
     // (undefined, not just false, on any query that doesn't select student_id.)
     isGroupShared: row.student_id === undefined ? undefined : row.student_id === null,
+    sharedWith: materialSharedWith(row),
     createdAt: row.created_at,
     // Best-effort link from an 'assignment'-tagged material to a real row in
     // the separate `assignments` table -- there is no actual foreign key

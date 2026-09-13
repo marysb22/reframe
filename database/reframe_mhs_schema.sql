@@ -577,14 +577,26 @@ CREATE TABLE learning_materials (
   book_hash_key VARCHAR(64) GENERATED ALWAYS AS (
     CASE WHEN material_type = 'book' THEN file_hash ELSE NULL END
   ) VIRTUAL,
+  -- Added in migration 023, mirroring documents' group_id/
+  -- shared_with_supervisor_id: lets a Master Trainer (or ToT) share a
+  -- material with a whole Group or one specific ToT -- neither of which
+  -- student_id (always a trainee, or NULL for "whole caseload") can
+  -- express. Mutually exclusive with student_id and with each other,
+  -- enforced at the application layer, same reasoning as documents.
+  group_id BIGINT,
+  shared_with_supervisor_id BIGINT,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_material_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
   CONSTRAINT fk_material_admin FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE SET NULL,
   CONSTRAINT fk_material_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_material_group FOREIGN KEY (group_id) REFERENCES trainer_groups(id) ON DELETE SET NULL,
+  CONSTRAINT fk_material_shared_supervisor FOREIGN KEY (shared_with_supervisor_id) REFERENCES supervisors(id) ON DELETE SET NULL,
   CONSTRAINT chk_material_has_file CHECK (filename IS NOT NULL OR external_url IS NOT NULL),
   CONSTRAINT chk_publication_year CHECK (publication_year IS NULL OR publication_year BETWEEN 1000 AND 2100),
   INDEX idx_materials_type_created (material_type, created_at),
   INDEX idx_materials_file_hash (file_hash),
+  INDEX idx_materials_group (group_id),
+  INDEX idx_materials_shared_supervisor (shared_with_supervisor_id),
   UNIQUE INDEX uniq_materials_idempotency_key (idempotency_key),
   UNIQUE INDEX uniq_materials_book_hash (book_hash_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -694,12 +706,20 @@ CREATE TABLE chat_rooms (
   name        VARCHAR(255) NOT NULL,
   created_by  BIGINT NOT NULL,
   group_id    BIGINT NOT NULL,
+  -- Added in migration 023: a Direct Chat (Master Trainer <-> ToT, or any
+  -- two people in the same Group) is just an ordinary 2-member room with
+  -- this flag set -- reuses this table's already-generic (any
+  -- user_credentials pair) membership/messaging instead of the separate
+  -- chats/messages tables, whose supervisor_id/student_id columns are
+  -- typed FKs that structurally cannot hold a supervisor-to-supervisor
+  -- pair. Found by membership (both users in the room), not a synthetic key.
+  is_direct   BOOLEAN NOT NULL DEFAULT FALSE,
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_chat_rooms_creator FOREIGN KEY (created_by) REFERENCES supervisors(id) ON DELETE CASCADE,
   CONSTRAINT fk_chat_rooms_group FOREIGN KEY (group_id) REFERENCES trainer_groups(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='A Master Trainer-curated group chat room. Membership lives in chat_room_members, not derived automatically from the group.';
+  COMMENT='A Master Trainer-curated group chat room, or (is_direct=TRUE) a 2-member Direct Chat thread. Membership lives in chat_room_members, not derived automatically from the group.';
 
 CREATE TABLE chat_room_members (
   room_id       BIGINT NOT NULL,
@@ -742,10 +762,22 @@ CREATE TABLE meetings (
   meeting_url       VARCHAR(2048) NOT NULL,
   scheduled_at      DATETIME,
   duration_minutes  INT CHECK (duration_minutes IS NULL OR duration_minutes >= 0),
+  -- Added in migration 023: lets a Master Trainer (or ToT) schedule a
+  -- meeting with no trainee involved at all -- a whole Group, or one
+  -- specific ToT. Mutually exclusive with student_id and with each other,
+  -- enforced at the application layer (not a CHECK: MySQL rejects a CHECK
+  -- on a column that also carries an ON DELETE SET NULL FK action, same
+  -- reasoning as documents' three-way target columns below).
+  target_group_id      BIGINT,
+  target_supervisor_id BIGINT,
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_meetings_supervisor FOREIGN KEY (supervisor_id) REFERENCES supervisors(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_meetings_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+  CONSTRAINT fk_meetings_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  CONSTRAINT fk_meetings_target_group FOREIGN KEY (target_group_id) REFERENCES trainer_groups(id) ON DELETE SET NULL,
+  CONSTRAINT fk_meetings_target_supervisor FOREIGN KEY (target_supervisor_id) REFERENCES supervisors(id) ON DELETE SET NULL,
+  INDEX idx_meetings_target_group (target_group_id),
+  INDEX idx_meetings_target_supervisor (target_supervisor_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Fills the "no meetings table exists" gap flagged in earlier Supervisor/Student dashboard builds.';
 

@@ -1814,9 +1814,12 @@ router.get(
         if (!groupId) return noGroupResponse(res, { meetings: [] });
 
         const { rows } = await db.query(
-            `SELECT m.*, st.full_name AS student_name, sup.full_name AS trainer_name FROM meetings m
+            `SELECT m.*, st.full_name AS student_name, sup.full_name AS trainer_name,
+                    tsup.full_name AS target_supervisor_name
+       FROM meetings m
        JOIN supervisors sup ON sup.id = m.supervisor_id
        LEFT JOIN students st ON st.id = m.student_id
+       LEFT JOIN supervisors tsup ON tsup.id = m.target_supervisor_id
        WHERE sup.group_id = ?
        ORDER BY (m.scheduled_at IS NULL), m.scheduled_at ASC
        LIMIT 100`, [groupId]
@@ -1834,12 +1837,16 @@ router.get(
 
         const { rows } = await db.query(
             `SELECT lm.*, sup.full_name AS supervisor_name,
+                    tg.name AS shared_group_name,
+                    shsup.full_name AS shared_supervisor_name, shsup.supervisor_type AS shared_supervisor_type,
                     (SELECT a.id FROM assignments a
                       WHERE a.student_id = lm.student_id AND a.supervisor_id = lm.supervisor_id
                         AND LOWER(a.title) = LOWER(lm.title)
                       ORDER BY a.id DESC LIMIT 1) AS matched_assignment_id
        FROM learning_materials lm
        JOIN supervisors sup ON sup.id = lm.supervisor_id
+       LEFT JOIN trainer_groups tg ON tg.id = lm.group_id
+       LEFT JOIN supervisors shsup ON shsup.id = lm.shared_with_supervisor_id
        WHERE sup.group_id = ? AND lm.material_type != 'book'
        ORDER BY lm.created_at DESC
        LIMIT 100`, [groupId]
@@ -1872,6 +1879,7 @@ router.get(
               uc.role AS uploaded_by_role,
               sup.supervisor_type AS uploaded_by_supervisor_type,
               tg.name AS shared_group_name,
+              shsup.full_name AS shared_supervisor_name, shsup.supervisor_type AS shared_supervisor_type,
               apsup.full_name AS approved_by_name
        FROM documents d
        JOIN user_credentials uc ON uc.id = d.uploaded_by
@@ -1881,11 +1889,13 @@ router.get(
        LEFT JOIN supervisors sup ON sup.id = d.uploaded_by
        LEFT JOIN students st_up ON st_up.id = d.uploaded_by
        LEFT JOIN trainer_groups tg ON tg.id = d.group_id
+       LEFT JOIN supervisors shsup ON shsup.id = d.shared_with_supervisor_id
        LEFT JOIN supervisors apsup ON apsup.id = d.approved_by
        WHERE (d.student_id IS NOT NULL AND target_st.group_id = ?)
           OR (d.student_id IS NULL AND d.group_id = ?)
+          OR (d.shared_with_supervisor_id IN (SELECT id FROM supervisors WHERE group_id = ?))
        ORDER BY d.created_at DESC
-       LIMIT 200`, [groupId, groupId]
+       LIMIT 200`, [groupId, groupId, groupId]
         );
         // toDocument() only returns its own fixed shape -- student_name/
         // student_code (this route's one addition beyond the shared shape,

@@ -3192,13 +3192,52 @@
                         <div class="card-title-left"><i class="fa fa-video"></i>
                             <h2>Meetings across your Group</h2>
                         </div>
+                        <button type="button" class="btn" onclick="openAddMeetingModal()"><i class="fa fa-plus"></i>New Meeting</button>
                     </div>
-                    <div class="mt-readonly-note"><i class="fa fa-eye"></i> View-only &mdash; meetings are scheduled by each Trainer in Training.</div>
+                    <div class="mt-readonly-note"><i class="fa fa-eye"></i> Meetings created by each Trainer in Training with their own trainees appear here too, view-only.</div>
                     <div id="allMeetingsList">
                         <div class="empty-state">Loading meetings...</div>
                     </div>
                 </section>
             </section>
+
+            <!-- ADD MEETING MODAL -->
+            <div class="modal-overlay" id="addMeetingModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('addMeetingModal')">&times;</button>
+                    <h3>New meeting</h3>
+                    <form id="addMeetingForm">
+                        <label>Title</label>
+                        <input type="text" id="amTitle" required>
+                        <label>Share with</label>
+                        <select id="amTargetType" onchange="onAddMeetingTargetChange()">
+                            <option value="group">Whole Group</option>
+                            <option value="tot">One Trainer (ToT)</option>
+                        </select>
+                        <div id="amTotWrap" style="display:none;">
+                            <label>Trainer (ToT)</label>
+                            <select id="amTotSelect"></select>
+                        </div>
+                        <label>Platform</label>
+                        <select id="amPlatform">
+                            <option value="zoom">Zoom</option>
+                            <option value="teams">Microsoft Teams</option>
+                            <option value="meet">Google Meet</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <label>Meeting link</label>
+                        <input type="url" id="amUrl" required placeholder="https://...">
+                        <label>Date &amp; time <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
+                        <input type="datetime-local" id="amWhen">
+                        <label>Duration (minutes) <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
+                        <input type="number" id="amDuration" min="0">
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('addMeetingModal')">Cancel</button>
+                            <button type="submit" class="btn">Save meeting</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             <!-- ============================================================= -->
             <!-- EVENTS (public site) -- own events on reframemhs.com's public -->
@@ -3374,8 +3413,9 @@
                         <div class="card-title-left"><i class="fa fa-book-open"></i>
                             <h2>Learning materials shared by your Trainers</h2>
                         </div>
+                        <button type="button" class="btn" onclick="openAddMtMaterialModal()"><i class="fa fa-plus"></i>Add Material</button>
                     </div>
-                    <div class="mt-readonly-note"><i class="fa fa-eye"></i> View-only &mdash; shared by each Trainer in Training with their own trainees.</div>
+                    <div class="mt-readonly-note"><i class="fa fa-eye"></i> Materials shared by each Trainer in Training with their own trainees appear here too, view-only.</div>
                     <div class="toolbar">
                         <input type="text" id="materialsSearch" placeholder="Search materials..." oninput="onMaterialsControlsChanged()">
                         <select id="materialsSort" onchange="onMaterialsControlsChanged()">
@@ -3392,6 +3432,45 @@
                     <button class="btn btn-secondary materials-load-more" id="materialsLoadMoreBtn" style="display:none;" onclick="materialsLoadMore()">Load more</button>
                 </section>
             </section>
+
+            <!-- ADD MATERIAL MODAL (Master Trainer -- Group or one ToT) -->
+            <div class="modal-overlay" id="addMtMaterialModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('addMtMaterialModal')">&times;</button>
+                    <h3>Share a learning material</h3>
+                    <form id="addMtMaterialForm">
+                        <label>Share with</label>
+                        <select id="ammTargetType" onchange="onAddMtMaterialTargetChange()">
+                            <option value="group">Whole Group</option>
+                            <option value="tot">One Trainer (ToT)</option>
+                        </select>
+                        <div id="ammTotWrap" style="display:none;">
+                            <label>Trainer (ToT)</label>
+                            <select id="ammTotSelect"></select>
+                        </div>
+                        <label>Title</label>
+                        <input type="text" id="ammTitle" required>
+                        <label>Description (optional)</label>
+                        <textarea id="ammDescription"></textarea>
+                        <label>Type</label>
+                        <select id="ammType" onchange="toggleAmmTypeFields()">
+<option value="document">Document (PDF / Word / PowerPoint)</option>
+<option value="image">Image</option>
+<option value="video">Video</option>
+<option value="audio">Audio</option>
+<option value="worksheet">Worksheet</option>
+<option value="reading">Reading</option>
+<option value="link">External link</option>
+</select>
+                        <div id="ammFileWrap"><label>File</label><input type="file" id="ammFile" accept=".pdf,.doc,.docx,.ppt,.pptx,image/*,video/*,audio/*"></div>
+                        <div id="ammUrlWrap" style="display:none;"><label>URL</label><input type="url" id="ammUrl" placeholder="https://..."></div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('addMtMaterialModal')">Cancel</button>
+                            <button type="submit" class="btn">Share</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             <!-- MATERIAL PREVIEW MODAL -->
             <div class="modal-overlay" id="materialPreviewModal">
@@ -3422,6 +3501,7 @@
                         <div class="card-title-left"><i class="fa fa-folder-open"></i>
                             <h2>Documents across your Group</h2>
                         </div>
+                        <button type="button" class="btn" onclick="openAddMtDocumentModal()"><i class="fa fa-plus"></i>Add Document</button>
                     </div>
                     <div class="mt-readonly-note"><i class="fa fa-eye"></i> Every file uploaded to any trainee profile in your Group, newest first.</div>
                     <ul class="doc-list" id="allDocsList">
@@ -3429,6 +3509,32 @@
                     </ul>
                 </section>
             </section>
+
+            <!-- ADD DOCUMENT MODAL (Master Trainer -- Group or one ToT, never a
+                 trainee picker: the Group already determines who's authorized) -->
+            <div class="modal-overlay" id="addMtDocumentModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('addMtDocumentModal')">&times;</button>
+                    <h3>Add a Document</h3>
+                    <form id="addMtDocumentForm">
+                        <label>Share with</label>
+                        <select id="admtTargetType" onchange="onAddMtDocumentTargetChange()">
+                            <option value="group">Whole Group</option>
+                            <option value="tot">One Trainer (ToT)</option>
+                        </select>
+                        <div id="admtTotWrap" style="display:none;">
+                            <label>Trainer (ToT)</label>
+                            <select id="admtTotSelect"></select>
+                        </div>
+                        <label>File (PDF, Word, or image)</label>
+                        <input type="file" id="admtFileInput" accept=".pdf,.doc,.docx,image/*" required>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('addMtDocumentModal')">Cancel</button>
+                            <button type="submit" class="btn">Upload</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             <!-- ============================================================= -->
             <!-- ACTIVITY (group-wide, read-only)                               -->
@@ -3458,9 +3564,12 @@
                         <div class="card-title-left"><i class="fa fa-people-group"></i>
                             <h2>Group Chats</h2>
                         </div>
-                        <button type="button" class="btn" onclick="openNewRoomModal()"><i class="fa fa-plus"></i>New Room</button>
+                        <div style="display:flex;gap:8px;">
+                            <button type="button" class="btn btn-secondary" onclick="openNewDirectMessageModal()"><i class="fa fa-comment"></i>New Direct Message</button>
+                            <button type="button" class="btn" onclick="openNewRoomModal()"><i class="fa fa-plus"></i>New Room</button>
+                        </div>
                     </div>
-                    <p class="card-subtitle">Create a room and add your ToTs and Trainees -- everyone in the room can send and receive messages and files.</p>
+                    <p class="card-subtitle">Create a room and add your ToTs and Trainees, or start a Direct Message with one person in your Group -- both appear in the same list below.</p>
                     <div class="gc-layout">
                         <div class="gc-room-list-wrap">
                             <div class="chat-search-box">
@@ -3511,6 +3620,18 @@
                         </div>
                         <button type="submit" class="btn" style="margin-top:16px;">Create Room</button>
                     </form>
+                </div>
+            </div>
+
+            <!-- NEW DIRECT MESSAGE MODAL -->
+            <div class="modal-overlay" id="newDirectMessageModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('newDirectMessageModal')">&times;</button>
+                    <h3>New Direct Message</h3>
+                    <p class="card-subtitle">Only people currently in your Group can be messaged directly.</p>
+                    <div id="dmRoster" class="member-select-list">
+                        <div class="empty-state">Loading your Group...</div>
+                    </div>
                 </div>
             </div>
 
@@ -5493,6 +5614,79 @@
         document.getElementById("sessionSearch").addEventListener("input", renderAllSessions);
         document.getElementById("sessionStatusFilter").addEventListener("change", renderAllSessions);
 
+        // One fresh id per "create/share" attempt for the new Meeting/
+        // Document/Material forms below -- generated when a modal opens,
+        // reused across retries of that same submit. The backend recognizes
+        // a repeated key and returns the original record instead of
+        // creating a second one (see routes/supervisor.js).
+        function generateIdempotencyKey() {
+            if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+            return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+                const r = (Math.random() * 16) | 0;
+                return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+            });
+        }
+
+        // ---- Add Meeting (Group or one specific ToT -- never trainees,
+        // and never a ToT/Group outside this Master Trainer's own) --------
+
+        async function ensureTotsLoaded() {
+            if (!allTots.length) await loadDashboardHours();
+        }
+
+        async function openAddMeetingModal() {
+            await ensureTotsLoaded();
+            const form = document.getElementById("addMeetingForm");
+            form.reset();
+            document.getElementById("amTotSelect").innerHTML = allTots
+                .map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`)
+                .join("");
+            onAddMeetingTargetChange();
+            openModal("addMeetingModal");
+        }
+
+        function onAddMeetingTargetChange() {
+            document.getElementById("amTotWrap").style.display = document.getElementById("amTargetType").value === "tot" ? "block" : "none";
+        }
+
+        document.getElementById("addMeetingForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalLabel = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Saving…";
+
+            const targetType = document.getElementById("amTargetType").value;
+            const payload = {
+                title: document.getElementById("amTitle").value,
+                platform: document.getElementById("amPlatform").value,
+                meetingUrl: document.getElementById("amUrl").value,
+                scheduledAt: document.getElementById("amWhen").value || null,
+                durationMinutes: document.getElementById("amDuration").value || null,
+            };
+            if (targetType === "tot") {
+                payload.targetSupervisorId = Number(document.getElementById("amTotSelect").value);
+            } else {
+                payload.shareWithGroup = true;
+            }
+
+            try {
+                const result = await apiRequest("/supervisor/meetings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                if (result) {
+                    showSuccessNotification("Meeting Scheduled", "The meeting has been scheduled successfully.");
+                    closeModal("addMeetingModal");
+                    loadAllMeetings();
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            }
+        });
+
         async function loadAllMeetings() {
             const wrap = document.getElementById("allMeetingsList");
             wrap.innerHTML = '<div class="empty-state">Loading meetings...</div>';
@@ -5502,13 +5696,22 @@
                 wrap.innerHTML = '<div class="empty-state">No meetings scheduled in your Group yet.</div>';
                 return;
             }
-            wrap.innerHTML = data.meetings.map((m) => `
+            wrap.innerHTML = data.meetings.map((m) => {
+                const withText = m.student_name
+                    ? " &middot; with " + escapeHtml(m.student_name)
+                    : m.target_supervisor_name
+                    ? " &middot; with " + escapeHtml(m.target_supervisor_name)
+                    : m.target_group_id
+                    ? " &middot; whole Group"
+                    : "";
+                return `
         <div class="meeting-card"><div>
           <div class="mplatform">${escapeHtml(m.platform)}</div>
           <h4>${escapeHtml(m.title)}</h4>
-          <div class="mwhen">${m.scheduled_at ? new Date(m.scheduled_at).toLocaleString() : "No time set"} &middot; ${escapeHtml(m.trainer_name)}${m.student_name ? " &middot; with " + escapeHtml(m.student_name) : ""}</div>
+          <div class="mwhen">${m.scheduled_at ? new Date(m.scheduled_at).toLocaleString() : "No time set"} &middot; ${escapeHtml(m.trainer_name)}${withText}</div>
           <a class="mlink" href="${escapeHtml(m.meeting_url)}" target="_blank" rel="noopener">Join link</a>
-        </div></div>`).join("");
+        </div></div>`;
+            }).join("");
         }
 
         // ---- Learning materials: compact searchable/filterable/sortable list ----
@@ -5538,6 +5741,110 @@
         function materialGroupOf(m) {
             return MATERIAL_TYPE_GROUPS[m.materialType] || "other";
         }
+
+        // ---- Add Material (Master Trainer -- Group or one specific ToT) --
+        let ammIdempotencyKey = null;
+        async function openAddMtMaterialModal() {
+            await ensureTotsLoaded();
+            const form = document.getElementById("addMtMaterialForm");
+            form.reset();
+            document.getElementById("ammTotSelect").innerHTML = allTots
+                .map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`)
+                .join("");
+            onAddMtMaterialTargetChange();
+            toggleAmmTypeFields();
+            ammIdempotencyKey = generateIdempotencyKey();
+            openModal("addMtMaterialModal");
+        }
+
+        function onAddMtMaterialTargetChange() {
+            document.getElementById("ammTotWrap").style.display = document.getElementById("ammTargetType").value === "tot" ? "block" : "none";
+        }
+
+        function toggleAmmTypeFields() {
+            const isLink = document.getElementById("ammType").value === "link";
+            document.getElementById("ammFileWrap").style.display = isLink ? "none" : "block";
+            document.getElementById("ammUrlWrap").style.display = isLink ? "block" : "none";
+        }
+
+        function uploadMtMaterialWithProgress(form, onProgress) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", `${API}/supervisor/materials`);
+                xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+                xhr.upload.onprogress = (evt) => {
+                    if (evt.lengthComputable) onProgress(Math.round((evt.loaded / evt.total) * 100));
+                };
+                xhr.onload = () => {
+                    let body = null;
+                    try { body = JSON.parse(xhr.responseText); } catch (e) {}
+                    if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+                    else reject(new Error((body && body.error) || "Upload failed"));
+                };
+                xhr.onerror = () => reject(new Error("Connection error"));
+                xhr.send(form);
+            });
+        }
+
+        document.getElementById("addMtMaterialForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const title = document.getElementById("ammTitle").value;
+            const description = document.getElementById("ammDescription").value;
+            const materialType = document.getElementById("ammType").value;
+            const targetType = document.getElementById("ammTargetType").value;
+            const idempotencyKey = ammIdempotencyKey || generateIdempotencyKey();
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalLabel = submitBtn.textContent;
+            submitBtn.disabled = true;
+
+            let result;
+            try {
+                if (materialType === "link") {
+                    const externalUrl = document.getElementById("ammUrl").value;
+                    if (!externalUrl) { showToast("Enter a URL", "error"); return; }
+                    submitBtn.textContent = "Sharing…";
+                    const payload = { title, description, materialType, externalUrl, idempotencyKey };
+                    if (targetType === "tot") payload.targetSupervisorId = Number(document.getElementById("ammTotSelect").value);
+                    else payload.shareWithGroup = true;
+                    result = await apiRequest("/supervisor/materials", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!result) return;
+                } else {
+                    const file = document.getElementById("ammFile").files[0];
+                    if (!file) { showToast("Choose a file", "error"); return; }
+                    const form = new FormData();
+                    form.append("title", title);
+                    form.append("description", description);
+                    form.append("materialType", materialType);
+                    form.append("idempotencyKey", idempotencyKey);
+                    if (targetType === "tot") form.append("targetSupervisorId", document.getElementById("ammTotSelect").value);
+                    else form.append("shareWithGroup", "true");
+                    form.append("file", file);
+                    submitBtn.textContent = "Uploading… 0%";
+                    try {
+                        result = await uploadMtMaterialWithProgress(form, (pct) => {
+                            submitBtn.textContent = `Uploading… ${pct}%`;
+                        });
+                    } catch (err) {
+                        showToast(err.message, "error");
+                        return;
+                    }
+                }
+
+                if (result) {
+                    showSuccessNotification("Material Shared", "The material has been shared successfully.");
+                    closeModal("addMtMaterialModal");
+                    loadAllMaterials();
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            }
+        });
 
         async function loadAllMaterials() {
             const data = await apiRequest("/master-trainer/materials");
@@ -5639,12 +5946,15 @@
         function materialRowHtml(m) {
             const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
             const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+            const sharedText = m.sharedWith
+                ? ` &middot; Shared with ${escapeHtml(m.sharedWith.name)}${m.sharedWith.type === "supervisor" ? " (" + escapeHtml(m.sharedWith.role) + ")" : ""}`
+                : "";
             return `
     <div class="material-row">
       <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
       <div class="mrow-body">
         <div class="mrow-title">${escapeHtml(m.title)}</div>
-        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; Shared by ${escapeHtml(m.supervisorName || "")}${dateStr ? " &middot; " + dateStr : ""}</div>
+        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; Shared by ${escapeHtml(m.supervisorName || "")}${dateStr ? " &middot; " + dateStr : ""}${sharedText}</div>
       </div>
       <div class="mrow-actions">
         <button type="button" class="mrow-btn primary" onclick="openMaterialPreview(${m.id})"><i class="fa fa-eye"></i> Open</button>
@@ -5868,6 +6178,60 @@
 
         let allDocumentsRaw = [];
 
+        // ---- Add Document (Master Trainer -- Group or one specific ToT) --
+        let admtIdempotencyKey = null;
+        async function openAddMtDocumentModal() {
+            await ensureTotsLoaded();
+            const form = document.getElementById("addMtDocumentForm");
+            form.reset();
+            document.getElementById("admtTotSelect").innerHTML = allTots
+                .map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`)
+                .join("");
+            onAddMtDocumentTargetChange();
+            admtIdempotencyKey = generateIdempotencyKey();
+            openModal("addMtDocumentModal");
+        }
+
+        function onAddMtDocumentTargetChange() {
+            document.getElementById("admtTotWrap").style.display = document.getElementById("admtTargetType").value === "tot" ? "block" : "none";
+        }
+
+        document.getElementById("addMtDocumentForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const file = document.getElementById("admtFileInput").files[0];
+            if (!file) return showToast("Choose a file", "error");
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalLabel = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Uploading…";
+
+            const form = new FormData();
+            form.append("document", file);
+            form.append("idempotencyKey", admtIdempotencyKey || generateIdempotencyKey());
+            if (document.getElementById("admtTargetType").value === "tot") {
+                form.append("targetSupervisorId", document.getElementById("admtTotSelect").value);
+            }
+
+            try {
+                const response = await fetch(`${API}/supervisor/documents`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: form,
+                });
+                const body = await response.json().catch(() => null);
+                if (!response.ok) throw new Error((body && body.error) || "Upload failed");
+                closeModal("addMtDocumentModal");
+                showToast("Document uploaded", "success");
+                loadAllDocuments();
+            } catch (err) {
+                showToast(err.message, "error");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            }
+        });
+
         async function loadAllDocuments() {
             const list = document.getElementById("allDocsList");
             list.innerHTML = '<li class="empty-state">Loading documents...</li>';
@@ -6077,7 +6441,7 @@
             }
             list.innerHTML = filtered.map((r) => `
         <button type="button" class="gc-room-item${r.id === gcActiveRoomId ? " active" : ""}" onclick="openGcRoom(${r.id})">
-          <div class="gc-room-name">${escapeHtml(r.name)}${r.unreadCount ? `<span class="gc-unread-badge">${r.unreadCount}</span>` : ""}</div>
+          <div class="gc-room-name"><i class="fa ${r.isDirect ? "fa-comment" : "fa-people-group"}" style="font-size:11px;color:var(--faint);margin-right:5px;"></i>${escapeHtml(r.name)}${r.unreadCount ? `<span class="gc-unread-badge">${r.unreadCount}</span>` : ""}</div>
           <div class="gc-room-preview">${r.lastMessage ? escapeHtml(r.lastMessage.senderName) + ": " + escapeHtml(r.lastMessage.preview) : "No messages yet"}</div>
         </button>
       `).join("");
@@ -6089,8 +6453,8 @@
             const room = gcRooms.find((r) => r.id === roomId);
             document.getElementById("gcThreadHeader").style.display = "flex";
             document.getElementById("gcThreadName").textContent = room ? room.name : "";
-            document.getElementById("gcThreadMemberCount").textContent = room ? `${room.memberCount} member${room.memberCount === 1 ? "" : "s"}` : "";
-            document.getElementById("gcManageBtn").style.display = room && room.isOwner ? "grid" : "none";
+            document.getElementById("gcThreadMemberCount").textContent = room ? (room.isDirect ? (room.otherUserRole || "") : `${room.memberCount} member${room.memberCount === 1 ? "" : "s"}`) : "";
+            document.getElementById("gcManageBtn").style.display = room && room.isOwner && !room.isDirect ? "grid" : "none";
             document.getElementById("gcDeleteBtn").style.display = room && room.isOwner ? "grid" : "none";
 
             if (gcSocket) gcSocket.emit("joinRoom", roomId);
@@ -6294,6 +6658,39 @@
         function gcKindLabel(person) {
             if (person.kind === "trainee") return "Trainee";
             return person.supervisorType === "primary" ? "Master Trainer" : "ToT";
+        }
+
+        // ---- Direct Chat -- reuses chat_rooms (is_direct=TRUE, 2 members)
+        // instead of a separate messaging system; every existing room-list/
+        // thread/send/attachment function above already works unchanged on
+        // a direct room, since chat_rooms membership is role-agnostic.
+        async function openNewDirectMessageModal() {
+            openModal("newDirectMessageModal");
+            const roster = document.getElementById("dmRoster");
+            roster.innerHTML = '<div class="empty-state">Loading your Group...</div>';
+            const data = await apiRequest("/chat-rooms/roster");
+            if (!data) return;
+            if (!data.roster.length) {
+                roster.innerHTML = '<div class="empty-state">No one else in your Group yet.</div>';
+                return;
+            }
+            roster.innerHTML = data.roster.map((p) => `
+        <button type="button" class="member-select-row" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;" onclick="startDirectMessage(${p.id})">
+          <span class="member-select-name">${escapeHtml(p.fullName)}</span>
+          <span class="member-select-role">${gcKindLabel(p)}</span>
+        </button>`).join("");
+        }
+
+        async function startDirectMessage(userId) {
+            const result = await apiRequest("/chat-rooms/direct", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId }),
+            });
+            if (!result) return;
+            closeModal("newDirectMessageModal");
+            await loadGroupChats();
+            openGcRoom(result.id);
         }
 
         async function openNewRoomModal() {

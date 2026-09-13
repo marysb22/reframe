@@ -5430,17 +5430,20 @@ function renderMaterialRows(list, groupByType) {
 function materialRowHtml(m) {
   const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
   const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+  const sharedText = m.sharedWith
+    ? ` &middot; Shared by ${escapeHtml(m.supervisorName || "")}`
+    : "";
   return `
     <div class="material-row">
       <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
       <div class="mrow-body">
         <div class="mrow-title">${escapeHtml(m.title)}</div>
-        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))}${dateStr ? " &middot; " + dateStr : ""}</div>
+        <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))}${dateStr ? " &middot; " + dateStr : ""}${sharedText}</div>
       </div>
       <div class="mrow-actions">
         <button type="button" class="mrow-btn primary" onclick="openMaterialPreview(${m.id})"><i class="fa fa-eye"></i> Open</button>
         <a class="mrow-btn" href="${m.externalUrl ? fileHref : withDownloadMode(fileHref)}" target="_blank" rel="noopener" download="${escapeHtml(m.originalName || m.title || "")}"><i class="fa fa-download"></i> Download</a>
-        <button class="icon-btn danger" title="Delete" onclick="confirmDeleteMaterial(${m.id})"><i class="fa fa-trash"></i></button>
+        ${m.canDelete === false ? "" : `<button class="icon-btn danger" title="Delete" onclick="confirmDeleteMaterial(${m.id})"><i class="fa fa-trash"></i></button>`}
       </div>
     </div>`;
 }
