@@ -323,11 +323,11 @@
             border-radius: 50%;
             background: var(--danger);
         }
-
+        
         .notif-wrap {
             position: relative;
         }
-
+        
         .notif-dropdown {
             display: none;
             position: absolute;
@@ -342,11 +342,11 @@
             z-index: 500;
             overflow: hidden;
         }
-
+        
         .notif-dropdown.open {
             display: block;
         }
-
+        
         .notif-dropdown-header {
             display: flex;
             justify-content: space-between;
@@ -354,11 +354,11 @@
             padding: 14px 16px;
             border-bottom: 1px solid var(--border);
         }
-
+        
         .notif-dropdown-header strong {
             font-size: 14px;
         }
-
+        
         .notif-mark-all {
             background: none;
             border: none;
@@ -368,17 +368,17 @@
             cursor: pointer;
             padding: 0;
         }
-
+        
         .notif-mark-all:disabled {
             color: var(--muted);
             cursor: default;
         }
-
+        
         .notif-list {
             max-height: 380px;
             overflow-y: auto;
         }
-
+        
         .notif-item {
             display: flex;
             gap: 10px;
@@ -386,19 +386,19 @@
             border-bottom: 1px solid var(--border);
             cursor: pointer;
         }
-
+        
         .notif-item:last-child {
             border-bottom: none;
         }
-
+        
         .notif-item:hover {
             background: var(--surface-2);
         }
-
+        
         .notif-item.unread .ni-title {
             font-weight: 700;
         }
-
+        
         .notif-item .ni-dot {
             width: 8px;
             height: 8px;
@@ -407,48 +407,48 @@
             flex-shrink: 0;
             margin-top: 6px;
         }
-
+        
         .notif-item .ni-dot.read {
             background: transparent;
         }
-
+        
         .notif-item .ni-title {
             font-size: 13px;
             font-weight: 600;
             color: var(--text);
         }
-
+        
         .notif-item .ni-body {
             font-size: 12px;
             color: var(--muted);
             margin-top: 2px;
         }
-
+        
         .notif-item .ni-time {
             font-size: 10.5px;
             color: var(--muted);
             margin-top: 4px;
         }
-
+        
         .notif-empty {
             padding: 30px 16px;
             text-align: center;
             color: var(--muted);
             font-size: 13px;
         }
-
+        
         .notif-week-label {
             font-size: 11px;
             color: var(--muted);
             margin-top: 1px;
         }
-
+        
         .notif-footer {
             padding: 10px 16px;
             border-top: 1px solid var(--border);
             text-align: center;
         }
-
+        
         .notif-footer button {
             background: none;
             border: none;
@@ -458,11 +458,11 @@
             cursor: pointer;
             padding: 0;
         }
-
+        
         .notif-week-picker {
             padding: 6px 0;
         }
-
+        
         .notif-week-btn {
             display: flex;
             justify-content: space-between;
@@ -477,21 +477,21 @@
             cursor: pointer;
             font-family: inherit;
         }
-
+        
         .notif-week-btn:hover {
             background: var(--surface-2);
         }
-
+        
         .notif-week-btn .nwb-count {
             font-size: 11px;
             color: var(--muted);
         }
-
+        
         .notif-week-btn .nwb-count.has-unread {
             color: var(--primary);
             font-weight: 700;
         }
-
+        
         .profile-mini {
             display: flex;
             align-items: center;
@@ -573,11 +573,11 @@
             gap: 14px;
             margin-bottom: 20px;
         }
-
+        
         .kpi-grid-2 {
             grid-template-columns: repeat(2, 1fr);
         }
-
+        
         .kpi-card {
             background: var(--surface);
             padding: 18px 20px;
@@ -965,23 +965,23 @@
             background: var(--warning-bg);
             color: var(--warning);
         }
-
+        
         .pill.overdue {
             background: var(--danger-bg);
             color: var(--danger);
         }
-
+        
         .pill.scheduled {
             background: var(--info-bg);
             color: var(--info);
         }
-
+        
         .field-hint {
             font-size: 11px;
             color: var(--faint);
             margin-top: 5px;
         }
-
+        
         .row-actions {
             display: flex;
             gap: 7px;
@@ -1189,11 +1189,11 @@
             background: var(--danger-bg);
             color: var(--danger);
         }
-
         /* Centered success confirmation -- replaces the small bottom toast
            for successful actions so an update is impossible to miss,
            without blocking the page (pointer-events stays off so the user
            can keep working underneath it while it's visible). */
+        
         .success-notif-overlay {
             position: fixed;
             inset: 0;
@@ -1207,12 +1207,12 @@
             pointer-events: none;
             transition: opacity .2s ease;
         }
-
+        
         .success-notif-overlay.show {
             opacity: 1;
             visibility: visible;
         }
-
+        
         .success-notif-box {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -1225,11 +1225,11 @@
             transform: scale(.92);
             transition: transform .2s ease;
         }
-
+        
         .success-notif-overlay.show .success-notif-box {
             transform: scale(1);
         }
-
+        
         .success-notif-icon {
             width: 54px;
             height: 54px;
@@ -1242,27 +1242,27 @@
             justify-content: center;
             font-size: 24px;
         }
-
+        
         .success-notif-title {
             margin: 0 0 6px;
             font-size: 16.5px;
             font-weight: 700;
             color: var(--text);
         }
-
+        
         .success-notif-message {
             margin: 0;
             font-size: 13.5px;
             color: var(--muted);
             line-height: 1.5;
         }
-
+        
         @media (max-width: 480px) {
             .success-notif-box {
                 padding: 24px 22px;
             }
         }
-
+        
         @keyframes slideIn {
             from {
                 transform: translateY(16px);
@@ -1437,18 +1437,18 @@
             text-decoration: none;
             font-size: 12.5px;
         }
-
         /* Compact Learning Materials list -- replaces the old large-card grid
            (.material-grid/.material-card, still used elsewhere and
            intentionally left untouched) with rows that stay usable at
            hundreds/thousands of items: search + type filter + sort narrow the
            list client-side, "Load more" renders it in small batches. */
+        
         .type-pills {
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
         }
-
+        
         .type-pill {
             padding: 7px 14px;
             border-radius: 20px;
@@ -1461,13 +1461,13 @@
             white-space: nowrap;
             font-family: inherit;
         }
-
+        
         .type-pill.active {
             background: var(--primary);
             color: #fff;
             border-color: var(--primary);
         }
-
+        
         .material-section-label {
             font-size: 11px;
             font-weight: 700;
@@ -1476,14 +1476,14 @@
             color: var(--faint);
             margin: 18px 0 8px;
         }
-
+        
         .material-section-label:first-child {
             margin-top: 0;
         }
-
         /* ===== Library (Books) -- deliberately a different visual language
            from the Materials list above: cover-forward cards, not rows,
            since a book grid reads as a library, not a file manager. ===== */
+        
         .library-header {
             display: flex;
             align-items: flex-start;
@@ -1491,26 +1491,26 @@
             gap: 12px;
             flex-wrap: wrap;
         }
-
+        
         .library-header-text p {
             margin: 2px 0 0;
             color: var(--muted);
             font-size: 12.5px;
         }
-
         /* Compact list rows -- a dense, scannable library (built for
            hundreds/thousands of entries), not cover-art cards. One row per
            book: a small icon/thumbnail, the title as the one dominant
            line, and every other detail (author, type, category, year,
            added-by) collapsed into a single small green italic line
            beneath it. */
+        
         .book-list {
             display: flex;
             flex-direction: column;
             margin-top: 10px;
             border-top: 1px solid var(--border-soft);
         }
-
+        
         .book-card {
             display: flex;
             flex-direction: row;
@@ -1520,11 +1520,11 @@
             border-bottom: 1px solid var(--border-soft);
             transition: background .1s ease;
         }
-
+        
         .book-card:hover {
             background: var(--surface-2);
         }
-
+        
         .book-cover {
             width: 32px;
             height: 32px;
@@ -1537,25 +1537,25 @@
             overflow: hidden;
             cursor: pointer;
         }
-
+        
         .book-cover img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-
+        
         .book-cover i {
             font-size: 14px;
             color: var(--faint);
         }
-
+        
         .book-info {
             flex: 1;
             min-width: 0;
             display: flex;
             flex-direction: column;
         }
-
+        
         .book-title {
             font-size: 13px;
             font-weight: 700;
@@ -1565,7 +1565,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
+        
         .book-meta {
             font-size: 10.5px;
             color: var(--success);
@@ -1574,13 +1574,13 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
+        
         .book-actions {
             display: flex;
             gap: 5px;
             flex-shrink: 0;
         }
-
+        
         .book-open-btn {
             height: 26px;
             padding: 0 10px;
@@ -1593,11 +1593,11 @@
             cursor: pointer;
             font-family: inherit;
         }
-
+        
         .book-open-btn:hover {
             background: var(--primary-dark);
         }
-
+        
         .book-menu-btn {
             width: 26px;
             height: 26px;
@@ -1607,12 +1607,12 @@
             color: var(--muted);
             cursor: pointer;
         }
-
+        
         .book-details-layout {
             display: flex;
             gap: 24px;
         }
-
+        
         .book-details-cover {
             width: 180px;
             flex-shrink: 0;
@@ -1625,53 +1625,53 @@
             justify-content: center;
             overflow: hidden;
         }
-
+        
         .book-details-cover img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-
+        
         .book-details-cover i {
             font-size: 40px;
             color: var(--faint);
         }
-
+        
         .book-details-info {
             flex: 1;
             min-width: 0;
         }
-
+        
         .book-details-info h3 {
             margin: 0 0 4px;
             font-size: 19px;
             font-weight: 700;
         }
-
+        
         .book-details-author {
             color: var(--muted);
             font-size: 13.5px;
             margin-bottom: 10px;
         }
-
+        
         .book-details-tags {
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
             margin-bottom: 12px;
         }
-
+        
         .book-details-tags .type-pill {
             cursor: default;
         }
-
+        
         .book-details-desc {
             font-size: 13px;
             color: var(--text);
             line-height: 1.55;
             margin: 0 0 16px;
         }
-
+        
         .book-details-meta {
             display: grid;
             grid-template-columns: auto 1fr;
@@ -1680,40 +1680,39 @@
             margin: 0 0 4px;
             font-size: 12.5px;
         }
-
+        
         .book-details-meta dt {
             color: var(--faint);
             font-weight: 600;
         }
-
+        
         .book-details-meta dd {
             margin: 0;
             color: var(--text);
         }
-
+        
         @media (max-width: 560px) {
             .book-details-layout {
                 flex-direction: column;
             }
-
             .book-details-cover {
                 width: 140px;
             }
         }
-
+        
         .library-empty {
             text-align: center;
             padding: 50px 20px;
             color: var(--muted);
         }
-
+        
         .library-empty i {
             font-size: 30px;
             color: var(--faint);
             margin-bottom: 10px;
             display: block;
         }
-
+        
         .book-upload-box {
             border: 1.5px dashed var(--border);
             border-radius: 10px;
@@ -1724,23 +1723,23 @@
             color: var(--muted);
             position: relative;
         }
-
+        
         .book-upload-box.has-file {
             border-style: solid;
             border-color: var(--primary);
             color: var(--text);
         }
-
+        
         .book-upload-box input[type="file"] {
             position: absolute;
             inset: 0;
             opacity: 0;
             cursor: pointer;
         }
-
         /* Full-screen reader -- relies on the browser's own native PDF
            viewer inside the iframe for page nav/zoom/fullscreen/find, rather
            than bundling a separate PDF.js reader. */
+        
         .reader-overlay {
             position: fixed;
             inset: 0;
@@ -1749,11 +1748,11 @@
             display: none;
             flex-direction: column;
         }
-
+        
         .reader-overlay.open {
             display: flex;
         }
-
+        
         .reader-header {
             display: flex;
             align-items: center;
@@ -1763,24 +1762,24 @@
             background: var(--surface);
             border-bottom: 1px solid var(--border-soft);
         }
-
+        
         .reader-header-info h3 {
             margin: 0;
             font-size: 14px;
         }
-
+        
         .reader-header-info p {
             margin: 2px 0 0;
             font-size: 11.5px;
             color: var(--muted);
         }
-
+        
         .reader-header-actions {
             display: flex;
             gap: 8px;
             align-items: center;
         }
-
+        
         .reader-body {
             flex: 1;
             background: #525659;
@@ -1789,20 +1788,20 @@
             justify-content: center;
             overflow: auto;
         }
-
+        
         .reader-body iframe {
             width: 100%;
             height: 100%;
             border: 0;
         }
-
+        
         .reader-body img,
         .reader-body video {
             max-width: 92%;
             max-height: 92%;
             object-fit: contain;
         }
-
+        
         .material-row {
             display: flex;
             align-items: center;
@@ -1814,7 +1813,7 @@
             margin-bottom: 8px;
             flex-wrap: wrap;
         }
-
+        
         .mrow-icon {
             width: 36px;
             height: 36px;
@@ -1828,31 +1827,31 @@
             font-size: 15px;
             flex-shrink: 0;
         }
-
+        
         .mrow-body {
             flex: 1;
             min-width: 180px;
         }
-
+        
         .mrow-title {
             font-size: 13.5px;
             font-weight: 700;
             color: var(--text);
         }
-
+        
         .mrow-meta {
             font-size: 11.5px;
             color: var(--faint);
             margin-top: 2px;
         }
-
+        
         .mrow-actions {
             display: flex;
             gap: 6px;
             flex-shrink: 0;
             align-items: center;
         }
-
+        
         .mrow-btn {
             height: 32px;
             padding: 0 13px;
@@ -1869,92 +1868,92 @@
             gap: 6px;
             text-decoration: none;
         }
-
+        
         .mrow-btn:hover {
             background: var(--border-soft);
         }
-
+        
         .mrow-btn.primary {
             background: var(--primary);
             color: #fff;
             border-color: var(--primary);
         }
-
+        
         .mrow-btn.primary:hover {
             background: var(--primary-dark);
         }
-
+        
         .mrow-btn.danger {
             color: var(--danger);
             border-color: var(--danger);
         }
-
+        
         .mrow-btn.danger:hover {
             background: var(--danger);
             color: #fff;
         }
-
+        
         .materials-load-more {
             display: block;
             margin: 14px auto 0;
         }
-
+        
         .materials-empty {
             text-align: center;
             padding: 50px 20px;
         }
-
+        
         .materials-empty i {
             font-size: 30px;
             color: var(--faint);
             margin-bottom: 14px;
             display: block;
         }
-
+        
         .materials-empty h4 {
             margin: 0 0 6px;
             font-size: 15px;
             color: var(--text);
         }
-
+        
         .materials-empty p {
             margin: 0;
             color: var(--faint);
             font-size: 13px;
         }
-
+        
         .material-preview-body img {
             max-width: 100%;
             border-radius: 10px;
             display: block;
             margin: 0 auto;
         }
-
+        
         .material-preview-body iframe {
             width: 100%;
             height: 65vh;
             border: 1px solid var(--border-soft);
             border-radius: 10px;
         }
-
+        
         .material-preview-body video {
             width: 100%;
             border-radius: 10px;
         }
-
+        
         .material-preview-meta {
             color: var(--faint);
             font-size: 12.5px;
             margin: 4px 0 16px;
         }
-
+        
         .mp-toolbar {
             display: flex;
             align-items: center;
             gap: 10px;
             margin: 0 34px 10px 0;
         }
-
+        
         .mp-badge {
             display: inline-flex;
             align-items: center;
@@ -1967,21 +1966,21 @@
             letter-spacing: .03em;
             color: var(--muted);
         }
-
+        
         .mp-size {
             font-size: 11.5px;
             color: var(--faint);
         }
-
+        
         .mp-toolbar-spacer {
             flex: 1;
         }
-
+        
         .mp-zoom-controls {
             display: flex;
             gap: 6px;
         }
-
+        
         .mp-icon-btn {
             width: 30px;
             height: 30px;
@@ -1994,11 +1993,11 @@
             align-items: center;
             justify-content: center;
         }
-
+        
         .mp-icon-btn:hover {
             background: var(--surface-2);
         }
-
+        
         .mp-loading {
             display: flex;
             flex-direction: column;
@@ -2009,12 +2008,12 @@
             color: var(--muted);
             font-size: 13px;
         }
-
+        
         .mp-loading i {
             font-size: 26px;
             color: var(--primary);
         }
-
+        
         #mpViewerBox.mp-fullscreen {
             position: fixed;
             inset: 16px;
@@ -2024,23 +2023,23 @@
             display: flex;
             flex-direction: column;
         }
-
+        
         #mpViewerBox.mp-fullscreen .material-preview-body {
             flex: 1;
             min-height: 0;
         }
-
+        
         #mpViewerBox.mp-fullscreen .material-preview-body iframe,
         #mpViewerBox.mp-fullscreen .material-preview-body img,
         #mpViewerBox.mp-fullscreen .material-preview-body video {
             height: 100%;
             max-height: 100%;
         }
-
+        
         .material-preview-body img {
             transition: transform .15s ease;
         }
-
+        
         @media (max-width: 640px) {
             .material-row {
                 flex-wrap: wrap;
@@ -2050,7 +2049,7 @@
                 justify-content: flex-start;
             }
         }
-
+        
         .chat-thread {
             display: flex;
             flex-direction: column;
@@ -2095,21 +2094,21 @@
             flex: 1;
             min-height: 42px;
         }
-
         /* Group Chats -- Master Trainer-curated rooms, independent of this
            file's existing 1:1 chat above (whose .chat-thread/.chat-bubble
            are reused as-is here). The rules below only ever apply to a
            .chat-bubble nested inside .gc-msg-row/.gc-msg-col, so the 1:1
            chat's own bare-.chat-bubble layout above is never affected. */
+        
         .gc-date-sep {
             text-align: center;
             margin: 16px 0 10px;
         }
-
+        
         .gc-date-sep:first-child {
             margin-top: 0;
         }
-
+        
         .gc-date-sep span {
             background: var(--surface-2);
             color: var(--muted);
@@ -2118,22 +2117,22 @@
             padding: 4px 13px;
             border-radius: 20px;
         }
-
+        
         .gc-msg-row {
             display: flex;
             align-items: flex-end;
             gap: 8px;
             margin-top: 10px;
         }
-
+        
         .gc-msg-row.grouped {
             margin-top: 2px;
         }
-
+        
         .gc-msg-row.mine {
             justify-content: flex-end;
         }
-
+        
         .gc-avatar {
             width: 28px;
             height: 28px;
@@ -2147,56 +2146,56 @@
             justify-content: center;
             flex-shrink: 0;
         }
-
+        
         .gc-avatar.spacer {
             visibility: hidden;
         }
-
+        
         .gc-msg-col {
             display: flex;
             flex-direction: column;
             max-width: 68%;
             min-width: 0;
         }
-
+        
         .gc-msg-row.mine .gc-msg-col {
             align-items: flex-end;
         }
-
+        
         .gc-msg-col .chat-bubble {
             max-width: 100%;
             align-self: auto;
             box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
         }
-
+        
         .gc-msg-col .chat-bubble.mine {
             border-bottom-right-radius: 4px;
         }
-
+        
         .gc-msg-col .chat-bubble.theirs {
             border-bottom-left-radius: 4px;
         }
-
+        
         .gc-msg-row.grouped .chat-bubble.mine {
             border-top-right-radius: 4px;
         }
-
+        
         .gc-msg-row.grouped .chat-bubble.theirs {
             border-top-left-radius: 4px;
         }
-
+        
         .gc-sender-name {
             font-size: 10.5px;
             font-weight: 700;
             color: var(--muted);
             margin: 0 3px 4px;
         }
-
+        
         .gc-msg-text {
             white-space: pre-wrap;
             word-break: break-word;
         }
-
+        
         .gc-msg-time {
             display: block;
             text-align: right;
@@ -2205,14 +2204,14 @@
             margin-top: 4px;
             white-space: nowrap;
         }
-
+        
         .gc-layout {
             display: grid;
             grid-template-columns: 240px 1fr;
             gap: 16px;
             height: 520px;
         }
-
+        
         .gc-room-list {
             border: 1px solid var(--border-soft);
             border-radius: 14px;
@@ -2221,22 +2220,22 @@
             min-height: 0;
             flex: 1;
         }
-
         /* Wraps a search box (fixed) + .gc-room-list (scrolls independently
            beneath it) -- a search bar pinned above the list, WhatsApp-style,
            rather than scrolling away with the list's own content. */
+        
         .gc-room-list-wrap {
             display: flex;
             flex-direction: column;
             gap: 8px;
             min-height: 0;
         }
-
+        
         .chat-search-box {
             position: relative;
             flex-shrink: 0;
         }
-
+        
         .chat-search-box i {
             position: absolute;
             left: 11px;
@@ -2246,7 +2245,7 @@
             font-size: 12px;
             pointer-events: none;
         }
-
+        
         .chat-search-box input {
             width: 100%;
             height: 36px;
@@ -2257,7 +2256,7 @@
             font-size: 12.5px;
             font-family: inherit;
         }
-
+        
         .gc-room-item {
             display: block;
             width: 100%;
@@ -2270,20 +2269,20 @@
             font-family: inherit;
             margin-bottom: 2px;
         }
-
+        
         .gc-room-item:hover {
             background: var(--surface-2);
         }
-
+        
         .gc-room-item.active {
             background: var(--primary);
         }
-
+        
         .gc-room-item.active .gc-room-name,
         .gc-room-item.active .gc-room-preview {
             color: #fff;
         }
-
+        
         .gc-room-name {
             font-size: 12.5px;
             font-weight: 700;
@@ -2293,7 +2292,7 @@
             justify-content: space-between;
             gap: 6px;
         }
-
+        
         .gc-unread-badge {
             background: var(--danger);
             color: #fff;
@@ -2303,7 +2302,6 @@
             padding: 1px 6px;
             flex-shrink: 0;
         }
-
         /* Small circular unread-count dot (Direct Messages) -- distinct from
            .gc-unread-badge above (Group Chat rooms' own pill-shaped badge,
            unchanged) since this one must render as a true circle for a
@@ -2317,6 +2315,7 @@
            stretched this into a full-width oval instead of a small circle.
            Locking every property down guarantees this looks identical
            everywhere it's placed, regardless of ancestor styling. */
+        
         .unread-dot {
             display: inline-flex !important;
             align-items: center;
@@ -2338,21 +2337,21 @@
             text-overflow: clip !important;
             box-sizing: border-box;
         }
-
         /* A 2-digit count (e.g. "12") needs a touch more room than a true
            circle allows -- becomes a small rounded-rect "stadium" shape
            instead, same convention as most notification badges. */
+        
         .unread-dot.wide {
             width: auto !important;
             min-width: 18px !important;
             padding: 0 4px !important;
         }
-
         /* Create Group's member picker (New Room modal) -- a compact row per
            person. The checkbox needs an explicit size here because the
            page's global `input { height: 42px }` rule (meant for text
            inputs) otherwise stretches a checkbox into a large, blank-looking
            square -- the exact visual bug being fixed. */
+        
         .member-select-list {
             max-height: 240px;
             overflow-y: auto;
@@ -2360,7 +2359,7 @@
             border-radius: 10px;
             padding: 4px;
         }
-
+        
         .member-select-row {
             display: flex;
             align-items: center;
@@ -2370,11 +2369,11 @@
             cursor: pointer;
             transition: background .12s;
         }
-
+        
         .member-select-row:hover {
             background: var(--surface-2);
         }
-
+        
         .member-select-row input[type="checkbox"] {
             width: 16px;
             height: 16px;
@@ -2383,7 +2382,7 @@
             accent-color: var(--primary);
             cursor: pointer;
         }
-
+        
         .member-select-name {
             flex: 1;
             min-width: 0;
@@ -2394,13 +2393,13 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-
+        
         .member-select-role {
             flex-shrink: 0;
             font-size: 11px;
             color: var(--muted);
         }
-
+        
         .gc-room-preview {
             font-size: 11px;
             color: var(--muted);
@@ -2409,7 +2408,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
+        
         .gc-thread-panel {
             display: flex;
             flex-direction: column;
@@ -2419,7 +2418,7 @@
             min-width: 0;
             min-height: 0;
         }
-
+        
         .gc-thread-header {
             display: flex;
             align-items: center;
@@ -2428,30 +2427,30 @@
             margin-bottom: 10px;
             border-bottom: 1px solid var(--border);
         }
-
+        
         .gc-thread-header h4 {
             margin: 0;
             font-size: 14px;
         }
-
+        
         .gc-thread-header .gc-member-count {
             font-size: 11px;
             color: var(--muted);
         }
-
+        
         .gc-thread-body {
             flex: 1;
             overflow-y: auto;
             min-height: 0;
         }
-
+        
         .gc-composer {
             display: flex;
             align-items: flex-end;
             gap: 8px;
             margin-top: 10px;
         }
-
+        
         .gc-composer textarea {
             flex: 1;
             height: 42px;
@@ -2463,7 +2462,7 @@
             font-size: 12.5px;
             resize: vertical;
         }
-
+        
         .gc-attachment-chip {
             display: flex;
             align-items: center;
@@ -2475,7 +2474,7 @@
             font-size: 11.5px;
             margin-top: 8px;
         }
-
+        
         .gc-attachment-chip button {
             background: none;
             border: none;
@@ -2483,13 +2482,13 @@
             cursor: pointer;
             margin-left: auto;
         }
-
+        
         .attachment-bubble {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-
+        
         .attachment-bubble .ab-icon {
             width: 34px;
             height: 34px;
@@ -2501,28 +2500,28 @@
             font-size: 15px;
             flex-shrink: 0;
         }
-
+        
         .chat-bubble.theirs .attachment-bubble .ab-icon {
             background: var(--surface);
             color: var(--primary);
         }
-
+        
         .attachment-bubble .ab-name {
             font-weight: 700;
             font-size: 12px;
             word-break: break-all;
         }
-
+        
         .attachment-bubble .ab-meta {
             font-size: 10.5px;
             opacity: .8;
         }
-
+        
         .attachment-bubble a {
             color: inherit;
             text-decoration: none;
         }
-
+        
         @media (max-width: 720px) {
             .gc-layout {
                 grid-template-columns: 1fr;
@@ -2535,7 +2534,7 @@
                 max-height: 340px;
             }
         }
-
+        
         .inbox-list {
             list-style: none;
             margin: 0;
@@ -2544,7 +2543,7 @@
             flex-direction: column;
             gap: 8px;
         }
-
+        
         .chat-mode-tabs {
             display: flex;
             gap: 4px;
@@ -2554,7 +2553,7 @@
             margin-bottom: 18px;
             width: fit-content;
         }
-
+        
         .chat-mode-tab {
             background: none;
             border: none;
@@ -2566,7 +2565,7 @@
             cursor: pointer;
             font-family: inherit;
         }
-
+        
         .chat-mode-tab.active {
             background: var(--surface);
             color: var(--primary);
@@ -2588,18 +2587,18 @@
         .inbox-item:hover {
             border-color: var(--primary-light);
         }
-
+        
         .inbox-item.active {
             background: var(--primary);
             border-color: var(--primary);
         }
-
+        
         .inbox-item.active .inbox-info strong,
         .inbox-item.active .inbox-info span,
         .inbox-item.active .inbox-time {
             color: #fff;
         }
-
+        
         .inbox-item .inbox-avatar {
             width: 40px;
             height: 40px;
@@ -2838,13 +2837,13 @@
                 grid-template-columns: 1fr;
             }
         }
-
+        
         .settings-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 16px;
         }
-
+        
         @media(max-width:900px) {
             .settings-grid {
                 grid-template-columns: 1fr;
@@ -3007,7 +3006,7 @@
                     <li><a data-section="library" href="#library"><i class="fa fa-building-columns"></i>Library</a></li>
                     <li><a data-section="students" href="#students"><i class="fa fa-user-graduate"></i>Trainee Profiles</a></li>
                     <li><a data-section="calendar" href="#calendar"><i class="fa fa-calendar"></i>Calendar</a></li>
-                    <li><a data-section="events" href="#events"><i class="fa fa-calendar-days"></i>Events</a></li>
+
                 </ul>
                 <div class="nav-label">Training</div>
                 <ul>
@@ -3052,7 +3051,9 @@
                                 </div>
                                 <button type="button" class="notif-mark-all" id="notifMarkAllBtn" onclick="markAllNotifsRead()">Mark all read</button>
                             </div>
-                            <div class="notif-list" id="notifList"><div class="notif-empty">Loading...</div></div>
+                            <div class="notif-list" id="notifList">
+                                <div class="notif-empty">Loading...</div>
+                            </div>
                             <div class="notif-footer" id="notifFooter">
                                 <button type="button" id="notifWeekToggle" onclick="toggleNotifWeekPicker()">Previous weeks</button>
                             </div>
@@ -3099,21 +3100,29 @@
                 <section class="widget-row">
                     <div class="widget">
                         <div class="widget-title">
-                            <h3><i class="fa fa-graduation-cap"></i>Academic Training &mdash; Delivered by My Master Trainer</h3>
+                            <h3><i class="fa fa-graduation-cap"></i>Academic Training &mdash; Delivered by Master Trainer</h3>
                         </div>
                         <div class="kpi-grid kpi-grid-2" style="gap:12px;margin-bottom:10px;">
-                            <div class="kpi-card"><label>Total hours</label><h2 id="trReceivedTotal">&mdash;</h2></div>
-                            <div class="kpi-card"><label>Attendance</label><h2 id="trReceivedAttendance">&mdash;</h2></div>
+                            <div class="kpi-card"><label>Total hours</label>
+                                <h2 id="trReceivedTotal">&mdash;</h2>
+                            </div>
+                            <div class="kpi-card"><label>Attendance</label>
+                                <h2 id="trReceivedAttendance">&mdash;</h2>
+                            </div>
                         </div>
                         <p class="hint" style="margin:0;">Attended: <strong id="trReceivedAttended">&mdash;</strong> &middot; Missed: <strong id="trReceivedMissed">&mdash;</strong> &middot; Manual adjustments: <strong id="trReceivedAdj">&mdash;</strong>h</p>
                     </div>
                     <div class="widget">
                         <div class="widget-title">
-                            <h3><i class="fa fa-chalkboard-user"></i>Training delivered (to my trainees)</h3>
+                            <h3><i class="fa fa-chalkboard-user"></i>Training Delivery (To Trainees)</h3>
                         </div>
                         <div class="kpi-grid kpi-grid-2" style="gap:12px;margin-bottom:10px;">
-                            <div class="kpi-card"><label>Total hours</label><h2 id="trDeliveredTotal">&mdash;</h2></div>
-                            <div class="kpi-card"><label>Trainee attendance</label><h2 id="trDeliveredAttendance">&mdash;</h2></div>
+                            <div class="kpi-card"><label>Total hours</label>
+                                <h2 id="trDeliveredTotal">&mdash;</h2>
+                            </div>
+                            <div class="kpi-card"><label>Trainee attendance</label>
+                                <h2 id="trDeliveredAttendance">&mdash;</h2>
+                            </div>
                         </div>
                         <p class="hint" style="margin:0;">Training activities conducted: <strong id="trDeliveredSessions">&mdash;</strong> &middot; Trainees trained: <strong id="trDeliveredTrainees">&mdash;</strong></p>
                     </div>
@@ -3152,7 +3161,7 @@
                             <button class="btn" onclick="openGroupSessionModal()"><i class="fa fa-people-group"></i>Add Session</button>
                         </div>
                     </div>
-                    <p class="card-subtitle">Trainee-to-Trainer assignment is managed by Admin or the Master Trainer. "Add Session" logs one training/supervision activity for your whole Group at once, with attendance set individually per trainee.</p>
+                    <p class="card-subtitle">Trainee-to-Trainer assignment is managed by Admin or the Master Trainer. "Add Session" logs a training/supervision activity for your whole Group at once -- Attendance is then recorded separately, from the Group Sessions list below.</p>
 
                     <div class="toolbar">
                         <input type="text" id="studentSearch" placeholder="Search by name or trainee ID...">
@@ -3172,6 +3181,32 @@
                         <tbody id="studentsBody">
                             <tr class="loading-row">
                                 <td colspan="6">Loading trainees...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-people-group"></i>
+                            <h2>Group Sessions</h2>
+                        </div>
+                    </div>
+                    <p class="card-subtitle">Sessions logged via "Add Session" above. Open a Session to record or correct its Attendance.</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Date &amp; time</th>
+                                <th>Duration</th>
+                                <th>Attendance</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionOccasionsBody">
+                            <tr class="loading-row">
+                                <td colspan="6">Loading sessions...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -3220,7 +3255,7 @@
                         <div class="card-title-left"><i class="fa fa-calendar"></i>
                             <h2>Calendar</h2>
                         </div>
-                        <button class="btn" onclick="openAddEventModal()"><i class="fa fa-plus"></i>Add Event</button>
+           
                     </div>
                     <div class="cal-topbar">
                         <h3 class="cal-title" id="calTitle">&mdash;</h3>
@@ -3234,85 +3269,7 @@
                 </section>
             </section>
 
-            <!-- ============================================================= -->
-            <!-- EVENTS (public site) -- own events on reframemhs.com's public -->
-            <!-- Events page. Same CRUD logic/markup as admin-events.html and  -->
-            <!-- DesignerDashboard.html, pointed at /supervisor/events (own    -->
-            <!-- routes/supervisor.js routes, ownership-scoped). Lives here as -->
-            <!-- an ordinary section (not a separate page) so the full ToT     -->
-            <!-- sidebar stays visible while managing events.                 -->
-            <!-- ============================================================= -->
-            <section class="dash-section" id="section-events" data-title="Events" data-eyebrow="Content">
-                <section class="system-card">
-                    <div class="card-title">
-                        <div class="card-title-left"><i class="fa fa-calendar-days"></i>
-                            <h2>Your events (public site)</h2>
-                        </div>
-                        <button class="btn" onclick="openEventForm()"><i class="fa fa-plus"></i>New event</button>
-                    </div>
-                    <p class="field-hint">Create, edit, or remove events you own. Changes appear on the public events page instantly.</p>
-
-                    <div id="eventFormWrap" style="display:none;margin-top:20px;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:18px;">
-                        <form id="eventForm">
-                            <label>Date(s) &amp; time(s) <span style="font-weight:400;color:var(--muted);">(add more than one for an event that spans several days, e.g. a training week)</span></label>
-                            <div id="evDatesList"></div>
-                            <button type="button" class="btn btn-secondary" style="width:auto;margin-top:0;" onclick="addEventDateRow()"><i class="fa fa-plus"></i> Add another date</button>
-
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
-                                <div>
-                                    <label>Status</label>
-                                    <input list="eventStatusOptions" id="evStatus" value="upcoming">
-                                    <datalist id="eventStatusOptions"><option value="upcoming"><option value="concluded"></datalist>
-                                </div>
-                                <div>
-                                    <label>Image</label>
-                                    <input type="file" id="evImageFile" accept="image/*" onchange="uploadEventImage()">
-                                    <input type="hidden" id="evImage">
-                                    <div id="evImagePreviewWrap" style="margin-top:8px;display:none;">
-                                        <img id="evImagePreview" style="max-width:160px;border-radius:8px;display:block;">
-                                        <span id="evImageStatus" style="font-size:11px;color:var(--muted);"></span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label>Fee</label>
-                                    <input type="text" id="evFee" placeholder="$150 or Free">
-                                </div>
-                                <div style="grid-column:1/-1;">
-                                    <label>Registration link</label>
-                                    <input type="text" id="evRegister" placeholder="https://... or # if not ready yet">
-                                </div>
-                            </div>
-
-                            <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">English content</h4>
-                            <label>Title (optional)</label><input type="text" id="evTitleEn">
-                            <label>Format</label><input type="text" id="evFormatEn" placeholder="In-person, 3 days">
-                            <label>Facilitator</label><input type="text" id="evFacilitatorEn">
-                            <label>About</label><input type="text" id="evAboutEn">
-                            <label>What you'll learn (one per line)</label><textarea id="evLearnEn" style="height:70px;"></textarea>
-                            <label>Who should attend (one per line)</label><textarea id="evWhoEn" style="height:70px;"></textarea>
-                            <label>Outcomes (one per line)</label><textarea id="evOutcomesEn" style="height:70px;"></textarea>
-                            <label>Facilitator bio</label><input type="text" id="evFacilitatorBioEn">
-
-                            <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Arabic content (optional)</h4>
-                            <label>العنوان</label><input type="text" id="evTitleAr">
-                            <label>الصيغة</label><input type="text" id="evFormatAr">
-                            <label>الميسّر</label><input type="text" id="evFacilitatorAr">
-                            <label>نبذة</label><input type="text" id="evAboutAr">
-
-                            <div class="modal-actions" style="margin-top:16px;">
-                                <button type="button" class="btn btn-secondary" onclick="closeEventForm()">Cancel</button>
-                                <button type="submit" class="btn">Save event</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <table style="margin-top:20px;">
-                        <thead><tr><th>Title</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody id="eventsBody"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
-                    </table>
-                </section>
-            </section>
-
+       
             <!-- ============================================================= -->
             <!-- LIBRARY (Books) -- standalone feature, separate from Materials -->
             <!-- ============================================================= -->
@@ -3452,11 +3409,21 @@
             <!-- ============================================================= -->
             <section class="dash-section" id="section-assignments" data-title="Assignments" data-eyebrow="Training">
                 <section class="kpi-grid" id="asgSummaryGrid">
-                    <div class="kpi-card"><label>Total</label><h2 id="asgKpiTotal">&mdash;</h2></div>
-                    <div class="kpi-card"><label>Pending</label><h2 id="asgKpiPending">&mdash;</h2></div>
-                    <div class="kpi-card"><label>Submitted</label><h2 id="asgKpiSubmitted">&mdash;</h2></div>
-                    <div class="kpi-card"><label>Overdue</label><h2 id="asgKpiOverdue">&mdash;</h2></div>
-                    <div class="kpi-card"><label>Graded</label><h2 id="asgKpiGraded">&mdash;</h2></div>
+                    <div class="kpi-card"><label>Total</label>
+                        <h2 id="asgKpiTotal">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card"><label>Pending</label>
+                        <h2 id="asgKpiPending">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card"><label>Submitted</label>
+                        <h2 id="asgKpiSubmitted">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card"><label>Overdue</label>
+                        <h2 id="asgKpiOverdue">&mdash;</h2>
+                    </div>
+                    <div class="kpi-card"><label>Graded</label>
+                        <h2 id="asgKpiGraded">&mdash;</h2>
+                    </div>
                 </section>
                 <section class="system-card">
                     <div class="card-title">
@@ -3545,7 +3512,7 @@
                             <div class="gc-thread-panel">
                                 <div class="gc-thread-header" id="dmThreadHeader" style="display:none;">
                                     <h4 id="dmThreadName">&mdash;</h4>
-                                    <button type="button" class="icon-btn" title="Open full profile" onclick="if (dmActiveStudentId) openStudent(dmActiveStudentId)"><i class="fa fa-user"></i></button>
+                                    <button type="button" class="icon-btn" title="Open full profile" onclick="if (dmActiveStudentId && !isMyMasterTrainer(dmActiveStudentId)) openStudent(dmActiveStudentId)"><i class="fa fa-user"></i></button>
                                 </div>
                                 <div class="chat-thread gc-thread-body" id="dmThread">
                                     <div class="empty-state">Select a conversation to start chatting.</div>
@@ -3753,8 +3720,19 @@
                         <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-stopwatch" style="color:var(--primary);"></i>Hour types</h2>
                         <p class="card-subtitle" style="margin-top:4px;">Categories of hours the system tracks (Training, Supervision, and anything else you add here). The Primary type is the one shown on every Trainee's own dashboard.</p>
                         <table>
-                            <thead><tr><th>Label</th><th>Code</th><th>Active</th><th>Primary</th></tr></thead>
-                            <tbody id="hourTypesBody"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
+                            <thead>
+                                <tr>
+                                    <th>Label</th>
+                                    <th>Code</th>
+                                    <th>Active</th>
+                                    <th>Primary</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hourTypesBody">
+                                <tr>
+                                    <td colspan="4" class="empty-state">Loading...</td>
+                                </tr>
+                            </tbody>
                         </table>
                         <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Add a new hour type</h4>
                         <form id="hourTypeForm" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
@@ -3943,16 +3921,17 @@
         </div>
     </div>
 
-    <!-- ADD SESSION (group-wide, one activity for every trainee in your
-         caseload/Group at once, attendance set individually per trainee --
-         see POST /supervisor/group-sessions). The single-trainee
+    <!-- ADD SESSION (group-wide, one Session for your whole caseload/Group
+         at once -- Attendance is a separate step afterward, see the Group
+         Sessions list + Attendance modal below. See
+         POST /supervisor/session-occasions. The single-trainee
          "Log Single Activity" modal above is unchanged and still the place
          for one trainee at a time. -->
     <div class="modal-overlay" id="groupSessionModal">
         <div class="modal-box wide">
             <button class="close-modal" onclick="closeModal('groupSessionModal')">&times;</button>
             <h3>Add Session</h3>
-            <p class="card-subtitle" style="margin-top:0;">Logs one training/supervision activity for your whole Group at once. Attendance and actual hours are set per trainee below before saving.</p>
+            <p class="card-subtitle" style="margin-top:0;">Logs one training/supervision activity for your whole Group at once. Record Attendance afterward from the Group Sessions list.</p>
             <form id="groupSessionForm">
                 <div class="record-form-grid">
                     <div><label>Session Title</label><input type="text" id="gsTitle" required></div>
@@ -3965,16 +3944,29 @@
                 <label>Notes <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
                 <textarea id="gsNotes"></textarea>
 
-                <label style="margin-top:14px;">Attendance <span style="font-weight:400;color:var(--faint);">(everyone in your Group is checked in by default -- untick anyone absent, or enter their actual hours if they only attended part of the session)</span></label>
-                <div id="gsAttendanceList" class="member-select-list" style="max-height:320px;">
-                    <div class="empty-state">Loading trainees...</div>
-                </div>
-
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('groupSessionModal')">Cancel</button>
                     <button type="submit" class="btn">Save Session</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ATTENDANCE (opened from a row in the Group Sessions list -- always a
+         separate step from creating the Session itself). See
+         GET/PUT /supervisor/session-occasions/:id[/attendance]. -->
+    <div class="modal-overlay" id="attendanceModal">
+        <div class="modal-box wide">
+            <button class="close-modal" onclick="closeModal('attendanceModal')">&times;</button>
+            <h3>Attendance</h3>
+            <p class="card-subtitle" id="attendanceModalSubtitle" style="margin-top:0;">&nbsp;</p>
+            <div id="attendanceRosterList" class="member-select-list" style="max-height:400px;">
+                <div class="empty-state">Loading...</div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('attendanceModal')">Cancel</button>
+                <button type="button" class="btn" id="saveAttendanceBtn" onclick="saveAttendance()">Save Attendance</button>
+            </div>
         </div>
     </div>
 
@@ -4020,7 +4012,7 @@
                     <h3 id="sdName">&mdash;</h3>
                     <p id="sdMeta">&mdash;</p>
                 </div>
-                <button class="btn btn-danger btn-sm" onclick="confirmRemoveCurrentStudent()"><i class="fa fa-user-xmark"></i> Remove from my trainees</button>
+                <button class="btn btn-danger btn-sm" onclick="confirmRemoveCurrentStudent()"><i class="fa fa-user-xmark"></i> Remove from To Trainees</button>
             </div>
 
             <div class="progress-grid" id="sdProgress"></div>
@@ -4115,8 +4107,16 @@
             // session's duration + its attendance. These two tabs are now the
             // audited manual-adjustment ledger for genuine exceptions only
             // (see renderHourAdjustmentPanel), never freeform entry.
-            training_hours: { label: "Training hours", icon: "fa-stopwatch", hourType: "training" },
-            supervision_hours: { label: "Supervision hours", icon: "fa-stopwatch", hourType: "supervision" },
+            training_hours: {
+                label: "Training hours",
+                icon: "fa-stopwatch",
+                hourType: "training"
+            },
+            supervision_hours: {
+                label: "Supervision hours",
+                icon: "fa-stopwatch",
+                hourType: "supervision"
+            },
             assignment: {
                 label: "Assignments",
                 icon: "fa-list-check",
@@ -4402,6 +4402,8 @@
             await loadHourTypesAndExtendRecordTypes();
             loadHourTypesSettings();
             await loadStudents();
+            await ensureMasterTrainerLoaded();
+            loadSessionOccasions();
             await loadSchedule();
             await loadActivity();
             await loadMaterials();
@@ -4433,7 +4435,11 @@
         function formatWeekRange(weekStart, weekEndExclusive) {
             const fmt = (s) => {
                 const [y, m, d] = s.split("-").map(Number);
-                return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+                return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    timeZone: "UTC"
+                });
             };
             const [y, m, d] = weekEndExclusive.split("-").map(Number);
             const lastDay = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
@@ -4538,9 +4544,9 @@
 
             const footer = document.getElementById("notifFooter");
             if (footer) {
-                footer.innerHTML = currentNotifWeek
-                    ? `<button type="button" onclick="backToCurrentNotifWeek()">&larr; Back to this week</button>`
-                    : `<button type="button" id="notifWeekToggle" onclick="toggleNotifWeekPicker()">Previous weeks</button>`;
+                footer.innerHTML = currentNotifWeek ?
+                    `<button type="button" onclick="backToCurrentNotifWeek()">&larr; Back to this week</button>` :
+                    `<button type="button" id="notifWeekToggle" onclick="toggleNotifWeekPicker()">Previous weeks</button>`;
             }
 
             if (!data.notifications.length) {
@@ -6153,47 +6159,16 @@ function renderSessions() {
 document.getElementById("sessionSearch").addEventListener("input", renderSessions);
 document.getElementById("sessionTypeFilter").addEventListener("change", renderSessions);
 
-// ---- Add Session (group-wide: one activity for your whole caseload/Group
-// at once, attendance + actual hours set individually per trainee) --------
-// See POST /supervisor/group-sessions. The single-trainee openSessionModal
-// below is unrelated and unchanged.
+// ---- Add Session (group-wide: one Session for your whole caseload/Group
+// at once) -- Attendance is a fully separate step, see the Group Sessions
+// list + Attendance modal below. See POST /supervisor/session-occasions.
+// The single-trainee openSessionModal below is unrelated and unchanged.
 
 function openGroupSessionModal() {
   const form = document.getElementById("groupSessionForm");
   form.reset();
   renderSessionTypeOptions(document.getElementById("gsType"), false);
-  renderGroupAttendanceList();
   openModal("groupSessionModal");
-}
-
-function renderGroupAttendanceList() {
-  const wrap = document.getElementById("gsAttendanceList");
-  if (!allStudents.length) {
-    wrap.innerHTML = '<div class="empty-state">No trainees in your caseload yet.</div>';
-    return;
-  }
-  wrap.innerHTML = allStudents
-    .map(
-      (s) => `
-    <div class="member-select-row" style="align-items:center;flex-wrap:wrap;">
-      <input type="checkbox" class="gs-att-check" data-student-id="${s.id}" checked onchange="toggleGsPartialHours(${s.id}, this.checked)">
-      <span class="member-select-name" style="flex:1 1 180px;">${escapeHtml(s.full_name)}</span>
-      <span class="member-select-role" style="flex-shrink:0;">${escapeHtml(s.memberCode)}</span>
-      <input type="number" min="0" step="0.25" class="gs-att-hours" data-student-id="${s.id}" placeholder="Actual hours (if partial)" style="width:160px;height:34px;">
-    </div>`
-    )
-    .join("");
-}
-
-// A checked trainee stays present/partial (the hours field, when left blank
-// or equal to the full session duration, means "present" -- Number.isFinite
-// on an empty string is guarded in the submit handler below); unchecking
-// disables and clears their hours field since an absent trainee has none.
-function toggleGsPartialHours(studentId, checked) {
-  const input = document.querySelector(`.gs-att-hours[data-student-id="${studentId}"]`);
-  if (!input) return;
-  input.disabled = !checked;
-  if (!checked) input.value = "";
 }
 
 document.getElementById("groupSessionForm").addEventListener("submit", async (e) => {
@@ -6211,30 +6186,6 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
   const hours = Number(document.getElementById("gsHours").value);
   const durationMinutes = Math.round(hours * 60);
 
-  // Ticked + blank/full-duration hours = present; ticked + a smaller number
-  // of hours entered = partial; unticked = absent. The session's own
-  // duration is never applied to everyone blindly -- each trainee's actual
-  // hours come only from what's entered for them here.
-  let hadError = false;
-  const attendance = Array.from(document.querySelectorAll(".gs-att-check")).map((cb) => {
-    const studentId = Number(cb.dataset.studentId);
-    if (!cb.checked) return { studentId, status: "absent" };
-
-    const hoursInput = document.querySelector(`.gs-att-hours[data-student-id="${studentId}"]`);
-    const raw = hoursInput && hoursInput.value.trim();
-    if (!raw) return { studentId, status: "present" };
-
-    const attendedHours = Number(raw);
-    if (!Number.isFinite(attendedHours) || attendedHours < 0) {
-      showToast("Enter a valid number of hours attended, or leave it blank for full attendance", "error");
-      hadError = true;
-      return null;
-    }
-    if (attendedHours >= hours) return { studentId, status: "present" };
-    return { studentId, status: "partial", minutesCompleted: Math.round(attendedHours * 60) };
-  });
-  if (hadError) return;
-
   const attachmentFile = document.getElementById("gsAttachment").files[0];
   const payload = {
     sessionType,
@@ -6251,28 +6202,169 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
     Object.entries(payload).forEach(([k, v]) => {
       if (v !== undefined) form.append(k, v);
     });
-    form.append("attendance", JSON.stringify(attendance));
     form.append("attachment", attachmentFile);
-    result = await apiRequest("/supervisor/group-sessions", { method: "POST", body: form });
+    result = await apiRequest("/supervisor/session-occasions", { method: "POST", body: form });
   } else {
-    result = await apiRequest("/supervisor/group-sessions", {
+    result = await apiRequest("/supervisor/session-occasions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, attendance }),
+      body: JSON.stringify(payload),
     });
   }
 
   if (result) {
     showSuccessNotification(
       "Session Saved",
-      `Logged for ${result.created.length} trainee${result.created.length === 1 ? "" : "s"}${result.skipped ? ` (${result.skipped} skipped as a likely duplicate)` : ""}.`
+      `Logged for ${result.created.length} trainee${result.created.length === 1 ? "" : "s"}. Open it below to record Attendance.`
     );
     closeModal("groupSessionModal");
     loadSessions();
+    loadSessionOccasions();
     loadSchedule();
     loadTrainingHoursSummary();
   }
 });
+
+// ---- Group Sessions list + Attendance (a fully separate step from
+// creating the Session -- see GET/PUT /supervisor/session-occasions). -----
+
+let gsOccasions = [];
+
+async function loadSessionOccasions() {
+  const tbody = document.getElementById("sessionOccasionsBody");
+  const data = await apiRequest("/supervisor/session-occasions");
+  if (!data) return;
+  gsOccasions = data.occasions;
+  if (!gsOccasions.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No sessions logged yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = gsOccasions
+    .map(
+      (o) => `
+    <tr>
+      <td>${escapeHtml(o.title || "Untitled")}</td>
+      <td>${escapeHtml(o.sessionTypeLabel)}</td>
+      <td>${new Date(o.date).toLocaleDateString()}${o.time ? " " + o.time.slice(0, 5) : ""}</td>
+      <td>${(o.durationMinutes / 60).toFixed(2)}h</td>
+      <td>${o.recordedCount}/${o.traineeCount} recorded</td>
+      <td><button type="button" class="btn btn-secondary" style="width:auto;" onclick="openAttendanceModal(${o.id})">Attendance</button></td>
+    </tr>`
+    )
+    .join("");
+}
+
+// Cached after the first load -- this list rarely changes mid-session and
+// every Attendance modal open would otherwise re-fetch it.
+let excuseReasonsCache = null;
+async function ensureExcuseReasonsLoaded() {
+  if (excuseReasonsCache) return excuseReasonsCache;
+  const data = await apiRequest("/profile/excuse-reasons");
+  excuseReasonsCache = (data && data.excuseReasons) || [];
+  return excuseReasonsCache;
+}
+
+let attActiveOccasionId = null;
+
+async function openAttendanceModal(occasionId) {
+  attActiveOccasionId = occasionId;
+  openModal("attendanceModal");
+  const list = document.getElementById("attendanceRosterList");
+  list.innerHTML = '<div class="empty-state">Loading...</div>';
+  const [data, reasons] = await Promise.all([
+    apiRequest(`/supervisor/session-occasions/${occasionId}`),
+    ensureExcuseReasonsLoaded(),
+  ]);
+  if (!data) return;
+  const o = data.occasion;
+  document.getElementById("attendanceModalSubtitle").textContent =
+    `${o.title || "Untitled"} — ${new Date(o.date).toLocaleDateString()} — ${(o.durationMinutes / 60).toFixed(2)}h (${o.sessionTypeLabel})`;
+  list.innerHTML = data.roster.map((r) => attendanceRowHtml(r, reasons)).join("");
+}
+
+// Attended/Not Attended/Partially Attended/Excused mirror this app's
+// existing attendance terminology exactly (see ATTENDANCE_LABELS elsewhere)
+// -- status codes underneath are still present/absent/partial/excused.
+function attendanceRowHtml(r, reasons) {
+  const status = r.status || "absent";
+  return `
+    <div class="member-select-row att-row" style="align-items:center;flex-wrap:wrap;gap:8px;" data-student-id="${r.studentId}">
+      <span class="member-select-name" style="flex:1 1 160px;">${escapeHtml(r.fullName)}</span>
+      <select class="att-status" style="width:160px;" onchange="onAttStatusChange(this)">
+        <option value="present" ${status === "present" ? "selected" : ""}>Attended</option>
+        <option value="partial" ${status === "partial" ? "selected" : ""}>Partially Attended</option>
+        <option value="absent" ${status === "absent" ? "selected" : ""}>Not Attended</option>
+        <option value="excused" ${status === "excused" ? "selected" : ""}>Excused</option>
+      </select>
+      <input type="number" class="att-hours" min="0" step="0.25" placeholder="Actual hours" style="width:130px;height:34px;${status === "partial" ? "" : "display:none;"}" value="${status === "partial" && r.minutesCompleted != null ? r.minutesCompleted / 60 : ""}">
+      <select class="att-excuse" style="width:180px;${status === "excused" ? "" : "display:none;"}">
+        <option value="">Select a reason...</option>
+        ${reasons.map((er) => `<option value="${er.code}" ${r.excuseReasonCode === er.code ? "selected" : ""}>${escapeHtml(er.label)}</option>`).join("")}
+      </select>
+    </div>`;
+}
+
+function onAttStatusChange(select) {
+  const row = select.closest(".att-row");
+  const hoursInput = row.querySelector(".att-hours");
+  const excuseSelect = row.querySelector(".att-excuse");
+  hoursInput.style.display = select.value === "partial" ? "" : "none";
+  excuseSelect.style.display = select.value === "excused" ? "" : "none";
+  if (select.value !== "partial") hoursInput.value = "";
+  if (select.value !== "excused") excuseSelect.value = "";
+}
+
+let attSaveInFlight = false;
+
+async function saveAttendance() {
+  if (!attActiveOccasionId || attSaveInFlight) return;
+  const occasion = gsOccasions.find((o) => o.id === attActiveOccasionId);
+  if (!occasion) return;
+  const sessionHours = occasion.durationMinutes / 60;
+
+  const rows = Array.from(document.querySelectorAll("#attendanceRosterList .att-row"));
+  const entries = [];
+  for (const row of rows) {
+    const studentId = Number(row.dataset.studentId);
+    const status = row.querySelector(".att-status").value;
+    let minutesCompleted;
+    if (status === "partial") {
+      const raw = row.querySelector(".att-hours").value.trim();
+      const hoursAttended = Number(raw);
+      if (!raw || !Number.isFinite(hoursAttended) || hoursAttended < 0) {
+        showToast("Enter a valid number of hours for everyone marked Partially Attended", "error");
+        return;
+      }
+      if (hoursAttended > sessionHours) {
+        showToast("Actual hours can't exceed the session's own duration", "error");
+        return;
+      }
+      minutesCompleted = Math.round(hoursAttended * 60);
+    }
+    const excuseReasonCode = status === "excused" ? row.querySelector(".att-excuse").value || null : null;
+    entries.push({ studentId, status, minutesCompleted, excuseReasonCode });
+  }
+
+  const btn = document.getElementById("saveAttendanceBtn");
+  attSaveInFlight = true;
+  btn.disabled = true;
+  try {
+    const result = await apiRequest(`/supervisor/session-occasions/${attActiveOccasionId}/attendance`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entries }),
+    });
+    if (result) {
+      showToast("Attendance saved", "success");
+      closeModal("attendanceModal");
+      loadSessionOccasions();
+      loadTrainingHoursSummary();
+    }
+  } finally {
+    attSaveInFlight = false;
+    btn.disabled = false;
+  }
+}
 
 function openSessionModal(session) {
   const form = document.getElementById("sessionModalForm");
@@ -6455,11 +6547,36 @@ function confirmDeleteMeeting(id) {
 // searching never re-fetches from the server.
 let dmConversations = [];
 
+// This ToT's own Master Trainer, added as one more Direct Message contact
+// alongside trainees -- same chats/messages system, same UI, just a
+// different other-party (see routes/supervisor.js's /master-trainer/messages,
+// migration 024). null if no Group/Master Trainer is assigned yet.
+let myMasterTrainer = null;
+let myMasterTrainerLoaded = false;
+
+async function ensureMasterTrainerLoaded() {
+  if (myMasterTrainerLoaded) return;
+  myMasterTrainerLoaded = true;
+  const data = await apiRequest("/supervisor/master-trainer");
+  myMasterTrainer = (data && data.masterTrainer) || null;
+}
+
+function isMyMasterTrainer(id) {
+  return !!myMasterTrainer && Number(id) === Number(myMasterTrainer.id);
+}
+
+function dmMessagesUrl(contactId, peek) {
+  const base = isMyMasterTrainer(contactId) ? "/supervisor/master-trainer/messages" : `/supervisor/students/${contactId}/messages`;
+  return peek ? `${base}?peek=1` : base;
+}
+
 async function loadChatInbox() {
   const list = document.getElementById("chatInboxList");
   list.innerHTML = '<li class="empty-state">Loading conversations...</li>';
 
-  if (!allStudents.length) {
+  await ensureMasterTrainerLoaded();
+  const contacts = myMasterTrainer ? [myMasterTrainer, ...allStudents] : allStudents;
+  if (!contacts.length) {
     list.innerHTML = '<li class="empty-state">No trainees assigned yet.</li>';
     return;
   }
@@ -6468,15 +6585,15 @@ async function loadChatInbox() {
   // just opening this LIST must never silently mark every conversation as
   // read; only actually opening one (openDirectThread, no peek param) does.
   const [previews, unreadData] = await Promise.all([
-    Promise.all(allStudents.map((s) => apiRequest(`/supervisor/students/${s.id}/messages?peek=1`))),
+    Promise.all(contacts.map((c) => apiRequest(dmMessagesUrl(c.id, true)))),
     apiRequest("/supervisor/messages/unread-by-sender"),
   ]);
   const unreadCounts = (unreadData && unreadData.counts) || {};
 
-  dmConversations = allStudents.map((s, i) => {
+  dmConversations = contacts.map((c, i) => {
     const data = previews[i];
     const last = data && data.messages.length ? data.messages[data.messages.length - 1] : null;
-    return { student: s, last, unreadCount: unreadCounts[s.id] || 0 };
+    return { student: c, last, unreadCount: unreadCounts[c.id] || 0 };
   });
 
   dmConversations.sort((a, b) => {
@@ -6490,9 +6607,9 @@ async function loadChatInbox() {
 }
 
 // WhatsApp-style live filter over the already-fetched dmConversations --
-// matches on the trainee's name only (the one real, authorized identity
+// matches on the contact's name only (the one real, authorized identity
 // this list already shows; never a server round trip, never a name/user
-// outside this ToT's own assigned trainees).
+// outside this ToT's own assigned trainees + own Master Trainer).
 function renderChatInboxList(filterText) {
   const list = document.getElementById("chatInboxList");
   const query = (filterText || "").trim().toLowerCase();
@@ -6510,7 +6627,7 @@ function renderChatInboxList(filterText) {
       <li class="inbox-item ${Number(student.id) === Number(dmActiveStudentId) ? "active" : ""}" data-student-id="${student.id}" onclick="openDirectThread(${student.id})">
         <div class="inbox-avatar">${escapeHtml(initials(student.full_name))}</div>
         <div class="inbox-info">
-          <strong>${escapeHtml(student.full_name)}${unreadCount ? `<span class="unread-dot${unreadCount > 9 ? " wide" : ""}" style="margin-left:8px;">${unreadCount > 99 ? "99+" : unreadCount}</span>` : ""}</strong>
+          <strong>${escapeHtml(student.full_name)}${isMyMasterTrainer(student.id) ? ' <span class="member-select-role">Master Trainer</span>' : ""}${unreadCount ? `<span class="unread-dot${unreadCount > 9 ? " wide" : ""}" style="margin-left:8px;">${unreadCount > 99 ? "99+" : unreadCount}</span>` : ""}</strong>
           <span>${last ? escapeHtml(last.content) : "No messages yet \u2014 say hello"}</span>
         </div>
         <div class="inbox-time">${last ? new Date(last.createdAt).toLocaleDateString() : ""}</div>
@@ -6533,14 +6650,14 @@ async function openDirectThread(studentId) {
   dmActiveStudentId = studentId;
   markActiveInboxItem();
 
-  const student = allStudents.find((s) => Number(s.id) === Number(studentId));
+  const student = isMyMasterTrainer(studentId) ? myMasterTrainer : allStudents.find((s) => Number(s.id) === Number(studentId));
   document.getElementById("dmThreadHeader").style.display = "flex";
   document.getElementById("dmThreadName").textContent = student ? student.full_name : "Conversation";
   document.getElementById("dmComposer").style.display = "flex";
 
   const thread = document.getElementById("dmThread");
   thread.innerHTML = '<div class="empty-state">Loading messages...</div>';
-  const data = await apiRequest(`/supervisor/students/${studentId}/messages`);
+  const data = await apiRequest(dmMessagesUrl(studentId, false));
   if (!data) return;
   // The GET above already marked this conversation's incoming messages (and
   // their notifications) read server-side -- refresh the nav/tab badge and
@@ -6569,7 +6686,7 @@ async function sendDirectMessage() {
   if (!content) return;
   dmSendInFlight = true;
   try {
-    const result = await apiRequest(`/supervisor/students/${dmActiveStudentId}/messages`, {
+    const result = await apiRequest(dmMessagesUrl(dmActiveStudentId, false), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
