@@ -2761,9 +2761,33 @@ router.post(
   "/hour-types",
   asyncRoute(async (req, res, db) => {
     const { code, label, sortOrder } = req.body || {};
-    const cleanCode = String(code || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
-    if (!cleanCode) return res.status(400).json({ error: "Code is required" });
     if (!label || !String(label).trim()) return res.status(400).json({ error: "Label is required" });
+
+    // The frontend's "Code (optional) - Auto-generated from label" placeholder
+    // has always promised this, but nothing here ever actually derived one --
+    // an omitted code hit the "Code is required" 400 below instead, forcing
+    // every hour type creation to type a code by hand regardless of the UI's
+    // own wording. Slugify the label itself when code is blank, same
+    // char-cleanup rule as an explicitly typed code goes through.
+    const rawCode = code && String(code).trim() ? code : label;
+    let cleanCode = String(rawCode).trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "");
+    if (!cleanCode) return res.status(400).json({ error: "Code is required" });
+
+    // A derived code (not one the caller explicitly typed) that collides
+    // with an existing one is resolved automatically -- e.g. two hour types
+    // both labeled "App" would otherwise 409 on the second with no way for
+    // the "auto-generated" path to recover without the caller ever seeing
+    // a code field at all.
+    if (!(code && String(code).trim())) {
+      const base = cleanCode;
+      let suffix = 2;
+      while (true) {
+        const { rows: dupe } = await db.query("SELECT 1 FROM hour_types WHERE code = ?", [cleanCode]);
+        if (!dupe.length) break;
+        cleanCode = `${base}_${suffix}`;
+        suffix += 1;
+      }
+    }
 
     const { rows: existing } = await db.query("SELECT code FROM hour_types WHERE code = ?", [cleanCode]);
     if (existing.length) return res.status(409).json({ error: `Code "${cleanCode}" is already in use` });
