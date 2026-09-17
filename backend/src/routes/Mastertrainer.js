@@ -9,8 +9,8 @@ const { sessionAttachmentUpload } = require("../utils/uploads");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
-const { createGroupSession } = require("../utils/groupSessions");
-const { createGroupTotSession } = require("../utils/groupTotSessions");
+const { createSessionOccasion, recordSessionOccasionAttendance } = require("../utils/groupSessions");
+const { createTotSessionOccasion, recordTotSessionOccasionAttendance } = require("../utils/groupTotSessions");
 
 const router = express.Router();
 
@@ -959,19 +959,18 @@ router.patch(
     })
 );
 
-// POST /api/master-trainer/group-sessions -- logs one training/supervision
-// activity for every selected trainee in this Master Trainer's own Group in
-// a single submission, each trainee's own attendance/actual-hours set
-// individually. No groupId in the URL -- always this Master Trainer's own
-// group (req.masterTrainer.groupId, already resolved by requireMasterTrainer).
-// Unlike the ToT equivalent (supervisor.js), this is NOT narrowed to a
-// personal caseload -- a Master Trainer already has group-wide authority
-// over every trainee in their own Group elsewhere (e.g. GET /assignments
-// above), so every trainee with this group_id is eligible. Reuses the exact
-// same createGroupSession helper (and therefore the exact same validation/
-// INSERT shape) as the ToT's route, so the two can never compute hours
-// differently. multipart-or-JSON handling mirrors supervisor.js's
-// POST /assignments (one shared optional attachment).
+// ---- Session Occasions (Add Session for the whole Group at once,
+// Attendance recorded afterward as a separate step) -- see migration 024
+// and utils/groupSessions.js for the full design note. No groupId/roster in
+// the URL or body -- always this Master Trainer's own group
+// (req.masterTrainer.groupId). Unlike the ToT equivalent (supervisor.js),
+// this is NOT narrowed to a personal caseload -- a Master Trainer already
+// has group-wide authority over every trainee in their own Group elsewhere
+// (e.g. GET /assignments above), so every trainee with this group_id is
+// eligible. multipart-or-JSON handling mirrors supervisor.js's POST
+// /assignments (one shared optional attachment). ---------------------------
+
+// POST /api/master-trainer/group-sessions
 router.post("/group-sessions", (req, res) => {
     const contentType = req.headers["content-type"] || "";
 
@@ -983,24 +982,13 @@ router.post("/group-sessions", (req, res) => {
         }
 
         const { sessionType, title, date, time, durationMinutes, notes } = req.body || {};
-        let attendance = req.body && req.body.attendance;
-        try {
-            if (typeof attendance === "string") attendance = JSON.parse(attendance);
-        } catch {
-            attendance = null;
-        }
-        if (!Array.isArray(attendance) || !attendance.length) {
-            return res.status(400).json({ error: "attendance must be a non-empty array" });
-        }
 
         const { rows: eligibleRows } = await pool.query("SELECT id FROM students WHERE group_id = ?", [groupId]);
-        const eligibleIds = new Set(eligibleRows.map((r) => r.id));
-        const invalid = attendance.filter((a) => !eligibleIds.has(Number(a.studentId)));
-        if (invalid.length) {
-            return res.status(403).json({ error: "One or more selected trainees are not in your Group" });
+        if (!eligibleRows.length) {
+            return res.status(400).json({ error: "You don't have any trainees in your Group yet" });
         }
 
-        const result = await createGroupSession(pool, {
+        const result = await createSessionOccasion(pool, {
             supervisorId: req.masterTrainer.id,
             sessionType,
             title,
@@ -1010,7 +998,7 @@ router.post("/group-sessions", (req, res) => {
             notes,
             attachmentFilename,
             attachmentOriginalName,
-            attendance,
+            studentIds: eligibleRows.map((r) => r.id),
         });
         if (result.error) return res.status(400).json({ error: result.error });
 
@@ -1032,7 +1020,7 @@ router.post("/group-sessions", (req, res) => {
             }
         }
 
-        res.status(201).json({ created: result.created, skipped: attendance.length - result.created.length });
+        res.status(201).json({ occasionId: result.occasionId, created: result.created });
     };
 
     if (contentType.includes("multipart/form-data")) {
@@ -1049,58 +1037,155 @@ router.post("/group-sessions", (req, res) => {
             try {
                 await handle(req.file ? req.file.filename : null, req.file ? req.file.originalname : null);
             } catch (err) {
-                console.error("[Mastertrainer] failed to create group session:", err);
+                console.error("[Mastertrainer] failed to create session occasion:", err);
                 if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
             }
         });
     } else {
         handle(null, null).catch((err) => {
-            console.error("[Mastertrainer] failed to create group session:", err);
+            console.error("[Mastertrainer] failed to create session occasion:", err);
             if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
         });
     }
 });
 
-// POST /api/master-trainer/group-tot-sessions -- the TOT-level equivalent of
-// POST /group-sessions above: logs one Master-Trainer-delivered training
-// session for every selected TOT in this Master Trainer's own Group at
-// once, each TOT's own attendance/actual-hours set individually. Writes to
-// tot_training_sessions/tot_training_attendance (see "Training sessions the
-// Master Trainer conducts FOR a ToT" note at the top of this file) via
-// createGroupTotSession, the exact multi-attendee generalization of the
-// existing single-ToT POST /tots/:totId/sessions route above -- same
-// validation/INSERT shape, so the two can never compute hours differently.
-// No attachment/session type here, matching the single-ToT form (Master
-// Trainer -> ToT training was never typed by hour bucket).
+// GET /api/master-trainer/group-sessions -- this Master Trainer's own Group
+// Sessions list, newest first.
+router.get(
+    "/group-sessions",
+    asyncRoute(async (req, res, db) => {
+        const { rows } = await db.query(
+            `SELECT so.id, so.title, ht.label AS session_type_label, so.session_date, so.session_time, so.duration_minutes,
+              COUNT(s.id) AS trainee_count,
+              COUNT(a.id) AS recorded_count
+       FROM session_occasions so
+       JOIN hour_types ht ON ht.code = so.session_type
+       LEFT JOIN sessions s ON s.occasion_id = so.id
+       LEFT JOIN attendance a ON a.session_id = s.id
+       WHERE so.supervisor_id = ?
+       GROUP BY so.id
+       ORDER BY so.session_date DESC, so.created_at DESC`,
+            [req.masterTrainer.id]
+        );
+        res.json({
+            occasions: rows.map((r) => ({
+                id: r.id,
+                title: r.title,
+                sessionTypeLabel: r.session_type_label,
+                date: r.session_date,
+                time: r.session_time,
+                durationMinutes: r.duration_minutes,
+                traineeCount: Number(r.trainee_count),
+                recordedCount: Number(r.recorded_count),
+            })),
+        });
+    })
+);
+
+// GET /api/master-trainer/group-sessions/:id -- one occasion + its roster.
+router.get(
+    "/group-sessions/:id",
+    asyncRoute(async (req, res, db) => {
+        const occasionId = Number(req.params.id);
+        const { rows: occRows } = await db.query(
+            `SELECT so.id, so.title, ht.label AS session_type_label, so.session_date, so.session_time, so.duration_minutes
+       FROM session_occasions so JOIN hour_types ht ON ht.code = so.session_type
+       WHERE so.id = ? AND so.supervisor_id = ?`,
+            [occasionId, req.masterTrainer.id]
+        );
+        if (!occRows.length) return res.status(404).json({ error: "Session occasion not found" });
+        const o = occRows[0];
+
+        const { rows: rosterRows } = await db.query(
+            `SELECT st.id AS student_id, st.full_name, a.status, a.minutes_completed, a.excuse_reason_code
+       FROM sessions s
+       JOIN students st ON st.id = s.student_id
+       LEFT JOIN attendance a ON a.session_id = s.id
+       WHERE s.occasion_id = ?
+       ORDER BY st.full_name`,
+            [occasionId]
+        );
+
+        res.json({
+            occasion: {
+                id: o.id,
+                title: o.title,
+                sessionTypeLabel: o.session_type_label,
+                date: o.session_date,
+                time: o.session_time,
+                durationMinutes: o.duration_minutes,
+            },
+            roster: rosterRows.map((r) => ({
+                studentId: r.student_id,
+                fullName: r.full_name,
+                status: r.status,
+                minutesCompleted: r.minutes_completed,
+                excuseReasonCode: r.excuse_reason_code,
+            })),
+        });
+    })
+);
+
+// PUT /api/master-trainer/group-sessions/:id/attendance  { entries: [{studentId, status, minutesCompleted?, excuseReasonCode?}] }
+router.put(
+    "/group-sessions/:id/attendance",
+    asyncRoute(async (req, res, db) => {
+        const occasionId = Number(req.params.id);
+        const { entries } = req.body || {};
+
+        const result = await recordSessionOccasionAttendance(db, {
+            occasionId,
+            supervisorId: req.masterTrainer.id,
+            recordedBy: req.masterTrainer.id,
+            entries,
+        });
+        if (result.error) {
+            const status = result.error === "Session occasion not found" ? 404 : 400;
+            return res.status(status).json({ error: result.error });
+        }
+
+        res.json({ updated: result.updated });
+    })
+);
+
+// ---- ToT-level Session Occasions (a training session the Master Trainer
+// personally delivered to every ToT in her Group at once, optionally
+// including her own attendance too, Attendance recorded afterward as a
+// separate step) -- the TOT-level equivalent of the Group Sessions above.
+// Writes to tot_training_sessions/tot_training_attendance via
+// createTotSessionOccasion/recordTotSessionOccasionAttendance, the exact
+// multi-attendee generalization of the existing single-ToT
+// POST /tots/:totId/sessions route above. No attachment/session type here,
+// matching the single-ToT form (Master Trainer -> ToT training was never
+// typed by hour bucket). -----------------------------------------------
+
+// POST /api/master-trainer/group-tot-sessions  { title, date, time, durationMinutes, notes, includeSelf }
 router.post(
     "/group-tot-sessions",
     asyncRoute(async (req, res, db) => {
         const { groupId, id: masterTrainerId } = req.masterTrainer;
         if (!groupId) return res.status(400).json({ error: "You don't have a Group assigned yet" });
 
-        const { title, date, time, durationMinutes, notes, attendance } = req.body || {};
-        if (!Array.isArray(attendance) || !attendance.length) {
-            return res.status(400).json({ error: "attendance must be a non-empty array" });
-        }
+        const { title, date, time, durationMinutes, notes, includeSelf } = req.body || {};
 
         const { rows: eligibleRows } = await db.query(
             "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training'",
             [groupId]
         );
-        const eligibleIds = new Set(eligibleRows.map((r) => r.id));
-        const invalid = attendance.filter((a) => !eligibleIds.has(Number(a.totId)));
-        if (invalid.length) {
-            return res.status(403).json({ error: "One or more selected TOTs are not in your Group" });
+        const totIds = eligibleRows.map((r) => r.id);
+        if (includeSelf) totIds.push(masterTrainerId);
+        if (!totIds.length) {
+            return res.status(400).json({ error: "You don't have any TOTs in your Group yet" });
         }
 
-        const result = await createGroupTotSession(db, {
+        const result = await createTotSessionOccasion(db, {
             masterTrainerId,
             title,
             date,
             time,
             durationMinutes,
             notes,
-            attendance,
+            totIds,
         });
         if (result.error) return res.status(400).json({ error: result.error });
 
@@ -1111,7 +1196,103 @@ router.post(
             );
         }
 
-        res.status(201).json({ created: result.created, skipped: attendance.length - result.created.length });
+        res.status(201).json({ occasionId: result.occasionId, created: result.created });
+    })
+);
+
+// GET /api/master-trainer/group-tot-sessions -- this Master Trainer's own
+// ToT-level Group Sessions list, newest first. attendeeCount mirrors
+// traineeCount's role on the trainee-level list.
+router.get(
+    "/group-tot-sessions",
+    asyncRoute(async (req, res, db) => {
+        const { rows } = await db.query(
+            `SELECT tso.id, tso.title, tso.session_date, tso.session_time, tso.duration_minutes,
+              COUNT(ts.id) AS attendee_count,
+              COUNT(ta.id) AS recorded_count
+       FROM tot_session_occasions tso
+       LEFT JOIN tot_training_sessions ts ON ts.occasion_id = tso.id
+       LEFT JOIN tot_training_attendance ta ON ta.session_id = ts.id
+       WHERE tso.master_trainer_id = ?
+       GROUP BY tso.id
+       ORDER BY tso.session_date DESC, tso.created_at DESC`,
+            [req.masterTrainer.id]
+        );
+        res.json({
+            occasions: rows.map((r) => ({
+                id: r.id,
+                title: r.title,
+                date: r.session_date,
+                time: r.session_time,
+                durationMinutes: r.duration_minutes,
+                attendeeCount: Number(r.attendee_count),
+                recordedCount: Number(r.recorded_count),
+            })),
+        });
+    })
+);
+
+// GET /api/master-trainer/group-tot-sessions/:id -- one occasion + its roster.
+router.get(
+    "/group-tot-sessions/:id",
+    asyncRoute(async (req, res, db) => {
+        const occasionId = Number(req.params.id);
+        const { rows: occRows } = await db.query(
+            `SELECT id, title, session_date, session_time, duration_minutes
+       FROM tot_session_occasions WHERE id = ? AND master_trainer_id = ?`,
+            [occasionId, req.masterTrainer.id]
+        );
+        if (!occRows.length) return res.status(404).json({ error: "Session occasion not found" });
+        const o = occRows[0];
+
+        const { rows: rosterRows } = await db.query(
+            `SELECT sup.id AS tot_id, sup.full_name, ta.status, ta.minutes_completed, ta.excuse_reason_code
+       FROM tot_training_sessions ts
+       JOIN supervisors sup ON sup.id = ts.tot_id
+       LEFT JOIN tot_training_attendance ta ON ta.session_id = ts.id
+       WHERE ts.occasion_id = ?
+       ORDER BY sup.full_name`,
+            [occasionId]
+        );
+
+        res.json({
+            occasion: {
+                id: o.id,
+                title: o.title,
+                date: o.session_date,
+                time: o.session_time,
+                durationMinutes: o.duration_minutes,
+            },
+            roster: rosterRows.map((r) => ({
+                totId: r.tot_id,
+                fullName: r.full_name,
+                status: r.status,
+                minutesCompleted: r.minutes_completed,
+                excuseReasonCode: r.excuse_reason_code,
+            })),
+        });
+    })
+);
+
+// PUT /api/master-trainer/group-tot-sessions/:id/attendance  { entries: [{totId, status, minutesCompleted?, excuseReasonCode?}] }
+router.put(
+    "/group-tot-sessions/:id/attendance",
+    asyncRoute(async (req, res, db) => {
+        const occasionId = Number(req.params.id);
+        const { entries } = req.body || {};
+
+        const result = await recordTotSessionOccasionAttendance(db, {
+            occasionId,
+            masterTrainerId: req.masterTrainer.id,
+            recordedBy: req.masterTrainer.id,
+            entries,
+        });
+        if (result.error) {
+            const status = result.error === "Session occasion not found" ? 404 : 400;
+            return res.status(status).json({ error: result.error });
+        }
+
+        res.json({ updated: result.updated });
     })
 );
 

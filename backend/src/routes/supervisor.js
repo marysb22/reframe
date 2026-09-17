@@ -29,10 +29,10 @@ const {
   buildTotHoursBreakdownQuery,
 } = require("../utils/recordsQuery");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
-const { broadcastDirectMessage } = require("../realtime/chatSocket");
+const { broadcastDirectMessage, broadcastMessage } = require("../realtime/chatSocket");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi, attachSubmissionHistories } = require("../utils/assignmentsQuery");
 const { resolveWeekRange } = require("../utils/weekPeriod");
-const { createGroupSession } = require("../utils/groupSessions");
+const { createSessionOccasion, recordSessionOccasionAttendance } = require("../utils/groupSessions");
 const { DOCUMENT_SELECT } = require("../utils/documentsQuery");
 
 const router = express.Router();
@@ -331,20 +331,18 @@ router.post(
   })
 );
 
-// POST /api/supervisor/group-sessions -- logs one training/supervision
-// activity for every selected trainee in this ToT's own Group (narrowed to
-// this ToT's own caseload -- see loadAssignedStudent's use elsewhere; a ToT
-// never logs hours for a trainee not actually assigned to them, even one in
-// the same Group) in a single submission, with each trainee's own
-// attendance/actual-hours set individually. No groupId in the URL -- a ToT
-// only ever has one Group, always resolved server-side from their own
-// account, same as everywhere else this app does this (chatRooms.js, etc.).
-// Reuses the exact same per-student validation/INSERT shape as the
-// single-student POST /students/:studentId/records path above via
-// createGroupSession, so the two can never compute hours differently.
-// multipart-or-JSON dance mirrors POST /assignments above (one shared
-// optional attachment).
-router.post("/group-sessions", (req, res) => {
+// ---- Session Occasions (Add Session for the whole caseload/Group at once,
+// Attendance recorded afterward as a separate step) -- see migration 024
+// and utils/groupSessions.js for the full design note. No groupId/roster
+// in the URL or body -- "every selected trainee" is simply this ToT's own
+// caseload within their Group (loadAssignedStudent's own rule: a ToT never
+// logs hours for a trainee not actually assigned to them, even one in the
+// same Group), resolved server-side exactly like the old POST
+// /group-sessions this replaces. multipart-or-JSON dance mirrors POST
+// /assignments above (one shared optional attachment). ---------------------
+
+// POST /api/supervisor/session-occasions
+router.post("/session-occasions", (req, res) => {
   const contentType = req.headers["content-type"] || "";
 
   const handle = async (attachmentFilename, attachmentOriginalName) => {
@@ -357,30 +355,18 @@ router.post("/group-sessions", (req, res) => {
     }
 
     const { sessionType, title, date, time, durationMinutes, notes } = req.body || {};
-    let attendance = req.body && req.body.attendance;
-    try {
-      if (typeof attendance === "string") attendance = JSON.parse(attendance);
-    } catch {
-      attendance = null;
-    }
-    if (!Array.isArray(attendance) || !attendance.length) {
-      return res.status(400).json({ error: "attendance must be a non-empty array" });
-    }
 
     // Narrowed to this ToT's own caseload within the Group, not just Group
-    // membership -- preserves the existing rule (loadAssignedStudent) that
-    // a ToT only ever logs hours for a trainee actually assigned to them.
+    // membership.
     const { rows: eligibleRows } = await pool.query(
       `SELECT id FROM students WHERE group_id = ? AND id IN (SELECT student_id FROM supervisor_students WHERE supervisor_id = ?)`,
       [groupId, req.user.id]
     );
-    const eligibleIds = new Set(eligibleRows.map((r) => r.id));
-    const invalid = attendance.filter((a) => !eligibleIds.has(Number(a.studentId)));
-    if (invalid.length) {
-      return res.status(403).json({ error: "One or more selected trainees are not in your caseload for this Group" });
+    if (!eligibleRows.length) {
+      return res.status(400).json({ error: "You don't have any trainees in your caseload for this Group yet" });
     }
 
-    const result = await createGroupSession(pool, {
+    const result = await createSessionOccasion(pool, {
       supervisorId: req.user.id,
       sessionType,
       title,
@@ -390,7 +376,7 @@ router.post("/group-sessions", (req, res) => {
       notes,
       attachmentFilename,
       attachmentOriginalName,
-      attendance,
+      studentIds: eligibleRows.map((r) => r.id),
     });
     if (result.error) return res.status(400).json({ error: result.error });
 
@@ -412,7 +398,7 @@ router.post("/group-sessions", (req, res) => {
       }
     }
 
-    res.status(201).json({ created: result.created, skipped: attendance.length - result.created.length });
+    res.status(201).json({ occasionId: result.occasionId, created: result.created });
   };
 
   if (contentType.includes("multipart/form-data")) {
@@ -429,17 +415,119 @@ router.post("/group-sessions", (req, res) => {
       try {
         await handle(req.file ? req.file.filename : null, req.file ? req.file.originalname : null);
       } catch (err) {
-        console.error("[supervisor] failed to create group session:", err);
+        console.error("[supervisor] failed to create session occasion:", err);
         if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
       }
     });
   } else {
     handle(null, null).catch((err) => {
-      console.error("[supervisor] failed to create group session:", err);
+      console.error("[supervisor] failed to create session occasion:", err);
       if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
     });
   }
 });
+
+// GET /api/supervisor/session-occasions -- this ToT's own Group Sessions
+// list, newest first. recordedCount/traineeCount drive the "3/5 recorded"
+// summary the list shows before Attendance is opened.
+router.get(
+  "/session-occasions",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      `SELECT so.id, so.title, ht.label AS session_type_label, so.session_date, so.session_time, so.duration_minutes,
+              COUNT(s.id) AS trainee_count,
+              COUNT(a.id) AS recorded_count
+       FROM session_occasions so
+       JOIN hour_types ht ON ht.code = so.session_type
+       LEFT JOIN sessions s ON s.occasion_id = so.id
+       LEFT JOIN attendance a ON a.session_id = s.id
+       WHERE so.supervisor_id = ?
+       GROUP BY so.id
+       ORDER BY so.session_date DESC, so.created_at DESC`,
+      [req.user.id]
+    );
+    res.json({
+      occasions: rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        sessionTypeLabel: r.session_type_label,
+        date: r.session_date,
+        time: r.session_time,
+        durationMinutes: r.duration_minutes,
+        traineeCount: Number(r.trainee_count),
+        recordedCount: Number(r.recorded_count),
+      })),
+    });
+  })
+);
+
+// GET /api/supervisor/session-occasions/:id -- one occasion + its roster,
+// each trainee's current attendance (if any) already resolved, for the
+// Attendance modal.
+router.get(
+  "/session-occasions/:id",
+  asyncRoute(async (req, res, db) => {
+    const occasionId = Number(req.params.id);
+    const { rows: occRows } = await db.query(
+      `SELECT so.id, so.title, ht.label AS session_type_label, so.session_date, so.session_time, so.duration_minutes
+       FROM session_occasions so JOIN hour_types ht ON ht.code = so.session_type
+       WHERE so.id = ? AND so.supervisor_id = ?`,
+      [occasionId, req.user.id]
+    );
+    if (!occRows.length) return res.status(404).json({ error: "Session occasion not found" });
+    const o = occRows[0];
+
+    const { rows: rosterRows } = await db.query(
+      `SELECT st.id AS student_id, st.full_name, a.status, a.minutes_completed, a.excuse_reason_code
+       FROM sessions s
+       JOIN students st ON st.id = s.student_id
+       LEFT JOIN attendance a ON a.session_id = s.id
+       WHERE s.occasion_id = ?
+       ORDER BY st.full_name`,
+      [occasionId]
+    );
+
+    res.json({
+      occasion: {
+        id: o.id,
+        title: o.title,
+        sessionTypeLabel: o.session_type_label,
+        date: o.session_date,
+        time: o.session_time,
+        durationMinutes: o.duration_minutes,
+      },
+      roster: rosterRows.map((r) => ({
+        studentId: r.student_id,
+        fullName: r.full_name,
+        status: r.status,
+        minutesCompleted: r.minutes_completed,
+        excuseReasonCode: r.excuse_reason_code,
+      })),
+    });
+  })
+);
+
+// PUT /api/supervisor/session-occasions/:id/attendance  { entries: [{studentId, status, minutesCompleted?, excuseReasonCode?}] }
+router.put(
+  "/session-occasions/:id/attendance",
+  asyncRoute(async (req, res, db) => {
+    const occasionId = Number(req.params.id);
+    const { entries } = req.body || {};
+
+    const result = await recordSessionOccasionAttendance(db, {
+      occasionId,
+      supervisorId: req.user.id,
+      recordedBy: req.user.id,
+      entries,
+    });
+    if (result.error) {
+      const status = result.error === "Session occasion not found" ? 404 : 400;
+      return res.status(status).json({ error: result.error });
+    }
+
+    res.json({ updated: result.updated });
+  })
+);
 
 // PUT /api/supervisor/records/:recordType/:recordId
 router.put(
@@ -1612,6 +1700,152 @@ router.post(
       broadcastDirectMessage(req.app.get("io"), chatId, { ...message, isMine: false, senderId: req.user.id }).catch(() => {});
     } catch (notifyErr) {
       console.error("[supervisor] failed to notify trainee of new message:", notifyErr);
+    }
+
+    res.status(201).json(message);
+  })
+);
+
+// ---- Message my own Master Trainer -----------------------------------
+// A ToT's Master Trainer is one more Direct Message contact alongside
+// their trainees, in the same inbox UI -- but the chats/messages tables
+// used for trainee conversations above have typed student_id/supervisor_id
+// FKs that structurally cannot hold a supervisor-to-supervisor pair (see
+// migration 023's comment on chat_rooms.is_direct). This reuses that same
+// generic, already-built Direct Chat infrastructure (chat_rooms +
+// chat_room_members + chat_room_messages) instead of duplicating a second
+// messaging system, just addressed by "my Master Trainer" rather than a
+// room id the client already knows.
+
+/** Resolves this ToT's own Master Trainer (their Group's supervisor_type='primary' row), or null if no Group is assigned yet. */
+async function loadMyMasterTrainer(db, totId) {
+  const { rows } = await db.query(
+    `SELECT mt.id, mt.full_name, mt.email, mt.phone, mt.photo
+     FROM supervisors tot
+     JOIN supervisors mt ON mt.group_id = tot.group_id AND mt.supervisor_type = 'primary'
+     WHERE tot.id = ?`,
+    [totId]
+  );
+  return rows[0] || null;
+}
+
+/** Find-or-create the Direct Chat room between this ToT and their Master Trainer -- same shape as POST /api/chat-rooms/direct. */
+async function getOrCreateMasterTrainerRoom(db, totId, masterTrainerId, groupId) {
+  const { rows: existing } = await db.query(
+    `SELECT cr.id FROM chat_rooms cr
+       JOIN chat_room_members m1 ON m1.room_id = cr.id AND m1.user_id = ?
+       JOIN chat_room_members m2 ON m2.room_id = cr.id AND m2.user_id = ?
+      WHERE cr.is_direct = TRUE
+      LIMIT 1`,
+    [totId, masterTrainerId]
+  );
+  if (existing.length) return existing[0].id;
+
+  const { rows: nameRows } = await db.query("SELECT full_name FROM supervisors WHERE id = ?", [masterTrainerId]);
+  const name = (nameRows[0] && nameRows[0].full_name) || "Direct message";
+  const room = await db.query("INSERT INTO chat_rooms (name, created_by, group_id, is_direct) VALUES (?, ?, ?, TRUE)", [
+    name,
+    totId,
+    groupId,
+  ]);
+  const roomId = room.insertId;
+  await db.query("INSERT INTO chat_room_members (room_id, user_id, added_by) VALUES (?, ?, ?)", [roomId, totId, totId]);
+  await db.query("INSERT INTO chat_room_members (room_id, user_id, added_by) VALUES (?, ?, ?)", [roomId, masterTrainerId, totId]);
+  return roomId;
+}
+
+// GET /api/supervisor/master-trainer -- this ToT's own Master Trainer's
+// contact info, or { masterTrainer: null } if no Group is assigned yet.
+router.get(
+  "/master-trainer",
+  asyncRoute(async (req, res, db) => {
+    const mt = await loadMyMasterTrainer(db, req.user.id);
+    res.json({
+      masterTrainer: mt && {
+        id: mt.id,
+        fullName: mt.full_name,
+        email: mt.email,
+        phone: mt.phone,
+        photo: mt.photo,
+      },
+    });
+  })
+);
+
+// GET /api/supervisor/master-trainer/messages?peek=1
+router.get(
+  "/master-trainer/messages",
+  asyncRoute(async (req, res, db) => {
+    const { rows: meRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
+    const groupId = meRows.length ? meRows[0].group_id : null;
+    const mt = await loadMyMasterTrainer(db, req.user.id);
+    if (!groupId || !mt) return res.status(404).json({ error: "No Master Trainer assigned yet" });
+
+    const roomId = await getOrCreateMasterTrainerRoom(db, req.user.id, mt.id, groupId);
+    const { rows } = await db.query(
+      `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM chat_room_messages m
+       LEFT JOIN supervisors sup ON sup.id = m.sender_id
+       LEFT JOIN students st ON st.id = m.sender_id
+       WHERE m.room_id = ? ORDER BY m.created_at ASC`,
+      [roomId]
+    );
+
+    if (req.query.peek !== "1") {
+      await db.query("UPDATE chat_room_members SET last_read_at = NOW() WHERE room_id = ? AND user_id = ?", [
+        roomId,
+        req.user.id,
+      ]);
+      await db.query(
+        `UPDATE notifications SET is_read = TRUE
+         WHERE recipient_id = ? AND notification_type = 'message' AND related_entity_id = ? AND is_read = FALSE`,
+        [req.user.id, mt.id]
+      );
+    }
+
+    res.json({ messages: rows.map((r) => toMessage(r, req.user.id)) });
+  })
+);
+
+router.post(
+  "/master-trainer/messages",
+  asyncRoute(async (req, res, db) => {
+    const { rows: meRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
+    const groupId = meRows.length ? meRows[0].group_id : null;
+    const mt = await loadMyMasterTrainer(db, req.user.id);
+    if (!groupId || !mt) return res.status(404).json({ error: "No Master Trainer assigned yet" });
+
+    const { content } = req.body || {};
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ error: "Message content is required" });
+    }
+
+    const roomId = await getOrCreateMasterTrainerRoom(db, req.user.id, mt.id, groupId);
+    const insert = await db.query(
+      "INSERT INTO chat_room_messages (room_id, sender_id, content) VALUES (?, ?, ?)",
+      [roomId, req.user.id, content.trim()]
+    );
+    await db.query("UPDATE chat_room_members SET last_read_at = NOW() WHERE room_id = ? AND user_id = ?", [
+      roomId,
+      req.user.id,
+    ]);
+
+    const { rows } = await db.query("SELECT * FROM chat_room_messages WHERE id = ?", [insert.insertId]);
+    const message = toMessage({ ...rows[0], sender_name: req.user.member_code }, req.user.id);
+
+    try {
+      const { rows: mine } = await db.query("SELECT full_name FROM supervisors WHERE id = ?", [req.user.id]);
+      const myName = (mine[0] && mine[0].full_name) || req.user.member_code;
+      await createNotification(db, {
+        recipientId: mt.id,
+        type: "message",
+        title: `${myName} sent you a message`,
+        body: content.trim().slice(0, 140),
+        relatedEntityType: "message",
+        relatedEntityId: req.user.id,
+      });
+      broadcastMessage(req.app.get("io"), roomId, { ...message, senderId: req.user.id }).catch(() => {});
+    } catch (notifyErr) {
+      console.error("[supervisor] failed to notify Master Trainer of new message:", notifyErr);
     }
 
     res.status(201).json(message);

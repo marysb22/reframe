@@ -504,6 +504,21 @@ router.get(
   })
 );
 
+// GET /api/profile/excuse-reasons -- active excuse reasons only, any
+// authenticated role. Same "lives in the shared profile router" reasoning
+// as GET /hour-types above -- both a ToT/Master Trainer recording
+// Attendance and (eventually) a trainee viewing why they were marked
+// Excused need this list. See migration 024.
+router.get(
+  "/excuse-reasons",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      "SELECT code, label FROM excuse_reasons WHERE is_active = 1 ORDER BY sort_order ASC"
+    );
+    res.json({ excuseReasons: rows });
+  })
+);
+
 // GET /api/profile/milestones -- this Trainee's own progress against every
 // active milestone. Mirrors supervisor.js's GET
 // /students/:studentId/milestones exactly (LEFT JOIN so an untouched
