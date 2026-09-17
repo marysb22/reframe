@@ -3255,7 +3255,7 @@
                         <div class="card-title-left"><i class="fa fa-calendar"></i>
                             <h2>Calendar</h2>
                         </div>
-           
+
                     </div>
                     <div class="cal-topbar">
                         <h3 class="cal-title" id="calTitle">&mdash;</h3>
@@ -3269,7 +3269,7 @@
                 </section>
             </section>
 
-       
+
             <!-- ============================================================= -->
             <!-- LIBRARY (Books) -- standalone feature, separate from Materials -->
             <!-- ============================================================= -->
@@ -7762,7 +7762,7 @@ document.getElementById("settingsPhotoFile").addEventListener("change", async ()
   const form = new FormData();
   form.append("photo", file);
   try {
-    const response = await fetch(`${API}/profile/me/photo`, {
+    const response = await fetch(`${API}/profile/photo`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: form,

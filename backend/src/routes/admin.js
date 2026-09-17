@@ -1480,8 +1480,8 @@ async function getTrainersAndHours(db, studentId, studentFullName) {
     `SELECT supervisor_id, COALESCE(SUM(hours), 0) AS hours FROM (
        SELECT supervisor_id, hours FROM supervision_hours WHERE student_id = ?
        UNION ALL
-       SELECT s.supervisor_id, s.duration_minutes / 60 AS hours FROM sessions s
-         JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+       SELECT s.supervisor_id, CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours FROM sessions s
+         JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
          WHERE s.student_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled'
        UNION ALL
        SELECT added_by AS supervisor_id, hours FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'supervision'
@@ -1494,8 +1494,8 @@ async function getTrainersAndHours(db, studentId, studentFullName) {
   const { rows: traineeHoursRows } = await db.query(
     `SELECT
        COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id = ?), 0) +
-       COALESCE((SELECT SUM(s.duration_minutes) / 60 FROM sessions s
-         JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+       COALESCE((SELECT SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60 FROM sessions s
+         JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
          WHERE s.student_id = ? AND s.session_type = 'training' AND s.status != 'cancelled'), 0) +
        COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'training'), 0)
      AS hours`,

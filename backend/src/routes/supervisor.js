@@ -744,9 +744,9 @@ router.get(
     const supervisorId = req.user.id;
     const [hoursRes, attendanceRes, traineeRes] = await Promise.all([
       db.query(
-        `SELECT COALESCE(SUM(s.duration_minutes) / 60, 0) AS hours
+        `SELECT COALESCE(SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60, 0) AS hours
          FROM sessions s
-         JOIN attendance a ON a.session_id = s.id AND a.status = 'present'
+         JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
          WHERE s.supervisor_id = ? AND s.status != 'cancelled'`,
         [supervisorId]
       ),

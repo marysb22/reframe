@@ -157,7 +157,9 @@ function buildHoursBreakdownQuery(studentId) {
     SELECT * FROM (
       SELECT s.session_date AS hour_date, s.title AS title, s.session_type AS hour_type,
              s.duration_minutes AS duration_minutes, a.status AS attendance_status,
-             CASE WHEN a.status = 'present' AND s.status != 'cancelled' THEN ROUND(s.duration_minutes / 60, 2) ELSE 0 END AS hours,
+             CASE WHEN a.status = 'present' AND s.status != 'cancelled' THEN ROUND(s.duration_minutes / 60, 2)
+                  WHEN a.status = 'partial' AND s.status != 'cancelled' THEN ROUND(COALESCE(a.minutes_completed, 0) / 60, 2)
+                  ELSE 0 END AS hours,
              'session' AS source, s.created_at
       FROM sessions s
       JOIN attendance a ON a.session_id = s.id
