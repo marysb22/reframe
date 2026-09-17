@@ -961,7 +961,8 @@
         }
         
         .pill.excused,
-        .pill.pending {
+        .pill.pending,
+        .pill.partial {
             background: var(--warning-bg);
             color: var(--warning);
         }
@@ -2974,6 +2975,275 @@
             height: 56px;
             font-size: 18px;
         }
+
+        /* ---- Training Activities (redesigned) ------------------------ */
+
+        .act-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0;
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md);
+            background: var(--surface-2);
+            margin-bottom: 18px;
+            overflow: hidden;
+        }
+
+        .act-summary-item {
+            flex: 1 1 140px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            border-right: 1px solid var(--border-soft);
+        }
+
+        .act-summary-item:last-child {
+            border-right: none;
+        }
+
+        .act-summary-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.1;
+        }
+
+        .act-summary-label {
+            font-size: 11px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .act-table {
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .act-thead,
+        .act-row-main {
+            display: grid;
+            grid-template-columns: 2.1fr .9fr .9fr .8fr .9fr 1.2fr .8fr;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .act-thead {
+            padding: 10px 16px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--faint);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-2);
+        }
+
+        .act-tbody {
+            background: var(--surface);
+        }
+
+        .act-item {
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .act-item:last-child {
+            border-bottom: none;
+        }
+
+        .act-row-main {
+            padding: 13px 16px;
+            cursor: pointer;
+            transition: .12s;
+        }
+
+        .act-row-main:hover {
+            background: var(--surface-2);
+        }
+
+        .act-row-main.no-expand {
+            cursor: default;
+        }
+
+        .act-title-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .act-chevron {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            border-radius: 6px;
+            display: grid;
+            place-items: center;
+            color: var(--faint);
+            transition: transform .15s;
+            font-size: 11px;
+        }
+
+        .act-item.expanded .act-chevron {
+            transform: rotate(90deg);
+            color: var(--primary);
+        }
+
+        .act-title-text {
+            min-width: 0;
+        }
+
+        .act-title-text strong {
+            display: block;
+            font-size: 13.5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .act-title-text span {
+            display: block;
+            font-size: 11.5px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .act-label {
+            display: none;
+        }
+
+        .act-attendance-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .act-progress-track {
+            width: 40px;
+            height: 5px;
+            border-radius: 3px;
+            background: var(--border-soft);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .act-progress-fill {
+            height: 100%;
+            background: var(--success);
+            border-radius: 3px;
+        }
+
+        .act-progress-fill.partial {
+            background: var(--warning);
+        }
+
+        .act-detail {
+            padding: 4px 16px 18px 46px;
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .act-detail-meta {
+            font-size: 11.5px;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+
+        .act-roster {
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        .act-roster-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 13px;
+            border-bottom: 1px solid var(--border-soft);
+            font-size: 12.5px;
+        }
+
+        .act-roster-row:last-child {
+            border-bottom: none;
+        }
+
+        .act-roster-name {
+            display: flex;
+            align-items: baseline;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .act-roster-name strong {
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .act-roster-name span {
+            color: var(--faint);
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .act-detail-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 12px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .act-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 16px;
+            font-size: 12.5px;
+            color: var(--muted);
+        }
+
+        .act-pagination-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        @media (max-width: 860px) {
+            .act-thead {
+                display: none;
+            }
+
+            .act-row-main {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+
+            .act-row-main>div:not(.act-title-cell) {
+                display: flex;
+                justify-content: space-between;
+                font-size: 12.5px;
+            }
+
+            .act-label {
+                display: inline;
+                color: var(--faint);
+                font-weight: 600;
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: .03em;
+            }
+
+            .act-detail {
+                padding: 4px 14px 16px 14px;
+            }
+        }
     </style>
 </head>
 
@@ -3161,7 +3431,7 @@
                             <button class="btn" onclick="openGroupSessionModal()"><i class="fa fa-people-group"></i>Add Session</button>
                         </div>
                     </div>
-                    <p class="card-subtitle">Trainee-to-Trainer assignment is managed by Admin or the Master Trainer. "Add Session" logs a training/supervision activity for your whole Group at once -- Attendance is then recorded separately, from the Group Sessions list below.</p>
+                    <p class="card-subtitle">Trainee-to-Trainer assignment is managed by Admin or the Master Trainer. "Add Session" logs a training/supervision activity for your whole Group at once -- Attendance is then recorded separately, from the Training Activities list below.</p>
 
                     <div class="toolbar">
                         <input type="text" id="studentSearch" placeholder="Search by name or trainee ID...">
@@ -3188,61 +3458,72 @@
 
                 <section class="system-card">
                     <div class="card-title">
-                        <div class="card-title-left"><i class="fa fa-people-group"></i>
-                            <h2>Group Sessions</h2>
-                        </div>
-                    </div>
-                    <p class="card-subtitle">Sessions logged via "Add Session" above. Open a Session to record or correct its Attendance.</p>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Type</th>
-                                <th>Date &amp; time</th>
-                                <th>Duration</th>
-                                <th>Attendance</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sessionOccasionsBody">
-                            <tr class="loading-row">
-                                <td colspan="6">Loading sessions...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </section>
-
-                <section class="system-card">
-                    <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-chalkboard-user"></i>
                             <h2>Training Activities</h2>
                         </div>
-                        <button class="btn btn-secondary" onclick="openSessionModal()"><i class="fa fa-plus"></i>Log Single Activity</button>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn btn-secondary" onclick="openGroupSessionModal()"><i class="fa fa-people-group"></i>Add Session</button>
+                            <button class="btn btn-secondary" onclick="openSessionModal()"><i class="fa fa-plus"></i>Log Single Activity</button>
+                        </div>
                     </div>
-                    <p class="card-subtitle">Training and supervision activity across your whole caseload. "Log Single Activity" logs one trainee at a time; "Add Session" above covers your whole Group in one go.</p>
+                    <p class="card-subtitle">Every training/supervision activity across your whole caseload -- one row per real activity. Expand a Group Session to see who it covered; "Log Single Activity" logs one trainee at a time.</p>
+
+                    <div class="act-summary" id="actSummary">
+                        <div class="act-summary-item"><span class="act-summary-value" id="actSumTotal">&mdash;</span><span class="act-summary-label">Total Activities</span></div>
+                        <div class="act-summary-item"><span class="act-summary-value" id="actSumTraining">&mdash;</span><span class="act-summary-label">Training Sessions</span></div>
+                        <div class="act-summary-item"><span class="act-summary-value" id="actSumHours">&mdash;</span><span class="act-summary-label">Training Hours</span></div>
+                        <div class="act-summary-item"><span class="act-summary-value" id="actSumTrainees">&mdash;</span><span class="act-summary-label">Trainees Covered</span></div>
+                        <div class="act-summary-item"><span class="act-summary-value" id="actSumPending">&mdash;</span><span class="act-summary-label">Pending Attendance</span></div>
+                    </div>
+
                     <div class="toolbar">
-                        <input type="text" id="sessionSearch" placeholder="Search by title or trainee...">
-                        <select id="sessionTypeFilter">
-<option value="">All types</option>
-</select>
+                        <input type="text" id="actSearch" placeholder="Search activity, trainee name, or ID...">
+                        <select id="actTypeFilter">
+                            <option value="">All types</option>
+                            <option value="training">Training</option>
+                            <option value="supervision">Supervision</option>
+                            <option value="app">App Activities</option>
+                            <option value="group">Group Sessions</option>
+                        </select>
+                        <select id="actDateFilter">
+                            <option value="">Any date</option>
+                            <option value="today">Today</option>
+                            <option value="week">This week</option>
+                            <option value="month">This month</option>
+                            <option value="custom">Custom range&hellip;</option>
+                        </select>
+                        <select id="actTraineeFilter">
+                            <option value="">All trainees</option>
+                        </select>
+                        <select id="actSort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="duration">Duration</option>
+                            <option value="name">Activity name</option>
+                        </select>
                     </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Trainee</th>
-                                <th>Type</th>
-                                <th>Date &amp; time</th>
-                                <th>Duration</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sessionsBody">
-                            <tr class="loading-row">
-                                <td colspan="6">Loading training activities...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="toolbar" id="actCustomDateRow" style="display:none;">
+                        <input type="date" id="actDateFrom">
+                        <input type="date" id="actDateTo">
+                        <button class="btn btn-secondary btn-sm" style="width:auto;flex:0;" onclick="applyActivitiesCustomRange()">Apply range</button>
+                    </div>
+
+                    <div class="act-table">
+                        <div class="act-thead">
+                            <div>Activity</div>
+                            <div>Type</div>
+                            <div>Date</div>
+                            <div>Duration</div>
+                            <div>Trainees</div>
+                            <div>Attendance</div>
+                            <div>Actions</div>
+                        </div>
+                        <div class="act-tbody" id="actBody">
+                            <div class="loading-row" style="padding:28px;text-align:center;color:var(--faint);">Loading training activities&hellip;</div>
+                        </div>
+                    </div>
+
+                    <div class="act-pagination" id="actPagination"></div>
                 </section>
             </section>
 
@@ -4403,7 +4684,6 @@
             loadHourTypesSettings();
             await loadStudents();
             await ensureMasterTrainerLoaded();
-            loadSessionOccasions();
             await loadSchedule();
             await loadActivity();
             await loadMaterials();
@@ -4632,6 +4912,7 @@
             allStudents = data.students;
             renderStudents();
             populateStudentPickers();
+            populateActivitiesTraineeFilter();
             // Previously fire-and-forget: the caller (DOMContentLoaded's init
             // chain) treated loadStudents() as "done" as soon as this
             // function returned, while these three kept fetching in the
@@ -4646,7 +4927,8 @@
                 // "Training Activities" now lives inside this same Trainee
                 // Profiles section (no longer its own lazily-loaded nav
                 // section), so it loads eagerly right alongside the roster.
-                loadSessions(),
+                loadActivities(),
+                loadActivitiesSummary(),
             ]);
         }
 
@@ -5194,7 +5476,8 @@ async function submitRecordForm(e, type) {
     loadedSections.delete("assignments");
     // "Training Activities" is no longer a lazy section -- refresh it
     // directly instead of just invalidating a cache flag.
-    loadSessions();
+    loadActivities();
+    loadActivitiesSummary();
   }
 }
 
@@ -6104,60 +6387,253 @@ async function returnAssignmentForEditing() {
   }
 }
 
-let allSessions = [];
+// ---- Training Activities (redesigned) -- one row per real activity (a
+// Group Session occasion OR a single-trainee session), server-side
+// filtered/sorted/paginated via GET /supervisor/activities. A Group
+// Session's per-trainee detail is fetched on demand (lazily, cached) when
+// its row is expanded, via the existing GET /session-occasions/:id --
+// never fetched just to render the collapsed row. See
+// utils/activitiesQuery.js for the backend design note. -------------------
 
-async function loadSessions() {
-  const body = document.getElementById("sessionsBody");
-  body.innerHTML = '<tr class="loading-row"><td colspan="6">Loading training activities...</td></tr>';
-  allSessions = [];
-  for (const s of allStudents) {
-    const detail = await apiRequest(`/supervisor/students/${s.id}`);
-    if (!detail) continue;
-    detail.records
-      .filter((r) => r.recordType === "training_session" || r.recordType === "supervision_session" || r.recordType === "hour_session")
-      .forEach((r) => allSessions.push({ ...r, studentName: s.full_name, studentCode: s.memberCode, studentId: s.id }));
-  }
-  renderSessions();
+let allActivities = [];
+let actState = { page: 1, pageSize: 20, total: 0 };
+let actExpandedId = null; // `${kind}:${id}` of the one open row, or null
+const actRosterCache = new Map(); // occasionId -> roster array
+
+function actDurationLabel(minutes) {
+  if (!minutes) return "&mdash;";
+  if (minutes < 60) return `${minutes} min`;
+  const h = minutes / 60;
+  return `${h % 1 === 0 ? h : h.toFixed(2)} hr${h === 1 ? "" : "s"}`;
 }
 
-function renderSessions() {
-  const search = (document.getElementById("sessionSearch").value || "").toLowerCase();
-  const typeFilter = document.getElementById("sessionTypeFilter").value;
-  const isDynamicFilter = typeFilter.startsWith("hour_session:");
-  const filtered = allSessions.filter((s) => {
-    const matchesSearch = (s.title || "").toLowerCase().includes(search) || s.studentName.toLowerCase().includes(search);
-    const matchesType = !typeFilter || (isDynamicFilter ? s.recordType === "hour_session" && s.hourTypeCode === typeFilter.slice("hour_session:".length) : s.recordType === typeFilter);
-    return matchesSearch && matchesType;
-  });
+function actTypeBadgeClass(typeCode) {
+  if (typeCode === "training") return "training_session";
+  if (typeCode === "supervision") return "supervision_session";
+  return "meeting"; // reuses the existing neutral/amber badge for any other (App Activity) type
+}
 
-  const body = document.getElementById("sessionsBody");
-  if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="6" class="empty-state">No training activities match. Create one with "Log Training Activity".</td></tr>';
+function actAttendanceCell(a) {
+  if (a.kind === "occasion") {
+    const pct = a.traineeCount ? a.recordedCount / a.traineeCount : 0;
+    const fillClass = pct >= 1 ? "" : "partial";
+    return `
+      <div class="act-attendance-cell">
+        <div class="act-progress-track"><div class="act-progress-fill ${fillClass}" style="width:${Math.round(pct * 100)}%;"></div></div>
+        <span>${a.recordedCount}/${a.traineeCount}</span>
+      </div>`;
+  }
+  if (!a.attendanceStatus) return '<span style="color:var(--faint);">Not recorded</span>';
+  return `<span class="pill ${a.attendanceStatus}">${escapeHtml(attendanceStatusLabel(a.attendanceStatus))}</span>`;
+}
+
+function attendanceStatusLabel(status) {
+  return { present: "Present", absent: "Absent", partial: "Partial", excused: "Excused" }[status] || status;
+}
+
+function actDateFilterRange() {
+  const preset = document.getElementById("actDateFilter").value;
+  const toISO = (d) => d.toISOString().slice(0, 10);
+  const today = new Date();
+  if (preset === "today") {
+    const s = toISO(today);
+    return { dateFrom: s, dateTo: s };
+  }
+  if (preset === "week") {
+    const day = (today.getDay() + 6) % 7; // Monday-start week
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - day);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { dateFrom: toISO(monday), dateTo: toISO(sunday) };
+  }
+  if (preset === "month") {
+    const first = new Date(today.getFullYear(), today.getMonth(), 1);
+    const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return { dateFrom: toISO(first), dateTo: toISO(last) };
+  }
+  if (preset === "custom") {
+    return { dateFrom: document.getElementById("actDateFrom").value || undefined, dateTo: document.getElementById("actDateTo").value || undefined };
+  }
+  return {};
+}
+
+async function loadActivities() {
+  const body = document.getElementById("actBody");
+  body.innerHTML = '<div class="loading-row" style="padding:28px;text-align:center;color:var(--faint);">Loading training activities&hellip;</div>';
+
+  const { dateFrom, dateTo } = actDateFilterRange();
+  const params = new URLSearchParams({
+    page: String(actState.page),
+    pageSize: String(actState.pageSize),
+    sort: document.getElementById("actSort").value,
+  });
+  const search = document.getElementById("actSearch").value.trim();
+  const type = document.getElementById("actTypeFilter").value;
+  const traineeId = document.getElementById("actTraineeFilter").value;
+  if (search) params.set("search", search);
+  if (type) params.set("type", type);
+  if (dateFrom) params.set("dateFrom", dateFrom);
+  if (dateTo) params.set("dateTo", dateTo);
+  if (traineeId) params.set("traineeId", traineeId);
+
+  const data = await apiRequest(`/supervisor/activities?${params.toString()}`);
+  if (!data) return;
+  allActivities = data.activities;
+  actState.total = data.total;
+  renderActivities();
+  renderActivitiesPagination();
+}
+
+function renderActivities() {
+  const body = document.getElementById("actBody");
+  if (!allActivities.length) {
+    body.innerHTML = '<div class="empty-state">No training activities match. Try "Add Session" or "Log Single Activity" above.</div>';
     return;
   }
 
-  body.innerHTML = filtered
-    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-    .map((s) => `
-      <tr>
-        <td><strong>${escapeHtml(s.title || "Untitled")}</strong></td>
-        <td>${escapeHtml(s.studentName)} <span style="color:var(--faint);">(${escapeHtml(s.studentCode)})</span></td>
-        <td><span class="sched-badge ${s.recordType}">${hourTypeLabel(s.recordType === "hour_session" ? s.hourTypeCode : s.recordType === "training_session" ? "training" : "supervision")}</span></td>
-        <td>${s.date ? escapeHtml(s.date) : "&mdash;"}${s.time ? " " + escapeHtml(s.time) : ""}</td>
-        <td>${s.durationMinutes ? s.durationMinutes + " min" : "&mdash;"}</td>
-        <td>
-          <div class="row-actions">
-            <button class="icon-btn" title="Edit" onclick="editSession(${s.id})"><i class="fa fa-pen"></i></button>
-            <button class="icon-btn danger" title="Delete" onclick="confirmDeleteSession(${s.id})"><i class="fa fa-trash"></i></button>
+  body.innerHTML = allActivities
+    .map((a) => {
+      const key = `${a.kind}:${a.id}`;
+      const expanded = actExpandedId === key;
+      const isOccasion = a.kind === "occasion";
+      const traineesCell = isOccasion
+        ? `${a.traineeCount} trainee${a.traineeCount === 1 ? "" : "s"}`
+        : `${escapeHtml(a.studentName)} <span style="color:var(--faint);">(${escapeHtml(a.studentCode)})</span>`;
+      const actionsCell = isOccasion
+        ? `<button class="btn btn-secondary btn-sm" style="width:auto;" onclick="event.stopPropagation();openAttendanceModal(${a.id})">Attendance</button>`
+        : `<div class="row-actions">
+             <button class="icon-btn" title="Edit" onclick="event.stopPropagation();editSession(${a.id})"><i class="fa fa-pen"></i></button>
+             <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();confirmDeleteSession(${a.id})"><i class="fa fa-trash"></i></button>
+           </div>`;
+
+      const mainRow = `
+        <div class="act-row-main ${isOccasion ? "" : "no-expand"}" ${isOccasion ? `onclick="toggleActivityExpand('${key}')"` : ""}>
+          <div class="act-title-cell">
+            ${isOccasion ? `<span class="act-chevron"><i class="fa fa-chevron-right"></i></span>` : `<span class="act-chevron"></span>`}
+            <div class="act-title-text">
+              <strong>${escapeHtml(a.title || "Untitled")}</strong>
+              ${isOccasion ? '<span>Group Session</span>' : ""}
+            </div>
           </div>
-        </td>
-      </tr>
-    `)
+          <div><span class="act-label">Type</span><span class="sched-badge ${actTypeBadgeClass(a.typeCode)}">${escapeHtml(a.typeLabel)}</span></div>
+          <div><span class="act-label">Date</span>${a.date ? new Date(a.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "&mdash;"}</div>
+          <div><span class="act-label">Duration</span>${actDurationLabel(a.durationMinutes)}</div>
+          <div><span class="act-label">Trainees</span>${traineesCell}</div>
+          <div><span class="act-label">Attendance</span>${actAttendanceCell(a)}</div>
+          <div><span class="act-label">Actions</span>${actionsCell}</div>
+        </div>`;
+
+      const detailRow = isOccasion && expanded ? `<div class="act-detail" id="act-detail-${a.id}">${actRosterHtml(a)}</div>` : "";
+
+      return `<div class="act-item ${expanded ? "expanded" : ""}">${mainRow}${detailRow}</div>`;
+    })
     .join("");
 }
 
-document.getElementById("sessionSearch").addEventListener("input", renderSessions);
-document.getElementById("sessionTypeFilter").addEventListener("change", renderSessions);
+function actRosterHtml(a) {
+  const roster = actRosterCache.get(a.id);
+  if (!roster) return '<div style="padding:14px 0;color:var(--faint);font-size:12.5px;">Loading roster&hellip;</div>';
+  const recorded = roster.filter((r) => r.status).length;
+  return `
+    <div class="act-detail-meta">${escapeHtml(a.typeLabel)} &middot; ${a.date ? new Date(a.date).toLocaleDateString() : ""}${a.time ? " " + a.time.slice(0, 5) : ""} &middot; ${actDurationLabel(a.durationMinutes)}</div>
+    <div class="act-roster">
+      ${roster
+        .map(
+          (r) => `
+        <div class="act-roster-row">
+          <span class="act-roster-name"><strong>${escapeHtml(r.fullName)}</strong><span>${r.status ? "" : ""}</span></span>
+          ${r.status ? `<span class="pill ${r.status}">${escapeHtml(attendanceStatusLabel(r.status))}${r.status === "partial" && r.minutesCompleted != null ? " &middot; " + (r.minutesCompleted / 60).toFixed(2) + "h" : ""}</span>` : '<span style="color:var(--faint);font-size:12px;">Not recorded</span>'}
+        </div>`
+        )
+        .join("")}
+    </div>
+    <div class="act-detail-footer">
+      <span style="font-size:12px;color:var(--muted);">Attendance: ${recorded} / ${roster.length}</span>
+      <button class="btn btn-sm" style="width:auto;" onclick="openAttendanceModal(${a.id})">Record Attendance</button>
+    </div>`;
+}
+
+async function toggleActivityExpand(key) {
+  const [kind, idStr] = key.split(":");
+  const id = Number(idStr);
+  actExpandedId = actExpandedId === key ? null : key;
+  renderActivities();
+  if (actExpandedId !== key) return;
+
+  if (!actRosterCache.has(id)) {
+    const data = await apiRequest(`/supervisor/session-occasions/${id}`);
+    if (data) actRosterCache.set(id, data.roster);
+  }
+  const el = document.getElementById(`act-detail-${id}`);
+  const activity = allActivities.find((a) => a.kind === kind && a.id === id);
+  if (el && activity) el.innerHTML = actRosterHtml(activity);
+}
+
+function renderActivitiesPagination() {
+  const el = document.getElementById("actPagination");
+  const totalPages = Math.max(1, Math.ceil(actState.total / actState.pageSize));
+  if (actState.total === 0) {
+    el.innerHTML = "";
+    return;
+  }
+  const from = (actState.page - 1) * actState.pageSize + 1;
+  const to = Math.min(actState.page * actState.pageSize, actState.total);
+  el.innerHTML = `
+    <span>${from}&ndash;${to} of ${actState.total}</span>
+    <div class="act-pagination-btns">
+      <button class="icon-btn" ${actState.page <= 1 ? "disabled" : ""} onclick="changeActivitiesPage(-1)"><i class="fa fa-chevron-left"></i></button>
+      <span style="align-self:center;">Page ${actState.page} of ${totalPages}</span>
+      <button class="icon-btn" ${actState.page >= totalPages ? "disabled" : ""} onclick="changeActivitiesPage(1)"><i class="fa fa-chevron-right"></i></button>
+    </div>`;
+}
+
+function changeActivitiesPage(delta) {
+  actState.page += delta;
+  loadActivities();
+}
+
+function reloadActivitiesFromFilters() {
+  actState.page = 1;
+  actExpandedId = null;
+  loadActivities();
+}
+
+function populateActivitiesTraineeFilter() {
+  const sel = document.getElementById("actTraineeFilter");
+  const current = sel.value;
+  sel.innerHTML =
+    '<option value="">All trainees</option>' +
+    allStudents.map((s) => `<option value="${s.id}">${escapeHtml(s.full_name)}</option>`).join("");
+  sel.value = current;
+}
+
+function applyActivitiesCustomRange() {
+  reloadActivitiesFromFilters();
+}
+
+let actSearchDebounce = null;
+document.getElementById("actSearch").addEventListener("input", () => {
+  clearTimeout(actSearchDebounce);
+  actSearchDebounce = setTimeout(reloadActivitiesFromFilters, 350);
+});
+document.getElementById("actTypeFilter").addEventListener("change", reloadActivitiesFromFilters);
+document.getElementById("actTraineeFilter").addEventListener("change", reloadActivitiesFromFilters);
+document.getElementById("actSort").addEventListener("change", reloadActivitiesFromFilters);
+document.getElementById("actDateFilter").addEventListener("change", () => {
+  document.getElementById("actCustomDateRow").style.display = document.getElementById("actDateFilter").value === "custom" ? "flex" : "none";
+  if (document.getElementById("actDateFilter").value !== "custom") reloadActivitiesFromFilters();
+});
+
+async function loadActivitiesSummary() {
+  const data = await apiRequest("/supervisor/activities/summary");
+  if (!data) return;
+  document.getElementById("actSumTotal").textContent = data.totalActivities;
+  document.getElementById("actSumTraining").textContent = data.trainingSessions;
+  document.getElementById("actSumHours").textContent = `${Number(data.trainingHours).toFixed(1)}h`;
+  document.getElementById("actSumTrainees").textContent = data.traineesCovered;
+  document.getElementById("actSumPending").textContent = data.pendingAttendance;
+}
 
 // ---- Add Session (group-wide: one Session for your whole caseload/Group
 // at once) -- Attendance is a fully separate step, see the Group Sessions
@@ -6218,41 +6694,17 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
       `Logged for ${result.created.length} trainee${result.created.length === 1 ? "" : "s"}. Open it below to record Attendance.`
     );
     closeModal("groupSessionModal");
-    loadSessions();
-    loadSessionOccasions();
+    loadActivities();
+    loadActivitiesSummary();
     loadSchedule();
     loadTrainingHoursSummary();
   }
 });
 
-// ---- Group Sessions list + Attendance (a fully separate step from
-// creating the Session -- see GET/PUT /supervisor/session-occasions). -----
-
-let gsOccasions = [];
-
-async function loadSessionOccasions() {
-  const tbody = document.getElementById("sessionOccasionsBody");
-  const data = await apiRequest("/supervisor/session-occasions");
-  if (!data) return;
-  gsOccasions = data.occasions;
-  if (!gsOccasions.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No sessions logged yet.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = gsOccasions
-    .map(
-      (o) => `
-    <tr>
-      <td>${escapeHtml(o.title || "Untitled")}</td>
-      <td>${escapeHtml(o.sessionTypeLabel)}</td>
-      <td>${new Date(o.date).toLocaleDateString()}${o.time ? " " + o.time.slice(0, 5) : ""}</td>
-      <td>${(o.durationMinutes / 60).toFixed(2)}h</td>
-      <td>${o.recordedCount}/${o.traineeCount} recorded</td>
-      <td><button type="button" class="btn btn-secondary" style="width:auto;" onclick="openAttendanceModal(${o.id})">Attendance</button></td>
-    </tr>`
-    )
-    .join("");
-}
+// ---- Attendance modal -- a fully separate step from creating the
+// Session, opened either from an expanded Group Session row's "Record
+// Attendance" button or the row's own "Attendance" action (see
+// GET/PUT /supervisor/session-occasions/:id[/attendance]). --------------
 
 // Cached after the first load -- this list rarely changes mid-session and
 // every Attendance modal open would otherwise re-fetch it.
@@ -6265,6 +6717,7 @@ async function ensureExcuseReasonsLoaded() {
 }
 
 let attActiveOccasionId = null;
+let attActiveOccasionDurationMinutes = 0;
 
 async function openAttendanceModal(occasionId) {
   attActiveOccasionId = occasionId;
@@ -6277,6 +6730,7 @@ async function openAttendanceModal(occasionId) {
   ]);
   if (!data) return;
   const o = data.occasion;
+  attActiveOccasionDurationMinutes = o.durationMinutes;
   document.getElementById("attendanceModalSubtitle").textContent =
     `${o.title || "Untitled"} — ${new Date(o.date).toLocaleDateString()} — ${(o.durationMinutes / 60).toFixed(2)}h (${o.sessionTypeLabel})`;
   list.innerHTML = data.roster.map((r) => attendanceRowHtml(r, reasons)).join("");
@@ -6318,9 +6772,7 @@ let attSaveInFlight = false;
 
 async function saveAttendance() {
   if (!attActiveOccasionId || attSaveInFlight) return;
-  const occasion = gsOccasions.find((o) => o.id === attActiveOccasionId);
-  if (!occasion) return;
-  const sessionHours = occasion.durationMinutes / 60;
+  const sessionHours = attActiveOccasionDurationMinutes / 60;
 
   const rows = Array.from(document.querySelectorAll("#attendanceRosterList .att-row"));
   const entries = [];
@@ -6357,7 +6809,9 @@ async function saveAttendance() {
     if (result) {
       showToast("Attendance saved", "success");
       closeModal("attendanceModal");
-      loadSessionOccasions();
+      actRosterCache.delete(attActiveOccasionId);
+      loadActivities();
+      loadActivitiesSummary();
       loadTrainingHoursSummary();
     }
   } finally {
@@ -6389,9 +6843,28 @@ function openSessionModal(session) {
   openModal("sessionModal");
 }
 
+// Maps a unified /activities row (typeCode/notes) back to the
+// recordType/content shape openSessionModal/submitRecordForm's PUT URL
+// already expect -- only ever called for a 'single' kind row (a Group
+// Session occasion has no single recordType to edit this way).
+function activityToSessionRecord(a) {
+  const recordType = a.typeCode === "training" ? "training_session" : a.typeCode === "supervision" ? "supervision_session" : "hour_session";
+  return {
+    id: a.id,
+    recordType,
+    hourTypeCode: recordType === "hour_session" ? a.typeCode : undefined,
+    studentId: a.studentId,
+    title: a.title,
+    date: a.date,
+    time: a.time,
+    durationMinutes: a.durationMinutes,
+    content: a.notes,
+  };
+}
+
 function editSession(id) {
-  const s = allSessions.find((x) => x.id === id);
-  if (s) openSessionModal(s);
+  const a = allActivities.find((x) => x.kind === "single" && x.id === id);
+  if (a) openSessionModal(activityToSessionRecord(a));
 }
 
 document.getElementById("sessionModalForm").addEventListener("submit", async (e) => {
@@ -6425,21 +6898,23 @@ document.getElementById("sessionModalForm").addEventListener("submit", async (e)
       editId ? "The training activity has been updated successfully." : "The training activity has been scheduled successfully."
     );
     closeModal("sessionModal");
-    loadSessions();
+    loadActivities();
+    loadActivitiesSummary();
     loadSchedule();
     if (currentStudentId == studentId) refreshCurrentStudent();
   }
 });
 
 function confirmDeleteSession(id) {
-  const s = allSessions.find((x) => x.id === id);
-  const type = s ? s.recordType : "training_session";
+  const a = allActivities.find((x) => x.kind === "single" && x.id === id);
+  const type = a ? activityToSessionRecord(a).recordType : "training_session";
   openConfirm("Delete this training activity?", "This can't be undone.", async () => {
     // FIX (rename pass): type-scoped URL to match the real backend.
     const result = await apiRequest(`/supervisor/records/${type}/${id}`, { method: "DELETE" });
     if (result) {
       showToast("Training activity deleted", "success");
-      loadSessions();
+      loadActivities();
+      loadActivitiesSummary();
       loadSchedule();
     }
   });

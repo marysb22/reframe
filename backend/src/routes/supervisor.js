@@ -33,6 +33,7 @@ const { broadcastDirectMessage, broadcastMessage } = require("../realtime/chatSo
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi, attachSubmissionHistories } = require("../utils/assignmentsQuery");
 const { resolveWeekRange } = require("../utils/weekPeriod");
 const { createSessionOccasion, recordSessionOccasionAttendance } = require("../utils/groupSessions");
+const { buildActivitiesQuery, buildCountQuery, buildActivitiesSummary } = require("../utils/activitiesQuery");
 const { DOCUMENT_SELECT } = require("../utils/documentsQuery");
 
 const router = express.Router();
@@ -526,6 +527,71 @@ router.put(
     }
 
     res.json({ updated: result.updated });
+  })
+);
+
+// ---- Training Activities (redesigned) -- one row per real-world
+// activity (a Group Session occasion OR a single-trainee session), never
+// one row per trainee under an occasion. See utils/activitiesQuery.js for
+// the full design note; this replaces the old client-side N+1
+// GET /students/:id loop the previous flat list used. --------------------
+
+// GET /api/supervisor/activities?search=&type=&dateFrom=&dateTo=&traineeId=&sort=&page=&pageSize=
+router.get(
+  "/activities",
+  asyncRoute(async (req, res, db) => {
+    const filters = {
+      search: req.query.search,
+      type: req.query.type,
+      dateFrom: req.query.dateFrom,
+      dateTo: req.query.dateTo,
+      traineeId: req.query.traineeId,
+      sort: req.query.sort,
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+    };
+    const listQuery = buildActivitiesQuery(req.user.id, filters);
+    const countQuery = buildCountQuery(req.user.id, filters);
+    const [{ rows }, { rows: countRows }] = await Promise.all([
+      db.query(listQuery.sql, listQuery.params),
+      db.query(countQuery.sql, countQuery.params),
+    ]);
+
+    res.json({
+      activities: rows.map((r) => ({
+        id: r.id,
+        kind: r.kind, // 'occasion' | 'single'
+        title: r.title,
+        typeCode: r.type_code,
+        typeLabel: r.type_label,
+        date: r.activity_date,
+        time: r.activity_time,
+        durationMinutes: r.duration_minutes,
+        notes: r.notes,
+        traineeCount: Number(r.trainee_count),
+        recordedCount: Number(r.recorded_count),
+        // 'single' kind only -- lets the row render/edit/delete without a
+        // second round-trip; always null for an 'occasion' row (multiple
+        // trainees, see the expand panel's own roster fetch instead).
+        studentId: r.student_id,
+        studentName: r.student_name,
+        studentCode: r.student_code,
+        attendanceStatus: r.attendance_status,
+      })),
+      total: Number(countRows[0].total),
+      page: listQuery.page,
+      pageSize: listQuery.pageSize,
+    });
+  })
+);
+
+// GET /api/supervisor/activities/summary -- compact top-of-page totals,
+// always unfiltered (the caller's whole caseload picture).
+router.get(
+  "/activities/summary",
+  asyncRoute(async (req, res, db) => {
+    const summary = await buildActivitiesSummary(db, req.user.id);
+    res.json(summary);
   })
 );
 
