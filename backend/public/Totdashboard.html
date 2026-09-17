@@ -7543,7 +7543,14 @@ function restoreEventDraftIfAny() {
     clearEventDraft();
   }
 }
-document.getElementById("eventForm").addEventListener("input", saveEventDraft);
+// This page has no Events-creation form of its own (that markup lives on
+// admin-events.html, which this draft/autosave logic was copied from) --
+// guarded so a ToT/Master Trainer dashboard load doesn't crash trying to
+// attach a listener to an element that was never on this page, which was
+// silently aborting every script statement after this one (including the
+// Settings page's Save profile/photo/password listeners further down).
+const eventFormEl_ = document.getElementById("eventForm");
+if (eventFormEl_) eventFormEl_.addEventListener("input", saveEventDraft);
 restoreEventDraftIfAny();
 
 // Async: the list endpoint never includes child data (agenda/speakers/etc,
@@ -7607,7 +7614,7 @@ async function deleteEvent(id) {
   }
 }
 
-document.getElementById("eventForm").addEventListener("submit", async (e) => {
+document.getElementById("eventForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const dates = getEventDatesPayload();
