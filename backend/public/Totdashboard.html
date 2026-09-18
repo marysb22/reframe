@@ -1534,18 +1534,18 @@
             padding: 1px 7px;
         }
 
-        /* Capped to exactly 5 card-widths (110px cards + 14px gaps) so a
+        /* Capped to exactly 5 card-widths (110px cards + 50px gaps) so a
            row never silently shows however many happen to fit a wide
            screen -- past 5 books the row scrolls and the arrow sits right
            at that same edge, not off at the far end of the section. */
         .book-carousel {
             position: relative;
-            max-width: min(606px, 100%);
+            max-width: min(750px, 100%);
         }
 
         .book-list {
             display: flex;
-            gap: 14px;
+            gap: 50px;
             overflow-x: auto;
             scroll-behavior: smooth;
             scroll-snap-type: x proximity;
