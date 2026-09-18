@@ -580,6 +580,95 @@ router.patch(
   })
 );
 
+// Every granular permission this app currently knows about -- all Library-
+// scoped today (see migration 025), but the admin_permissions table itself
+// is deliberately not Library-specific, so this list is the one place a
+// future non-Library permission would also get added.
+const KNOWN_PERMISSION_CODES = ["library.view", "library.add", "library.edit", "library.delete"];
+
+// GET /api/admin/admins -- the one place admin accounts themselves are
+// listed. GET /users above deliberately excludes role='admin' (it's the
+// Trainee/Supervisor roster), and there was no other admin-accounts list
+// anywhere in this app before migration 025's granular permissions needed
+// one to manage.
+router.get(
+  "/admins",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      `SELECT uc.id, uc.member_code, uc.status, a.full_name, a.email
+       FROM user_credentials uc JOIN admin_users a ON a.id = uc.id
+       WHERE uc.role = 'admin'
+       ORDER BY a.full_name`
+    );
+    res.json({ admins: rows.map((r) => ({ id: r.id, fullName: r.full_name, email: r.email, memberCode: r.member_code, status: r.status })) });
+  })
+);
+
+// GET /api/admin/users/:id/permissions -- this admin's own granted Library
+// permissions (meaningless for a non-admin account -- 400s rather than
+// silently returning an empty/misleading list).
+router.get(
+  "/users/:id/permissions",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid account id" });
+
+    const { rows: userRows } = await db.query("SELECT role FROM user_credentials WHERE id = ?", [id]);
+    if (!userRows.length) return res.status(404).json({ error: "Account not found" });
+    if (userRows[0].role !== "admin") {
+      return res.status(400).json({ error: "Granular permissions only apply to Admin accounts" });
+    }
+
+    const { rows } = await db.query("SELECT permission_code FROM admin_permissions WHERE admin_id = ?", [id]);
+    const granted = new Set(rows.map((r) => r.permission_code));
+    res.json({ permissions: KNOWN_PERMISSION_CODES.map((code) => ({ code, granted: granted.has(code) })) });
+  })
+);
+
+// PUT /api/admin/users/:id/permissions  { permissions: ['library.view', ...] }
+// Replaces this admin's ENTIRE granted set with exactly the codes listed --
+// omitting a code revokes it, same "set" semantics as the existing
+// notification-preferences PUT elsewhere in this app. Deliberately refuses
+// to let an admin change their own permissions (self-grant or accidental
+// self-lockout) -- every admin account today is equally trusted at the
+// role level (see middleware/auth.js's flat requireAdmin), so managing
+// ANOTHER admin's permissions is unrestricted, but touching your own
+// through this endpoint never is.
+router.put(
+  "/users/:id/permissions",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid account id" });
+    if (id === Number(req.user.id)) {
+      return res.status(400).json({ error: "You can't change your own Library permissions" });
+    }
+
+    const { rows: userRows } = await db.query("SELECT role FROM user_credentials WHERE id = ?", [id]);
+    if (!userRows.length) return res.status(404).json({ error: "Account not found" });
+    if (userRows[0].role !== "admin") {
+      return res.status(400).json({ error: "Granular permissions only apply to Admin accounts" });
+    }
+
+    const requested = Array.isArray((req.body || {}).permissions) ? req.body.permissions : [];
+    const invalid = requested.filter((c) => !KNOWN_PERMISSION_CODES.includes(c));
+    if (invalid.length) return res.status(400).json({ error: `Unknown permission code(s): ${invalid.join(", ")}` });
+
+    await db.query("DELETE FROM admin_permissions WHERE admin_id = ?", [id]);
+    for (const code of requested) {
+      await db.query(
+        "INSERT INTO admin_permissions (admin_id, permission_code, granted_by) VALUES (?, ?, ?)",
+        [id, code, req.user.id]
+      );
+    }
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'admin_permissions_updated', 'admin_permissions', ?, ?)",
+      [req.user.id, id, JSON.stringify(requested)]
+    );
+
+    res.json({ permissions: KNOWN_PERMISSION_CODES.map((code) => ({ code, granted: requested.includes(code) })) });
+  })
+);
+
 // POST /api/admin/users/:id/reset-password
 router.post(
   "/users/:id/reset-password",

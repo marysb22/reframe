@@ -47,6 +47,40 @@ function requireRole(...roles) {
 }
 
 const requireAdmin = requireRole("admin");
+
+/**
+ * Gates one specific admin action behind a granular permission (see
+ * migration 025's admin_permissions table) -- e.g. requireAdminPermission
+ * ("library.delete") for an admin-only delete route. Must run after
+ * requireAdmin (or another check that already guarantees req.user.role ===
+ * 'admin') -- it only ever consults admin_permissions, never re-checks
+ * role itself. Every admin account that existed when migration 025 ran was
+ * seeded with every permission, so this is purely additive: nothing that
+ * already worked stops working unless someone later explicitly revokes a
+ * specific admin's specific permission through the new Admin > Permissions
+ * UI. A brand-new admin account added after migration 025 ran (there is
+ * no in-app "create admin" route -- new admin rows are still added
+ * directly, same as the one seeded account always was) starts with NO
+ * rows here -- deny by default until an existing admin explicitly grants
+ * it something, rather than silently inheriting full access.
+ */
+function requireAdminPermission(code) {
+  return async (req, res, next) => {
+    try {
+      const { pool } = require("../db");
+      const { rows } = await pool.query(
+        "SELECT 1 FROM admin_permissions WHERE admin_id = ? AND permission_code = ?",
+        [req.user.id, code]
+      );
+      if (!rows.length) {
+        return res.status(403).json({ error: "You don't have permission to perform this action." });
+      }
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+}
 const requireSupervisor = requireRole("supervisor");
 const requireDesigner = requireRole("designer");
 
@@ -158,6 +192,7 @@ function asyncRoute(handler) {
 module.exports = {
   requireAuth,
   requireAdmin,
+  requireAdminPermission,
   requireSupervisor,
   requireDesigner,
   requireRole,

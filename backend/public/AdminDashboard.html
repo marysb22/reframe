@@ -1800,7 +1800,10 @@
                             <h2 style="margin:0;">Library</h2>
                             <p>Professional Books &amp; Knowledge Resources</p>
                         </div>
-                        <button class="btn" onclick="openAddBookModal()"><i class="fa fa-plus"></i> Add Book</button>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-secondary" onclick="openLibraryPermissionsModal()"><i class="fa fa-user-shield"></i> Permissions</button>
+                            <button class="btn" onclick="openAddBookModal()"><i class="fa fa-plus"></i> Add Book</button>
+                        </div>
                     </div>
                     <div class="toolbar" style="margin-top:14px;">
                         <input type="text" id="librarySearch" placeholder="Search by title, author, publisher, category, or type..." oninput="applyLibraryFilters()" style="flex:1;">
@@ -1812,10 +1815,23 @@
                 </div>
             </section>
 
-            <!-- ADD BOOK MODAL -->
+            <!-- ADD / EDIT BOOK MODAL -- one shared modal, like the rest of this
+                 app's edit-in-place forms. #bookEditId empty = Add (multipart,
+                 file required); set = Edit (metadata only, no file inputs --
+                 see PUT /library/books/:id, which never touches the stored
+                 file/cover). -->
             <div class="modal-overlay" id="addBookModal">
                 <div class="modal-box">
-                    <h3>Add a Book</h3>
+                    <h3 id="addBookModalTitle">Add a Book</h3>
+                    <input type="hidden" id="bookEditId" value="">
+                    <div class="book-online-search" id="bookOnlineSearchRow">
+                        <label style="margin-top:0;">Search online by ISBN (optional)</label>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="bookSearchIsbn" placeholder="e.g. 9780143127550" style="flex:1;">
+                            <button type="button" class="btn btn-secondary" style="width:auto;" onclick="searchBookOnline()">Search</button>
+                        </div>
+                        <p class="field-hint" id="bookSearchStatus" style="margin-bottom:0;">Fills in the fields below for you to review -- nothing is saved until you click Add Book.</p>
+                    </div>
                     <form id="addBookForm">
                         <label style="margin-top:0;">Book title *</label>
                         <input type="text" id="bookTitle" required>
@@ -1831,23 +1847,46 @@
                             <div><label>Publication year</label><input type="number" id="bookPublicationYear" min="1000" placeholder="e.g. 2008"></div>
                             <div><label>Publisher</label><input type="text" id="bookPublisher"></div>
                         </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div><label>Country</label><select id="bookCountry"><option value="">Select a country...</option></select></div>
+                            <div><label>ISBN</label><input type="text" id="bookIsbn" placeholder="e.g. 9780143127550"></div>
+                        </div>
+                        <label>OCLC number</label>
+                        <input type="text" id="bookOclc" placeholder="Optional">
                         <label>Description</label>
                         <textarea id="bookDescription"></textarea>
-                        <label>Cover image</label>
-                        <div class="book-upload-box" id="bookCoverBox">
-                            <input type="file" id="bookCoverInput" accept="image/*" onchange="onBookFileChosen('cover')">
-                            <span id="bookCoverLabel"><i class="fa fa-image"></i> Click to choose a cover image (optional)</span>
-                        </div>
-                        <label>Book file *</label>
-                        <div class="book-upload-box" id="bookFileBox">
-                            <input type="file" id="bookFileInput" accept=".pdf,.doc,.docx,.ppt,.pptx,image/*,video/mp4,video/quicktime,audio/*" required onchange="onBookFileChosen('file')">
-                            <span id="bookFileLabel"><i class="fa fa-file-arrow-up"></i> Click to choose the book file</span>
+                        <div id="bookFileFields">
+                            <label>Cover image</label>
+                            <div class="book-upload-box" id="bookCoverBox">
+                                <input type="file" id="bookCoverInput" accept="image/*" onchange="onBookFileChosen('cover')">
+                                <span id="bookCoverLabel"><i class="fa fa-image"></i> Click to choose a cover image (optional)</span>
+                            </div>
+                            <label>Book file *</label>
+                            <div class="book-upload-box" id="bookFileBox">
+                                <input type="file" id="bookFileInput" accept=".pdf,.doc,.docx,.ppt,.pptx,image/*,video/mp4,video/quicktime,audio/*" onchange="onBookFileChosen('file')">
+                                <span id="bookFileLabel"><i class="fa fa-file-arrow-up"></i> Click to choose the book file</span>
+                            </div>
                         </div>
                         <div class="modal-actions">
                             <button type="button" class="btn btn-secondary" onclick="closeAddBookModal()">Cancel</button>
-                            <button type="submit" class="btn">Add Book</button>
+                            <button type="submit" class="btn" id="addBookSubmitBtn">Add Book</button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- ADMIN LIBRARY PERMISSIONS MODAL -->
+            <div class="modal-overlay" id="libraryPermissionsModal">
+                <div class="modal-box">
+                    <h3 style="margin-top:0;">Admin Library Permissions</h3>
+                    <p class="field-hint" style="margin-bottom:14px;">Choose an Admin account, then grant or revoke each Library action for them. You can't change your own permissions here.</p>
+                    <label style="margin-top:0;">Admin account</label>
+                    <select id="permAdminSelect" onchange="loadAdminLibraryPermissions()"></select>
+                    <div id="permCheckboxes" style="display:flex;flex-direction:column;gap:10px;margin-top:14px;"></div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeLibraryPermissionsModal()">Close</button>
+                        <button type="button" class="btn" id="permSaveBtn" onclick="saveAdminLibraryPermissions()">Save</button>
+                    </div>
                 </div>
             </div>
 
@@ -2647,7 +2686,7 @@
                     return null;
                 }
                 const body = await response.json().catch(() => null);
-                if (!response.ok) throw new Error(body ?.error || "Request failed");
+                if (!response.ok) throw new Error(body?.error || "Request failed");
                 return body;
             } catch (err) {
                 showToast(err.message || "Connection error. Is the backend running on port 3000?", "error");
@@ -2719,7 +2758,7 @@
         }
 
         function copyText(text) {
-            navigator.clipboard ?.writeText(text);
+            navigator.clipboard?.writeText(text);
             showToast("Copied", "success");
         }
 
@@ -4970,6 +5009,46 @@ function populateLibraryTypeSelects() {
 }
 populateLibraryTypeSelects();
 
+// Mirrors backend/src/utils/countries.js verbatim -- same manual-sync
+// convention as RESOURCE_TYPES above. A plain dropdown, not free text, so
+// "Lebanon"/"lebanon"/"LEBANON" can never all exist as different values.
+const LIBRARY_COUNTRIES = [
+  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
+  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
+  "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei",
+  "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde",
+  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros",
+  "Congo (Democratic Republic)", "Congo (Republic)", "Costa Rica", "Croatia", "Cuba", "Cyprus",
+  "Czech Republic", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt",
+  "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji",
+  "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
+  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland",
+  "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Ivory Coast", "Jamaica",
+  "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kosovo", "Kuwait", "Kyrgyzstan", "Laos",
+  "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg",
+  "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands",
+  "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
+  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands",
+  "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway",
+  "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru",
+  "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda",
+  "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa",
+  "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles",
+  "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
+  "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname",
+  "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand",
+  "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan",
+  "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States",
+  "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia",
+  "Zimbabwe",
+];
+function populateLibraryCountrySelect() {
+  const sel = document.getElementById("bookCountry");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Select a country...</option>' + LIBRARY_COUNTRIES.map((c) => `<option value="${c}">${c}</option>`).join("");
+}
+populateLibraryCountrySelect();
+
 function libraryFileExt(name) {
   const m = /\.([a-z0-9]+)$/i.exec(name || "");
   return m ? m[1].toUpperCase() : "";
@@ -5044,6 +5123,7 @@ function renderLibraryGrid(list) {
       <div class="book-actions">
         <button type="button" class="book-open-btn" onclick="openBookReader(${b.id})">Open</button>
         <a class="book-menu-btn" title="Download" href="${fileUrl}" download="${escapeHtml(b.originalName || "")}" style="display:flex;align-items:center;justify-content:center;text-decoration:none;"><i class="fa fa-download"></i></a>
+        ${b.canEdit ? `<button type="button" class="book-menu-btn" title="Edit this book" onclick="editLibraryBook(${b.id})"><i class="fa fa-pen"></i></button>` : ""}
         ${b.canDelete ? `<button type="button" class="book-menu-btn" title="Remove this book" onclick="deleteLibraryBook(${b.id})"><i class="fa fa-trash"></i></button>` : ""}
       </div>
     </div>
@@ -5159,9 +5239,21 @@ function onBookFileChosen(which) {
   label.innerHTML = `<i class="fa fa-check"></i> ${escapeHtml(f.name)}`;
 }
 
-function openAddBookModal() {
+// Shared Add/Edit modal -- pass an existing book to edit it (metadata
+// only, see PUT /library/books/:id), or nothing to add a new one
+// (multipart, file required). #bookFileFields (cover/file inputs) only
+// makes sense for Add -- an edit never touches the stored file.
+function openAddBookModal(book) {
   const form = document.getElementById("addBookForm");
   form.reset();
+  document.getElementById("bookEditId").value = book ? book.id : "";
+  document.getElementById("addBookModalTitle").textContent = book ? "Edit Book" : "Add a Book";
+  document.getElementById("addBookSubmitBtn").textContent = book ? "Save Changes" : "Add Book";
+  document.getElementById("bookOnlineSearchRow").style.display = book ? "none" : "block";
+  document.getElementById("bookFileFields").style.display = book ? "none" : "block";
+  document.getElementById("bookFileInput").required = !book;
+  document.getElementById("bookSearchStatus").textContent = "Fills in the fields below for you to review -- nothing is saved until you click Add Book.";
+
   ["cover", "file"].forEach((which) => {
     document.getElementById(which === "cover" ? "bookCoverBox" : "bookFileBox").classList.remove("has-file");
     document.getElementById(which === "cover" ? "bookCoverLabel" : "bookFileLabel").innerHTML =
@@ -5169,23 +5261,103 @@ function openAddBookModal() {
         ? `<i class="fa fa-image"></i> Click to choose a cover image (optional)`
         : `<i class="fa fa-file-arrow-up"></i> Click to choose the book file`;
   });
+
+  if (book) {
+    document.getElementById("bookTitle").value = book.title || "";
+    document.getElementById("bookAuthor").value = book.author || "";
+    document.getElementById("bookResourceType").value = book.resourceType || "";
+    document.getElementById("bookCategory").value = book.category || "";
+    document.getElementById("bookPublicationYear").value = book.publicationYear || "";
+    document.getElementById("bookPublisher").value = book.publisher || "";
+    document.getElementById("bookCountry").value = book.country || "";
+    document.getElementById("bookIsbn").value = book.isbn || "";
+    document.getElementById("bookOclc").value = book.oclcNumber || "";
+    document.getElementById("bookDescription").value = book.description || "";
+  }
+
   document.getElementById("addBookModal").classList.add("show");
+}
+
+function editLibraryBook(id) {
+  const b = libraryBooksRaw.find((x) => x.id === id);
+  if (b) openAddBookModal(b);
 }
 
 function closeAddBookModal() {
   document.getElementById("addBookModal").classList.remove("show");
 }
 
+// Optional helper for the Add flow only -- looks up an ISBN via the
+// backend's online-search proxy and fills in the form fields for review.
+// Never saves anything itself; POST /library/books (below) is still the
+// only thing that writes a book.
+async function searchBookOnline() {
+  const isbn = document.getElementById("bookSearchIsbn").value.trim();
+  const statusEl = document.getElementById("bookSearchStatus");
+  if (!isbn) {
+    statusEl.textContent = "Enter an ISBN first.";
+    return;
+  }
+  statusEl.textContent = "Searching...";
+  const data = await apiRequest(`/library/online-search?isbn=${encodeURIComponent(isbn)}`);
+  if (!data) {
+    statusEl.textContent = "No result -- you can still enter details manually below.";
+    return;
+  }
+  if (data.title) document.getElementById("bookTitle").value = data.title;
+  if (data.author) document.getElementById("bookAuthor").value = data.author;
+  if (data.publisher) document.getElementById("bookPublisher").value = data.publisher;
+  if (data.publicationYear) document.getElementById("bookPublicationYear").value = data.publicationYear;
+  if (data.description) document.getElementById("bookDescription").value = data.description;
+  document.getElementById("bookIsbn").value = data.isbn || isbn;
+  statusEl.textContent = "Found -- review the fields below before saving.";
+}
+
 document.getElementById("addBookForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const file = document.getElementById("bookFileInput").files[0];
-  if (!file) return showToast("Choose a book file", "error");
+  const editId = document.getElementById("bookEditId").value;
   const title = document.getElementById("bookTitle").value.trim();
   const author = document.getElementById("bookAuthor").value.trim();
   const resourceType = document.getElementById("bookResourceType").value;
   if (!title) return showToast("Title is required", "error");
   if (!author) return showToast("Author is required", "error");
   if (!resourceType) return showToast("Choose a type", "error");
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalLabel = submitBtn.textContent;
+
+  if (editId) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Saving...";
+    const payload = {
+      title, author, resourceType,
+      description: document.getElementById("bookDescription").value,
+      category: document.getElementById("bookCategory").value,
+      publisher: document.getElementById("bookPublisher").value,
+      publicationYear: document.getElementById("bookPublicationYear").value || undefined,
+      country: document.getElementById("bookCountry").value,
+      isbn: document.getElementById("bookIsbn").value,
+      oclcNumber: document.getElementById("bookOclc").value,
+    };
+    const result = await apiRequest(`/library/books/${editId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
+    if (result) {
+      const idx = libraryBooksRaw.findIndex((b) => b.id === Number(editId));
+      if (idx !== -1) libraryBooksRaw[idx] = { ...libraryBooksRaw[idx], ...result };
+      applyLibraryFilters();
+      closeAddBookModal();
+      showSuccessNotification("Book Updated", "The book's details have been saved.");
+    }
+    return;
+  }
+
+  const file = document.getElementById("bookFileInput").files[0];
+  if (!file) return showToast("Choose a book file", "error");
   const form = new FormData();
   form.append("title", title);
   form.append("author", author);
@@ -5195,6 +5367,9 @@ document.getElementById("addBookForm").addEventListener("submit", async (e) => {
   form.append("publisher", document.getElementById("bookPublisher").value);
   const publicationYear = document.getElementById("bookPublicationYear").value;
   if (publicationYear) form.append("publicationYear", publicationYear);
+  form.append("country", document.getElementById("bookCountry").value);
+  form.append("isbn", document.getElementById("bookIsbn").value);
+  form.append("oclcNumber", document.getElementById("bookOclc").value);
   form.append("file", file);
   const cover = document.getElementById("bookCoverInput").files[0];
   if (cover) form.append("coverImage", cover);
@@ -5203,8 +5378,6 @@ document.getElementById("addBookForm").addEventListener("submit", async (e) => {
   // duplicate/in-progress protection is server-side (see routes/library.js),
   // this just avoids firing an obviously-redundant second request from a
   // double-click or impatient re-click while the first is still uploading.
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  const originalLabel = submitBtn.textContent;
   submitBtn.disabled = true;
   submitBtn.textContent = "Uploading…";
   try {
@@ -5217,10 +5390,10 @@ document.getElementById("addBookForm").addEventListener("submit", async (e) => {
       const body = await response.json().catch(() => null);
       throw new Error((body && body.error) || "Failed to add book");
     }
-    const book = await response.json();
-    book.canDelete = true;
-    libraryBooksRaw.unshift(book);
-    applyLibraryFilters();
+    // Re-fetched rather than trusting a locally-guessed canDelete/canEdit --
+    // those depend on this account's actual granted permissions (see
+    // GET /books), not on "I just added it".
+    await loadLibrary();
     closeAddBookModal();
     showSuccessNotification("Book Added", "The book has been added to the Library.");
   } catch (err) {
@@ -5238,6 +5411,78 @@ async function deleteLibraryBook(id) {
     libraryBooksRaw = libraryBooksRaw.filter((b) => b.id !== id);
     applyLibraryFilters();
     showToast("Book removed", "success");
+  }
+}
+
+// ---- Admin Library Permissions (see migration 025 / GET,PUT
+// /admin/users/:id/permissions) -- lets one admin grant or revoke another
+// admin's View/Add/Edit/Delete access to the Library. Never lets an admin
+// touch their own permissions (the backend refuses it too; this just
+// keeps that account out of the picker so it's never even offered).
+const PERMISSION_LABELS = {
+  "library.view": "View Library",
+  "library.add": "Add Book / Material",
+  "library.edit": "Edit Book / Material",
+  "library.delete": "Delete Book / Material",
+};
+let permAdmins = [];
+
+async function openLibraryPermissionsModal() {
+  const data = await apiRequest("/admin/admins");
+  if (!data) return;
+  const myId = Number(JSON.parse(atob(token.split(".")[1])).id);
+  permAdmins = data.admins.filter((a) => a.id !== myId);
+  const sel = document.getElementById("permAdminSelect");
+  if (!permAdmins.length) {
+    sel.innerHTML = '<option value="">No other Admin accounts</option>';
+    document.getElementById("permCheckboxes").innerHTML = "";
+  } else {
+    sel.innerHTML = permAdmins.map((a) => `<option value="${a.id}">${escapeHtml(a.fullName)} (${escapeHtml(a.memberCode)})</option>`).join("");
+    await loadAdminLibraryPermissions();
+  }
+  document.getElementById("libraryPermissionsModal").classList.add("show");
+}
+
+function closeLibraryPermissionsModal() {
+  document.getElementById("libraryPermissionsModal").classList.remove("show");
+}
+
+async function loadAdminLibraryPermissions() {
+  const id = document.getElementById("permAdminSelect").value;
+  const box = document.getElementById("permCheckboxes");
+  if (!id) {
+    box.innerHTML = "";
+    return;
+  }
+  box.innerHTML = "Loading...";
+  const data = await apiRequest(`/admin/users/${id}/permissions`);
+  if (!data) return;
+  box.innerHTML = data.permissions
+    .map(
+      (p) => `
+    <label style="display:flex;align-items:center;gap:9px;font-weight:500;font-size:13.5px;">
+      <input type="checkbox" class="perm-checkbox" value="${p.code}" ${p.granted ? "checked" : ""}>
+      ${escapeHtml(PERMISSION_LABELS[p.code] || p.code)}
+    </label>`
+    )
+    .join("");
+}
+
+async function saveAdminLibraryPermissions() {
+  const id = document.getElementById("permAdminSelect").value;
+  if (!id) return;
+  const checked = Array.from(document.querySelectorAll(".perm-checkbox:checked")).map((el) => el.value);
+  const btn = document.getElementById("permSaveBtn");
+  btn.disabled = true;
+  const result = await apiRequest(`/admin/users/${id}/permissions`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ permissions: checked }),
+  });
+  btn.disabled = false;
+  if (result) {
+    showSuccessNotification("Permissions Updated", "This Admin's Library permissions have been saved.");
+    loadLibrary();
   }
 }
     </script>
