@@ -3928,15 +3928,35 @@ function renderCvDetail() {
     : "";
   const trainingSection = `<div class="cv-section"><h4>Training Information</h4><div class="cv-field-grid">${trainingDateField}${trainingComputedFields}</div></div>`;
 
+  // CV / Resume -- the actual uploaded PDF (students.cv_file /
+  // supervisors.cv_file, whichever applies), never a generated document
+  // from these other profile fields. Same for Trainee and ToT/Master
+  // Trainer -- both roles can upload one from their own My Profile (see
+  // POST /profile/cv). "View" opens the real PDF inline (no ?mode=download,
+  // matching files.js's default Content-Disposition); "Download" adds
+  // ?mode=download for an attachment response. Both go through the same
+  // authenticated, ownership-checked /uploads/cv/:filename route as
+  // everywhere else in the app -- no separate, less-restricted path.
+  const cvFileSection = `
+    <div class="cv-section">
+      <h4>CV / Resume</h4>
+      ${
+        d.cvFile
+          ? `<div style="display:flex;gap:10px;flex-wrap:wrap;">
+               <a class="btn btn-secondary btn-sm no-print" href="${API_BASE}/uploads/cv/${d.cvFile}${TOKEN_Q}" target="_blank" rel="noopener"><i class="fa fa-eye"></i> View PDF</a>
+               <a class="btn btn-secondary btn-sm no-print" href="${API_BASE}/uploads/cv/${d.cvFile}?mode=download&token=${encodeURIComponent(token)}" target="_blank" rel="noopener"><i class="fa fa-download"></i> Download PDF</a>
+             </div>`
+          : `<div class="empty-state">No CV uploaded</div>`
+      }
+    </div>
+  `;
+
   const actions = [
     `<button class="btn btn-secondary btn-sm no-print" onclick="closeCvDetail()"><i class="fa fa-arrow-left"></i> Back to list</button>`,
   ];
   const rightActions = [];
   if (!cvEditing) {
     rightActions.push(`<button class="btn btn-secondary btn-sm no-print" onclick="printCv()"><i class="fa fa-print"></i> Print</button>`);
-    if (!isSupervisor && d.cvFile) {
-      rightActions.push(`<a class="btn btn-secondary btn-sm no-print" href="${API_BASE}/uploads/cv/${d.cvFile}${TOKEN_Q}" target="_blank" rel="noopener"><i class="fa fa-download"></i> Download CV</a>`);
-    }
     rightActions.push(`<button class="btn btn-sm no-print" onclick="startCvEdit()"><i class="fa fa-pen"></i> Edit</button>`);
   } else {
     rightActions.push(`<button class="btn btn-secondary btn-sm no-print" onclick="cancelCvEdit()">Cancel</button>`);
@@ -3967,6 +3987,7 @@ function renderCvDetail() {
     ${certificationsSection}
     ${specializationSection}
     ${trainingSection}
+    ${cvFileSection}
   `;
 }
 
