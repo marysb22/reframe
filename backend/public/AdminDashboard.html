@@ -458,15 +458,15 @@
    detail (author, type, category, year, added-by) collapsed into a
    single small green italic line beneath it. */
         
-        /* Responsive grid of compact cards -- auto-fill + a minmax floor is
-           what makes this adapt (many per row on desktop, fewer on tablet,
-           1-2 on a phone) without separate breakpoints; the floor is also
-           what stops a card from ever squeezing narrower than it can
-           readably hold a title. */
+        /* Compact library-card grid -- auto-fill + a small minmax floor
+           keeps books noticeably smaller than a generic square tile, so a
+           real library of dozens/hundreds of titles stays scannable
+           without huge whitespace, while still adapting to tablet/phone
+           without separate breakpoints. */
         .book-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+            gap: 10px;
             margin-top: 14px;
         }
 
@@ -474,38 +474,73 @@
             display: flex;
             flex-direction: column;
             border: 1px solid var(--border-soft);
-            border-radius: 12px;
+            border-radius: 10px;
             background: var(--surface);
             overflow: hidden;
             min-width: 0;
-            transition: border-color .15s ease, box-shadow .15s ease;
+            transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
         }
 
         .book-card:hover {
             border-color: var(--primary-light);
-            box-shadow: 0 3px 12px rgba(0, 0, 0, .07);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, .07);
+            transform: translateY(-1px);
         }
 
+        /* The cover is the one element that has to read as a physical book,
+           not a plain image tile -- a 2:3 ratio (a real paperback's
+           proportions), a faint printed-edge inset border, and the
+           spine/sheen pseudo-elements below are what carry that, so this
+           stays correct whether or not a real cover image is present. */
         .book-cover {
+            position: relative;
             width: 100%;
-            aspect-ratio: 3 / 4;
+            aspect-ratio: 2 / 3;
             flex-shrink: 0;
-            background: var(--surface-2);
+            background: linear-gradient(155deg, var(--surface-2), var(--border-soft));
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             cursor: pointer;
+            box-shadow: inset 0 0 0 1px rgba(15, 27, 30, .05);
+        }
+
+        /* A thin darker strip along the bound edge -- the single detail
+           that reads as "spine" rather than "square corner". */
+        .book-cover::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            background: linear-gradient(to right, rgba(15, 27, 30, .16), rgba(15, 27, 30, 0));
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* A faint diagonal sheen for a touch of depth -- kept subtle on
+           purpose, not a glossy/cartoonish highlight. */
+        .book-cover::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(255, 255, 255, .35) 0%, rgba(255, 255, 255, 0) 32%);
+            z-index: 1;
+            pointer-events: none;
         }
 
         .book-cover img {
+            position: relative;
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
 
         .book-cover i {
-            font-size: 26px;
+            position: relative;
+            font-size: 16px;
             color: var(--faint);
         }
 
@@ -514,12 +549,12 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 3px;
-            padding: 10px 11px 0;
+            gap: 2px;
+            padding: 8px 9px 0;
         }
 
         .book-title {
-            font-size: 12.5px;
+            font-size: 11.5px;
             font-weight: 700;
             color: var(--text);
             line-height: 1.3;
@@ -533,7 +568,7 @@
         }
 
         .book-author {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--muted);
             white-space: nowrap;
             overflow: hidden;
@@ -541,7 +576,7 @@
         }
 
         .book-meta {
-            font-size: 10.5px;
+            font-size: 9.5px;
             color: var(--success);
             font-style: italic;
             white-space: nowrap;
@@ -552,20 +587,20 @@
         .book-card-footer {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 9px 11px;
-            margin-top: 8px;
+            gap: 5px;
+            padding: 7px 9px;
+            margin-top: 6px;
         }
 
         .book-open-btn {
             flex: 1;
-            height: 27px;
-            padding: 0 8px;
-            border-radius: 7px;
+            height: 23px;
+            padding: 0 6px;
+            border-radius: 6px;
             border: 1px solid var(--primary);
             background: var(--primary);
             color: #fff;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
             cursor: pointer;
             font-family: inherit;
@@ -581,17 +616,18 @@
         }
 
         .book-menu-btn {
-            width: 27px;
-            height: 27px;
+            width: 23px;
+            height: 23px;
             flex-shrink: 0;
-            border-radius: 7px;
+            border-radius: 6px;
             border: 1px solid var(--border);
             background: var(--surface);
             color: var(--muted);
             cursor: pointer;
             margin-top: 0;
+            font-size: 10px;
         }
-        
+
         .modal-box.wide {
             max-width: 840px;
         }
