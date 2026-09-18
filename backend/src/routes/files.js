@@ -72,12 +72,27 @@ const AUTHORIZERS = {
   photos: async () => true,
 
   cv: async (user, filename) => {
-    const { rows } = await pool.query("SELECT id FROM students WHERE cv_file = ?", [filename]);
-    if (!rows.length) return false;
-    const studentId = rows[0].id;
+    const { rows: studentRows } = await pool.query("SELECT id FROM students WHERE cv_file = ?", [filename]);
+    if (studentRows.length) {
+      const studentId = studentRows[0].id;
+      if (user.role === "admin") return true;
+      if (user.role === "trainee") return Number(user.id) === studentId;
+      if (user.role === "supervisor") return isCaseloadMatch(user.id, studentId);
+      return false;
+    }
+    // A Supervisor's own CV (Master Trainer or ToT) -- same file, same
+    // column shape, just the other role table. Viewable by: the owner,
+    // Admin, and (for a ToT specifically) the Master Trainer they report
+    // to (primary_supervisor_id) -- the same "who already reviews this
+    // person" relationship isCaseloadMatch expresses for a Trainee's CV,
+    // just via the Supervisor-side FK instead of supervisor_students.
+    const { rows: supRows } = await pool.query("SELECT id, primary_supervisor_id FROM supervisors WHERE cv_file = ?", [filename]);
+    if (!supRows.length) return false;
+    const { id: supervisorId, primary_supervisor_id: masterTrainerId } = supRows[0];
     if (user.role === "admin") return true;
-    if (user.role === "trainee") return Number(user.id) === studentId;
-    if (user.role === "supervisor") return isCaseloadMatch(user.id, studentId);
+    if (user.role === "supervisor") {
+      return Number(user.id) === Number(supervisorId) || (masterTrainerId != null && Number(user.id) === Number(masterTrainerId));
+    }
     return false;
   },
 

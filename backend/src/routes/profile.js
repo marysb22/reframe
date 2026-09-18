@@ -43,7 +43,8 @@ const PROFILE_SELECT = `
     COALESCE(a.phone, sup.phone, st.phone, d.phone) AS phone,
     COALESCE(a.photo, sup.photo, st.photo, d.photo) AS photo,
     st.gender, st.date_of_birth, st.marital_status, st.address,
-    st.highest_degree, st.institution, st.certifications, st.cv_file,
+    st.highest_degree, st.institution, st.certifications,
+    COALESCE(sup.cv_file, st.cv_file) AS cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year,
     COALESCE(sup.group_id, st.group_id) AS group_id, tg.name AS group_name,
     sup.specialization, sup.bio, sup.supervisor_type,
@@ -359,8 +360,14 @@ router.post("/photo", requireAuth, (req, res) => {
   });
 });
 
-// POST /api/profile/cv  (multipart, field "cv") -- trainees only
-router.post("/cv", requireStudent, (req, res) => {
+// POST /api/profile/cv  (multipart, field "cv") -- Trainees and Supervisors
+// (Master Trainer/ToT) only; a CV isn't a meaningful concept for Admin/Designer.
+router.post("/cv", (req, res, next) => {
+  if (req.user.role !== "trainee" && req.user.role !== "supervisor") {
+    return res.status(403).json({ error: "This endpoint is only available to trainee and supervisor accounts" });
+  }
+  next();
+}, (req, res) => {
   cvUpload.single("cv")(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "No CV uploaded" });
@@ -384,9 +391,10 @@ router.post("/cv", requireStudent, (req, res) => {
       cvFilename = renamed;
     }
 
+    const table = req.user.role === "trainee" ? "students" : "supervisors";
     const { pool } = require("../db");
-    const { rows: prevRows } = await pool.query("SELECT cv_file FROM students WHERE id = ?", [req.user.id]);
-    await pool.query("UPDATE students SET cv_file = ?, updated_at = NOW() WHERE id = ?", [
+    const { rows: prevRows } = await pool.query(`SELECT cv_file FROM ${table} WHERE id = ?`, [req.user.id]);
+    await pool.query(`UPDATE ${table} SET cv_file = ?, updated_at = NOW() WHERE id = ?`, [
       cvFilename,
       req.user.id,
     ]);
