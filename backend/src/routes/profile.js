@@ -348,20 +348,34 @@ router.post("/cv", requireStudent, (req, res) => {
       return res.status(400).json({ error: check.reason });
     }
 
+    // The stored filename's extension came from the client-supplied
+    // original filename (see makeDiskStorage in utils/uploads.js), not from
+    // the content check above -- a real PDF uploaded as "resume.pdf.exe"
+    // would otherwise be saved to disk (and served back) with a ".exe"
+    // name. Content is now confirmed to genuinely be a PDF, so force the
+    // one extension this route ever accepts, independent of what the
+    // client claimed.
+    let cvFilename = req.file.filename;
+    if (path.extname(cvFilename).toLowerCase() !== ".pdf") {
+      const renamed = `${path.basename(cvFilename, path.extname(cvFilename))}.pdf`;
+      fs.renameSync(req.file.path, path.join(path.dirname(req.file.path), renamed));
+      cvFilename = renamed;
+    }
+
     const { pool } = require("../db");
     const { rows: prevRows } = await pool.query("SELECT cv_file FROM students WHERE id = ?", [req.user.id]);
     await pool.query("UPDATE students SET cv_file = ?, updated_at = NOW() WHERE id = ?", [
-      req.file.filename,
+      cvFilename,
       req.user.id,
     ]);
     const previousCv = prevRows[0] && prevRows[0].cv_file;
-    if (previousCv && previousCv !== req.file.filename) {
+    if (previousCv && previousCv !== cvFilename) {
       fs.unlink(path.join(config.uploadsDir, "cv", previousCv), (err) => {
         if (err && err.code !== "ENOENT") console.error("Failed to delete previous CV file:", err);
       });
     }
 
-    res.json({ success: true, cvFile: req.file.filename });
+    res.json({ success: true, cvFile: cvFilename });
   });
 });
 
