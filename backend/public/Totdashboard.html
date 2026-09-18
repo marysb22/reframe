@@ -1666,67 +1666,54 @@
             color: var(--faint);
         }
 
-        .book-info {
-            flex: 1;
-            min-width: 0;
+        /* Edit/Delete live as a small hover-revealed overlay in the
+           cover's corner instead of crowding the action row below --
+           the reference design shows exactly one button per book, so
+           that row stays reserved for View Details alone. */
+        .book-cover-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
             display: flex;
-            flex-direction: column;
-            gap: 2px;
-            padding: 8px 9px 0;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity .15s ease;
+            z-index: 3;
         }
 
-        .book-title {
-            font-size: 11.5px;
-            font-weight: 700;
-            color: var(--text);
-            line-height: 1.3;
-            cursor: pointer;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+        .book-card:hover .book-cover-actions {
+            opacity: 1;
         }
 
-        .book-author {
-            font-size: 10px;
+        .book-cover-actions .book-menu-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            border: none;
+            background: rgba(255, 255, 255, .92);
             color: var(--muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 9px;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
         }
 
-        .book-meta {
-            font-size: 9.5px;
-            color: var(--success);
-            font-style: italic;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .book-actions,
-        .book-card-footer {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 7px 9px;
-            margin-top: 6px;
-        }
-
+        /* Glued directly to the cover's bottom edge, full width -- the
+           one action every book shows, matching the reference: a cover
+           with a single button right under it, nothing else competing
+           for room (which is what was truncating this label before). */
         .book-open-btn {
-            flex: 1;
-            height: 23px;
-            padding: 0 6px;
-            border-radius: 6px;
-            border: 1px solid var(--primary);
+            display: block;
+            width: 100%;
+            height: 26px;
+            border: none;
+            border-radius: 0;
             background: var(--primary);
             color: #fff;
-            font-size: 10px;
-            font-weight: 600;
+            font-size: 10.5px;
+            font-weight: 700;
             cursor: pointer;
             font-family: inherit;
-            margin-top: 0;
-            width: auto;
+            text-align: center;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1734,19 +1721,6 @@
 
         .book-open-btn:hover {
             background: var(--primary-dark);
-        }
-
-        .book-menu-btn {
-            width: 23px;
-            height: 23px;
-            flex-shrink: 0;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            background: var(--surface);
-            color: var(--muted);
-            cursor: pointer;
-            margin-top: 0;
-            font-size: 10px;
         }
 
         .book-details-layout {
@@ -9048,25 +9022,21 @@ function renderBookSection(title, books) {
 }
 
 function renderBookItem(b) {
-  const metaParts = [
-    RESOURCE_TYPE_LABELS[b.resourceType],
-    b.category,
-    b.publicationYear ? String(b.publicationYear) : null,
-  ].filter(Boolean);
+  // Mirrors the reference layout exactly: cover, then one full-width
+  // button glued directly under it -- nothing else competing for space.
+  // Title/author/type/category/year still show as a native tooltip on
+  // the cover, and in full on View Details; they no longer render as
+  // on-card text.
+  const tooltipParts = [b.title, b.author, RESOURCE_TYPE_LABELS[b.resourceType]].filter(Boolean);
   return `
     <div class="book-card">
-      <div class="book-cover" onclick="openBookDetails(${b.id})">
+      <div class="book-cover" onclick="openBookDetails(${b.id})" title="${escapeHtml(tooltipParts.join(" — "))}">
         ${b.coverImage ? `<img src="${UPLOADS}/materials/${b.coverImage}${TOKEN_Q}" alt="">` : `<i class="fa fa-book"></i>`}
+        ${b.canDelete ? `<div class="book-cover-actions">
+          <button type="button" class="book-menu-btn" title="Remove this book" onclick="event.stopPropagation(); deleteLibraryBook(${b.id})"><i class="fa fa-trash"></i></button>
+        </div>` : ""}
       </div>
-      <div class="book-info">
-        <div class="book-title" onclick="openBookDetails(${b.id})">${escapeHtml(b.title)}</div>
-        ${b.author ? `<div class="book-author">${escapeHtml(b.author)}</div>` : ""}
-        <div class="book-meta">${escapeHtml(metaParts.join(" · "))}</div>
-      </div>
-      <div class="book-actions">
-        <button type="button" class="book-open-btn" onclick="openBookDetails(${b.id})">View Details</button>
-        ${b.canDelete ? `<button type="button" class="book-menu-btn" title="Remove this book" onclick="deleteLibraryBook(${b.id})"><i class="fa fa-trash"></i></button>` : ""}
-      </div>
+      <button type="button" class="book-open-btn" onclick="openBookDetails(${b.id})">View Details</button>
     </div>`;
 }
 
