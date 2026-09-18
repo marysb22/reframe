@@ -1509,6 +1509,110 @@ router.get(
   })
 );
 
+// ---- Health & Emergency Information (Admin: full read/write) -------------
+// Deliberately its own dedicated endpoint, never folded into USER_SELECT,
+// PROFILE_SELECT, or GET /students/:id/profile above -- this is the one
+// place the schema's own table comment (student_health_info) says Admin
+// gets full access; every generic/listing endpoint must keep returning
+// nothing about it at all, exactly as before. See routes/supervisor.js
+// for the read-only equivalent gated by actual caseload assignment.
+
+// GET /api/admin/students/:id/health
+router.get(
+  "/students/:id/health",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid trainee id" });
+
+    const { rows: studentRows } = await db.query("SELECT id FROM students WHERE id = ?", [id]);
+    if (!studentRows.length) return res.status(404).json({ error: "Trainee not found" });
+
+    const { rows } = await db.query(
+      `SELECT medical_conditions, emergency_contact_name, emergency_contact_relationship,
+              emergency_contact_phone, emergency_contact_phone_2, updated_at
+         FROM student_health_info WHERE student_id = ?`,
+      [id]
+    );
+    const h = rows[0] || {};
+    res.json({
+      studentId: id,
+      medicalConditions: h.medical_conditions || null,
+      emergencyContactName: h.emergency_contact_name || null,
+      emergencyContactRelationship: h.emergency_contact_relationship || null,
+      emergencyContactPhone: h.emergency_contact_phone || null,
+      emergencyContactPhone2: h.emergency_contact_phone_2 || null,
+      updatedAt: h.updated_at || null,
+    });
+  })
+);
+
+// PUT /api/admin/students/:id/health
+router.put(
+  "/students/:id/health",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid trainee id" });
+
+    const { rows: studentRows } = await db.query("SELECT id FROM students WHERE id = ?", [id]);
+    if (!studentRows.length) return res.status(404).json({ error: "Trainee not found" });
+
+    // Same required subset as the trainee's own My Profile save (PUT
+    // /profile/me) -- Admin editing this is still filling in the same real
+    // fields, not a separate, looser rule.
+    const { medicalConditions, emergencyContactName, emergencyContactRelationship, emergencyContactPhone, emergencyContactPhone2 } =
+      req.body || {};
+    const missingFields = [];
+    if (!emergencyContactName || !String(emergencyContactName).trim()) missingFields.push("Emergency contact name");
+    if (!emergencyContactRelationship || !String(emergencyContactRelationship).trim()) missingFields.push("Relationship");
+    if (!emergencyContactPhone || !String(emergencyContactPhone).trim()) missingFields.push("Phone number");
+    if (missingFields.length) {
+      return res.status(400).json({ error: "Please complete the required fields before saving.", missingFields });
+    }
+
+    await db.query(
+      `INSERT INTO student_health_info
+         (student_id, medical_conditions, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, emergency_contact_phone_2, updated_at)
+       VALUES (?,?,?,?,?,?, NOW())
+       ON DUPLICATE KEY UPDATE
+         medical_conditions = VALUES(medical_conditions),
+         emergency_contact_name = VALUES(emergency_contact_name),
+         emergency_contact_relationship = VALUES(emergency_contact_relationship),
+         emergency_contact_phone = VALUES(emergency_contact_phone),
+         emergency_contact_phone_2 = VALUES(emergency_contact_phone_2),
+         updated_at = NOW()`,
+      [
+        id,
+        medicalConditions || null,
+        emergencyContactName.trim(),
+        emergencyContactRelationship.trim(),
+        emergencyContactPhone.trim(),
+        emergencyContactPhone2 || null,
+      ]
+    );
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'health_info_updated', 'student_health_info', ?)",
+      [req.user.id, id]
+    );
+
+    const { rows } = await db.query(
+      `SELECT medical_conditions, emergency_contact_name, emergency_contact_relationship,
+              emergency_contact_phone, emergency_contact_phone_2, updated_at
+         FROM student_health_info WHERE student_id = ?`,
+      [id]
+    );
+    const h = rows[0];
+    res.json({
+      studentId: id,
+      medicalConditions: h.medical_conditions || null,
+      emergencyContactName: h.emergency_contact_name || null,
+      emergencyContactRelationship: h.emergency_contact_relationship || null,
+      emergencyContactPhone: h.emergency_contact_phone || null,
+      emergencyContactPhone2: h.emergency_contact_phone_2 || null,
+      updatedAt: h.updated_at || null,
+    });
+  })
+);
+
 // PATCH /api/admin/students/:id/status  { status: "on_hold" }
 // Sets a trainee's administrative lifecycle status (students.lifecycle_status).
 // Restricted to Admin/Master Trainer (see the Group-scoped equivalent at

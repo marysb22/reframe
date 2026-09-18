@@ -144,6 +144,55 @@ router.get(
   })
 );
 
+// ---- Health & Emergency Information (read-only, caseload-gated) --------
+// The schema's own student_health_info table comment documents this
+// exactly: "the trainee themself, and their assigned Master Trainer/
+// Trainers (read-only) may access this". loadAssignedStudent is the same
+// real supervisor_students check every other student-scoped route here
+// already uses -- being a Master Trainer or ToT by role is never enough
+// on its own, only an actual assignment grants this. Never folded into
+// GET /students/:studentId above, so nothing accidentally widens what
+// that response includes.
+
+// GET /api/supervisor/students/:studentId/health
+router.get(
+  "/students/:studentId/health",
+  asyncRoute(async (req, res, db) => {
+    const studentId = Number(req.params.studentId);
+    const student = await loadAssignedStudent(db, req.user.id, studentId, res);
+    if (!student) return;
+
+    const { rows } = await db.query(
+      `SELECT medical_conditions, emergency_contact_name, emergency_contact_relationship,
+              emergency_contact_phone, emergency_contact_phone_2, updated_at
+         FROM student_health_info WHERE student_id = ?`,
+      [studentId]
+    );
+    const h = rows[0] || {};
+    res.json({
+      studentId,
+      medicalConditions: h.medical_conditions || null,
+      emergencyContactName: h.emergency_contact_name || null,
+      emergencyContactRelationship: h.emergency_contact_relationship || null,
+      emergencyContactPhone: h.emergency_contact_phone || null,
+      emergencyContactPhone2: h.emergency_contact_phone_2 || null,
+      updatedAt: h.updated_at || null,
+    });
+  })
+);
+
+// PUT/DELETE /api/supervisor/students/:studentId/health -- categorically
+// read-only for every Master Trainer/ToT, regardless of assignment. Not
+// simply omitted (which would 404) so a write attempt gets an explicit,
+// unambiguous "you can view this, not change it" instead of looking like
+// the route doesn't exist.
+router.put("/students/:studentId/health", (req, res) => {
+  res.status(403).json({ error: "Health & Emergency information is read-only for Master Trainers/ToTs." });
+});
+router.delete("/students/:studentId/health", (req, res) => {
+  res.status(403).json({ error: "Health & Emergency information is read-only for Master Trainers/ToTs." });
+});
+
 // ---- Records (8 types, dispatched to their real table) ------------------
 
 const RECORD_TYPES = Object.keys(RECORD_TYPE_TABLES);
