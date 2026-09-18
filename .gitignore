@@ -1,0 +1,14 @@
+# Real user-uploaded files (CVs, photos, documents, materials) must never be
+# committed -- they're private, access-controlled content served exclusively
+# through backend/src/routes/files.js's per-file authorization checks.
+# Committing them bypasses that system entirely and permanently, since
+# deleting a file from a later commit does not remove it from git history.
+# Event images are the one deliberately-public exception (shown on the
+# public marketing site with no login) but still don't need to be committed --
+# they're regenerable uploads, not source.
+backend/uploads/**
+!backend/uploads/**/.gitkeep
+
+# Local secrets -- JWT signing key, DB credentials. Never commit real or
+# placeholder secrets; use backend/.env.example as the template instead.
+backend/.env
