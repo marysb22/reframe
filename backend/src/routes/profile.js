@@ -16,7 +16,7 @@ const {
 } = require("../utils/serializers");
 const { hashPassword, verifyPassword } = require("../utils/authUtils");
 const { photoUpload, cvUpload, submissionUpload, documentUpload } = require("../utils/uploads");
-const { checkFileContent } = require("../utils/fileTypeCheck");
+const { checkFileContent, detectImageExtension } = require("../utils/fileTypeCheck");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { createUploadGuard } = require("../utils/uploadGuard");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
@@ -357,23 +357,40 @@ router.post("/photo", requireAuth, (req, res) => {
       fs.unlink(req.file.path, () => {});
       return res.status(400).json({ error: check.reason });
     }
+
+    // Same reasoning as CVs (see POST /cv below): the stored extension came
+    // from the client-supplied original filename, not from the content
+    // check above -- a real JPEG uploaded as "photo.jpg.exe" would
+    // otherwise be saved to disk, and served back on download, as a .exe
+    // file. Content is now confirmed to genuinely be an image; force the
+    // extension that actually matches it (jpg/png/gif/webp), independent
+    // of what the client claimed.
+    let photoFilename = req.file.filename;
+    const realExt = detectImageExtension(req.file.path);
+    if (realExt && path.extname(photoFilename).toLowerCase() !== realExt) {
+      const renamed = `${path.basename(photoFilename, path.extname(photoFilename))}${realExt}`;
+      fs.renameSync(req.file.path, path.join(path.dirname(req.file.path), renamed));
+      photoFilename = renamed;
+      req.file.path = path.join(path.dirname(req.file.path), renamed);
+    }
+
     await optimizeImageIfPossible(req.file.path, { maxDimension: 500 });
 
     const table = profileTableForRole(req.user.role);
     const { pool } = require("../db");
     const { rows: prevRows } = await pool.query(`SELECT photo FROM ${table} WHERE id = ?`, [req.user.id]);
     await pool.query(`UPDATE ${table} SET photo = ?, updated_at = NOW() WHERE id = ?`, [
-      req.file.filename,
+      photoFilename,
       req.user.id,
     ]);
     const previousPhoto = prevRows[0] && prevRows[0].photo;
-    if (previousPhoto && previousPhoto !== req.file.filename) {
+    if (previousPhoto && previousPhoto !== photoFilename) {
       fs.unlink(path.join(config.uploadsDir, "photos", previousPhoto), (err) => {
         if (err && err.code !== "ENOENT") console.error("Failed to delete previous photo file:", err);
       });
     }
 
-    res.json({ success: true, photo: req.file.filename });
+    res.json({ success: true, photo: photoFilename });
   });
 });
 

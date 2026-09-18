@@ -99,4 +99,32 @@ function checkFileContent(filePath, allowedCategories) {
   return { safe: true };
 }
 
-module.exports = { checkFileContent };
+/**
+ * Which real image extension the file's content actually is (jpeg/png/
+ * gif/webp), or null if it's none of them. Callers that accept more than
+ * one valid extension (photos: .jpg/.png/.gif/.webp) use this to force
+ * the stored filename's extension to match the real content instead of
+ * trusting whatever the client's original filename claimed -- the same
+ * reasoning as CVs always being renamed to .pdf, just with more than one
+ * possible correct answer here. Only meaningful after checkFileContent(...,
+ * "image") has already confirmed the content really is an image; this
+ * doesn't re-check for dangerous signatures itself.
+ */
+function detectImageExtension(filePath) {
+  let buf;
+  try {
+    const fd = fs.openSync(filePath, "r");
+    buf = Buffer.alloc(32);
+    fs.readSync(fd, buf, 0, 32, 0);
+    fs.closeSync(fd);
+  } catch (err) {
+    return null;
+  }
+  if (matchesAny(buf, SIGNATURES.jpeg)) return ".jpg";
+  if (matchesAny(buf, SIGNATURES.png)) return ".png";
+  if (matchesAny(buf, SIGNATURES.gif)) return ".gif";
+  if (matchesAny(buf, SIGNATURES.riff) && matchesSignature(buf, [0x57, 0x45, 0x42, 0x50], 8)) return ".webp";
+  return null;
+}
+
+module.exports = { checkFileContent, detectImageExtension };
