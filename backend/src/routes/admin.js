@@ -347,10 +347,16 @@ router.post(
 );
 
 // GET /api/admin/users?search=&role=&status=&page=&pageSize=
+// roles=trainee,supervisor -- alternative to `role` for callers (e.g. the
+// CVs screen) that need more than one role at once; ignored when `role` is
+// also given. supervisorType=primary|in_training narrows to Master
+// Trainers vs ToTs specifically (only meaningful alongside role=supervisor
+// or roles containing it). groupId narrows to one trainer_groups row,
+// matching whichever of supervisors.group_id/students.group_id applies.
 router.get(
   "/users",
   asyncRoute(async (req, res, db) => {
-    const { search = "", role, status, page = 1, pageSize = 25 } = req.query;
+    const { search = "", role, roles, status, supervisorType, groupId, page = 1, pageSize = 25 } = req.query;
 
     const clauses = ["uc.role != 'admin'"]; // this list is Trainees + Supervisors only
     const params = [];
@@ -362,10 +368,27 @@ router.get(
     if (role && ["trainee", "supervisor"].includes(role)) {
       params.push(role);
       clauses.push(`uc.role = ?`);
+    } else if (roles) {
+      const roleList = String(roles)
+        .split(",")
+        .map((r) => r.trim())
+        .filter((r) => ["trainee", "supervisor"].includes(r));
+      if (roleList.length) {
+        clauses.push(`uc.role IN (${roleList.map(() => "?").join(",")})`);
+        params.push(...roleList);
+      }
+    }
+    if (supervisorType && ["primary", "in_training"].includes(supervisorType)) {
+      params.push(supervisorType);
+      clauses.push(`sup.supervisor_type = ?`);
     }
     if (status && ["active", "suspended"].includes(status)) {
       params.push(status);
       clauses.push(`uc.status = ?`);
+    }
+    if (groupId && Number.isInteger(Number(groupId))) {
+      params.push(Number(groupId));
+      clauses.push(`COALESCE(sup.group_id, st.group_id) = ?`);
     }
 
     const where = `WHERE ${clauses.join(" AND ")}`;
