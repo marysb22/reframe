@@ -2110,6 +2110,7 @@
 
                     <div class="toolbar" style="border-bottom:1px solid var(--border-soft);padding-bottom:14px;margin-bottom:18px;">
                         <button class="btn btn-sm sp-tab active" data-tab="personal" onclick="switchSpTab('personal')" style="width:auto;margin:0;">Personal</button>
+                        <button class="btn btn-secondary btn-sm sp-tab" data-tab="health" onclick="switchSpTab('health')" style="width:auto;margin:0;">Health &amp; Emergency</button>
                         <button class="btn btn-secondary btn-sm sp-tab" data-tab="academic" onclick="switchSpTab('academic')" style="width:auto;margin:0;">Academic</button>
                         <button class="btn btn-secondary btn-sm sp-tab" data-tab="trainers" onclick="switchSpTab('trainers')" style="width:auto;margin:0;">Trainers &amp; Hours</button>
                         <button class="btn btn-secondary btn-sm sp-tab" data-tab="documents" onclick="switchSpTab('documents')" style="width:auto;margin:0;">Documents</button>
@@ -2145,6 +2146,38 @@
                             <div><label style="margin-top:0;">Registration date</label>
                                 <div id="spF_created">&mdash;</div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div id="spPanel-health" class="sp-panel" style="display:none;">
+                        <div style="display:flex;align-items:center;gap:10px;background:var(--danger-bg);color:var(--danger);padding:10px 14px;border-radius:10px;margin-bottom:16px;">
+                            <i class="fa fa-shield-halved"></i>
+                            <span>Private -- Admin has full access. Visible read-only to this trainee's assigned Master Trainer/ToT.</span>
+                        </div>
+                        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+                            <button type="button" class="btn btn-secondary btn-sm" id="spHealthEditBtn" style="width:auto;" onclick="startSpHealthEdit()"><i class="fa fa-pen"></i> Edit</button>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+                            <div style="grid-column:1/-1;">
+                                <label style="margin-top:0;">Medical conditions</label>
+                                <textarea id="spHealth_medical" class="sp-health-editable-field" disabled style="width:100%;min-height:70px;"></textarea>
+                            </div>
+                            <div><label style="margin-top:0;">Emergency contact name *</label>
+                                <input id="spHealth_emName" class="sp-health-editable-field" disabled style="width:100%;">
+                            </div>
+                            <div><label style="margin-top:0;">Relationship *</label>
+                                <input id="spHealth_emRelationship" class="sp-health-editable-field" disabled style="width:100%;">
+                            </div>
+                            <div><label style="margin-top:0;">Phone number *</label>
+                                <input id="spHealth_emPhone" class="sp-health-editable-field" disabled style="width:100%;">
+                            </div>
+                            <div><label style="margin-top:0;">Alternate phone number</label>
+                                <input id="spHealth_emPhone2" class="sp-health-editable-field" disabled style="width:100%;">
+                            </div>
+                        </div>
+                        <div id="spHealthSaveActions" style="display:none;gap:10px;margin-top:16px;">
+                            <button type="button" class="btn btn-sm" style="width:auto;" onclick="saveSpHealthEdit()">Save changes</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="cancelSpHealthEdit()">Cancel</button>
                         </div>
                     </div>
 
@@ -4018,6 +4051,8 @@ async function openStudentProfile(id) {
   document.getElementById("spListWrap").style.display = "none";
   document.getElementById("spDetailWrap").style.display = "block";
   showSection("studentProfiles");
+  spHealthData = null;
+  endSpHealthEdit();
   switchSpTab("personal");
 }
 
@@ -4037,6 +4072,75 @@ function switchSpTab(tab) {
   document.querySelectorAll(".sp-panel").forEach((panel) => {
     panel.style.display = panel.id === `spPanel-${tab}` ? "block" : "none";
   });
+  if (tab === "health" && currentSpId) loadSpHealth(currentSpId);
+}
+
+// ---- Health & Emergency Information (Admin: full read/write) -----------
+// Its own dedicated endpoint (GET/PUT /admin/students/:id/health), never
+// part of the /admin/students/:id/profile payload above -- so this data
+// is only ever fetched when the Health & Emergency tab is actually opened.
+let spHealthData = null;
+
+async function loadSpHealth(id) {
+  const data = await apiRequest(`/admin/students/${id}/health`);
+  if (!data) return;
+  spHealthData = data;
+  populateSpHealth(data);
+}
+
+function populateSpHealth(data) {
+  document.getElementById("spHealth_medical").value = data.medicalConditions || "";
+  document.getElementById("spHealth_emName").value = data.emergencyContactName || "";
+  document.getElementById("spHealth_emRelationship").value = data.emergencyContactRelationship || "";
+  document.getElementById("spHealth_emPhone").value = data.emergencyContactPhone || "";
+  document.getElementById("spHealth_emPhone2").value = data.emergencyContactPhone2 || "";
+}
+
+function setSpHealthFieldsDisabled(disabled) {
+  document.querySelectorAll(".sp-health-editable-field").forEach((el) => { el.disabled = disabled; });
+}
+
+function startSpHealthEdit() {
+  setSpHealthFieldsDisabled(false);
+  document.getElementById("spHealthEditBtn").style.display = "none";
+  document.getElementById("spHealthSaveActions").style.display = "flex";
+}
+
+function endSpHealthEdit() {
+  setSpHealthFieldsDisabled(true);
+  const btn = document.getElementById("spHealthEditBtn");
+  const actions = document.getElementById("spHealthSaveActions");
+  if (btn) btn.style.display = "";
+  if (actions) actions.style.display = "none";
+}
+
+function cancelSpHealthEdit() {
+  if (spHealthData) populateSpHealth(spHealthData);
+  endSpHealthEdit();
+}
+
+async function saveSpHealthEdit() {
+  const payload = {
+    medicalConditions: document.getElementById("spHealth_medical").value.trim(),
+    emergencyContactName: document.getElementById("spHealth_emName").value.trim(),
+    emergencyContactRelationship: document.getElementById("spHealth_emRelationship").value.trim(),
+    emergencyContactPhone: document.getElementById("spHealth_emPhone").value.trim(),
+    emergencyContactPhone2: document.getElementById("spHealth_emPhone2").value.trim(),
+  };
+  if (!payload.emergencyContactName || !payload.emergencyContactRelationship || !payload.emergencyContactPhone) {
+    showToast("Emergency contact name, relationship, and phone number are required", "error");
+    return;
+  }
+  const result = await apiRequest(`/admin/students/${currentSpId}/health`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!result) return;
+  spHealthData = result;
+  populateSpHealth(result);
+  endSpHealthEdit();
+  showSuccessNotification("Saved", "Health & Emergency information updated successfully.");
 }
 
 // Renders one Master Trainer / Trainer (ToT) info card from everything

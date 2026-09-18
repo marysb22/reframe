@@ -5827,14 +5827,14 @@
         }
 
         function renderTraineeTabs() {
-            const tabs = [["records", "Records"], ["milestones", "Milestones"], ["documents", "Documents"]];
+            const tabs = [["records", "Records"], ["milestones", "Milestones"], ["documents", "Documents"], ["health", "Health & Emergency"]];
             document.getElementById("trTabs").innerHTML = tabs.map(([k, label]) =>
                 `<button class="tab-btn ${k === trActiveTab ? "active" : ""}" onclick="switchTraineeTab('${k}')">${label}</button>`
             ).join("");
         }
         function switchTraineeTab(tab) { trActiveTab = tab; renderTraineeTabs(); renderTraineePanel(); }
 
-        function renderTraineePanel() {
+        async function renderTraineePanel() {
             const c = document.getElementById("trPanels");
             if (!currentTrainee) return;
             if (trActiveTab === "records") {
@@ -5872,7 +5872,40 @@
               </div>
             </div></li>`).join("")}</ul>`
                     : '<p class="empty-state">No documents yet.</p>';
+                return;
             }
+            if (trActiveTab === "health") {
+                await renderTraineeHealthPanel(c);
+            }
+        }
+
+        // Read-only -- only Admin can edit Health & Emergency information
+        // (see the schema's own student_health_info table comment). Being a
+        // Master Trainer only gets here at all because opening this modal
+        // already required a real supervisor_students assignment (this
+        // page's GET /master-trainer/trainees/:id enforces that); the
+        // backend independently enforces the same check again on this
+        // endpoint.
+        async function renderTraineeHealthPanel(c) {
+            c.innerHTML = '<p class="empty-state">Loading...</p>';
+            const data = await apiRequest(`/supervisor/students/${currentTrainee.student.id}/health`);
+            if (!data) {
+                c.innerHTML = '<p class="empty-state">Not available.</p>';
+                return;
+            }
+            c.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--border-soft);padding:10px 14px;border-radius:10px;margin-bottom:16px;">
+          <i class="fa fa-eye" style="color:var(--muted);"></i>
+          <span style="font-size:12.5px;color:var(--muted);">Read-only -- only Admin can edit Health &amp; Emergency information.</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+          <div style="grid-column:1/-1;"><label style="margin-top:0;">Medical conditions</label><div>${escapeHtml(data.medicalConditions || "—")}</div></div>
+          <div><label style="margin-top:0;">Emergency contact name</label><div>${escapeHtml(data.emergencyContactName || "—")}</div></div>
+          <div><label style="margin-top:0;">Relationship</label><div>${escapeHtml(data.emergencyContactRelationship || "—")}</div></div>
+          <div><label style="margin-top:0;">Phone number</label><div>${escapeHtml(data.emergencyContactPhone || "—")}</div></div>
+          <div><label style="margin-top:0;">Alternate phone number</label><div>${escapeHtml(data.emergencyContactPhone2 || "—")}</div></div>
+        </div>
+      `;
         }
 
         // ---- Group-wide monitoring sections --------------------------------

@@ -4581,7 +4581,7 @@
                 fields: ["date", "title", "score", "content"]
             },
         };
-        let TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents"];
+        let TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents", "health"];
 
         // Any active hour type beyond the two permanent ones ('training',
         // 'supervision') gets its own session-logging tab and its own
@@ -4614,7 +4614,7 @@
                         hourType: ht.code,
                     };
                 });
-            TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents"];
+            TAB_ORDER = ["overview", ...Object.keys(RECORD_TYPES), "milestones", "documents", "health"];
 
             const filterEl = document.getElementById("sessionTypeFilter");
             if (filterEl) renderSessionTypeOptions(filterEl, true);
@@ -5557,7 +5557,8 @@
             const labels = {
                 overview: "Overview",
                 milestones: "Milestones",
-                documents: "Documents"
+                documents: "Documents",
+                health: "Health & Emergency"
             };
             document.getElementById("sdTabs").innerHTML = TAB_ORDER.map((t) => {
                 const label = (RECORD_TYPES[t] && RECORD_TYPES[t].label) || labels[t];
@@ -5592,7 +5593,40 @@
                 return;
             }
 
+            if (activeTab === "health") {
+                await renderHealthPanel(container);
+                return;
+            }
+
             renderRecordPanel(container, activeTab);
+        }
+
+        // Read-only -- Health & Emergency information can only be viewed
+        // and edited by Admin (see the schema's own student_health_info
+        // table comment). A Master Trainer/ToT only gets here at all
+        // because opening this modal already required a real
+        // supervisor_students assignment (see openStudent); the backend
+        // enforces the same check again independently on this endpoint.
+        async function renderHealthPanel(container) {
+            container.innerHTML = '<p class="empty-state">Loading...</p>';
+            const data = await apiRequest(`/supervisor/students/${currentStudentId}/health`);
+            if (!data) {
+                container.innerHTML = '<p class="empty-state">Not available.</p>';
+                return;
+            }
+            container.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--border-soft);padding:10px 14px;border-radius:10px;margin-bottom:16px;">
+          <i class="fa fa-eye" style="color:var(--muted);"></i>
+          <span style="font-size:12.5px;color:var(--muted);">Read-only -- only Admin can edit Health &amp; Emergency information.</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+          <div style="grid-column:1/-1;"><label style="margin-top:0;">Medical conditions</label><div class="cv-field-value">${escapeHtml(data.medicalConditions || "—")}</div></div>
+          <div><label style="margin-top:0;">Emergency contact name</label><div class="cv-field-value">${escapeHtml(data.emergencyContactName || "—")}</div></div>
+          <div><label style="margin-top:0;">Relationship</label><div class="cv-field-value">${escapeHtml(data.emergencyContactRelationship || "—")}</div></div>
+          <div><label style="margin-top:0;">Phone number</label><div class="cv-field-value">${escapeHtml(data.emergencyContactPhone || "—")}</div></div>
+          <div><label style="margin-top:0;">Alternate phone number</label><div class="cv-field-value">${escapeHtml(data.emergencyContactPhone2 || "—")}</div></div>
+        </div>
+      `;
         }
 
         // ---- Training Milestones -------------------------------------------
