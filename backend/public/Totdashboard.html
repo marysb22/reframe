@@ -3075,6 +3075,11 @@
             margin: 6px 0 10px;
         }
 
+        .profile-field-error {
+            border-color: var(--danger) !important;
+            background: var(--danger-bg) !important;
+        }
+
         /* ---- Training Activities (redesigned) ------------------------ */
 
         .act-summary {
@@ -3371,6 +3376,7 @@
             <nav>
                 <div class="nav-label">Workspace</div>
                 <ul>
+                    <li><a data-section="profile" href="#profile"><i class="fa fa-user"></i>My Profile</a></li>
                     <li><a data-section="dashboard" class="active" href="#dashboard"><i class="fa fa-gauge"></i>Dashboard</a></li>
                     <li><a data-section="library" href="#library"><i class="fa fa-building-columns"></i>Library</a></li>
                     <li><a data-section="students" href="#students"><i class="fa fa-user-graduate"></i>Trainee Profiles</a></li>
@@ -3391,7 +3397,6 @@
                 </ul>
                 <div class="nav-label">Account</div>
                 <ul>
-                    <li><a data-section="profile" href="#profile"><i class="fa fa-user"></i>My Profile</a></li>
                     <li><a data-section="settings" href="#settings"><i class="fa fa-gear"></i>Settings</a></li>
                 </ul>
             </nav>
@@ -4139,25 +4144,17 @@
                     </div>
                 </section>
 
-                <section class="system-card" id="totTrainingInfoCard" style="display:none;">
+                <section class="system-card" id="totTrainingInfoCard">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-graduation-cap"></i>
                             <h2>Training Information</h2>
                         </div>
                     </div>
-                    <div class="kpi-grid">
-                        <div class="kpi-card"><label>Start Date</label>
-                            <h2 id="totTrainingStartDateValue" style="font-size:16px;">&mdash;</h2>
-                        </div>
-                        <div class="kpi-card"><label>Duration</label>
-                            <h2 id="totTrainingDurationValue" style="font-size:17px;">&mdash;</h2>
-                        </div>
-                        <div class="kpi-card"><label>Expected End Date</label>
-                            <h2 id="totTrainingEndDateValue" style="font-size:16px;">&mdash;</h2>
-                        </div>
-                        <div class="kpi-card"><label>Training Status</label>
-                            <h2 id="totTrainingStatusValue" style="font-size:16px;">&mdash;</h2>
-                        </div>
+                    <div class="form-grid">
+                        <div><label>Start Date *</label><input type="date" id="totTrainingStartDateInput" class="tot-profile-editable-field" disabled required></div>
+                        <div><label>Duration (years) *</label><input type="number" id="totTrainingDurationInput" class="tot-profile-editable-field" disabled required min="1" max="10" step="1" placeholder="e.g. 4"></div>
+                        <div><label>Expected End Date</label><input id="totTrainingEndDateValue" disabled></div>
+                        <div><label>Training Status</label><input id="totTrainingStatusValue" disabled></div>
                     </div>
                 </section>
 
@@ -4869,18 +4866,21 @@
             setText("totProfileRoleValue", data.supervisorType === "primary" ? "Master Trainer" : "Trainer (ToT)");
             document.getElementById("totProfileStatusValue").innerHTML = `<span class="pill active">Active</span>`;
 
-            const trainingCard = document.getElementById("totTrainingInfoCard");
-            if (trainingCard) {
-                if (data.trainingStartDate) {
-                    trainingCard.style.display = "";
-                    setText("totTrainingStartDateValue", formatTrainingDate(data.trainingStartDate));
-                    setText("totTrainingDurationValue", data.trainingDurationYears ? `${data.trainingDurationYears} Years` : "&mdash;");
-                    setText("totTrainingEndDateValue", formatTrainingDate(data.trainingEndDate));
-                    setText("totTrainingStatusValue", formatTrainingStatus(data.trainingStatus, data.trainingYear));
-                } else {
-                    trainingCard.style.display = "none";
-                }
-            }
+            // Training Information -- Start Date/Duration are real, required,
+            // editable fields (see TOT_PROFILE_FIELD_LABEL_TO_ID and
+            // totSaveProfileBtn below), exactly like the Trainee's own My
+            // Profile. Expected End Date/Training Status stay fully derived.
+            setValue("totTrainingStartDateInput", data.trainingStartDate ? data.trainingStartDate.slice(0, 10) : "");
+            setValue("totTrainingDurationInput", data.trainingDurationYears || "");
+            // formatTrainingDate/formatTrainingStatus return the literal
+            // "&mdash;" HTML-entity string when there's nothing to show (this
+            // file's other caller, the Trainee Profiles detail view, injects
+            // it via innerHTML) -- an <input>'s .value has no entity decoding,
+            // so that placeholder is swapped for a plain empty field here.
+            const endDateDisplay = formatTrainingDate(data.trainingEndDate);
+            const statusDisplay = formatTrainingStatus(data.trainingStatus, data.trainingYear);
+            setValue("totTrainingEndDateValue", endDateDisplay === "&mdash;" ? "" : endDateDisplay);
+            setValue("totTrainingStatusValue", statusDisplay === "&mdash;" ? "" : statusDisplay);
 
             setValue("totName", data.full_name);
             setValue("totPhone", data.phone);
@@ -4989,22 +4989,94 @@
             }
         }
 
+        // The complete set of fields ToT's My Profile requires -- Full name
+        // (backend-required everywhere) plus Training Information's own
+        // Start Date + Duration, exactly like the Trainee My Profile's
+        // equivalent map. No Health & Emergency section here (that's
+        // Trainee-specific -- see below), so nothing else is required.
+        const TOT_PROFILE_FIELD_LABEL_TO_ID = {
+            "Full name": "totName",
+            "Training Start Date": "totTrainingStartDateInput",
+            "Training Duration": "totTrainingDurationInput",
+        };
+
+        function clearTotProfileFieldErrors() {
+            Object.values(TOT_PROFILE_FIELD_LABEL_TO_ID).forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove("profile-field-error");
+            });
+        }
+
+        function showMissingTotProfileFields(missingLabels) {
+            missingLabels.forEach((label) => {
+                const id = TOT_PROFILE_FIELD_LABEL_TO_ID[label];
+                if (id) document.getElementById(id).classList.add("profile-field-error");
+            });
+            showToast(
+                "Please complete your My Profile information before saving. Missing: " + missingLabels.join(", "),
+                "error"
+            );
+            const firstId = TOT_PROFILE_FIELD_LABEL_TO_ID[missingLabels[0]];
+            if (firstId) document.getElementById(firstId).focus();
+        }
+
         document.getElementById("totSaveProfileBtn").addEventListener("click", async() => {
+            clearTotProfileFieldErrors();
+
+            // Client-side pre-check for fast feedback -- the backend
+            // independently re-validates the same rule, since this check
+            // alone can be bypassed (devtools, a direct API call).
+            const missing = Object.keys(TOT_PROFILE_FIELD_LABEL_TO_ID).filter((label) => {
+                const el = document.getElementById(TOT_PROFILE_FIELD_LABEL_TO_ID[label]);
+                return !el.value.trim();
+            });
+            if (missing.length) return showMissingTotProfileFields(missing);
+
+            const trainingStartDateVal = document.getElementById("totTrainingStartDateInput").value;
+            const trainingDurationVal = document.getElementById("totTrainingDurationInput").value;
+            const durationNum = Number(trainingDurationVal);
+            if (!Number.isInteger(durationNum) || durationNum < 1 || durationNum > 10) {
+                return showMissingTotProfileFields(["Training Duration"]);
+            }
+
             const payload = {
                 full_name: document.getElementById("totName").value.trim(),
                 email: document.getElementById("totEmail").value.trim(),
                 phone: document.getElementById("totPhone").value.trim(),
                 specialization: document.getElementById("totSpecialization").value.trim(),
                 bio: document.getElementById("totBio").value.trim(),
+                trainingStartDate: trainingStartDateVal,
+                trainingDurationYears: durationNum,
             };
-            const result = await apiRequest("/profile/me", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-            if (result) {
-                currentTotProfile = result;
-                document.getElementById("supervisorName").textContent = result.full_name || "ToT";
-                showSuccessNotification("Profile Updated", "Your profile information has been saved successfully.");
-                endTotProfileEdit();
-                populateTotProfileFields(result);
+
+            // A direct fetch, not apiRequest() -- this handler needs to read
+            // the response body on a non-2xx status (missingFields), which
+            // apiRequest() intentionally doesn't expose to its callers.
+            let response, body;
+            try {
+                response = await fetch(`${API}/profile/me`, {
+                    method: "PUT",
+                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                body = await response.json().catch(() => null);
+            } catch (err) {
+                showToast(err.message || "Connection error", "error");
+                return;
             }
+
+            if (!response.ok) {
+                if (body && Array.isArray(body.missingFields)) showMissingTotProfileFields(body.missingFields);
+                else showToast((body && body.error) || "Failed to save profile", "error");
+                return;
+            }
+
+            currentTotProfile = body;
+            document.getElementById("supervisorName").textContent = body.full_name || "ToT";
+            showSuccessNotification("Profile Updated", "Your profile information has been saved successfully.");
+            clearTotProfileFieldErrors();
+            endTotProfileEdit();
+            populateTotProfileFields(body);
         });
 
         document.addEventListener("DOMContentLoaded", async() => {

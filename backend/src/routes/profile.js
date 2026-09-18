@@ -49,7 +49,7 @@ const PROFILE_SELECT = `
     COALESCE(sup.group_id, st.group_id) AS group_id, tg.name AS group_name,
     sup.specialization, sup.bio, sup.supervisor_type,
     COALESCE(sup.training_start_date, st.training_start_date) AS training_start_date,
-    st.training_duration_years,
+    COALESCE(sup.training_duration_years, st.training_duration_years) AS training_duration_years,
     CURDATE() AS training_today
   FROM user_credentials uc
   LEFT JOIN admin_users a ON a.id = uc.id
@@ -166,26 +166,31 @@ router.put(
     } = req.body || {};
 
     const table = profileTableForRole(req.user.role);
+    const isStudent = table === "students";
+    const isSupervisor = table === "supervisors";
 
     // My Profile completeness -- checked against the actual required fields
-    // of the trainee's My Profile form (not an invented broader set): Full
-    // name (already backend-required everywhere), the Training Information
-    // section's Start Date + Duration, plus the Health & Emergency
-    // section's own required subset (name/relationship/phone; medical
-    // conditions and the alternate phone stay optional). Checked before any
-    // write so a rejected save never partially applies, and reported
-    // together in one response so the trainee sees every gap at once
-    // instead of fixing one field per submit.
-    if (table === "students") {
+    // of each role's own My Profile form (not an invented broader set):
+    // Full name (backend-required everywhere), Training Information's
+    // Start Date + Duration (Trainee AND Supervisor -- both have a real
+    // training program with a start date; Admin/Designer don't), plus the
+    // Health & Emergency section's own required subset (Trainee only --
+    // name/relationship/phone; medical conditions and the alternate phone
+    // stay optional). Checked before any write so a rejected save never
+    // partially applies, and reported together in one response so the
+    // person sees every gap at once instead of fixing one field per submit.
+    if (isStudent || isSupervisor) {
       const missingFields = [];
       if (!full_name || !String(full_name).trim()) missingFields.push("Full name");
       if (!trainingStartDate || !String(trainingStartDate).trim()) missingFields.push("Training Start Date");
       if (trainingDurationYears === undefined || trainingDurationYears === null || String(trainingDurationYears).trim() === "") {
         missingFields.push("Training Duration");
       }
-      if (!emergencyContactName || !String(emergencyContactName).trim()) missingFields.push("Emergency contact name");
-      if (!emergencyContactRelationship || !String(emergencyContactRelationship).trim()) missingFields.push("Relationship");
-      if (!emergencyContactPhone || !String(emergencyContactPhone).trim()) missingFields.push("Phone number");
+      if (isStudent) {
+        if (!emergencyContactName || !String(emergencyContactName).trim()) missingFields.push("Emergency contact name");
+        if (!emergencyContactRelationship || !String(emergencyContactRelationship).trim()) missingFields.push("Relationship");
+        if (!emergencyContactPhone || !String(emergencyContactPhone).trim()) missingFields.push("Phone number");
+      }
       if (missingFields.length) {
         return res.status(400).json({
           error: "Please complete your My Profile information before saving.",
@@ -193,10 +198,10 @@ router.put(
         });
       }
 
-      // Format/range validation for the two fields above -- present but not
-      // well-formed must fail the save just as clearly as absent. Client-
-      // side pre-checks this too, but that can be bypassed (devtools, a
-      // direct API call), so this is the authoritative check.
+      // Format/range validation for the two Training Information fields --
+      // present but not well-formed must fail the save just as clearly as
+      // absent. Client-side pre-checks this too, but that can be bypassed
+      // (devtools, a direct API call), so this is the authoritative check.
       if (!/^\d{4}-\d{2}-\d{2}$/.test(String(trainingStartDate).trim())) {
         return res.status(400).json({ error: "Training Start Date must be a valid date (YYYY-MM-DD)" });
       }
@@ -205,10 +210,9 @@ router.put(
         return res.status(400).json({ error: "Training Duration must be a whole number of years between 1 and 10" });
       }
     } else if (!full_name || !String(full_name).trim()) {
-      // Unchanged behavior for Admin/Supervisor/Designer's own My Profile
-      // pages -- those have no Health & Emergency or Training Information
-      // section, so the pre-existing single-field check stays exactly as
-      // it was.
+      // Unchanged behavior for Admin/Designer's own My Profile pages --
+      // those have no Health & Emergency or Training Information section,
+      // so the pre-existing single-field check stays exactly as it was.
       return res.status(400).json({ error: "Full name is required" });
     }
 
@@ -265,8 +269,21 @@ router.put(
       );
     } else if (table === "supervisors") {
       await db.query(
-        `UPDATE supervisors SET full_name = ?, email = ?, phone = ?, bio = ?, specialization = ?, updated_at = NOW() WHERE id = ?`,
-        [full_name.trim(), email || null, phone || null, bio || null, specialization || null, req.user.id]
+        `UPDATE supervisors SET
+          full_name = ?, email = ?, phone = ?, bio = ?, specialization = ?,
+          training_start_date = ?, training_duration_years = ?,
+          updated_at = NOW()
+         WHERE id = ?`,
+        [
+          full_name.trim(),
+          email || null,
+          phone || null,
+          bio || null,
+          specialization || null,
+          String(trainingStartDate).trim(),
+          Number(trainingDurationYears),
+          req.user.id,
+        ]
       );
     } else if (table === "designers") {
       await db.query(
