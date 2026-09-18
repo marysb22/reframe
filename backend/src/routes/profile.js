@@ -48,6 +48,7 @@ const PROFILE_SELECT = `
     COALESCE(sup.group_id, st.group_id) AS group_id, tg.name AS group_name,
     sup.specialization, sup.bio, sup.supervisor_type,
     COALESCE(sup.training_start_date, st.training_start_date) AS training_start_date,
+    st.training_duration_years,
     CURDATE() AS training_today
   FROM user_credentials uc
   LEFT JOIN admin_users a ON a.id = uc.id
@@ -152,9 +153,10 @@ router.put(
       address,
       highestDegree,
       institution,
-      certifications,
       bio,
       specialization,
+      trainingStartDate,
+      trainingDurationYears,
       medicalConditions,
       emergencyContactName,
       emergencyContactRelationship,
@@ -166,15 +168,20 @@ router.put(
 
     // My Profile completeness -- checked against the actual required fields
     // of the trainee's My Profile form (not an invented broader set): Full
-    // name (already backend-required everywhere) plus the Health &
-    // Emergency section's own required subset (name/relationship/phone;
-    // medical conditions and the alternate phone stay optional). Checked
-    // before any write so a rejected save never partially applies, and
-    // reported together in one response so the trainee sees every gap at
-    // once instead of fixing one field per submit.
+    // name (already backend-required everywhere), the Training Information
+    // section's Start Date + Duration, plus the Health & Emergency
+    // section's own required subset (name/relationship/phone; medical
+    // conditions and the alternate phone stay optional). Checked before any
+    // write so a rejected save never partially applies, and reported
+    // together in one response so the trainee sees every gap at once
+    // instead of fixing one field per submit.
     if (table === "students") {
       const missingFields = [];
       if (!full_name || !String(full_name).trim()) missingFields.push("Full name");
+      if (!trainingStartDate || !String(trainingStartDate).trim()) missingFields.push("Training Start Date");
+      if (trainingDurationYears === undefined || trainingDurationYears === null || String(trainingDurationYears).trim() === "") {
+        missingFields.push("Training Duration");
+      }
       if (!emergencyContactName || !String(emergencyContactName).trim()) missingFields.push("Emergency contact name");
       if (!emergencyContactRelationship || !String(emergencyContactRelationship).trim()) missingFields.push("Relationship");
       if (!emergencyContactPhone || !String(emergencyContactPhone).trim()) missingFields.push("Phone number");
@@ -184,10 +191,23 @@ router.put(
           missingFields,
         });
       }
+
+      // Format/range validation for the two fields above -- present but not
+      // well-formed must fail the save just as clearly as absent. Client-
+      // side pre-checks this too, but that can be bypassed (devtools, a
+      // direct API call), so this is the authoritative check.
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(trainingStartDate).trim())) {
+        return res.status(400).json({ error: "Training Start Date must be a valid date (YYYY-MM-DD)" });
+      }
+      const durationNum = Number(trainingDurationYears);
+      if (!Number.isInteger(durationNum) || durationNum < 1 || durationNum > 10) {
+        return res.status(400).json({ error: "Training Duration must be a whole number of years between 1 and 10" });
+      }
     } else if (!full_name || !String(full_name).trim()) {
       // Unchanged behavior for Admin/Supervisor/Designer's own My Profile
-      // pages -- those have no Health & Emergency section, so the pre-
-      // existing single-field check stays exactly as it was.
+      // pages -- those have no Health & Emergency or Training Information
+      // section, so the pre-existing single-field check stays exactly as
+      // it was.
       return res.status(400).json({ error: "Full name is required" });
     }
 
@@ -203,7 +223,8 @@ router.put(
       await db.query(
         `UPDATE students SET
           full_name = ?, email = ?, gender = ?, date_of_birth = ?, marital_status = ?,
-          phone = ?, address = ?, highest_degree = ?, institution = ?, certifications = ?,
+          phone = ?, address = ?, highest_degree = ?, institution = ?,
+          training_start_date = ?, training_duration_years = ?,
           updated_at = NOW()
          WHERE id = ?`,
         [
@@ -216,7 +237,8 @@ router.put(
           address || null,
           highestDegree || null,
           institution || null,
-          certifications || null,
+          String(trainingStartDate).trim(),
+          Number(trainingDurationYears),
           req.user.id,
         ]
       );

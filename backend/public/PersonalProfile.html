@@ -3274,25 +3274,17 @@
                     </div>
                 </section>
 
-                <section class="system-card" id="trainingInfoCard" style="display:none;">
+                <section class="system-card" id="trainingInfoCard">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-graduation-cap"></i>
                             <h2>Training Information</h2>
                         </div>
                     </div>
-                    <div class="kpi-grid">
-                        <div class="kpi-card"><label>Start Date</label>
-                            <h2 id="trainingStartDateValue" style="font-size:16px;">&mdash;</h2>
-                        </div>
-                        <div class="kpi-card"><label>Duration</label>
-                            <h2 id="trainingDurationValue" style="font-size:17px;">&mdash;</h2>
-                        </div>
-                        <div class="kpi-card"><label>Expected End Date</label>
-                            <h2 id="trainingEndDateValue" style="font-size:16px;">&mdash;</h2>
-                        </div>
-                        <div class="kpi-card"><label>Training Status</label>
-                            <h2 id="trainingStatusValue" style="font-size:16px;">&mdash;</h2>
-                        </div>
+                    <div class="form-grid">
+                        <div><label>Start Date *</label><input type="date" id="trainingStartDateInput" class="profile-editable-field" disabled required></div>
+                        <div><label>Duration (years) *</label><input type="number" id="trainingDurationInput" class="profile-editable-field" disabled required min="1" max="10" step="1" placeholder="e.g. 4"></div>
+                        <div><label>Expected End Date</label><input id="trainingEndDateValue" disabled></div>
+                        <div><label>Training Status</label><input id="trainingStatusValue" disabled></div>
                     </div>
                 </section>
 
@@ -3323,7 +3315,6 @@
                     <div class="form-grid">
                         <div><label>Highest degree</label><input id="highestDegree" placeholder="Master's Degree" class="profile-editable-field" disabled></div>
                         <div><label>Institution</label><input id="institution" class="profile-editable-field" disabled></div>
-                        <div class="full"><label>Mental health certifications</label><textarea id="certifications" class="profile-editable-field" disabled></textarea></div>
                     </div>
                     <div class="upload-row">
                         <div class="upload-box">
@@ -4274,21 +4265,16 @@
             setText("supervisorValue", data.supervisors && data.supervisors.length ? data.supervisors.map((s) => s.full_name).join(", ") : "Unassigned");
             document.getElementById("statusValue").innerHTML = `<span class="pill active">Active</span>`;
 
-            // Training Information -- every field here is read directly from
-            // what the backend already computed (toProfileResponse, fed by
-            // trainingTimeline.js); this page never does its own date math.
-            const trainingCard = document.getElementById("trainingInfoCard");
-            if (trainingCard) {
-                if (data.trainingStartDate) {
-                    trainingCard.style.display = "";
-                    setText("trainingStartDateValue", formatTrainingDate(data.trainingStartDate));
-                    setText("trainingDurationValue", data.trainingDurationYears ? `${data.trainingDurationYears} Years` : null);
-                    setText("trainingEndDateValue", formatTrainingDate(data.trainingEndDate));
-                    setText("trainingStatusValue", formatTrainingStatus(data.trainingStatus, data.trainingYear));
-                } else {
-                    trainingCard.style.display = "none";
-                }
-            }
+            // Training Information -- Start Date/Duration are now real,
+            // required, editable fields (see PROFILE_FIELD_LABEL_TO_ID and
+            // saveProfileBtn below); Expected End Date/Training Status stay
+            // fully derived, read directly from what the backend already
+            // computed (toProfileResponse, fed by trainingTimeline.js) --
+            // this page never does its own date math for those two.
+            setValue("trainingStartDateInput", data.trainingStartDate ? data.trainingStartDate.slice(0, 10) : "");
+            setValue("trainingDurationInput", data.trainingDurationYears || "");
+            setValue("trainingEndDateValue", formatTrainingDate(data.trainingEndDate));
+            setValue("trainingStatusValue", formatTrainingStatus(data.trainingStatus, data.trainingYear));
 
             setValue("name", data.full_name);
             setValue("gender", data.gender);
@@ -4299,7 +4285,6 @@
             setValue("address", data.address);
             setValue("highestDegree", data.highestDegree);
             setValue("institution", data.institution);
-            setValue("certifications", data.certifications);
             setValue("medicalConditions", data.medicalConditions);
             setValue("emergencyName", data.emergencyContactName);
             setValue("emergencyRelationship", data.emergencyContactRelationship);
@@ -4539,6 +4524,8 @@
         // client-side one highlight the same fields with no translation step.
         const PROFILE_FIELD_LABEL_TO_ID = {
             "Full name": "name",
+            "Training Start Date": "trainingStartDateInput",
+            "Training Duration": "trainingDurationInput",
             "Emergency contact name": "emergencyName",
             "Relationship": "emergencyRelationship",
             "Phone number": "emergencyPhone",
@@ -4576,6 +4563,17 @@
             });
             if (missing.length) return showMissingProfileFields(missing);
 
+            // Format/range validation for Training Duration -- present but
+            // not a whole number of years must still block Save, with the
+            // same field highlighted as a missing one would be. The backend
+            // independently re-checks this (and the date format) too.
+            const trainingStartDateVal = document.getElementById("trainingStartDateInput").value;
+            const trainingDurationVal = document.getElementById("trainingDurationInput").value;
+            const durationNum = Number(trainingDurationVal);
+            if (!Number.isInteger(durationNum) || durationNum < 1 || durationNum > 10) {
+                return showMissingProfileFields(["Training Duration"]);
+            }
+
             const payload = {
                 full_name: document.getElementById("name").value,
                 email: document.getElementById("email").value,
@@ -4586,7 +4584,8 @@
                 address: document.getElementById("address").value,
                 highestDegree: document.getElementById("highestDegree").value,
                 institution: document.getElementById("institution").value,
-                certifications: document.getElementById("certifications").value,
+                trainingStartDate: trainingStartDateVal,
+                trainingDurationYears: durationNum,
                 medicalConditions: document.getElementById("medicalConditions").value,
                 emergencyContactName: document.getElementById("emergencyName").value,
                 emergencyContactRelationship: document.getElementById("emergencyRelationship").value,

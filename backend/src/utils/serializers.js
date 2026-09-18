@@ -80,10 +80,19 @@ function toProfileResponse(row) {
   // separately. `undefined` (not null) on any query that didn't select
   // these columns, matching the same convention used elsewhere in this file.
   const trainingStartDate = row.training_start_date;
+  // A Trainee's own explicit training_duration_years (set from their My
+  // Profile) takes over from the 4-year constant once they have one -- a
+  // Supervisor row, or a Trainee who hasn't set one yet, both leave this
+  // undefined/null and fall back to TRAINING_DURATION_YEARS exactly as
+  // before. Queries that never select training_duration_years at all
+  // (row.training_duration_years === undefined) also fall back the same
+  // way, so this is a no-op for every existing caller that hasn't been
+  // updated to select the new column.
+  const effectiveDurationYears = row.training_duration_years || TRAINING_DURATION_YEARS;
   const progress =
     trainingStartDate === undefined
       ? { status: undefined, trainingYear: undefined, endDate: undefined }
-      : calculateTrainingProgress(trainingStartDate, row.training_today);
+      : calculateTrainingProgress(trainingStartDate, row.training_today, effectiveDurationYears);
 
   return {
     ...toPublicUser(row),
@@ -104,7 +113,7 @@ function toProfileResponse(row) {
     // Trainee/Supervisor only (undefined for admin/designer rows, whose
     // queries never select training_start_date at all).
     trainingStartDate: trainingStartDate === undefined ? undefined : trainingStartDate || null,
-    trainingDurationYears: trainingStartDate ? TRAINING_DURATION_YEARS : trainingStartDate === undefined ? undefined : null,
+    trainingDurationYears: trainingStartDate ? effectiveDurationYears : trainingStartDate === undefined ? undefined : null,
     trainingEndDate: progress.endDate,
     trainingStatus: progress.status,
     trainingYear: progress.trainingYear,

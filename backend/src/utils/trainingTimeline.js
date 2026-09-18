@@ -29,9 +29,11 @@ function addCalendarYears(yyyyMmDd, years) {
   return new Date(Date.UTC(y + years, m - 1, d)).toISOString().slice(0, 10);
 }
 
-/** Training End Date = Start Date + 4 calendar years. Derived, never stored. */
-function calculateTrainingEndDate(startDate) {
-  return startDate ? addCalendarYears(startDate, TRAINING_DURATION_YEARS) : null;
+/** Training End Date = Start Date + Duration calendar years (defaults to the
+ *  4-year constant when no per-person duration is given -- Supervisors and
+ *  any Trainee who hasn't set one yet). Derived, never stored. */
+function calculateTrainingEndDate(startDate, durationYears = TRAINING_DURATION_YEARS) {
+  return startDate ? addCalendarYears(startDate, durationYears) : null;
 }
 
 /**
@@ -42,28 +44,31 @@ function calculateTrainingEndDate(startDate) {
  * Each training year is a half-open window [yearStart, yearEnd) -- e.g. for
  * a 2026-09-15 start, Year 1 is [2026-09-15, 2027-09-15), so 2027-09-14 is
  * still Year 1 and 2027-09-15 is already Year 2. The overall end date
- * (2030-09-15 for that same start) is the same kind of boundary: reaching
- * it means the LAST year's window has closed, so the person is Completed
- * from that exact date onward, not still "in Year 4."
+ * (Start + durationYears calendar years) is the same kind of boundary:
+ * reaching it means the LAST year's window has closed, so the person is
+ * Completed from that exact date onward, not still "in the final Year."
  *
- * Returns { status: 'scheduled'|'active'|'completed'|null, trainingYear: 1-4|null, endDate }.
+ * `durationYears` defaults to the 4-year constant -- pass a Trainee's own
+ * stored value to compute against their real program length instead.
+ *
+ * Returns { status: 'scheduled'|'active'|'completed'|null, trainingYear: 1-N|null, endDate }.
  * status/trainingYear are null when startDate itself is null (nothing to compute).
  */
-function calculateTrainingProgress(startDate, today) {
+function calculateTrainingProgress(startDate, today, durationYears = TRAINING_DURATION_YEARS) {
   if (!startDate) return { status: null, trainingYear: null, endDate: null };
 
-  const endDate = calculateTrainingEndDate(startDate);
+  const endDate = calculateTrainingEndDate(startDate, durationYears);
   if (today < startDate) return { status: "scheduled", trainingYear: null, endDate };
   if (today >= endDate) return { status: "completed", trainingYear: null, endDate };
 
-  for (let year = 1; year <= TRAINING_DURATION_YEARS; year++) {
+  for (let year = 1; year <= durationYears; year++) {
     if (today < addCalendarYears(startDate, year)) {
       return { status: "active", trainingYear: year, endDate };
     }
   }
-  // Unreachable given the `today >= endDate` check above (year
-  // TRAINING_DURATION_YEARS's window ends exactly at endDate), kept as a
-  // safe fallback rather than ever returning undefined.
+  // Unreachable given the `today >= endDate` check above (the final year's
+  // window ends exactly at endDate), kept as a safe fallback rather than
+  // ever returning undefined.
   return { status: "completed", trainingYear: null, endDate };
 }
 
