@@ -51,6 +51,30 @@ const COUNTRIES = require("../utils/countries");
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+// Mirrors each column's actual VARCHAR width in learning_materials so an
+// over-length value 400s with a clear message instead of reaching MySQL and
+// coming back as an unhandled "Data too long for column" -- discovered via
+// security testing (long-input case) surfacing as a raw 500.
+const FIELD_LIMITS = {
+  title: 255, author: 255, publisher: 255, publicationLocation: 255,
+  category: 100, country: 100, isbn: 20, oclcNumber: 20,
+};
+const FIELD_LABELS = {
+  title: "Title", author: "Author", publisher: "Publisher",
+  publicationLocation: "Publication location", category: "Category",
+  country: "Country", isbn: "ISBN", oclcNumber: "OCLC number",
+};
+
+function findTooLongField(body) {
+  for (const [field, max] of Object.entries(FIELD_LIMITS)) {
+    const value = body[field];
+    if (value != null && String(value).trim().length > max) {
+      return `${FIELD_LABELS[field]} must be ${max} characters or fewer`;
+    }
+  }
+  return null;
+}
+
 // Blocks a double-click/rapid-repeat book upload from the SAME account
 // before the second request even starts streaming its file to disk. Its
 // own guard instance -- independent from the one routes/supervisor.js
@@ -71,6 +95,7 @@ function toBook(row) {
     originalName: row.original_name,
     coverImage: row.cover_image,
     publisher: row.publisher,
+    publicationLocation: row.publication_location,
     publicationYear: row.publication_year,
     resourceType: row.resource_type,
     country: row.country,
@@ -152,7 +177,7 @@ router.post("/books", requireAdminPermissionIfAdmin("library.add"), (req, res) =
       return res.status(status).json({ error });
     };
     try {
-      const { title, author, description, category, publisher, resourceType, country, isbn, oclcNumber } = req.body || {};
+      const { title, author, description, category, publisher, publicationLocation, resourceType, country, isbn, oclcNumber } = req.body || {};
       if (!title || !title.trim()) return fail(400, "Title is required");
       if (!author || !author.trim()) return fail(400, "Author is required");
       if (!resourceType || !RESOURCE_TYPES.includes(resourceType)) {
@@ -161,6 +186,8 @@ router.post("/books", requireAdminPermissionIfAdmin("library.add"), (req, res) =
       if (country && !COUNTRIES.includes(country)) {
         return fail(400, "Country must be chosen from the provided list");
       }
+      const tooLong = findTooLongField(req.body || {});
+      if (tooLong) return fail(400, tooLong);
       if (!file) return fail(400, "A book file is required");
 
       let publicationYear = null;
@@ -212,12 +239,12 @@ router.post("/books", requireAdminPermissionIfAdmin("library.add"), (req, res) =
 
       const insert = await pool.query(
         `INSERT INTO learning_materials
-           (supervisor_id, admin_id, student_id, title, author, description, category, material_type, filename, original_name, cover_image, publisher, publication_year, resource_type, file_hash, country, isbn, oclc_number)
-         VALUES (?,?,NULL,?,?,?,?,'book',?,?,?,?,?,?,?,?,?,?)`,
+           (supervisor_id, admin_id, student_id, title, author, description, category, material_type, filename, original_name, cover_image, publisher, publication_location, publication_year, resource_type, file_hash, country, isbn, oclc_number)
+         VALUES (?,?,NULL,?,?,?,?,'book',?,?,?,?,?,?,?,?,?,?,?)`,
         [
           supervisorId, adminId, title.trim(), author.trim(), description || null, category || null,
           file.filename, file.originalname, cover ? cover.filename : null,
-          publisher || null, publicationYear, resourceType, fileHash,
+          publisher || null, publicationLocation ? String(publicationLocation).trim() : null, publicationYear, resourceType, fileHash,
           country || null, isbn ? isbn.trim() : null, oclcNumber ? oclcNumber.trim() : null,
         ]
       );
@@ -234,6 +261,7 @@ router.post("/books", requireAdminPermissionIfAdmin("library.add"), (req, res) =
         description: description || null,
         category: category || null,
         publisher: publisher || null,
+        publicationLocation: publicationLocation ? String(publicationLocation).trim() : null,
         publicationYear,
         resourceType,
         country: country || null,
@@ -314,7 +342,7 @@ router.put(
     const { rows } = await db.query("SELECT id FROM learning_materials WHERE id = ? AND material_type = 'book'", [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: "Book not found" });
 
-    const { title, author, description, category, publisher, resourceType, country, isbn, oclcNumber } = req.body || {};
+    const { title, author, description, category, publisher, publicationLocation, resourceType, country, isbn, oclcNumber } = req.body || {};
     if (!title || !String(title).trim()) return res.status(400).json({ error: "Title is required" });
     if (!author || !String(author).trim()) return res.status(400).json({ error: "Author is required" });
     if (!resourceType || !RESOURCE_TYPES.includes(resourceType)) {
@@ -323,6 +351,8 @@ router.put(
     if (country && !COUNTRIES.includes(country)) {
       return res.status(400).json({ error: "Country must be chosen from the provided list" });
     }
+    const tooLong = findTooLongField(req.body || {});
+    if (tooLong) return res.status(400).json({ error: tooLong });
     let publicationYear = null;
     if (req.body.publicationYear != null && req.body.publicationYear !== "") {
       publicationYear = Number(req.body.publicationYear);
@@ -333,11 +363,12 @@ router.put(
 
     await db.query(
       `UPDATE learning_materials SET
-         title = ?, author = ?, description = ?, category = ?, publisher = ?, publication_year = ?,
+         title = ?, author = ?, description = ?, category = ?, publisher = ?, publication_location = ?, publication_year = ?,
          resource_type = ?, country = ?, isbn = ?, oclc_number = ?
        WHERE id = ?`,
       [
-        title.trim(), author.trim(), description || null, category || null, publisher || null, publicationYear,
+        title.trim(), author.trim(), description || null, category || null, publisher || null,
+        publicationLocation ? String(publicationLocation).trim() : null, publicationYear,
         resourceType, country || null, isbn ? isbn.trim() : null, oclcNumber ? oclcNumber.trim() : null,
         req.params.id,
       ]
@@ -418,11 +449,23 @@ router.get(
       }
     }
 
+    // publish_places is Open Library's own free-text field for exactly this
+    // ("Paris, France", "New York, USA" -- verified directly against the
+    // live API) -- mapped to publicationLocation as-is, never split or
+    // parsed to guess a Country from it. There is no separate country
+    // field in this record at all, so country is deliberately left
+    // unmapped here rather than inferred from the location string -- the
+    // reviewer picks it from the dropdown if they can confirm it.
+    // oclc_numbers is also sometimes present directly in the ISBN record
+    // itself (distinct from a WorldCat Search API lookup, which this app
+    // has no key for) -- mapped when the source actually provides it.
     res.json({
       title: book.title || null,
       author,
       publisher: (Array.isArray(book.publishers) && book.publishers[0]) || null,
+      publicationLocation: (Array.isArray(book.publish_places) && book.publish_places[0]) || null,
       publicationYear: book.publish_date ? Number(String(book.publish_date).match(/\d{4}/)?.[0]) || null : null,
+      oclcNumber: (Array.isArray(book.oclc_numbers) && book.oclc_numbers[0]) || null,
       description: typeof book.notes === "string" ? book.notes : (book.notes && book.notes.value) || null,
       coverImageUrl: Array.isArray(book.covers) && book.covers[0] ? `https://covers.openlibrary.org/b/id/${book.covers[0]}-L.jpg` : null,
       isbn,
