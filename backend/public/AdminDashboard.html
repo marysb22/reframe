@@ -458,21 +458,102 @@
    detail (author, type, category, year, added-by) collapsed into a
    single small green italic line beneath it. */
         
-        /* Compact library-card grid -- auto-fill + a small minmax floor
-           keeps books noticeably smaller than a generic square tile, so a
-           real library of dozens/hundreds of titles stays scannable
-           without huge whitespace, while still adapting to tablet/phone
-           without separate breakpoints. */
-        .book-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
-            gap: 10px;
+        /* Netflix-style library: one horizontally-scrolling row per book
+           Type, stacked vertically -- so the row itself never breaks,
+           enlarges, or wraps into a grid no matter how many books a Type
+           holds; the same .book-list/.book-card markup below is reused
+           for every row (and for the single "Search Results" row shown
+           while searching), just fed different data. */
+        .library-sections {
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
             margin-top: 14px;
+        }
+
+        .book-section-header {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .book-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .book-section-count {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--faint);
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 10px;
+            padding: 1px 7px;
+        }
+
+        .book-carousel {
+            position: relative;
+        }
+
+        .book-list {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            scroll-snap-type: x proximity;
+            padding: 2px 2px 6px;
+        }
+
+        .book-list::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .book-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .book-carousel-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+            font-size: 11px;
+            z-index: 2;
+        }
+
+        .book-carousel-arrow:hover {
+            color: var(--primary);
+            border-color: var(--primary-light);
+        }
+
+        .book-carousel-arrow-left {
+            left: -6px;
+        }
+
+        .book-carousel-arrow-right {
+            right: -6px;
         }
 
         .book-card {
             display: flex;
             flex-direction: column;
+            flex: 0 0 auto;
+            width: 110px;
+            scroll-snap-align: start;
             border: 1px solid var(--border-soft);
             border-radius: 10px;
             background: var(--surface);
@@ -1872,10 +1953,9 @@
                     <div class="toolbar" style="margin-top:14px;">
                         <input type="text" id="librarySearch" placeholder="Search by title, author, publisher, category, or type..." oninput="applyLibraryFilters()" style="flex:1;">
                     </div>
-                    <div class="book-list" id="libraryGrid">
+                    <div class="library-sections" id="libraryGrid">
                         <div class="empty-state">Loading library...</div>
                     </div>
-                    <button type="button" class="btn btn-secondary" id="libraryLoadMoreBtn" style="width:auto;margin-top:14px;display:none;" onclick="libraryLoadMore()">Load more</button>
                 </div>
             </section>
 
@@ -5217,9 +5297,6 @@ document.getElementById("eventForm").addEventListener("submit", async (e) => {
 // ==========================================================================
 
 let libraryBooksRaw = [];
-let libraryLastFilteredList = [];
-let libraryShownCount = 40;
-const LIBRARY_PAGE_SIZE = 40;
 
 // The controlled Type list -- mirrors RESOURCE_TYPES in backend/src/routes/library.js.
 // Adding a new type later means updating both lists, not touching the DB schema.
@@ -5293,35 +5370,37 @@ async function loadLibrary() {
   const data = await apiRequest("/library/books");
   if (!data) return;
   libraryBooksRaw = data.books;
-  libraryShownCount = LIBRARY_PAGE_SIZE;
   applyLibraryFilters();
 }
 
 // Search-only now (category pills / type filter / sort dropdown removed --
 // a library meant to hold hundreds or thousands of books needs one simple
 // control, not several). Newest-first, matching the API's own default order.
+// While searching, every match renders as one flat "Search Results" row;
+// clearing the box goes back to one row per Type (see renderLibrarySections).
 function applyLibraryFilters() {
   const search = (document.getElementById("librarySearch").value || "").trim().toLowerCase();
 
+  if (!search) {
+    renderLibrarySections(libraryBooksRaw, null);
+    return;
+  }
   const list = libraryBooksRaw.filter((b) => {
-    if (!search) return true;
     const hay = `${b.title || ""} ${b.author || ""} ${b.publisher || ""} ${b.category || ""} ${RESOURCE_TYPE_LABELS[b.resourceType] || ""}`.toLowerCase();
     return hay.includes(search);
   });
-
-  libraryShownCount = LIBRARY_PAGE_SIZE;
-  renderLibraryGrid(list);
+  renderLibrarySections(list, "Search Results");
 }
 
-function libraryLoadMore() {
-  libraryShownCount += LIBRARY_PAGE_SIZE;
-  renderLibraryGrid(libraryLastFilteredList);
-}
-
-function renderLibraryGrid(list) {
-  libraryLastFilteredList = list;
+// Groups books into one horizontally-scrolling row per Type (Book, E-Book,
+// Report, ...), in RESOURCE_TYPES order, skipping any Type with zero books
+// -- so the sections shown are always driven by what's actually in the
+// Library, never hard-coded. Passing a single `searchTitle` instead renders
+// one row containing every match, for the search view. Either way every
+// row is built by the same renderBookSection()/renderBookItem() pair below,
+// not a separate implementation per Type.
+function renderLibrarySections(list, searchTitle) {
   const root = document.getElementById("libraryGrid");
-  const loadMoreBtn = document.getElementById("libraryLoadMoreBtn");
   if (!list.length) {
     root.innerHTML = `
       <div class="library-empty">
@@ -5329,21 +5408,47 @@ function renderLibraryGrid(list) {
         <h4>No books found</h4>
         <p>${libraryBooksRaw.length ? "Try another title, author, or publisher." : "No books have been added to the Library yet."}</p>
       </div>`;
-    loadMoreBtn.style.display = "none";
     return;
   }
-  const visible = list.slice(0, libraryShownCount);
-  root.innerHTML = visible.map((b) => {
-    // Kept deliberately short -- Type/Category/Year only. Author gets its
-    // own line (still secondary, but distinct); everything else (Publisher,
-    // Publication Location, Country, ISBN, OCLC, who added it) only ever
-    // appears in View Details, never crowding the card itself.
-    const metaParts = [
-      RESOURCE_TYPE_LABELS[b.resourceType],
-      b.category,
-      b.publicationYear ? String(b.publicationYear) : null,
-    ].filter(Boolean);
-    return `
+
+  const sectionsHtml = searchTitle
+    ? renderBookSection(searchTitle, list)
+    : RESOURCE_TYPES
+        .map((t) => ({ label: t.label, books: list.filter((b) => b.resourceType === t.value) }))
+        .filter((s) => s.books.length)
+        .map((s) => renderBookSection(s.label, s.books))
+        .join("");
+
+  root.innerHTML = sectionsHtml;
+  initLibraryCarousels();
+}
+
+function renderBookSection(title, books) {
+  return `
+    <div class="book-section">
+      <div class="book-section-header">
+        <span class="book-section-title">${escapeHtml(title)}</span>
+        <span class="book-section-count">${books.length}</span>
+      </div>
+      <div class="book-carousel">
+        <button type="button" class="book-carousel-arrow book-carousel-arrow-left" onclick="scrollBookCarousel(this, -1)" aria-label="Scroll left"><i class="fa fa-chevron-left"></i></button>
+        <div class="book-list">${books.map(renderBookItem).join("")}</div>
+        <button type="button" class="book-carousel-arrow book-carousel-arrow-right" onclick="scrollBookCarousel(this, 1)" aria-label="Scroll right"><i class="fa fa-chevron-right"></i></button>
+      </div>
+    </div>`;
+}
+
+function renderBookItem(b) {
+  // Kept deliberately short -- Type/Category/Year only. Author gets its
+  // own line (still secondary, but distinct); everything else (Publisher,
+  // Publication Location, Country, ISBN, OCLC, who added it) only ever
+  // appears in View Details, never crowding the card itself.
+  const metaParts = [
+    RESOURCE_TYPE_LABELS[b.resourceType],
+    b.category,
+    b.publicationYear ? String(b.publicationYear) : null,
+  ].filter(Boolean);
+  return `
     <div class="book-card">
       <div class="book-cover" onclick="openBookDetails(${b.id})">
         ${b.coverImage ? `<img src="${UPLOADS}/materials/${b.coverImage}${TOKEN_Q}" alt="">` : `<i class="fa fa-book"></i>`}
@@ -5358,10 +5463,31 @@ function renderLibraryGrid(list) {
         ${b.canEdit ? `<button type="button" class="book-menu-btn" title="Edit this book" onclick="editLibraryBook(${b.id})"><i class="fa fa-pen"></i></button>` : ""}
         ${b.canDelete ? `<button type="button" class="book-menu-btn" title="Remove this book" onclick="deleteLibraryBook(${b.id})"><i class="fa fa-trash"></i></button>` : ""}
       </div>
-    </div>
-  `;
-  }).join("");
-  loadMoreBtn.style.display = list.length > libraryShownCount ? "block" : "none";
+    </div>`;
+}
+
+// One book-width's worth of scroll per click, and each arrow hides itself
+// once there's nothing further to scroll to in that direction -- so a row
+// short enough to fit on screen simply shows no arrows at all.
+function scrollBookCarousel(arrowEl, direction) {
+  const track = arrowEl.closest(".book-carousel").querySelector(".book-list");
+  track.scrollBy({ left: direction * track.clientWidth * 0.8, behavior: "smooth" });
+}
+
+function initLibraryCarousels() {
+  document.querySelectorAll("#libraryGrid .book-carousel").forEach((car) => {
+    const track = car.querySelector(".book-list");
+    const leftArrow = car.querySelector(".book-carousel-arrow-left");
+    const rightArrow = car.querySelector(".book-carousel-arrow-right");
+    const update = () => {
+      const canScroll = track.scrollWidth > track.clientWidth + 4;
+      leftArrow.style.display = canScroll && track.scrollLeft > 4 ? "flex" : "none";
+      rightArrow.style.display = canScroll && track.scrollLeft < track.scrollWidth - track.clientWidth - 4 ? "flex" : "none";
+    };
+    track.addEventListener("scroll", update);
+    update();
+    requestAnimationFrame(update);
+  });
 }
 
 function bookFileInfo(b) {
