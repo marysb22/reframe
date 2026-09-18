@@ -2974,6 +2974,79 @@
             width: 56px;
             height: 56px;
             font-size: 18px;
+            position: relative;
+        }
+
+        .avatar-upload-row .photo-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary);
+            color: #fff;
+            position: absolute;
+            bottom: -3px;
+            right: -3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        /* ===== My Profile form (ToT) ===== */
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-grid .full {
+            grid-column: 1/-1;
+        }
+
+        .form-grid label {
+            display: block;
+            font-weight: 600;
+            font-size: 12.5px;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .form-grid input,
+        .form-grid textarea {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 11px 13px;
+            font-size: 13.5px;
+            font-family: inherit;
+            background: var(--surface-2);
+        }
+
+        .form-grid textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .form-grid input:focus,
+        .form-grid textarea:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            background: var(--surface);
+        }
+
+        .form-grid input:disabled,
+        .form-grid textarea:disabled {
+            background: var(--surface-2);
+            color: var(--text);
+            border-color: transparent;
+            cursor: default;
+            opacity: 1;
+        }
+
+        .profile-edit-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 4px;
         }
 
         /* ---- Training Activities (redesigned) ------------------------ */
@@ -3292,6 +3365,7 @@
                 </ul>
                 <div class="nav-label">Account</div>
                 <ul>
+                    <li><a data-section="profile" href="#profile"><i class="fa fa-user"></i>My Profile</a></li>
                     <li><a data-section="settings" href="#settings"><i class="fa fa-gear"></i>Settings</a></li>
                 </ul>
             </nav>
@@ -3939,33 +4013,6 @@
                 <div class="settings-grid">
 
                     <div class="system-card">
-                        <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-id-badge" style="color:var(--primary);"></i>Profile</h2>
-                        <p class="card-subtitle" style="margin-top:4px;">Your account information as shown across the system.</p>
-                        <div class="avatar-upload-row">
-                            <div class="avatar-circle" id="settingsAvatarPreview">&mdash;</div>
-                            <div>
-                                <input type="file" id="settingsPhotoFile" accept="image/*" style="height:auto;padding:6px 0;">
-                                <div style="font-size:11px;color:var(--faint);margin-top:4px;">JPG or PNG.</div>
-                            </div>
-                        </div>
-                        <form id="profileForm">
-                            <label>Full name</label>
-                            <input type="text" id="settingsName" placeholder="Full name">
-                            <label>Email</label>
-                            <input type="email" id="settingsEmail" placeholder="you@reframe.org">
-                            <label>Phone</label>
-                            <input type="text" id="settingsPhone" placeholder="Phone number">
-                            <label>ToT ID</label>
-                            <input type="text" id="settingsMemberCode" disabled>
-                            <label>Specialization</label>
-                            <input type="text" id="settingsSpecialization" placeholder="e.g. Cognitive Behavioral Therapy">
-                            <label>Professional Summary</label>
-                            <textarea id="settingsBio" style="height:90px;padding:10px 13px;resize:vertical;" placeholder="A short professional bio -- shown on your CV in the Admin console."></textarea>
-                            <button type="submit" class="btn">Save profile</button>
-                        </form>
-                    </div>
-
-                    <div class="system-card">
                         <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-lock" style="color:var(--primary);"></i>Security &amp; password</h2>
                         <p class="card-subtitle" style="margin-top:4px;">Update your password. You'll stay logged in on this device.</p>
                         <form id="passwordForm">
@@ -4033,6 +4080,82 @@
                     </div>
 
                 </div>
+            </section>
+
+            <!-- ============================================================= -->
+            <!-- MY PROFILE                                                     -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-profile" data-title="My Profile" data-eyebrow="Account">
+
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-id-badge"></i>
+                            <h2>Profile summary</h2>
+                        </div>
+                    </div>
+                    <div class="avatar-upload-row">
+                        <div class="avatar-circle" id="totProfileAvatarPreview">&mdash;</div>
+                        <div>
+                            <strong id="totProfileFullName" style="font-size:16px;">&mdash;</strong>
+                            <div style="color:var(--muted);font-size:12.5px;margin-top:2px;" id="totProfileSubline">&mdash;</div>
+                        </div>
+                    </div>
+                    <div class="kpi-grid">
+                        <div class="kpi-card"><label>Group</label>
+                            <h2 id="totProfileGroupValue" style="font-size:17px;">&mdash;</h2>
+                        </div>
+                        <div class="kpi-card"><label>Role</label>
+                            <h2 id="totProfileRoleValue" style="font-size:17px;">&mdash;</h2>
+                        </div>
+                        <div class="kpi-card"><label>Status</label>
+                            <h2 id="totProfileStatusValue" style="font-size:17px;">&mdash;</h2>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="system-card" id="totTrainingInfoCard" style="display:none;">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-graduation-cap"></i>
+                            <h2>Training Information</h2>
+                        </div>
+                    </div>
+                    <div class="kpi-grid">
+                        <div class="kpi-card"><label>Start Date</label>
+                            <h2 id="totTrainingStartDateValue" style="font-size:16px;">&mdash;</h2>
+                        </div>
+                        <div class="kpi-card"><label>Duration</label>
+                            <h2 id="totTrainingDurationValue" style="font-size:17px;">&mdash;</h2>
+                        </div>
+                        <div class="kpi-card"><label>Expected End Date</label>
+                            <h2 id="totTrainingEndDateValue" style="font-size:16px;">&mdash;</h2>
+                        </div>
+                        <div class="kpi-card"><label>Training Status</label>
+                            <h2 id="totTrainingStatusValue" style="font-size:16px;">&mdash;</h2>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-user"></i>
+                            <h2>Personal information</h2>
+                        </div>
+                        <button type="button" class="btn btn-secondary" id="totProfileEditBtn" onclick="startTotProfileEdit()"><i class="fa fa-pen"></i> Edit</button>
+                    </div>
+                    <div class="form-grid">
+                        <div><label>Full name *</label><input id="totName" class="tot-profile-editable-field" disabled></div>
+                        <div><label>Phone</label><input id="totPhone" placeholder="+961" class="tot-profile-editable-field" disabled></div>
+                        <div><label>Email</label><input type="email" id="totEmail" class="tot-profile-editable-field" disabled></div>
+                        <div class="full"><label>Specialization</label><input id="totSpecialization" placeholder="e.g. Cognitive Behavioral Therapy" class="tot-profile-editable-field" disabled></div>
+                        <div class="full"><label>Professional Summary</label><textarea id="totBio" class="tot-profile-editable-field" disabled placeholder="A short professional bio -- shown on your CV in the Admin console."></textarea></div>
+                    </div>
+                </section>
+
+                <div class="profile-edit-actions" id="totProfileSaveActions" style="display:none;">
+                    <button type="button" class="btn" id="totSaveProfileBtn" style="width:auto;">Save changes</button>
+                    <button type="button" class="btn btn-secondary" style="width:auto;" onclick="cancelTotProfileEdit()">Cancel</button>
+                </div>
+
             </section>
 
         </main>
@@ -4543,6 +4666,17 @@
             return (value === null || value === undefined) ? fallback : value;
         }
 
+        function setValue(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.value = nc(value, "");
+        }
+
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = nc(value, "—");
+        }
+
         function escapeHtml(str) {
             return String(nc(str, "")).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
@@ -4586,7 +4720,7 @@
 
         const SECTION_IDS = [
             "dashboard", "library", "students", "calendar", "events", "materials", "assignments",
-            "meetings", "chat", "documents", "announcements", "settings",
+            "meetings", "chat", "documents", "announcements", "profile", "settings",
         ];
 
         const SECTION_LOADERS = {
@@ -4655,6 +4789,8 @@
             sidebarBackdrop.classList.remove("show");
         }
 
+        let currentTotProfile = null;
+
         async function loadMe() {
             const me = await apiRequest("/profile/me");
             if (me) {
@@ -4664,19 +4800,141 @@
                 }
                 document.getElementById("supervisorName").textContent = me.full_name;
                 document.getElementById("supervisorInitials").textContent = initials(me.full_name);
-                document.getElementById("settingsName").value = me.full_name || "";
-                document.getElementById("settingsEmail").value = me.email || "";
-                document.getElementById("settingsPhone").value = me.phone || "";
-                document.getElementById("settingsMemberCode").value = me.memberCode || "";
-                document.getElementById("settingsSpecialization").value = me.specialization || "";
-                document.getElementById("settingsBio").value = me.bio || "";
-                document.getElementById("settingsAvatarPreview").textContent = initials(me.full_name);
                 if (me.photo) {
                     document.getElementById("supervisorInitials").innerHTML = `<img src="${UPLOADS}/photos/${me.photo}${TOKEN_Q}" alt="">`;
-                    document.getElementById("settingsAvatarPreview").innerHTML = `<img src="${UPLOADS}/photos/${me.photo}${TOKEN_Q}" alt="">`;
                 }
+                currentTotProfile = me;
+                populateTotProfileFields(me);
             }
         }
+
+        // ---- My Profile (moved here from Settings -- ToT/Master Trainer's own
+        // personal/profile information; Settings now only holds account-level
+        // preferences: password, notifications, hour types, privacy) ---------
+
+        function populateTotProfileFields(data) {
+            setText("totProfileFullName", data.full_name);
+            document.getElementById("totProfileSubline").textContent =
+                `${data.memberCode || ""} · ${data.groupName || "No group"}`;
+
+            if (data.photo) {
+                const imgHtml = `<img src="${UPLOADS}/photos/${data.photo}${TOKEN_Q}" alt="">`;
+                document.getElementById("totProfileAvatarPreview").innerHTML = imgHtml + '<button class="photo-btn" id="totPhotoBtn" title="Change photo"><i class="fa fa-camera"></i></button>';
+            } else {
+                document.getElementById("totProfileAvatarPreview").innerHTML = initials(data.full_name) + '<button class="photo-btn" id="totPhotoBtn" title="Change photo"><i class="fa fa-camera"></i></button>';
+            }
+            attachTotPhotoButton();
+
+            setText("totProfileGroupValue", data.groupName || "Unassigned");
+            setText("totProfileRoleValue", data.supervisorType === "primary" ? "Master Trainer" : "Trainer (ToT)");
+            document.getElementById("totProfileStatusValue").innerHTML = `<span class="pill active">Active</span>`;
+
+            const trainingCard = document.getElementById("totTrainingInfoCard");
+            if (trainingCard) {
+                if (data.trainingStartDate) {
+                    trainingCard.style.display = "";
+                    setText("totTrainingStartDateValue", formatTrainingDate(data.trainingStartDate));
+                    setText("totTrainingDurationValue", data.trainingDurationYears ? `${data.trainingDurationYears} Years` : "&mdash;");
+                    setText("totTrainingEndDateValue", formatTrainingDate(data.trainingEndDate));
+                    setText("totTrainingStatusValue", formatTrainingStatus(data.trainingStatus, data.trainingYear));
+                } else {
+                    trainingCard.style.display = "none";
+                }
+            }
+
+            setValue("totName", data.full_name);
+            setValue("totPhone", data.phone);
+            setValue("totEmail", data.email);
+            setValue("totSpecialization", data.specialization);
+            setValue("totBio", data.bio);
+        }
+
+        function setTotProfileFieldsDisabled(disabled) {
+            document.querySelectorAll(".tot-profile-editable-field").forEach((el) => { el.disabled = disabled; });
+        }
+
+        function startTotProfileEdit() {
+            setTotProfileFieldsDisabled(false);
+            document.getElementById("totProfileEditBtn").style.display = "none";
+            document.getElementById("totProfileSaveActions").style.display = "flex";
+            document.getElementById("totName").focus();
+        }
+
+        function endTotProfileEdit() {
+            setTotProfileFieldsDisabled(true);
+            document.getElementById("totProfileEditBtn").style.display = "";
+            document.getElementById("totProfileSaveActions").style.display = "none";
+        }
+
+        function cancelTotProfileEdit() {
+            if (currentTotProfile) populateTotProfileFields(currentTotProfile);
+            endTotProfileEdit();
+        }
+
+        function attachTotPhotoButton() {
+            const btn = document.getElementById("totPhotoBtn");
+            if (!btn) return;
+            btn.addEventListener("click", () => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.style.position = "fixed";
+                input.style.top = "-9999px";
+                input.style.left = "-9999px";
+                document.body.appendChild(input);
+                input.addEventListener("change", async() => {
+                    if (input.files[0]) await uploadTotProfilePhoto(input.files[0]);
+                    input.remove();
+                });
+                input.addEventListener("cancel", () => input.remove());
+                input.click();
+            });
+        }
+
+        async function uploadTotProfilePhoto(file) {
+            const form = new FormData();
+            form.append("photo", file);
+            try {
+                const response = await fetch(API + "/profile/photo", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: form,
+                });
+                if (!response.ok) {
+                    const body = await response.json().catch(() => null);
+                    throw new Error((body && body.error) || "Upload failed");
+                }
+                const data = await response.json();
+                showSuccessNotification("Profile Updated", "Your profile photo has been updated successfully.");
+                if (data.photo) {
+                    const imgHtml = `<img src="${UPLOADS}/photos/${data.photo}${TOKEN_Q}" alt="">`;
+                    document.getElementById("supervisorInitials").innerHTML = imgHtml;
+                    document.getElementById("totProfileAvatarPreview").innerHTML = imgHtml + '<button class="photo-btn" id="totPhotoBtn" title="Change photo"><i class="fa fa-camera"></i></button>';
+                    attachTotPhotoButton();
+                    if (currentTotProfile) currentTotProfile.photo = data.photo;
+                }
+            } catch (err) {
+                showToast(err.message, "error");
+            }
+        }
+
+        document.getElementById("totSaveProfileBtn").addEventListener("click", async() => {
+            const payload = {
+                full_name: document.getElementById("totName").value.trim(),
+                email: document.getElementById("totEmail").value.trim(),
+                phone: document.getElementById("totPhone").value.trim(),
+                specialization: document.getElementById("totSpecialization").value.trim(),
+                bio: document.getElementById("totBio").value.trim(),
+            };
+            const result = await apiRequest("/profile/me", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            if (result) {
+                currentTotProfile = result;
+                document.getElementById("supervisorName").textContent = result.full_name || "ToT";
+                showSuccessNotification("Profile Updated", "Your profile information has been saved successfully.");
+                endTotProfileEdit();
+                populateTotProfileFields(result);
+            }
+        });
 
         document.addEventListener("DOMContentLoaded", async() => {
             await loadMe();
@@ -8236,46 +8494,6 @@ document.getElementById("calNext").addEventListener("click", () => {
   calViewMonth++;
   if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; }
   renderCalendar();
-});
-
-document.getElementById("settingsPhotoFile").addEventListener("change", async () => {
-  const file = document.getElementById("settingsPhotoFile").files[0];
-  if (!file) return;
-  const form = new FormData();
-  form.append("photo", file);
-  try {
-    const response = await fetch(`${API}/profile/photo`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      throw new Error((body && body.error) || "Upload failed");
-    }
-    const data = await response.json();
-    document.getElementById("settingsAvatarPreview").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}${TOKEN_Q}" alt="">`;
-    document.getElementById("supervisorInitials").innerHTML = `<img src="${UPLOADS}/photos/${data.photo}${TOKEN_Q}" alt="">`;
-    showSuccessNotification("Profile Updated", "Your profile photo has been updated successfully.");
-  } catch (err) {
-    showToast(err.message, "error");
-  }
-});
-
-document.getElementById("profileForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const payload = {
-    full_name: document.getElementById("settingsName").value.trim(),
-    email: document.getElementById("settingsEmail").value.trim(),
-    phone: document.getElementById("settingsPhone").value.trim(),
-    specialization: document.getElementById("settingsSpecialization").value.trim(),
-    bio: document.getElementById("settingsBio").value.trim(),
-  };
-  const result = await apiRequest("/profile/me", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-  if (result) {
-    showSuccessNotification("Profile Updated", "Your profile information has been saved successfully.");
-    document.getElementById("supervisorName").textContent = payload.full_name || "ToT";
-  }
 });
 
 document.getElementById("passwordForm").addEventListener("submit", async (e) => {

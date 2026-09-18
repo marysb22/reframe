@@ -45,7 +45,7 @@ const PROFILE_SELECT = `
     st.gender, st.date_of_birth, st.marital_status, st.address,
     st.highest_degree, st.institution, st.certifications, st.cv_file,
     st.cohort_id, c.name AS cohort_name, st.current_year,
-    st.group_id, tg.name AS group_name,
+    COALESCE(sup.group_id, st.group_id) AS group_id, tg.name AS group_name,
     sup.specialization, sup.bio, sup.supervisor_type,
     COALESCE(sup.training_start_date, st.training_start_date) AS training_start_date,
     CURDATE() AS training_today
@@ -55,7 +55,7 @@ const PROFILE_SELECT = `
   LEFT JOIN students st ON st.id = uc.id
   LEFT JOIN designers d ON d.id = uc.id
   LEFT JOIN cohorts c ON c.id = st.cohort_id
-  LEFT JOIN trainer_groups tg ON tg.id = st.group_id
+  LEFT JOIN trainer_groups tg ON tg.id = COALESCE(sup.group_id, st.group_id)
   WHERE uc.id = ?
 `;
 
