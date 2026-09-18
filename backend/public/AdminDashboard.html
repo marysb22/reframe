@@ -488,14 +488,15 @@
         }
 
         /* The cover is the one element that has to read as a physical book,
-           not a plain image tile -- a 2:3 ratio (a real paperback's
-           proportions), a faint printed-edge inset border, and the
-           spine/sheen pseudo-elements below are what carry that, so this
-           stays correct whether or not a real cover image is present. */
+           not a plain image tile -- kept square (equal width/height) so
+           the whole card stays compact, with a faint printed-edge inset
+           border and the spine/sheen pseudo-elements below carrying the
+           "book" feel instead of an elongated cover shape. Correct
+           whether or not a real cover image is present. */
         .book-cover {
             position: relative;
             width: 100%;
-            aspect-ratio: 2 / 3;
+            aspect-ratio: 1 / 1;
             flex-shrink: 0;
             background: linear-gradient(155deg, var(--surface-2), var(--border-soft));
             display: flex;
