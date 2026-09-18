@@ -335,17 +335,34 @@ router.get(
               -- session hours (the source of truth going forward) + adjustments
               -- this ToT personally authored for their own trainees -- same
               -- three-part formula as computeProgressSummary, aggregated across
-              -- this ToT's whole caseload instead of one trainee.
+              -- this ToT's whole caseload instead of one trainee. The derived
+              -- part counts a Group Session occasion's own duration exactly
+              -- once (not once per attendee) -- see computeHoursByType's
+              -- fuller design note in utils/serializers.js for why.
               ((SELECT COALESCE(SUM(th.hours), 0) FROM training_hours th WHERE th.supervisor_id = sup.id) +
-               (SELECT COALESCE(SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60, 0) FROM sessions s
-                  JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-                  WHERE s.supervisor_id = sup.id AND s.session_type = 'training' AND s.status != 'cancelled') +
+               (SELECT COALESCE(SUM(hours), 0) FROM (
+                  SELECT CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
+                  FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
+                  WHERE s.supervisor_id = sup.id AND s.session_type = 'training' AND s.status != 'cancelled' AND s.occasion_id IS NULL
+                  UNION ALL
+                  SELECT so.duration_minutes / 60 FROM session_occasions so
+                  WHERE so.supervisor_id = sup.id AND so.session_type = 'training'
+                    AND EXISTS (SELECT 1 FROM sessions s2 JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
+                                WHERE s2.occasion_id = so.id AND s2.status != 'cancelled')
+                ) derived) +
                (SELECT COALESCE(SUM(tha.hours), 0) FROM trainee_hour_adjustments tha
                   WHERE tha.hour_type = 'training' AND tha.added_by = sup.id)) AS training_hours,
               ((SELECT COALESCE(SUM(sh.hours), 0) FROM supervision_hours sh WHERE sh.supervisor_id = sup.id) +
-               (SELECT COALESCE(SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60, 0) FROM sessions s
-                  JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-                  WHERE s.supervisor_id = sup.id AND s.session_type = 'supervision' AND s.status != 'cancelled') +
+               (SELECT COALESCE(SUM(hours), 0) FROM (
+                  SELECT CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
+                  FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
+                  WHERE s.supervisor_id = sup.id AND s.session_type = 'supervision' AND s.status != 'cancelled' AND s.occasion_id IS NULL
+                  UNION ALL
+                  SELECT so.duration_minutes / 60 FROM session_occasions so
+                  WHERE so.supervisor_id = sup.id AND so.session_type = 'supervision'
+                    AND EXISTS (SELECT 1 FROM sessions s2 JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
+                                WHERE s2.occasion_id = so.id AND s2.status != 'cancelled')
+                ) derived) +
                (SELECT COALESCE(SUM(tha.hours), 0) FROM trainee_hour_adjustments tha
                   WHERE tha.hour_type = 'supervision' AND tha.added_by = sup.id)) AS supervision_hours,
               (SELECT COALESCE((
@@ -380,9 +397,16 @@ router.get(
             `SELECT sup.id AS supervisor_id, ht.code, ht.label, ht.is_primary,
               COALESCE((SELECT SUM(hours) FROM training_hours WHERE supervisor_id = sup.id), 0) AS legacy_hours,
               COALESCE((
-                SELECT SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60 FROM sessions s
-                JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-                WHERE s.supervisor_id = sup.id AND s.session_type = ht.code AND s.status != 'cancelled'
+                SELECT SUM(hours) FROM (
+                  SELECT CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
+                  FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
+                  WHERE s.supervisor_id = sup.id AND s.session_type = ht.code AND s.status != 'cancelled' AND s.occasion_id IS NULL
+                  UNION ALL
+                  SELECT so.duration_minutes / 60 FROM session_occasions so
+                  WHERE so.supervisor_id = sup.id AND so.session_type = ht.code
+                    AND EXISTS (SELECT 1 FROM sessions s2 JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
+                                WHERE s2.occasion_id = so.id AND s2.status != 'cancelled')
+                ) derived
               ), 0) AS derived_hours,
               COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE added_by = sup.id AND hour_type = ht.code), 0) AS adjustment_hours
        FROM supervisors sup
@@ -432,14 +456,28 @@ router.get(
         (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND session_type = 'training') AS training_sessions,
         (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND session_type = 'supervision') AS supervision_sessions,
         ((SELECT COALESCE(SUM(hours), 0) FROM training_hours WHERE supervisor_id = ?) +
-         (SELECT COALESCE(SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60, 0) FROM sessions s
-            JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-            WHERE s.supervisor_id = ? AND s.session_type = 'training' AND s.status != 'cancelled') +
+         (SELECT COALESCE(SUM(hours), 0) FROM (
+            SELECT CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
+            FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
+            WHERE s.supervisor_id = ? AND s.session_type = 'training' AND s.status != 'cancelled' AND s.occasion_id IS NULL
+            UNION ALL
+            SELECT so.duration_minutes / 60 FROM session_occasions so
+            WHERE so.supervisor_id = ? AND so.session_type = 'training'
+              AND EXISTS (SELECT 1 FROM sessions s2 JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
+                          WHERE s2.occasion_id = so.id AND s2.status != 'cancelled')
+          ) derived) +
          (SELECT COALESCE(SUM(hours), 0) FROM trainee_hour_adjustments WHERE hour_type = 'training' AND added_by = ?)) AS training_hours,
         ((SELECT COALESCE(SUM(hours), 0) FROM supervision_hours WHERE supervisor_id = ?) +
-         (SELECT COALESCE(SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60, 0) FROM sessions s
-            JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-            WHERE s.supervisor_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled') +
+         (SELECT COALESCE(SUM(hours), 0) FROM (
+            SELECT CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
+            FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
+            WHERE s.supervisor_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled' AND s.occasion_id IS NULL
+            UNION ALL
+            SELECT so.duration_minutes / 60 FROM session_occasions so
+            WHERE so.supervisor_id = ? AND so.session_type = 'supervision'
+              AND EXISTS (SELECT 1 FROM sessions s2 JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
+                          WHERE s2.occasion_id = so.id AND s2.status != 'cancelled')
+          ) derived) +
          (SELECT COALESCE(SUM(hours), 0) FROM trainee_hour_adjustments WHERE hour_type = 'supervision' AND added_by = ?)) AS supervision_hours,
         (SELECT COUNT(*) FROM assignments WHERE supervisor_id = ?) AS assignments_total,
         (SELECT COUNT(*) FROM assignments WHERE supervisor_id = ? AND status = 'completed') AS assignments_completed,

@@ -405,10 +405,68 @@ function toStudentSummary(row) {
  * sessions and trainee_hour_adjustments are summed with a plain GROUP BY,
  * which is naturally generic over however many active hour_types exist.
  * Adding a new hour type never requires touching this function.
+ *
+ * The `sessions`-derived portion means two different things depending on
+ * which id was passed, and is deliberately NOT the same query for both:
+ *   - studentId: "hours THIS TRAINEE received" -- inherently one row per
+ *     trainee already (their own sessions row), so summing every row's
+ *     attendance-weighted duration is correct as-is, no grouping needed.
+ *   - supervisorId: "hours THIS SUPERVISOR delivered" -- a Group Session
+ *     occasion creates ONE sessions row PER ATTENDEE (see migration 024 /
+ *     utils/groupSessions.js), so naively summing every row here would
+ *     multiply a single delivered session by its trainee count (a
+ *     2-hour session for 17 trainees becoming 34 "delivered" hours,
+ *     rather than the 2 hours the supervisor actually spent). This counts
+ *     an occasion's own duration exactly once instead, gated on at least
+ *     one attendee actually being present/partial (an occasion nobody
+ *     attended delivers nothing) -- standalone (non-occasion) sessions are
+ *     untouched, still summed per row exactly as before.
  */
 async function computeHoursByType(db, { studentId, supervisorId } = {}) {
   const idCol = studentId != null ? "student_id" : "supervisor_id";
   const id = studentId != null ? studentId : supervisorId;
+
+  const derivedQuery =
+    studentId != null
+      ? {
+          sql: `SELECT s.session_type AS code,
+                       SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes
+                                WHEN a.status = 'partial' THEN COALESCE(a.minutes_completed, 0)
+                                ELSE 0 END) / 60 AS hours
+                FROM sessions s
+                JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
+                WHERE s.student_id = ? AND s.status != 'cancelled'
+                GROUP BY s.session_type`,
+          params: [id],
+        }
+      : {
+          sql: `SELECT code, SUM(hours) AS hours FROM (
+                  -- Standalone (non-Group-Session) sessions: one row per real
+                  -- session, unchanged from before.
+                  SELECT s.session_type AS code,
+                         CASE WHEN a.status = 'present' THEN s.duration_minutes
+                              WHEN a.status = 'partial' THEN COALESCE(a.minutes_completed, 0)
+                              ELSE 0 END / 60 AS hours
+                  FROM sessions s
+                  JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
+                  WHERE s.supervisor_id = ? AND s.status != 'cancelled' AND s.occasion_id IS NULL
+
+                  UNION ALL
+
+                  -- Group Session occasions: the occasion's own duration counts
+                  -- exactly once, never once per attendee.
+                  SELECT so.session_type AS code, so.duration_minutes / 60 AS hours
+                  FROM session_occasions so
+                  WHERE so.supervisor_id = ?
+                    AND EXISTS (
+                      SELECT 1 FROM sessions s2
+                      JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
+                      WHERE s2.occasion_id = so.id AND s2.status != 'cancelled'
+                    )
+                ) combined
+                GROUP BY code`,
+          params: [id, id],
+        };
 
   const [legacyRes, derivedRes, adjRes, typesRes] = await Promise.all([
     db.query(
@@ -417,17 +475,7 @@ async function computeHoursByType(db, { studentId, supervisorId } = {}) {
        SELECT 'supervision' AS code, COALESCE(SUM(hours), 0) AS hours FROM supervision_hours WHERE ${idCol} = ?`,
       [id, id]
     ),
-    db.query(
-      `SELECT s.session_type AS code,
-              SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes
-                       WHEN a.status = 'partial' THEN COALESCE(a.minutes_completed, 0)
-                       ELSE 0 END) / 60 AS hours
-       FROM sessions s
-       JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-       WHERE s.${idCol} = ? AND s.status != 'cancelled'
-       GROUP BY s.session_type`,
-      [id]
-    ),
+    db.query(derivedQuery.sql, derivedQuery.params),
     studentId != null
       ? db.query(`SELECT hour_type AS code, SUM(hours) AS hours FROM trainee_hour_adjustments WHERE student_id = ? GROUP BY hour_type`, [id])
       : Promise.resolve({ rows: [] }),

@@ -896,13 +896,33 @@ router.get(
   "/me/training-delivered",
   asyncRoute(async (req, res, db) => {
     const supervisorId = req.user.id;
+    // A Group Session occasion creates one `sessions` row PER ATTENDEE (see
+    // migration 024) -- both totalHours and sessionsConducted must count an
+    // occasion once, not once per trainee, or a single 2-hour session for
+    // 17 trainees reports as 34 hours / 17 sessions instead of 2 hours / 1
+    // session. Standalone (non-occasion) sessions are untouched. See
+    // computeHoursByType's own version of this same split for the fuller
+    // design note.
     const [hoursRes, attendanceRes, traineeRes] = await Promise.all([
       db.query(
-        `SELECT COALESCE(SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60, 0) AS hours
-         FROM sessions s
-         JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-         WHERE s.supervisor_id = ? AND s.status != 'cancelled'`,
-        [supervisorId]
+        `SELECT COALESCE(SUM(hours), 0) AS hours FROM (
+           SELECT CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
+           FROM sessions s
+           JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
+           WHERE s.supervisor_id = ? AND s.status != 'cancelled' AND s.occasion_id IS NULL
+
+           UNION ALL
+
+           SELECT so.duration_minutes / 60 AS hours
+           FROM session_occasions so
+           WHERE so.supervisor_id = ?
+             AND EXISTS (
+               SELECT 1 FROM sessions s2
+               JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
+               WHERE s2.occasion_id = so.id AND s2.status != 'cancelled'
+             )
+         ) combined`,
+        [supervisorId, supervisorId]
       ),
       db.query(
         `SELECT COUNT(CASE WHEN status = 'present' THEN 1 END) AS present, COUNT(*) AS total
@@ -910,14 +930,20 @@ router.get(
         [supervisorId]
       ),
       db.query(
-        `SELECT COUNT(DISTINCT student_id) AS trainee_count, COUNT(*) AS session_count
-         FROM sessions WHERE supervisor_id = ? AND status != 'cancelled'`,
+        `SELECT COUNT(DISTINCT student_id) AS trainee_count FROM sessions WHERE supervisor_id = ? AND status != 'cancelled'`,
         [supervisorId]
       ),
     ]);
     const h = hoursRes.rows[0];
     const a = attendanceRes.rows[0];
     const t = traineeRes.rows[0];
+    const { rows: sessionCountRows } = await db.query(
+      `SELECT
+         (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND status != 'cancelled' AND occasion_id IS NULL) +
+         (SELECT COUNT(*) FROM session_occasions WHERE supervisor_id = ?) AS session_count`,
+      [supervisorId, supervisorId]
+    );
+    t.session_count = sessionCountRows[0].session_count;
 
     res.json({
       totalHours: Number(h.hours),
