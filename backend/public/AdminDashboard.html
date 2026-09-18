@@ -2885,6 +2885,7 @@
             loadEvents();
             loadPayments();
             loadLibrary();
+            loadCvPage(1);
             restoreEventDraftIfAny();
 
             const initialSection = window.location.hash.slice(1) || "dashboard";
@@ -2993,6 +2994,9 @@
             renderGroups();
             populateGroupSelect(document.getElementById("tcGroup"), {
                 placeholder: "Leave unassigned"
+            });
+            populateGroupSelect(document.getElementById("cvGroupFilter"), {
+                placeholder: "All groups"
             });
             if (currentGroupId) renderGroupDetail();
         }
@@ -3698,47 +3702,59 @@ function cvRoleMeta(u) {
   return { role: "primary", label: "Master Trainer", pill: "master-trainer" };
 }
 
-function buildCvGroupFilterOptions() {
-  const select = document.getElementById("cvGroupFilter");
-  if (!select) return;
-  const current = select.value;
-  const seen = new Map();
-  allUsers.forEach((u) => {
-    if (u.groupId && !seen.has(u.groupId)) seen.set(u.groupId, u.groupName);
-  });
-  const options = Array.from(seen.entries())
-    .sort((a, b) => String(a[1]).localeCompare(String(b[1])))
-    .map(([id, name]) => `<option value="${id}">${escapeHtml(name)}</option>`)
-    .join("");
-  select.innerHTML = `<option value="">All groups</option>${options}`;
-  if (current && seen.has(Number(current))) select.value = current;
-}
+let cvPage = 1;
+let cvPageSize = 24;
+let cvTotal = 0;
+let cvItems = [];
+let cvSearchDebounceTimer = null;
 
-function renderCvList() {
-  const search = (document.getElementById("cvSearch").value || "").toLowerCase();
+// Server-paginated -- the old version filtered a client-side allUsers array
+// that itself is capped at 100 rows by the API, so trainees/supervisors past
+// that cap silently never appeared here. This fetches exactly one page of
+// results per request, with search/role/group applied server-side against
+// the full dataset, not just whatever happened to already be in memory.
+async function loadCvPage(page) {
+  cvPage = page || 1;
+  const search = (document.getElementById("cvSearch").value || "").trim();
   const roleFilter = document.getElementById("cvRoleFilter").value;
   const groupFilter = document.getElementById("cvGroupFilter").value;
 
-  const filtered = allUsers.filter((u) => {
-    if (u.role !== "trainee" && u.role !== "supervisor") return false;
-    const meta = cvRoleMeta(u);
-    if (roleFilter && meta.role !== roleFilter) return false;
-    if (groupFilter && String(u.groupId || "") !== groupFilter) return false;
-    if (search) {
-      const name = (u.full_name || "").toLowerCase();
-      const code = (u.memberCode || "").toLowerCase();
-      if (!name.includes(search) && !code.includes(search)) return false;
-    }
-    return true;
-  });
+  const params = new URLSearchParams();
+  params.set("page", cvPage);
+  params.set("pageSize", cvPageSize);
+  if (search) params.set("search", search);
+  if (groupFilter) params.set("groupId", groupFilter);
+  if (roleFilter === "trainee") {
+    params.set("role", "trainee");
+  } else if (roleFilter === "primary" || roleFilter === "in_training") {
+    params.set("role", "supervisor");
+    params.set("supervisorType", roleFilter);
+  } else {
+    params.set("roles", "trainee,supervisor");
+  }
 
+  const data = await apiRequest(`/admin/users?${params.toString()}`);
+  if (!data) return;
+  cvItems = data.users;
+  cvTotal = Number(data.total) || 0;
+  renderCvGrid();
+  renderCvPagination();
+}
+
+function renderCvGrid() {
   const grid = document.getElementById("cvGrid");
-  if (!filtered.length) {
+  const countLabel = document.getElementById("cvResultCount");
+  if (countLabel) {
+    countLabel.textContent = cvTotal
+      ? `Showing ${(cvPage - 1) * cvPageSize + 1}–${Math.min(cvPage * cvPageSize, cvTotal)} of ${cvTotal}`
+      : "";
+  }
+  if (!cvItems.length) {
     grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No one matches.</div>';
     return;
   }
 
-  grid.innerHTML = filtered
+  grid.innerHTML = cvItems
     .map((u) => {
       const meta = cvRoleMeta(u);
       return `
@@ -3760,6 +3776,21 @@ function renderCvList() {
   `;
     })
     .join("");
+}
+
+function renderCvPagination() {
+  const bar = document.getElementById("cvPagination");
+  if (!bar) return;
+  const totalPages = Math.max(1, Math.ceil(cvTotal / cvPageSize));
+  if (totalPages <= 1) {
+    bar.innerHTML = "";
+    return;
+  }
+  bar.innerHTML = `
+    <button class="btn btn-secondary btn-sm" style="width:auto;" ${cvPage <= 1 ? "disabled" : ""} onclick="loadCvPage(${cvPage - 1})"><i class="fa fa-chevron-left"></i> Previous</button>
+    <span style="color:var(--muted);font-size:13px;">Page ${cvPage} of ${totalPages}</span>
+    <button class="btn btn-secondary btn-sm" style="width:auto;" ${cvPage >= totalPages ? "disabled" : ""} onclick="loadCvPage(${cvPage + 1})">Next <i class="fa fa-chevron-right"></i></button>
+  `;
 }
 
 async function openCvDetail(id) {
@@ -3934,11 +3965,15 @@ async function saveCvEdit() {
   showSuccessNotification("Changes Saved", "The member's CV information has been updated successfully.");
   renderCvDetail();
   loadUsers();
+  loadCvPage(cvPage);
 }
 
-document.getElementById("cvSearch").addEventListener("input", renderCvList);
-document.getElementById("cvRoleFilter").addEventListener("change", renderCvList);
-document.getElementById("cvGroupFilter").addEventListener("change", renderCvList);
+document.getElementById("cvSearch").addEventListener("input", () => {
+  clearTimeout(cvSearchDebounceTimer);
+  cvSearchDebounceTimer = setTimeout(() => loadCvPage(1), 350);
+});
+document.getElementById("cvRoleFilter").addEventListener("change", () => loadCvPage(1));
+document.getElementById("cvGroupFilter").addEventListener("change", () => loadCvPage(1));
 
 // ---- Trainee Profiles (full detail view) --------------------------------
 
