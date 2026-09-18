@@ -2844,6 +2844,8 @@
         // ---- Auth guard + boot ----------------------------------------------
 
         let allUsers = [];
+        let kpiTotalAccounts = 0;
+        let kpiTraineeAccounts = 0;
 
         async function guardAdmin() {
             const me = await apiRequest("/profile/me");
@@ -2896,6 +2898,13 @@
             const data = await apiRequest("/admin/users?pageSize=200");
             if (!data) return;
             allUsers = data.users;
+            // KPI counts use the server's COUNT(*) totals, not allUsers.length --
+            // the users list itself is capped at 100 rows server-side, so once
+            // real account counts pass that, allUsers.length silently undercounts.
+            kpiTotalAccounts = Number(data.total) || allUsers.length;
+            const traineeCountData = await apiRequest("/admin/users?role=trainee&pageSize=1");
+            kpiTraineeAccounts = traineeCountData ? Number(traineeCountData.total) || 0 :
+                allUsers.filter((u) => u.role === "trainee").length;
             renderKpis();
             renderRecentAccounts();
             renderSpList();
@@ -2905,8 +2914,8 @@
         }
 
         function renderKpis() {
-            document.getElementById("kpiTotal").textContent = allUsers.length;
-            document.getElementById("kpiTrainees").textContent = allUsers.filter((u) => u.role === "trainee").length;
+            document.getElementById("kpiTotal").textContent = kpiTotalAccounts;
+            document.getElementById("kpiTrainees").textContent = kpiTraineeAccounts;
         }
 
         // Maps the raw account role (and, for a trainer-role account, its
