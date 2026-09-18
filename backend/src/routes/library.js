@@ -248,10 +248,22 @@ router.post("/books", requireAdminPermissionIfAdmin("library.add"), (req, res) =
         canDelete: true,
       });
     } catch (e) {
-      console.error("[library] failed to add book:", e);
       if (file) fs.unlink(file.path, () => {});
       if (cover) fs.unlink(cover.path, () => {});
       markUploadFinished(req.user.id);
+      // The SELECT-then-INSERT duplicate check above (line ~144) has a real
+      // race window: two different accounts uploading the identical file
+      // within that window can both pass the SELECT before either commits.
+      // uniq_materials_book_hash (migration 022's generated column) is what
+      // actually prevents the duplicate row in that case -- this turns that
+      // DB-level rejection into the same friendly 409 the common case
+      // already returns, instead of falling through to a confusing 500.
+      // Confirmed reproducible: tested this exact race directly against
+      // the DB before adding this catch.
+      if (e.code === "ER_DUP_ENTRY") {
+        return res.status(409).json({ error: "This book already exists in the Library." });
+      }
+      console.error("[library] failed to add book:", e);
       res.status(500).json({ error: "Internal server error" });
     }
   });

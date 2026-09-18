@@ -206,9 +206,21 @@ async function unlinkTraineesFromTrainer(db, trainerId, traineeIds) {
 }
 
 /** The group's current Master Trainer, if any -- status-agnostic on purpose: a suspended Master Trainer still occupies the group's one-Master-Trainer slot until explicitly unassigned. */
+// Named (and relied on everywhere as) "active" -- but until now this never
+// actually checked user_credentials.status, only supervisor_type/group_id.
+// A suspended Master Trainer's group was silently treated as having a
+// real, active one: a new ToT could be linked to them (Create Member), a
+// Trainee auto-assigned to them (Create Trainee), and a group reassignment
+// would pass the "needs an active Master Trainer" check against a Master
+// Trainer nobody can actually log in as. Confirmed reproducible directly
+// against the dev DB (an already-suspended seeded account was returned as
+// "active") before this fix.
 async function getActiveMasterTrainer(db, groupId) {
   const { rows } = await db.query(
-    "SELECT id, full_name FROM supervisors WHERE group_id = ? AND supervisor_type = 'primary' LIMIT 1",
+    `SELECT sup.id, sup.full_name FROM supervisors sup
+     JOIN user_credentials uc ON uc.id = sup.id
+     WHERE sup.group_id = ? AND sup.supervisor_type = 'primary' AND uc.status = 'active'
+     LIMIT 1`,
     [groupId]
   );
   return rows[0] || null;
