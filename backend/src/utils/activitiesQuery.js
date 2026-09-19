@@ -34,7 +34,7 @@ const UNION_BASE = `
            WHERE s.occasion_id = so.id) AS trainee_blob
   FROM session_occasions so
   JOIN hour_types ht ON ht.code = so.session_type
-  WHERE so.supervisor_id = ?
+  WHERE so.supervisor_id = ? AND so.series_id IS NULL
 
   UNION ALL
 

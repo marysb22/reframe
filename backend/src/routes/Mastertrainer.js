@@ -1,5 +1,7 @@
 const express = require("express");
 const fs = require("fs");
+const path = require("path");
+const config = require("../config");
 const { requireAuth, requireMasterTrainer, asyncRoute } = require("../middleware/auth");
 const { toRecord, toDocument, toMaterial, computeTrainingProgress, computeHoursByType } = require("../utils/serializers");
 const { resolveWeekRange, getCurrentWeekRange, listRecentWeeks, shiftDate } = require("../utils/weekPeriod");
@@ -9,7 +11,15 @@ const { sessionAttachmentUpload } = require("../utils/uploads");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { createNotification, getUserContactInfo } = require("../utils/notifications");
-const { createSessionOccasion, recordSessionOccasionAttendance } = require("../utils/groupSessions");
+const {
+  createSessionOccasion,
+  recordSessionOccasionAttendance,
+  createMultiDaySession,
+  updateSessionOccasion,
+  deleteSessionOccasion,
+  updateSessionSeries,
+  deleteSessionSeries,
+} = require("../utils/groupSessions");
 const { createTotSessionOccasion, recordTotSessionOccasionAttendance } = require("../utils/groupTotSessions");
 
 const router = express.Router();
@@ -1020,29 +1030,51 @@ router.post("/group-sessions", (req, res) => {
         }
 
         const { sessionType, title, date, time, durationMinutes, notes } = req.body || {};
+        let days;
+        if (Array.isArray(req.body?.days)) days = req.body.days;
+        else if (typeof req.body?.days === "string" && req.body.days) {
+            try {
+                days = JSON.parse(req.body.days);
+            } catch {
+                return res.status(400).json({ error: "days must be valid JSON" });
+            }
+        }
 
         const { rows: eligibleRows } = await pool.query("SELECT id FROM students WHERE group_id = ?", [groupId]);
         if (!eligibleRows.length) {
             return res.status(400).json({ error: "You don't have any trainees in your Group yet" });
         }
+        const studentIds = eligibleRows.map((r) => r.id);
 
-        const result = await createSessionOccasion(pool, {
-            supervisorId: req.masterTrainer.id,
-            sessionType,
-            title,
-            date,
-            time,
-            durationMinutes,
-            notes,
-            attachmentFilename,
-            attachmentOriginalName,
-            studentIds: eligibleRows.map((r) => r.id),
-        });
+        const result = days
+            ? await createMultiDaySession(pool, {
+                  supervisorId: req.masterTrainer.id,
+                  sessionType,
+                  title,
+                  notes,
+                  days,
+                  attachmentFilename,
+                  attachmentOriginalName,
+                  studentIds,
+              })
+            : await createSessionOccasion(pool, {
+                  supervisorId: req.masterTrainer.id,
+                  sessionType,
+                  title,
+                  date,
+                  time,
+                  durationMinutes,
+                  notes,
+                  attachmentFilename,
+                  attachmentOriginalName,
+                  studentIds,
+              });
         if (result.error) return res.status(400).json({ error: result.error });
 
-        if (!result.isFuture) {
+        const notifiable = days ? result.createdNonFuture : result.isFuture ? [] : result.created;
+        if (notifiable.length) {
             const trainer = await getUserContactInfo(pool, req.masterTrainer.id);
-            for (const { studentId, sessionId } of result.created) {
+            for (const { studentId, sessionId } of notifiable) {
                 await createNotification(pool, {
                     recipientId: studentId,
                     type: "session",
@@ -1052,13 +1084,13 @@ router.post("/group-sessions", (req, res) => {
                     relatedEntityId: sessionId,
                     email: {
                         template: "newSession",
-                        data: { sessionTitle: title, sessionType: result.sessionTypeLabel, trainerName: (trainer && trainer.fullName) || "Your Master Trainer", date },
+                        data: { sessionTitle: title, sessionType: result.sessionTypeLabel, trainerName: (trainer && trainer.fullName) || "Your Master Trainer", date: date || (days && days[0] && days[0].date) },
                     },
                 });
             }
         }
 
-        res.status(201).json({ occasionId: result.occasionId, created: result.created });
+        res.status(201).json(days ? { seriesId: result.seriesId, occasions: result.occasions, created: result.created } : { occasionId: result.occasionId, created: result.created });
     };
 
     if (contentType.includes("multipart/form-data")) {
@@ -1100,7 +1132,7 @@ router.get(
        JOIN hour_types ht ON ht.code = so.session_type
        LEFT JOIN sessions s ON s.occasion_id = so.id
        LEFT JOIN attendance a ON a.session_id = s.id
-       WHERE so.supervisor_id = ?
+       WHERE so.supervisor_id = ? AND so.series_id IS NULL
        GROUP BY so.id
        ORDER BY so.session_date DESC, so.created_at DESC`,
             [req.masterTrainer.id]
@@ -1126,7 +1158,7 @@ router.get(
     asyncRoute(async (req, res, db) => {
         const occasionId = Number(req.params.id);
         const { rows: occRows } = await db.query(
-            `SELECT so.id, so.title, ht.label AS session_type_label, so.session_date, so.session_time, so.duration_minutes
+            `SELECT so.id, so.title, so.session_type, ht.label AS session_type_label, so.session_date, so.session_time, so.duration_minutes, so.notes, so.series_id
        FROM session_occasions so JOIN hour_types ht ON ht.code = so.session_type
        WHERE so.id = ? AND so.supervisor_id = ?`,
             [occasionId, req.masterTrainer.id]
@@ -1148,10 +1180,13 @@ router.get(
             occasion: {
                 id: o.id,
                 title: o.title,
+                sessionType: o.session_type,
                 sessionTypeLabel: o.session_type_label,
                 date: o.session_date,
                 time: o.session_time,
                 durationMinutes: o.duration_minutes,
+                notes: o.notes,
+                seriesId: o.series_id,
             },
             roster: rosterRows.map((r) => ({
                 studentId: r.student_id,
@@ -1183,6 +1218,173 @@ router.put(
         }
 
         res.json({ updated: result.updated });
+    })
+);
+
+// PUT /api/master-trainer/group-sessions/:id -- edit one day's own info.
+router.put(
+    "/group-sessions/:id",
+    asyncRoute(async (req, res, db) => {
+        const { date, time, durationMinutes, title, notes } = req.body || {};
+        const result = await updateSessionOccasion(db, {
+            occasionId: Number(req.params.id),
+            supervisorId: req.masterTrainer.id,
+            date,
+            time,
+            durationMinutes,
+            title,
+            notes,
+        });
+        if (result.error) {
+            return res.status(result.error === "Session occasion not found" ? 404 : 400).json({ error: result.error });
+        }
+        res.json({ updated: true });
+    })
+);
+
+// DELETE /api/master-trainer/group-sessions/:id
+router.delete(
+    "/group-sessions/:id",
+    asyncRoute(async (req, res, db) => {
+        const result = await deleteSessionOccasion(db, { occasionId: Number(req.params.id), supervisorId: req.masterTrainer.id });
+        if (result.error) return res.status(404).json({ error: result.error });
+        if (result.attachmentFilename) {
+            const filePath = path.join(config.uploadsDir, "sessions", result.attachmentFilename);
+            fs.unlink(filePath, (err) => {
+                if (err && err.code !== "ENOENT") console.error("Failed to delete session attachment file:", err);
+            });
+        }
+        res.json({ success: true });
+    })
+);
+
+// ---- Multi-day Sessions (session_series) -- see supervisor.js's own copy
+// of this block for the full design note; identical shape, scoped to this
+// Master Trainer's own supervisor_id instead of a ToT's. -------------------
+
+// GET /api/master-trainer/group-session-series
+router.get(
+    "/group-session-series",
+    asyncRoute(async (req, res, db) => {
+        const { rows } = await db.query(
+            `SELECT ss.id, ss.title, ht.label AS session_type_label, ss.notes,
+              MIN(so.session_date) AS start_date, MAX(so.session_date) AS end_date,
+              COUNT(DISTINCT so.id) AS day_count, SUM(so.duration_minutes) AS total_minutes,
+              COUNT(DISTINCT s.student_id) AS trainee_count, COUNT(DISTINCT s.id) AS slot_count, COUNT(a.id) AS recorded_count
+       FROM session_series ss
+       JOIN hour_types ht ON ht.code = ss.session_type
+       LEFT JOIN session_occasions so ON so.series_id = ss.id
+       LEFT JOIN sessions s ON s.occasion_id = so.id
+       LEFT JOIN attendance a ON a.session_id = s.id
+       WHERE ss.supervisor_id = ?
+       GROUP BY ss.id
+       ORDER BY start_date DESC, ss.created_at DESC`,
+            [req.masterTrainer.id]
+        );
+        res.json({
+            series: rows.map((r) => ({
+                id: r.id,
+                title: r.title,
+                sessionTypeLabel: r.session_type_label,
+                notes: r.notes,
+                startDate: r.start_date,
+                endDate: r.end_date,
+                dayCount: Number(r.day_count),
+                totalMinutes: Number(r.total_minutes) || 0,
+                traineeCount: Number(r.trainee_count),
+                // recordedCount is out of slotCount (trainees x days), not
+                // traineeCount.
+                slotCount: Number(r.slot_count),
+                recordedCount: Number(r.recorded_count),
+            })),
+        });
+    })
+);
+
+// GET /api/master-trainer/group-session-series/:id
+router.get(
+    "/group-session-series/:id",
+    asyncRoute(async (req, res, db) => {
+        const seriesId = Number(req.params.id);
+        const { rows: seriesRows } = await db.query(
+            `SELECT ss.id, ss.title, ss.session_type, ht.label AS session_type_label, ss.notes
+       FROM session_series ss JOIN hour_types ht ON ht.code = ss.session_type
+       WHERE ss.id = ? AND ss.supervisor_id = ?`,
+            [seriesId, req.masterTrainer.id]
+        );
+        if (!seriesRows.length) return res.status(404).json({ error: "Session not found" });
+        const sr = seriesRows[0];
+
+        const { rows: dayRows } = await db.query(
+            `SELECT so.id, so.session_date, so.session_time, so.duration_minutes,
+              COUNT(s.id) AS trainee_count, COUNT(a.id) AS recorded_count
+       FROM session_occasions so
+       LEFT JOIN sessions s ON s.occasion_id = so.id
+       LEFT JOIN attendance a ON a.session_id = s.id
+       WHERE so.series_id = ?
+       GROUP BY so.id
+       ORDER BY so.session_date`,
+            [seriesId]
+        );
+
+        const { rows: rosterRows } = await db.query(
+            `SELECT DISTINCT st.id AS student_id, st.full_name
+       FROM sessions s JOIN students st ON st.id = s.student_id
+       JOIN session_occasions so ON so.id = s.occasion_id
+       WHERE so.series_id = ? ORDER BY st.full_name`,
+            [seriesId]
+        );
+
+        res.json({
+            series: { id: sr.id, title: sr.title, sessionType: sr.session_type, sessionTypeLabel: sr.session_type_label, notes: sr.notes },
+            days: dayRows.map((r) => ({
+                occasionId: r.id,
+                date: r.session_date,
+                time: r.session_time,
+                durationMinutes: r.duration_minutes,
+                traineeCount: Number(r.trainee_count),
+                recordedCount: Number(r.recorded_count),
+            })),
+            roster: rosterRows.map((r) => ({ studentId: r.student_id, fullName: r.full_name })),
+        });
+    })
+);
+
+// PUT /api/master-trainer/group-session-series/:id
+router.put(
+    "/group-session-series/:id",
+    asyncRoute(async (req, res, db) => {
+        const { title, notes, days } = req.body || {};
+        const { rows } = await db.query(
+            `SELECT DISTINCT s.student_id FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ?`,
+            [Number(req.params.id)]
+        );
+        const result = await updateSessionSeries(db, {
+            seriesId: Number(req.params.id),
+            supervisorId: req.masterTrainer.id,
+            title,
+            notes,
+            days,
+            studentIds: rows.map((r) => r.student_id),
+        });
+        if (result.error) return res.status(result.error === "Session not found" ? 404 : 400).json({ error: result.error });
+        res.json({ updated: true });
+    })
+);
+
+// DELETE /api/master-trainer/group-session-series/:id
+router.delete(
+    "/group-session-series/:id",
+    asyncRoute(async (req, res, db) => {
+        const result = await deleteSessionSeries(db, { seriesId: Number(req.params.id), supervisorId: req.masterTrainer.id });
+        if (result.error) return res.status(404).json({ error: result.error });
+        for (const filename of result.attachmentFilenames) {
+            const filePath = path.join(config.uploadsDir, "sessions", filename);
+            fs.unlink(filePath, (err) => {
+                if (err && err.code !== "ENOENT") console.error("Failed to delete session attachment file:", err);
+            });
+        }
+        res.json({ success: true });
     })
 );
 

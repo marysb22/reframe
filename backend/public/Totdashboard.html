@@ -1371,7 +1371,30 @@
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 12px;
         }
-        
+
+        .gs-day-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: end;
+            margin-bottom: 10px;
+        }
+
+        .gs-day-row label {
+            font-size: 11px;
+            margin: 0 0 4px;
+        }
+
+        .gs-day-remove {
+            width: 38px;
+            height: 38px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--danger);
+            cursor: pointer;
+        }
+
         .record-form label {
             margin-top: 0;
         }
@@ -3749,6 +3772,39 @@
 
                     <div class="act-pagination" id="actPagination"></div>
                 </section>
+
+                <!-- Multi-day Sessions (session_series, migration 030) -- a
+                     Session spanning several dates, e.g. 5 days x 5h = 25h.
+                     Kept as its own compact list rather than folded into the
+                     Training Activities table above, since a variable-length
+                     day list doesn't fit that table's flat per-row search/
+                     sort/paginate model. Single-day Sessions keep living in
+                     Training Activities, unchanged. -->
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-calendar-week"></i>
+                            <h2>Multi-day Sessions</h2>
+                        </div>
+                    </div>
+                    <p class="card-subtitle">A Session spanning several dates (e.g. 5 days x 5h = 25h), each day with its own Attendance. Use "Add Session" above and add more than one day.</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Dates</th>
+                                <th>Total hours</th>
+                                <th>Attendance</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionSeriesBody">
+                            <tr class="loading-row">
+                                <td colspan="6">Loading&hellip;</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
             </section>
 
             <!-- ============================================================= -->
@@ -4489,17 +4545,21 @@
     <div class="modal-overlay" id="groupSessionModal">
         <div class="modal-box wide">
             <button class="close-modal" onclick="closeModal('groupSessionModal')">&times;</button>
-            <h3>Add Session</h3>
+            <h3 id="gsModalTitle">Add Session</h3>
             <p class="card-subtitle" style="margin-top:0;">Logs one training/supervision activity for your whole Group at once. Record Attendance afterward from the Group Sessions list.</p>
             <form id="groupSessionForm">
+                <input type="hidden" id="gsEditOccasionId" value="">
+                <input type="hidden" id="gsEditSeriesId" value="">
                 <div class="record-form-grid">
                     <div><label>Session Title</label><input type="text" id="gsTitle" required></div>
                     <div><label>Session Type</label><select id="gsType" required></select></div>
-                    <div><label>Date</label><input type="date" id="gsDate" required></div>
-                    <div><label>Starting Time <span style="font-weight:400;color:var(--faint);">(optional)</span></label><input type="time" id="gsTime"></div>
-                    <div><label>Number of Hours</label><input type="number" min="0" step="0.25" id="gsHours" required></div>
                     <div><label>Attachment <span style="font-weight:400;color:var(--faint);">(optional)</span></label><input type="file" id="gsAttachment" accept=".pdf,.doc,.docx,image/*"></div>
                 </div>
+
+                <label>Day(s)</label>
+                <div id="gsDaysList"></div>
+                <button type="button" class="btn btn-secondary" style="width:auto;margin-bottom:14px;" onclick="addSessionDayRow()"><i class="fa fa-plus"></i> Add another day</button>
+
                 <label>Notes <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
                 <textarea id="gsNotes"></textarea>
 
@@ -5448,6 +5508,7 @@
                 // section), so it loads eagerly right alongside the roster.
                 loadActivities(),
                 loadActivitiesSummary(),
+                loadSessionSeriesList(),
             ]);
         }
 
@@ -7054,7 +7115,11 @@ function renderActivities() {
         ? `${a.traineeCount} trainee${a.traineeCount === 1 ? "" : "s"}`
         : `${escapeHtml(a.studentName)} <span style="color:var(--faint);">(${escapeHtml(a.studentCode)})</span>`;
       const actionsCell = isOccasion
-        ? `<button class="btn btn-secondary btn-sm" style="width:auto;" onclick="event.stopPropagation();openAttendanceModal(${a.id})">Attendance</button>`
+        ? `<div class="row-actions">
+             <button class="btn btn-secondary btn-sm" style="width:auto;" onclick="event.stopPropagation();openAttendanceModal(${a.id})">Attendance</button>
+             <button class="icon-btn" title="Edit" onclick="event.stopPropagation();editGroupSessionOccasion(${a.id})"><i class="fa fa-pen"></i></button>
+             <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();deleteGroupSessionOccasion(${a.id})"><i class="fa fa-trash"></i></button>
+           </div>`
         : `<div class="row-actions">
              <button class="icon-btn" title="Edit" onclick="event.stopPropagation();editSession(${a.id})"><i class="fa fa-pen"></i></button>
              <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();confirmDeleteSession(${a.id})"><i class="fa fa-trash"></i></button>
@@ -7193,66 +7258,304 @@ async function loadActivitiesSummary() {
 // list + Attendance modal below. See POST /supervisor/session-occasions.
 // The single-trainee openSessionModal below is unrelated and unchanged.
 
+// This dropdown's <option value> is training_session/supervision_session/
+// hour_session:<code> (matching the single-Activity type picker it's
+// shared with, see renderSessionTypeOptions), not a bare hour_types code
+// -- these two helpers translate one way for submit and the other way for
+// pre-filling an edit.
+function gsRawTypeToSessionType(rawType) {
+  if (rawType.startsWith("hour_session:")) return rawType.slice("hour_session:".length);
+  if (rawType === "training_session") return "training";
+  if (rawType === "supervision_session") return "supervision";
+  return rawType;
+}
+function gsSessionTypeToRawType(sessionType) {
+  if (sessionType === "training") return "training_session";
+  if (sessionType === "supervision") return "supervision_session";
+  return "hour_session:" + sessionType;
+}
+
+// One row per day -- addSessionDayRow(day) with no argument adds a blank
+// row (Add Session / "+ Add another day"); passed an existing day it
+// pre-fills for editing. The remove button only shows once there's more
+// than one row -- a Session always needs at least one day.
+let gsDayRowSeq = 0;
+function addSessionDayRow(day) {
+  const list = document.getElementById("gsDaysList");
+  const rowId = "gsday" + gsDayRowSeq++;
+  const occasionId = day && day.occasionId ? day.occasionId : "";
+  const date = day && day.date ? String(day.date).slice(0, 10) : "";
+  const time = day && day.time ? String(day.time).slice(0, 5) : "";
+  const hours = day && day.durationMinutes != null ? day.durationMinutes / 60 : "";
+  const row = document.createElement("div");
+  row.className = "gs-day-row";
+  row.id = rowId;
+  row.innerHTML = `
+    <input type="hidden" class="gs-day-occasion-id" value="${occasionId}">
+    <div><label>Date</label><input type="date" class="gs-day-date" value="${date}" required></div>
+    <div><label>Hours</label><input type="number" min="0" step="0.25" class="gs-day-hours" value="${hours}" required></div>
+    <div><label>Time <span style="font-weight:400;color:var(--faint);">(optional)</span></label><input type="time" class="gs-day-time" value="${time}"></div>
+    <button type="button" class="gs-day-remove" onclick="removeSessionDayRow('${rowId}')" title="Remove this day"><i class="fa fa-trash"></i></button>`;
+  list.appendChild(row);
+  updateSessionDayRemoveButtons();
+}
+function removeSessionDayRow(rowId) {
+  const el = document.getElementById(rowId);
+  if (el) el.remove();
+  updateSessionDayRemoveButtons();
+}
+function updateSessionDayRemoveButtons() {
+  const rows = document.querySelectorAll("#gsDaysList .gs-day-row");
+  rows.forEach((row) => {
+    row.querySelector(".gs-day-remove").style.visibility = rows.length > 1 ? "visible" : "hidden";
+  });
+}
+function readSessionDayRows() {
+  return Array.from(document.querySelectorAll("#gsDaysList .gs-day-row")).map((row) => ({
+    occasionId: row.querySelector(".gs-day-occasion-id").value || undefined,
+    date: row.querySelector(".gs-day-date").value,
+    time: row.querySelector(".gs-day-time").value || undefined,
+    durationMinutes: Math.round(Number(row.querySelector(".gs-day-hours").value) * 60),
+  }));
+}
+
 function openGroupSessionModal() {
   const form = document.getElementById("groupSessionForm");
   form.reset();
+  document.getElementById("gsModalTitle").textContent = "Add Session";
+  document.getElementById("gsEditOccasionId").value = "";
+  document.getElementById("gsEditSeriesId").value = "";
   renderSessionTypeOptions(document.getElementById("gsType"), false);
+  document.getElementById("gsDaysList").innerHTML = "";
+  gsDayRowSeq = 0;
+  addSessionDayRow();
+  openModal("groupSessionModal");
+}
+
+// Edit one ordinary single-day Session (an occasion with no series_id).
+async function editGroupSessionOccasion(occasionId) {
+  const data = await apiRequest(`/supervisor/session-occasions/${occasionId}`);
+  if (!data) return;
+  const o = data.occasion;
+  document.getElementById("groupSessionForm").reset();
+  document.getElementById("gsModalTitle").textContent = "Edit Session";
+  document.getElementById("gsEditOccasionId").value = occasionId;
+  document.getElementById("gsEditSeriesId").value = "";
+  renderSessionTypeOptions(document.getElementById("gsType"), false);
+  document.getElementById("gsTitle").value = o.title || "";
+  document.getElementById("gsType").value = gsSessionTypeToRawType(o.sessionType);
+  document.getElementById("gsNotes").value = o.notes || "";
+  document.getElementById("gsDaysList").innerHTML = "";
+  gsDayRowSeq = 0;
+  addSessionDayRow({ date: o.date, time: o.time, durationMinutes: o.durationMinutes });
+  openModal("groupSessionModal");
+}
+
+// Edit a whole multi-day Session -- every day its own row, add/remove
+// enabled. See PUT /supervisor/session-series/:id.
+async function editGroupSessionSeries(seriesId) {
+  const data = await apiRequest(`/supervisor/session-series/${seriesId}`);
+  if (!data) return;
+  document.getElementById("groupSessionForm").reset();
+  document.getElementById("gsModalTitle").textContent = "Edit Session";
+  document.getElementById("gsEditOccasionId").value = "";
+  document.getElementById("gsEditSeriesId").value = seriesId;
+  renderSessionTypeOptions(document.getElementById("gsType"), false);
+  document.getElementById("gsTitle").value = data.series.title || "";
+  document.getElementById("gsType").value = gsSessionTypeToRawType(data.series.sessionType);
+  document.getElementById("gsNotes").value = data.series.notes || "";
+  document.getElementById("gsDaysList").innerHTML = "";
+  gsDayRowSeq = 0;
+  data.days.forEach((d) => addSessionDayRow(d));
   openModal("groupSessionModal");
 }
 
 document.getElementById("groupSessionForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const rawType = document.getElementById("gsType").value;
-  const sessionType = rawType.startsWith("hour_session:")
-    ? rawType.slice("hour_session:".length)
-    : rawType === "training_session"
-    ? "training"
-    : rawType === "supervision_session"
-    ? "supervision"
-    : rawType;
-
-  const hours = Number(document.getElementById("gsHours").value);
-  const durationMinutes = Math.round(hours * 60);
-
+  const sessionType = gsRawTypeToSessionType(document.getElementById("gsType").value);
+  const title = document.getElementById("gsTitle").value;
+  const notes = document.getElementById("gsNotes").value || undefined;
+  const days = readSessionDayRows();
+  const editOccasionId = document.getElementById("gsEditOccasionId").value;
+  const editSeriesId = document.getElementById("gsEditSeriesId").value;
   const attachmentFile = document.getElementById("gsAttachment").files[0];
-  const payload = {
-    sessionType,
-    title: document.getElementById("gsTitle").value,
-    date: document.getElementById("gsDate").value,
-    time: document.getElementById("gsTime").value || undefined,
-    durationMinutes,
-    notes: document.getElementById("gsNotes").value || undefined,
-  };
 
   let result;
-  if (attachmentFile) {
-    const form = new FormData();
-    Object.entries(payload).forEach(([k, v]) => {
-      if (v !== undefined) form.append(k, v);
-    });
-    form.append("attachment", attachmentFile);
-    result = await apiRequest("/supervisor/session-occasions", { method: "POST", body: form });
-  } else {
-    result = await apiRequest("/supervisor/session-occasions", {
-      method: "POST",
+  if (editSeriesId) {
+    result = await apiRequest(`/supervisor/session-series/${editSeriesId}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ sessionType, title, notes, days }),
     });
+  } else if (editOccasionId) {
+    const d = days[0];
+    result = await apiRequest(`/supervisor/session-occasions/${editOccasionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes }),
+    });
+  } else if (days.length > 1) {
+    if (attachmentFile) {
+      const form = new FormData();
+      form.append("sessionType", sessionType);
+      form.append("title", title);
+      if (notes) form.append("notes", notes);
+      form.append("days", JSON.stringify(days));
+      form.append("attachment", attachmentFile);
+      result = await apiRequest("/supervisor/session-occasions", { method: "POST", body: form });
+    } else {
+      result = await apiRequest("/supervisor/session-occasions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionType, title, notes, days }),
+      });
+    }
+  } else {
+    const d = days[0];
+    const payload = { sessionType, title, date: d.date, time: d.time, durationMinutes: d.durationMinutes, notes };
+    if (attachmentFile) {
+      const form = new FormData();
+      Object.entries(payload).forEach(([k, v]) => {
+        if (v !== undefined) form.append(k, v);
+      });
+      form.append("attachment", attachmentFile);
+      result = await apiRequest("/supervisor/session-occasions", { method: "POST", body: form });
+    } else {
+      result = await apiRequest("/supervisor/session-occasions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
   }
 
   if (result) {
     showSuccessNotification(
-      "Session Saved",
-      `Logged for ${result.created.length} trainee${result.created.length === 1 ? "" : "s"}. Open it below to record Attendance.`
+      editOccasionId || editSeriesId ? "Session Updated" : "Session Saved",
+      editOccasionId || editSeriesId
+        ? "The Session has been updated. Training Hours have been recalculated."
+        : `Logged for ${result.created.length} trainee${result.created.length === 1 ? "" : "s"}. Open it below to record Attendance.`
     );
     closeModal("groupSessionModal");
     loadActivities();
     loadActivitiesSummary();
+    loadSessionSeriesList();
     loadSchedule();
     loadTrainingHoursSummary();
   }
 });
+
+async function deleteGroupSessionOccasion(occasionId) {
+  openConfirm("Delete this Session?", "This removes it and its recorded Attendance. The trainee's Training Hours will be recalculated. This can't be undone.", async () => {
+    const result = await apiRequest(`/supervisor/session-occasions/${occasionId}`, { method: "DELETE" });
+    if (result) {
+      showToast("Session deleted", "success");
+      loadActivities();
+      loadActivitiesSummary();
+      loadTrainingHoursSummary();
+    }
+  });
+}
+
+// ---- Multi-day Sessions (session_series) -- see the HTML comment above
+// #sessionSeriesBody for why this is its own small list rather than folded
+// into Training Activities. Each day still uses the exact same per-day
+// Attendance modal as a single-day Session, unchanged.
+
+let gsSeriesList = [];
+let gsExpandedSeriesId = null;
+const gsSeriesDayRosterCache = new Map();
+
+async function loadSessionSeriesList() {
+  const data = await apiRequest("/supervisor/session-series");
+  if (!data) return;
+  gsSeriesList = data.series;
+  gsSeriesDayRosterCache.clear();
+  renderSessionSeriesList();
+  // If a series was expanded, its day list was just cleared above and
+  // would otherwise sit stuck on "Loading days..." -- re-fetch it so the
+  // still-expanded row shows current per-day recorded counts.
+  if (gsExpandedSeriesId != null) {
+    const seriesId = gsExpandedSeriesId;
+    const detail = await apiRequest(`/supervisor/session-series/${seriesId}`);
+    if (detail) {
+      gsSeriesDayRosterCache.set(seriesId, detail.days);
+      const el = document.getElementById(`gs-series-detail-${seriesId}`);
+      if (el) el.innerHTML = gsSeriesDaysHtml(detail.days);
+    }
+  }
+}
+
+function renderSessionSeriesList() {
+  const tbody = document.getElementById("sessionSeriesBody");
+  if (!gsSeriesList.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No multi-day Sessions yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = gsSeriesList.map(sessionSeriesRowHtml).join("");
+}
+
+function sessionSeriesRowHtml(s) {
+  const expanded = gsExpandedSeriesId === s.id;
+  const dateRange = s.startDate === s.endDate
+    ? new Date(s.startDate).toLocaleDateString()
+    : `${new Date(s.startDate).toLocaleDateString()} – ${new Date(s.endDate).toLocaleDateString()}`;
+  const mainRow = `
+    <tr class="gs-series-row" onclick="toggleSessionSeriesExpand(${s.id})" style="cursor:pointer;">
+      <td><i class="fa fa-chevron-${expanded ? "down" : "right"}" style="width:12px;color:var(--faint);margin-right:6px;"></i>${escapeHtml(s.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(${s.dayCount}-day Session)</span></td>
+      <td>${escapeHtml(s.sessionTypeLabel)}</td>
+      <td>${dateRange}</td>
+      <td>${(s.totalMinutes / 60).toFixed(2)}h total</td>
+      <td>${s.recordedCount}/${s.slotCount} recorded</td>
+      <td class="row-actions" onclick="event.stopPropagation();">
+        <button class="icon-btn" title="Edit" onclick="editGroupSessionSeries(${s.id})"><i class="fa fa-pen"></i></button>
+        <button class="icon-btn danger" title="Delete" onclick="deleteGroupSessionSeries(${s.id})"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>`;
+  const detailRow = expanded
+    ? `<tr><td colspan="6" id="gs-series-detail-${s.id}">${gsSeriesDayRosterCache.has(s.id) ? gsSeriesDaysHtml(gsSeriesDayRosterCache.get(s.id)) : "Loading days…"}</td></tr>`
+    : "";
+  return mainRow + detailRow;
+}
+
+async function toggleSessionSeriesExpand(seriesId) {
+  gsExpandedSeriesId = gsExpandedSeriesId === seriesId ? null : seriesId;
+  renderSessionSeriesList();
+  if (gsExpandedSeriesId !== seriesId) return;
+  if (!gsSeriesDayRosterCache.has(seriesId)) {
+    const data = await apiRequest(`/supervisor/session-series/${seriesId}`);
+    if (data) gsSeriesDayRosterCache.set(seriesId, data.days);
+  }
+  const el = document.getElementById(`gs-series-detail-${seriesId}`);
+  if (el && gsSeriesDayRosterCache.has(seriesId)) el.innerHTML = gsSeriesDaysHtml(gsSeriesDayRosterCache.get(seriesId));
+}
+
+function gsSeriesDaysHtml(days) {
+  return `
+    <div style="padding:8px 0;display:flex;flex-direction:column;gap:6px;">
+      ${days
+        .map(
+          (d) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;background:var(--surface-2);border-radius:8px;">
+          <span>${new Date(d.date).toLocaleDateString()}${d.time ? " " + d.time.slice(0, 5) : ""} &middot; ${(d.durationMinutes / 60).toFixed(2)}h &middot; ${d.recordedCount}/${d.traineeCount} recorded</span>
+          <button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="openAttendanceModal(${d.occasionId})">Attendance</button>
+        </div>`
+        )
+        .join("")}
+    </div>`;
+}
+
+async function deleteGroupSessionSeries(seriesId) {
+  openConfirm("Delete this whole multi-day Session?", "This removes every day and its recorded Attendance. Training Hours will be recalculated. This can't be undone.", async () => {
+    const result = await apiRequest(`/supervisor/session-series/${seriesId}`, { method: "DELETE" });
+    if (result) {
+      showToast("Session deleted", "success");
+      loadSessionSeriesList();
+      loadTrainingHoursSummary();
+    }
+  });
+}
 
 // ---- Attendance modal -- a fully separate step from creating the
 // Session, opened either from an expanded Group Session row's "Record
@@ -7293,7 +7596,11 @@ async function openAttendanceModal(occasionId) {
 // existing attendance terminology exactly (see ATTENDANCE_LABELS elsewhere)
 // -- status codes underneath are still present/absent/partial/excused.
 function attendanceRowHtml(r, reasons) {
-  const status = r.status || "absent";
+  // Present by default -- everyone showed up unless told otherwise; the
+  // ToT only has to change the exceptions, never flip every trainee from
+  // Absent one at a time. Once a real status has actually been recorded
+  // (r.status is not null/undefined), that recorded value always wins.
+  const status = r.status || "present";
   return `
     <div class="member-select-row att-row" style="align-items:center;flex-wrap:wrap;gap:8px;" data-student-id="${r.studentId}">
       <span class="member-select-name" style="flex:1 1 160px;">${escapeHtml(r.fullName)}</span>
@@ -7366,6 +7673,10 @@ async function saveAttendance() {
       loadActivities();
       loadActivitiesSummary();
       loadTrainingHoursSummary();
+      // Refreshes the multi-day Sessions list too, in case the attended
+      // day belongs to an expanded series (loadSessionSeriesList re-fetches
+      // its day list so the recorded count shown there stays current).
+      loadSessionSeriesList();
     }
   } finally {
     attSaveInFlight = false;
