@@ -90,7 +90,7 @@ function inClause(ids) {
 // their profile even though nothing about their assignment had changed.
 async function attachTraineeSupervisors(db, profile, userId) {
   const { rows: supRows } = await db.query(
-    `SELECT sup.id, sup.full_name, sup.supervisor_type FROM supervisor_students ss
+    `SELECT sup.id, sup.full_name, sup.supervisor_type, sup.photo FROM supervisor_students ss
      JOIN supervisors sup ON sup.id = ss.supervisor_id
      WHERE ss.student_id = ? ORDER BY sup.full_name`,
     [userId]
@@ -98,7 +98,7 @@ async function attachTraineeSupervisors(db, profile, userId) {
   // supervisorType ('primary' = Master Trainer, 'in_training' = ToT) is what
   // lets the Documents "Share with my ToT" picker show only real ToTs --
   // additive field, existing callers reading just .full_name are unaffected.
-  profile.supervisors = supRows.map((r) => ({ id: r.id, full_name: r.full_name, supervisorType: r.supervisor_type }));
+  profile.supervisors = supRows.map((r) => ({ id: r.id, full_name: r.full_name, supervisorType: r.supervisor_type, photo: r.photo }));
 }
 
 // Attaches the trainee's own Health & Emergency info to a profile object in

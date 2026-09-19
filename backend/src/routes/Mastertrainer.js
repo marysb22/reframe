@@ -3,7 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const config = require("../config");
 const { requireAuth, requireMasterTrainer, asyncRoute } = require("../middleware/auth");
-const { toRecord, toDocument, toMaterial, computeTrainingProgress, computeHoursByType } = require("../utils/serializers");
+const { toRecord, toDocument, toMaterial, toMessage, computeTrainingProgress, computeHoursByType } = require("../utils/serializers");
+const { broadcastMessage } = require("../realtime/chatSocket");
 const { resolveWeekRange, getCurrentWeekRange, listRecentWeeks, shiftDate } = require("../utils/weekPeriod");
 const { buildTotHoursBreakdownQuery, TRAINEE_ACTIVITY_ENTITY_TYPES } = require("../utils/recordsQuery");
 const { TRAINING_DURATION_YEARS, calculateTrainingProgress } = require("../utils/trainingTimeline");
@@ -154,6 +155,160 @@ async function loadGroupTot(db, groupId, totId, res) {
     }
     return withTrainingInfo(rows[0]);
 }
+
+// ---- Direct Messages with a specific ToT -----------------------------
+// The frontend (masterDashborad.html's Chat section, mirroring
+// Totdashboard.html's own Direct Messages design) has always called these
+// exact routes -- they were simply never implemented, so every call 404'd
+// and this Master Trainer's 1:1 chat with her ToTs never actually worked.
+// Reuses the same chat_rooms/chat_room_members/chat_room_messages "direct
+// room" infrastructure supervisor.js's own GET/POST /master-trainer/messages
+// already uses for the reverse direction (a ToT messaging her one Master
+// Trainer) -- chats/messages' typed student_id/supervisor_id columns can't
+// represent a supervisor-to-supervisor pair, so this is not a second
+// messaging system, just the existing one addressed the other way.
+
+/** Find-or-create the Direct Chat room between this Master Trainer and one specific ToT in her Group. */
+async function getOrCreateTotRoom(db, masterTrainerId, totId, groupId) {
+    const { rows: existing } = await db.query(
+        `SELECT cr.id FROM chat_rooms cr
+       JOIN chat_room_members m1 ON m1.room_id = cr.id AND m1.user_id = ?
+       JOIN chat_room_members m2 ON m2.room_id = cr.id AND m2.user_id = ?
+      WHERE cr.is_direct = TRUE
+      LIMIT 1`,
+        [masterTrainerId, totId]
+    );
+    if (existing.length) return existing[0].id;
+
+    const { rows: nameRows } = await db.query("SELECT full_name FROM supervisors WHERE id = ?", [totId]);
+    const name = (nameRows[0] && nameRows[0].full_name) || "Direct message";
+    const room = await db.query("INSERT INTO chat_rooms (name, created_by, group_id, is_direct) VALUES (?, ?, ?, TRUE)", [
+        name,
+        masterTrainerId,
+        groupId,
+    ]);
+    const roomId = room.insertId;
+    await db.query("INSERT INTO chat_room_members (room_id, user_id, added_by) VALUES (?, ?, ?)", [roomId, masterTrainerId, masterTrainerId]);
+    await db.query("INSERT INTO chat_room_members (room_id, user_id, added_by) VALUES (?, ?, ?)", [roomId, totId, masterTrainerId]);
+    return roomId;
+}
+
+// GET /api/master-trainer/tots/:totId/messages?peek=1 -- marks this
+// conversation read (chat_room_members.last_read_at + the matching
+// notifications) unless called with ?peek=1, exactly like supervisor.js's
+// mirror of this same endpoint shape.
+router.get(
+    "/tots/:totId/messages",
+    asyncRoute(async (req, res, db) => {
+        const { groupId, id: masterTrainerId } = req.masterTrainer;
+        const totId = Number(req.params.totId);
+        const tot = await loadGroupTot(db, groupId, totId, res);
+        if (!tot) return;
+
+        const roomId = await getOrCreateTotRoom(db, masterTrainerId, totId, groupId);
+        const { rows } = await db.query(
+            `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM chat_room_messages m
+       LEFT JOIN supervisors sup ON sup.id = m.sender_id
+       LEFT JOIN students st ON st.id = m.sender_id
+       WHERE m.room_id = ? ORDER BY m.created_at ASC`,
+            [roomId]
+        );
+
+        if (req.query.peek !== "1") {
+            await db.query("UPDATE chat_room_members SET last_read_at = NOW() WHERE room_id = ? AND user_id = ?", [
+                roomId,
+                masterTrainerId,
+            ]);
+            await db.query(
+                `UPDATE notifications SET is_read = TRUE
+         WHERE recipient_id = ? AND notification_type = 'message' AND related_entity_id = ? AND is_read = FALSE`,
+                [masterTrainerId, totId]
+            );
+        }
+
+        res.json({ messages: rows.map((r) => toMessage(r, masterTrainerId)) });
+    })
+);
+
+// POST /api/master-trainer/tots/:totId/messages  { content }
+router.post(
+    "/tots/:totId/messages",
+    asyncRoute(async (req, res, db) => {
+        const { groupId, id: masterTrainerId } = req.masterTrainer;
+        const totId = Number(req.params.totId);
+        const tot = await loadGroupTot(db, groupId, totId, res);
+        if (!tot) return;
+
+        const { content } = req.body || {};
+        if (!content || !String(content).trim()) {
+            return res.status(400).json({ error: "Message content is required" });
+        }
+
+        const roomId = await getOrCreateTotRoom(db, masterTrainerId, totId, groupId);
+        const insert = await db.query(
+            "INSERT INTO chat_room_messages (room_id, sender_id, content) VALUES (?, ?, ?)",
+            [roomId, masterTrainerId, content.trim()]
+        );
+        await db.query("UPDATE chat_room_members SET last_read_at = NOW() WHERE room_id = ? AND user_id = ?", [
+            roomId,
+            masterTrainerId,
+        ]);
+
+        const { rows } = await db.query("SELECT * FROM chat_room_messages WHERE id = ?", [insert.insertId]);
+        const message = toMessage({ ...rows[0], sender_name: req.user.member_code }, masterTrainerId);
+
+        try {
+            const { rows: mine } = await db.query("SELECT full_name FROM supervisors WHERE id = ?", [masterTrainerId]);
+            const myName = (mine[0] && mine[0].full_name) || req.user.member_code;
+            await createNotification(db, {
+                recipientId: totId,
+                type: "message",
+                title: `${myName} sent you a message`,
+                body: content.trim().slice(0, 140),
+                relatedEntityType: "message",
+                relatedEntityId: masterTrainerId,
+            });
+            broadcastMessage(req.app.get("io"), roomId, { ...message, senderId: masterTrainerId }).catch(() => {});
+        } catch (notifyErr) {
+            console.error("[Mastertrainer] failed to notify ToT of new message:", notifyErr);
+        }
+
+        res.status(201).json(message);
+    })
+);
+
+// GET /api/master-trainer/messages/unread-count -- total unread Direct
+// Messages from any ToT, for the sidebar/tab red badge.
+router.get(
+    "/messages/unread-count",
+    asyncRoute(async (req, res, db) => {
+        const { rows } = await db.query(
+            "SELECT COUNT(*) AS count FROM notifications WHERE recipient_id = ? AND notification_type = 'message' AND is_read = FALSE",
+            [req.masterTrainer.id]
+        );
+        res.json({ count: Number(rows[0].count) });
+    })
+);
+
+// GET /api/master-trainer/messages/unread-by-sender -- per-ToT unread
+// counts, for the small red badge next to each conversation in the inbox
+// list.
+router.get(
+    "/messages/unread-by-sender",
+    asyncRoute(async (req, res, db) => {
+        const { rows } = await db.query(
+            `SELECT related_entity_id AS sender_id, COUNT(*) AS count FROM notifications
+       WHERE recipient_id = ? AND notification_type = 'message' AND is_read = FALSE
+       GROUP BY related_entity_id`,
+            [req.masterTrainer.id]
+        );
+        const counts = {};
+        rows.forEach((r) => {
+            counts[r.sender_id] = Number(r.count);
+        });
+        res.json({ counts });
+    })
+);
 
 /** Confirms studentId belongs (via students.group_id) to the calling MT's group. */
 async function loadGroupStudent(db, groupId, studentId, res) {

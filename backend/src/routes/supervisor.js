@@ -100,7 +100,7 @@ router.get(
   "/students",
   asyncRoute(async (req, res, db) => {
     const { rows } = await db.query(
-      `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.current_year, c.name AS cohort_name
+      `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.current_year, st.photo, c.name AS cohort_name
        FROM supervisor_students ss
        JOIN user_credentials uc ON uc.id = ss.student_id
        JOIN students st ON st.id = ss.student_id

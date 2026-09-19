@@ -2505,11 +2505,124 @@
             }
         }
 
-        .supervisor-tabs {
+        /* Wraps a search box (fixed) + .gc-room-list (scrolls independently
+           beneath it) -- a search bar pinned above the list, WhatsApp-style,
+           rather than scrolling away with the list's own content. Mirrors
+           Totdashboard.html's Direct Messages inbox exactly, so the Trainee
+           and ToT/Master Trainer chat experiences share one design instead
+           of this page's previous tab-per-supervisor layout. */
+        .gc-room-list-wrap {
             display: flex;
+            flex-direction: column;
             gap: 8px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
+            min-height: 0;
+        }
+
+        .chat-search-box {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .chat-search-box i {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .chat-search-box input {
+            width: 100%;
+            height: 36px;
+            padding: 0 12px 0 32px;
+            border-radius: 10px;
+            border: 1px solid var(--border-soft);
+            background: var(--surface-2);
+            font-size: 12.5px;
+            font-family: inherit;
+        }
+
+        .inbox-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .inbox-item {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            padding: 13px 15px;
+            border-radius: 13px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        .inbox-item:hover {
+            border-color: var(--primary-light);
+        }
+
+        .inbox-item.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .inbox-item.active .inbox-info strong,
+        .inbox-item.active .inbox-info span,
+        .inbox-item.active .inbox-time {
+            color: #fff;
+        }
+
+        .inbox-item .inbox-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            font-size: 13px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .inbox-item .inbox-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .inbox-item .inbox-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .inbox-item .inbox-info strong {
+            display: block;
+            font-size: 13.5px;
+        }
+
+        .inbox-item .inbox-info span {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .inbox-item .inbox-time {
+            font-size: 11px;
+            color: var(--faint);
+            flex-shrink: 0;
         }
 
         .chat-mode-tabs {
@@ -2540,23 +2653,6 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
         }
 
-        .sup-btn {
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            padding: 9px 15px;
-            border-radius: 10px;
-            font-size: 12.5px;
-            font-weight: 600;
-            color: var(--muted);
-            cursor: pointer;
-        }
-        
-        .sup-btn.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-        
         .material-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -3702,13 +3798,28 @@
 
                     <div id="directChatPanel">
                         <p class="card-subtitle">One conversation per supervisor.</p>
-                        <div class="supervisor-tabs" id="supervisorTabs"></div>
-                        <div class="chat-thread" id="chatThread">
-                            <div class="empty-state">Select a supervisor above.</div>
-                        </div>
-                        <div class="chat-compose">
-                            <textarea id="chatInput" placeholder="Write a reply..."></textarea>
-                            <button class="btn" onclick="sendMessage()"><i class="fa fa-paper-plane"></i></button>
+                        <div class="gc-layout">
+                            <div class="gc-room-list-wrap">
+                                <div class="chat-search-box">
+                                    <i class="fa fa-search"></i>
+                                    <input type="text" id="dmSearchInput" placeholder="Search" oninput="renderChatInboxList(this.value)">
+                                </div>
+                                <ul class="inbox-list gc-room-list" id="chatInboxList">
+                                    <li class="empty-state">Loading conversations...</li>
+                                </ul>
+                            </div>
+                            <div class="gc-thread-panel">
+                                <div class="gc-thread-header" id="dmThreadHeader" style="display:none;">
+                                    <h4 id="dmThreadName">&mdash;</h4>
+                                </div>
+                                <div class="chat-thread gc-thread-body" id="dmThread">
+                                    <div class="empty-state">Select a conversation to start chatting.</div>
+                                </div>
+                                <div class="gc-composer" id="dmComposer" style="display:none;">
+                                    <textarea id="dmInput" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+                                    <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendMessage()"><i class="fa fa-paper-plane"></i></button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -3975,6 +4086,18 @@
             return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => (w[0] && w[0].toUpperCase()) || "").join("");
         }
 
+        // Real profile picture when one exists, the existing initials
+        // fallback otherwise -- one shared avatar helper for every chat
+        // surface (Direct Message inbox rows, thread headers, ...) so a
+        // person's photo (or its absence) renders identically everywhere.
+        // `person` may carry the name as full_name or fullName (the Master
+        // Trainer contact object uses the latter).
+        function avatarInnerHtml(person) {
+            if (person && person.photo) {
+                return `<img src="${UPLOADS}/photos/${person.photo}${TOKEN_Q}" alt="">`;
+            }
+            return escapeHtml(initials(person ? (person.full_name || person.fullName) : ""));
+        }
 
         function openModal(id) {
             document.getElementById(id).classList.add("open");
@@ -4207,7 +4330,14 @@
                 if (!el) return;
                 el.textContent = label;
                 el.classList.toggle("wide", label.length > 1);
-                el.style.display = count > 0 ? "inline-flex" : "none";
+                // setProperty(..., "important") -- .unread-dot's own CSS sets
+                // display:inline-flex !important (needed so ancestor rules
+                // can't stretch this into an oval), which silently defeated a
+                // plain el.style.display = "none" here: an inline style
+                // without !important never beats a stylesheet rule that has
+                // it. 0 unread was rendering a visible red "0" badge instead
+                // of hiding it.
+                el.style.setProperty("display", count > 0 ? "inline-flex" : "none", "important");
             });
         }
 
@@ -5439,53 +5569,109 @@ async function loadMeetings() {
 
 // preferredSupervisorId (e.g. from a "message" notification's
 // relatedEntityId) opens that specific conversation instead of defaulting
-// to the first tab -- used by handleNotifClick below.
+// to the first one -- used by handleNotifClick below.
 async function loadChat(preferredSupervisorId) {
   if (!mySupervisors.length) {
-    document.getElementById("supervisorTabs").innerHTML = "";
-    document.getElementById("chatThread").innerHTML = '<div class="empty-state">You have no supervisors assigned yet.</div>';
+    document.getElementById("chatInboxList").innerHTML = '<li class="empty-state">You have no supervisors assigned yet.</li>';
     return;
   }
-  await renderSupervisorTabs();
+  await loadChatInbox();
   const targetId = preferredSupervisorId && mySupervisors.some((s) => Number(s.id) === Number(preferredSupervisorId))
     ? Number(preferredSupervisorId)
     : mySupervisors[0].id;
   openThread(targetId);
 }
 
-// Small red badge per supervisor tab (mirrors the ToT dashboard's inbox-row
-// badge) -- fetched fresh each time so it reflects true unread state, never
-// just "this tab happens to be active." Purely a read (GET
-// .../unread-by-sender never marks anything read), safe to call as often as
-// the tabs need refreshing.
-async function renderSupervisorTabs() {
-  const tabsEl = document.getElementById("supervisorTabs");
-  const unreadData = await apiRequest("/profile/messages/unread-by-sender");
+// Same inbox design/behavior as Totdashboard.html's Direct Messages list
+// (see its loadChatInbox/renderChatInboxList): a real conversation list --
+// avatar, name, last message preview, unread badge, timestamp -- instead
+// of a row of plain tabs. ?peek=1 fetches each conversation's preview
+// without marking it read; only actually opening one (openThread, no
+// peek) does that.
+let dmConversations = [];
+
+async function loadChatInbox() {
+  const list = document.getElementById("chatInboxList");
+  list.innerHTML = '<li class="empty-state">Loading conversations...</li>';
+  if (!mySupervisors.length) {
+    list.innerHTML = '<li class="empty-state">You have no supervisors assigned yet.</li>';
+    return;
+  }
+
+  const [previews, unreadData] = await Promise.all([
+    Promise.all(mySupervisors.map((s) => apiRequest(`/profile/messages/${s.id}?peek=1`))),
+    apiRequest("/profile/messages/unread-by-sender"),
+  ]);
   const unreadCounts = (unreadData && unreadData.counts) || {};
-  tabsEl.innerHTML = mySupervisors
-    .map((s) => {
-      const count = unreadCounts[s.id] || 0;
-      const active = Number(s.id) === Number(activeSupervisorId) ? " active" : "";
-      const badge = count ? `<span class="unread-dot${count > 9 ? " wide" : ""}" style="margin-left:6px;">${count > 99 ? "99+" : count}</span>` : "";
-      return `<button class="sup-btn${active}" data-sup="${s.id}" onclick="openThread(${s.id})">${escapeHtml(s.full_name)}${badge}</button>`;
-    })
+
+  dmConversations = mySupervisors.map((s, i) => {
+    const data = previews[i];
+    const last = data && data.messages.length ? data.messages[data.messages.length - 1] : null;
+    return { supervisor: s, last, unreadCount: unreadCounts[s.id] || 0 };
+  });
+
+  dmConversations.sort((a, b) => {
+    const at = a.last ? new Date(a.last.createdAt).getTime() : 0;
+    const bt = b.last ? new Date(b.last.createdAt).getTime() : 0;
+    return bt - at;
+  });
+
+  const searchInput = document.getElementById("dmSearchInput");
+  renderChatInboxList(searchInput ? searchInput.value : "");
+}
+
+function renderChatInboxList(filterText) {
+  const list = document.getElementById("chatInboxList");
+  const query = (filterText || "").trim().toLowerCase();
+  const filtered = query
+    ? dmConversations.filter((c) => c.supervisor.full_name.toLowerCase().includes(query))
+    : dmConversations;
+
+  if (!filtered.length) {
+    list.innerHTML = `<li class="empty-state">${query ? "No conversations match \u201c" + escapeHtml(filterText.trim()) + "\u201d." : "You have no supervisors assigned yet."}</li>`;
+    return;
+  }
+
+  list.innerHTML = filtered
+    .map(({ supervisor: s, last, unreadCount }) => `
+      <li class="inbox-item ${Number(s.id) === Number(activeSupervisorId) ? "active" : ""}" data-sup="${s.id}" onclick="openThread(${s.id})">
+        <div class="inbox-avatar">${avatarInnerHtml(s)}</div>
+        <div class="inbox-info">
+          <strong>${escapeHtml(s.full_name)}${unreadCount ? `<span class="unread-dot${unreadCount > 9 ? " wide" : ""}" style="margin-left:8px;">${unreadCount > 99 ? "99+" : unreadCount}</span>` : ""}</strong>
+          <span>${last ? escapeHtml(last.content) : "No messages yet \u2014 say hello"}</span>
+        </div>
+        <div class="inbox-time">${last ? new Date(last.createdAt).toLocaleDateString() : ""}</div>
+      </li>
+    `)
     .join("");
+}
+
+function markActiveInboxItem() {
+  document.querySelectorAll("#chatInboxList .inbox-item").forEach((el) => {
+    el.classList.toggle("active", Number(el.dataset.sup) === Number(activeSupervisorId));
+  });
 }
 
 async function openThread(supervisorId) {
   activeSupervisorId = supervisorId;
-  document.querySelectorAll(".sup-btn").forEach((b) => b.classList.toggle("active", Number(b.dataset.sup) === supervisorId));
+  markActiveInboxItem();
 
+  const supervisor = mySupervisors.find((s) => Number(s.id) === Number(supervisorId));
+  document.getElementById("dmThreadHeader").style.display = "flex";
+  document.getElementById("dmThreadName").textContent = supervisor ? supervisor.full_name : "Conversation";
+  document.getElementById("dmComposer").style.display = "flex";
+
+  const thread = document.getElementById("dmThread");
+  thread.innerHTML = '<div class="empty-state">Loading messages...</div>';
   const data = await apiRequest(`/profile/messages/${supervisorId}`);
-  const thread = document.getElementById("chatThread");
   if (!data) return;
   // The GET above already marked this conversation's incoming messages (and
-  // their notifications) read server-side -- refresh the nav/tab badge and
-  // this conversation's own tab badge to match immediately rather than
-  // waiting for the next 60s poll.
+  // their notifications) read server-side -- refresh the nav badge and this
+  // conversation's own row in the inbox list to match immediately rather
+  // than waiting for the next 60s poll.
   loadDmUnreadBadge();
-  renderSupervisorTabs();
-  if (!data.messages.length) { thread.innerHTML = '<div class="empty-state">No messages yet.</div>'; return; }
+  loadChatInbox();
+  if (!data.messages.length) { thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>'; return; }
   thread.innerHTML = data.messages
     .map((m) => `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"}">${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} \u00b7 ${new Date(m.createdAt).toLocaleString()}</div></div>`)
     .join("");
@@ -5499,7 +5685,7 @@ let dmSendInFlight = false;
 async function sendMessage() {
   if (dmSendInFlight) return;
   if (!activeSupervisorId) return showToast("Select a supervisor first", "error");
-  const input = document.getElementById("chatInput");
+  const input = document.getElementById("dmInput");
   const content = input.value.trim();
   if (!content) return;
   dmSendInFlight = true;
@@ -5512,6 +5698,7 @@ async function sendMessage() {
     if (result) {
       input.value = "";
       await openThread(activeSupervisorId);
+      await loadChatInbox();
     }
   } finally {
     dmSendInFlight = false;

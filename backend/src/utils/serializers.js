@@ -389,6 +389,7 @@ function toStudentSummary(row) {
     status: row.status,
     cohort: row.cohort_name,
     currentYear: row.current_year,
+    photo: row.photo,
   };
 }
 

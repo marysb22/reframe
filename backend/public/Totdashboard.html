@@ -2753,8 +2753,15 @@
             font-weight: 700;
             font-size: 13px;
             flex-shrink: 0;
+            overflow: hidden;
         }
-        
+
+        .inbox-item .inbox-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         .inbox-item .inbox-info {
             flex: 1;
             min-width: 0;
@@ -4919,6 +4926,19 @@
             return String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => (w[0] && w[0].toUpperCase()) || "").join("");
         }
 
+        // Real profile picture when one exists, the existing initials
+        // fallback otherwise -- one shared avatar helper for every chat
+        // surface (Direct Message inbox rows, thread headers, ...) so a
+        // person's photo (or its absence) renders identically everywhere.
+        // `person` may carry the name as full_name or fullName (the Master
+        // Trainer contact object uses the latter).
+        function avatarInnerHtml(person) {
+            if (person && person.photo) {
+                return `<img src="${UPLOADS}/photos/${person.photo}${TOKEN_Q}" alt="">`;
+            }
+            return escapeHtml(initials(person ? (person.full_name || person.fullName) : ""));
+        }
+
         function openModal(id) {
             document.getElementById(id).classList.add("open");
         }
@@ -5405,7 +5425,14 @@
                 if (!el) return;
                 el.textContent = label;
                 el.classList.toggle("wide", label.length > 1);
-                el.style.display = count > 0 ? "inline-flex" : "none";
+                // setProperty(..., "important") -- .unread-dot's own CSS sets
+                // display:inline-flex !important (needed so ancestor rules
+                // like `.inbox-info span` can't stretch this into an oval),
+                // which silently defeated a plain el.style.display = "none"
+                // here: an inline style without !important never beats a
+                // stylesheet rule that has it. 0 unread was rendering a
+                // visible red "0" badge instead of hiding it.
+                el.style.setProperty("display", count > 0 ? "inline-flex" : "none", "important");
             });
         }
 
@@ -7983,7 +8010,7 @@ function renderChatInboxList(filterText) {
   list.innerHTML = filtered
     .map(({ student, last, unreadCount }) => `
       <li class="inbox-item ${Number(student.id) === Number(dmActiveStudentId) ? "active" : ""}" data-student-id="${student.id}" onclick="openDirectThread(${student.id})">
-        <div class="inbox-avatar">${escapeHtml(initials(student.full_name))}</div>
+        <div class="inbox-avatar">${avatarInnerHtml(student)}</div>
         <div class="inbox-info">
           <strong>${escapeHtml(student.full_name)}${isMyMasterTrainer(student.id) ? ' <span class="member-select-role">Master Trainer</span>' : ""}${unreadCount ? `<span class="unread-dot${unreadCount > 9 ? " wide" : ""}" style="margin-left:8px;">${unreadCount > 99 ? "99+" : unreadCount}</span>` : ""}</strong>
           <span>${last ? escapeHtml(last.content) : "No messages yet \u2014 say hello"}</span>
