@@ -5,7 +5,7 @@
 // not by which role hit the route -- mirrors how Notifications ended up
 // centralized in profile.js rather than duplicated per role.
 const express = require("express");
-const { requireAuth, requireGroupSupervisor, asyncRoute } = require("../middleware/auth");
+const { requireAuth, requireGroupSupervisor, requireGroupMember, asyncRoute } = require("../middleware/auth");
 const { pool } = require("../db");
 const { chatAttachmentUpload, checkChatAttachmentContent, optimizeChatAttachmentImage } = require("../utils/uploads");
 const { broadcastMessage, evictMember } = require("../realtime/chatSocket");
@@ -19,6 +19,7 @@ function toMessage(row) {
     roomId: row.room_id,
     senderId: row.sender_id,
     senderName: row.sender_name,
+    senderPhoto: row.sender_photo,
     content: row.content,
     attachment: row.attachment_filename
       ? {
@@ -118,12 +119,12 @@ router.get(
 // composite key (order-independent, unlike a lookup keyed on created_by).
 router.post(
   "/direct",
-  requireGroupSupervisor,
+  requireGroupMember,
   asyncRoute(async (req, res, db) => {
-    if (!req.groupSupervisor.groupId) return res.status(400).json({ error: "You don't have a Group assigned yet" });
+    if (!req.groupMember.groupId) return res.status(400).json({ error: "You don't have a Group assigned yet" });
 
     const targetId = Number((req.body || {}).userId);
-    if (!targetId || targetId === req.groupSupervisor.id) {
+    if (!targetId || targetId === req.groupMember.id) {
       return res.status(400).json({ error: "Choose someone else to message" });
     }
 
@@ -132,7 +133,7 @@ router.post(
     const { rows: eligible } = await db.query(
       `SELECT id FROM supervisors WHERE id = ? AND group_id = ?
        UNION SELECT id FROM students WHERE id = ? AND group_id = ?`,
-      [targetId, req.groupSupervisor.groupId, targetId, req.groupSupervisor.groupId]
+      [targetId, req.groupMember.groupId, targetId, req.groupMember.groupId]
     );
     if (!eligible.length) return res.status(400).json({ error: "That person is not in your Group" });
 
@@ -142,7 +143,7 @@ router.post(
          JOIN chat_room_members m2 ON m2.room_id = cr.id AND m2.user_id = ?
         WHERE cr.is_direct = TRUE
         LIMIT 1`,
-      [req.groupSupervisor.id, targetId]
+      [req.groupMember.id, targetId]
     );
     if (existingRoom.length) return res.json({ id: existingRoom[0].id });
 
@@ -154,12 +155,12 @@ router.post(
 
     const room = await db.query("INSERT INTO chat_rooms (name, created_by, group_id, is_direct) VALUES (?, ?, ?, TRUE)", [
       name,
-      req.groupSupervisor.id,
-      req.groupSupervisor.groupId,
+      req.groupMember.id,
+      req.groupMember.groupId,
     ]);
     const roomId = room.insertId;
-    await db.query("INSERT INTO chat_room_members (room_id, user_id, added_by) VALUES (?, ?, ?)", [roomId, req.groupSupervisor.id, req.groupSupervisor.id]);
-    await db.query("INSERT INTO chat_room_members (room_id, user_id, added_by) VALUES (?, ?, ?)", [roomId, targetId, req.groupSupervisor.id]);
+    await db.query("INSERT INTO chat_room_members (room_id, user_id, added_by) VALUES (?, ?, ?)", [roomId, req.groupMember.id, req.groupMember.id]);
+    await db.query("INSERT INTO chat_room_members (room_id, user_id, added_by) VALUES (?, ?, ?)", [roomId, targetId, req.groupMember.id]);
 
     res.status(201).json({ id: roomId });
   })
@@ -211,26 +212,28 @@ router.post(
   })
 );
 
-// GET /api/chat-rooms/roster -- any supervisor in a Group: everyone else in
-// that same Group (every other ToT/Master Trainer + every Trainee), for the
-// "New Room" member picker before any room exists yet.
+// GET /api/chat-rooms/roster -- any Group member (supervisor OR trainee):
+// everyone else in that same Group (every other ToT/Master Trainer + every
+// other Trainee), for the "New Room" member picker before any room exists
+// yet, and for a Trainee's Direct Chats member list (see requireGroupMember).
 router.get(
   "/roster",
-  requireGroupSupervisor,
+  requireGroupMember,
   asyncRoute(async (req, res, db) => {
-    if (!req.groupSupervisor.groupId) return res.json({ roster: [] });
+    if (!req.groupMember.groupId) return res.json({ roster: [] });
     // supervisor_type distinguishes a Master Trainer from a ToT within the
     // 'supervisor' kind -- needed once a ToT (not just a Master Trainer) can
     // see this list, since it may now include their own Master Trainer.
     const { rows } = await db.query(
-      `SELECT sup.id, sup.full_name, 'supervisor' AS kind, sup.supervisor_type FROM supervisors sup
+      `SELECT sup.id, sup.full_name, sup.photo, 'supervisor' AS kind, sup.supervisor_type FROM supervisors sup
         WHERE sup.group_id = ? AND sup.id != ?
        UNION
-       SELECT st.id, st.full_name, 'trainee' AS kind, NULL AS supervisor_type FROM students st WHERE st.group_id = ?`,
-      [req.groupSupervisor.groupId, req.groupSupervisor.id, req.groupSupervisor.groupId]
+       SELECT st.id, st.full_name, st.photo, 'trainee' AS kind, NULL AS supervisor_type FROM students st
+        WHERE st.group_id = ? AND st.id != ?`,
+      [req.groupMember.groupId, req.groupMember.id, req.groupMember.groupId, req.groupMember.id]
     );
     res.json({
-      roster: rows.map((r) => ({ id: r.id, fullName: r.full_name, kind: r.kind, supervisorType: r.supervisor_type })),
+      roster: rows.map((r) => ({ id: r.id, fullName: r.full_name, photo: r.photo, kind: r.kind, supervisorType: r.supervisor_type })),
     });
   })
 );
@@ -387,7 +390,7 @@ router.get(
       params.push(before);
     }
     const { rows } = await db.query(
-      `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM chat_room_messages m
+      `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name, COALESCE(sup.photo, st.photo) AS sender_photo FROM chat_room_messages m
        LEFT JOIN supervisors sup ON sup.id = m.sender_id
        LEFT JOIN students st ON st.id = m.sender_id
        WHERE ${clauses.join(" AND ")}
@@ -441,7 +444,7 @@ router.post(
     );
 
     const { rows } = await db.query(
-      `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM chat_room_messages m
+      `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name, COALESCE(sup.photo, st.photo) AS sender_photo FROM chat_room_messages m
        LEFT JOIN supervisors sup ON sup.id = m.sender_id
        LEFT JOIN students st ON st.id = m.sender_id
        WHERE m.id = ?`,

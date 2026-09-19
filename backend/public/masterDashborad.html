@@ -584,8 +584,15 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            overflow: hidden;
         }
-        
+
+        .gc-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         .gc-avatar.spacer {
             visibility: hidden;
         }
@@ -7352,12 +7359,10 @@
             </div>
             ${m.content ? `<div class="gc-msg-text" style="margin-top:6px;">${escapeHtml(m.content)}</div>` : ""}`
                 : `<span class="gc-msg-text">${escapeHtml(m.content || "")}</span>`;
-            const initials = (m.senderName || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-
             return `
         ${dateSepHtml}
         <div class="gc-msg-row ${mine ? "mine" : "theirs"} ${grouped ? "grouped" : ""}">
-          ${!mine ? `<div class="gc-avatar ${grouped ? "spacer" : ""}">${escapeHtml(initials)}</div>` : ""}
+          ${!mine ? `<div class="gc-avatar ${grouped ? "spacer" : ""}">${avatarInnerHtml({ photo: m.senderPhoto, full_name: m.senderName })}</div>` : ""}
           <div class="gc-msg-col">
             ${!grouped && !mine ? `<div class="gc-sender-name">${escapeHtml(m.senderName)}</div>` : ""}
             <div class="chat-bubble ${mine ? "mine" : "theirs"}">${bodyHtml}<span class="gc-msg-time">${time}</span></div>
@@ -7555,7 +7560,14 @@
 
         async function loadDmUnreadBadge() {
             const data = await apiRequest("/master-trainer/messages/unread-count");
-            const count = (data && data.count) || 0;
+            // A failed/errored request (data === null, e.g. a transient
+            // network hiccup on the 60s background poll) must never be
+            // treated as "0 unread" -- that silently hid a real badge until
+            // the next successful poll, which read as the badge randomly
+            // appearing/disappearing. Leave it exactly as it already is and
+            // let the next poll (or the next real event) correct it.
+            if (!data) return;
+            const count = Number(data.count) || 0;
             const label = count > 99 ? "99+" : String(count);
             [document.getElementById("chatNavUnreadBadge"), document.getElementById("dmTabUnreadBadge")].forEach((el) => {
                 if (!el) return;

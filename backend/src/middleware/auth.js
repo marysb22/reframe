@@ -141,6 +141,42 @@ async function requireGroupSupervisor(req, res, next) {
 }
 
 /**
+ * Like requireGroupSupervisor, but also accepts a Trainee -- for the two
+ * chatRooms.js endpoints (GET /roster, POST /direct) a Trainee needs too,
+ * to see and message every member (supervisor or peer trainee) of their own
+ * Group in Direct Chats. Group Chat room management (create/rename/add or
+ * remove members/delete) stays supervisor-only and keeps using
+ * requireGroupSupervisor unchanged. Attaches req.groupMember = { id,
+ * groupId, fullName, kind: 'supervisor'|'trainee', supervisorType }.
+ */
+async function requireGroupMember(req, res, next) {
+  try {
+    const { rows: supRows } = await pool.query(
+      `SELECT id, full_name, group_id, supervisor_type FROM supervisors WHERE id = ?`,
+      [req.user.id]
+    );
+    if (supRows.length) {
+      req.groupMember = {
+        id: supRows[0].id,
+        groupId: supRows[0].group_id,
+        fullName: supRows[0].full_name,
+        kind: "supervisor",
+        supervisorType: supRows[0].supervisor_type,
+      };
+      return next();
+    }
+    const { rows: stuRows } = await pool.query(`SELECT id, full_name, group_id FROM students WHERE id = ?`, [req.user.id]);
+    if (stuRows.length) {
+      req.groupMember = { id: stuRows[0].id, groupId: stuRows[0].group_id, fullName: stuRows[0].full_name, kind: "trainee" };
+      return next();
+    }
+    return res.status(403).json({ error: "Group access only" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * Wraps a route handler in its own MySQL transaction. Commits on success,
  * rolls back and forwards to the error handler on any thrown error.
  *
@@ -198,5 +234,6 @@ module.exports = {
   requireRole,
   requireMasterTrainer,
   requireGroupSupervisor,
+  requireGroupMember,
   asyncRoute,
 };

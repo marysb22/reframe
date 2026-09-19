@@ -2210,6 +2210,13 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .gc-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .gc-avatar.spacer {
@@ -3962,6 +3969,20 @@
         let currentProfile = null;
         let mySupervisors = [];
         let activeSupervisorId = null;
+        // Direct Chats must show every member of the Trainee's own Group,
+        // not just their assigned supervisor(s) -- myPeers is every other
+        // Trainee in that same Group (from GET /chat-rooms/roster), messaged
+        // via the generic chat_rooms/is_direct infrastructure (the same one
+        // Master Trainer<->ToT Direct Chat already uses) since the older
+        // chats/messages tables' typed supervisor_id/student_id columns
+        // can't represent a trainee-to-trainee pair. activeContactKind and
+        // activeRoomId track which backend the currently open thread and
+        // sendMessage() should use; activeSupervisorId is reused as the
+        // generic "current contact id" for both kinds to avoid touching
+        // every existing reference to it.
+        let myPeers = [];
+        let activeContactKind = "supervisor";
+        let activeRoomId = null;
         let allRecords = [];
         let activeHourTypes = []; // [{code, label, isPrimary}] -- fetched once, used to label hour_session/hour_adjustment records with their real type name
 
@@ -4323,8 +4344,27 @@
         // marked read by opening a conversation -- see openThread() and the
         // "newDirectMessage" socket listener below.
         async function loadDmUnreadBadge() {
-            const data = await apiRequest("/profile/messages/unread-count");
-            const count = (data && data.count) || 0;
+            // Two independent unread sources feed this one badge: supervisor
+            // conversations (old chats/messages tables, via notifications)
+            // and peer-trainee Direct Chats (chat_rooms, is_direct=TRUE --
+            // added for the "show all Group members" fix, which moved peer
+            // messaging onto chat_rooms since the typed chats/messages
+            // tables can't hold a trainee-to-trainee pair). Both must
+            // resolve before the badge updates -- see the no-null-as-zero
+            // reasoning below, which applies identically to either source.
+            const [data, roomsData] = await Promise.all([
+                apiRequest("/profile/messages/unread-count"),
+                apiRequest("/chat-rooms?type=direct"),
+            ]);
+            // A failed/errored request (data === null, e.g. a transient
+            // network hiccup on the 60s background poll) must never be
+            // treated as "0 unread" -- that silently hid a real badge until
+            // the next successful poll, which read as the badge randomly
+            // appearing/disappearing. Leave it exactly as it already is and
+            // let the next poll (or the next real event) correct it.
+            if (!data || !roomsData) return;
+            const peerUnread = roomsData.rooms.reduce((sum, r) => sum + (Number(r.unreadCount) || 0), 0);
+            const count = (Number(data.count) || 0) + peerUnread;
             const label = count > 99 ? "99+" : String(count);
             [document.getElementById("chatNavUnreadBadge"), document.getElementById("dmTabUnreadBadge")].forEach((el) => {
                 if (!el) return;
@@ -5569,17 +5609,17 @@ async function loadMeetings() {
 
 // preferredSupervisorId (e.g. from a "message" notification's
 // relatedEntityId) opens that specific conversation instead of defaulting
-// to the first one -- used by handleNotifClick below.
+// to the first one -- used by handleNotifClick below. Despite the name, it
+// may resolve to a peer-trainee contact too (ids are unique across roles,
+// sharing the user_credentials id space, so a plain id lookup is safe).
 async function loadChat(preferredSupervisorId) {
-  if (!mySupervisors.length) {
-    document.getElementById("chatInboxList").innerHTML = '<li class="empty-state">You have no supervisors assigned yet.</li>';
-    return;
-  }
   await loadChatInbox();
-  const targetId = preferredSupervisorId && mySupervisors.some((s) => Number(s.id) === Number(preferredSupervisorId))
-    ? Number(preferredSupervisorId)
-    : mySupervisors[0].id;
-  openThread(targetId);
+  if (!dmConversations.length) return;
+  const preferred = preferredSupervisorId
+    ? dmConversations.find((c) => Number(c.contact.id) === Number(preferredSupervisorId))
+    : null;
+  const target = (preferred || dmConversations[0]).contact;
+  openThread(target.id, target.kind);
 }
 
 // Same inbox design/behavior as Totdashboard.html's Direct Messages list
@@ -5588,27 +5628,55 @@ async function loadChat(preferredSupervisorId) {
 // of a row of plain tabs. ?peek=1 fetches each conversation's preview
 // without marking it read; only actually opening one (openThread, no
 // peek) does that.
+//
+// Two backends feed this one list: mySupervisors (assigned supervisor(s),
+// via the older chats/messages tables) and myPeers (every other Trainee in
+// this Trainee's own Group, via GET /chat-rooms/roster, messaged through
+// chat_rooms/is_direct -- see openThread/sendMessage below). Every eligible
+// Group member appears here, including a peer never messaged before, with
+// no hardcoded limit -- the roster is exactly what the backend returns for
+// this Trainee's own group_id.
 let dmConversations = [];
 
 async function loadChatInbox() {
   const list = document.getElementById("chatInboxList");
   list.innerHTML = '<li class="empty-state">Loading conversations...</li>';
-  if (!mySupervisors.length) {
-    list.innerHTML = '<li class="empty-state">You have no supervisors assigned yet.</li>';
-    return;
-  }
 
-  const [previews, unreadData] = await Promise.all([
+  const [rosterData, supPreviews, unreadData, peerRoomsData] = await Promise.all([
+    apiRequest("/chat-rooms/roster"),
     Promise.all(mySupervisors.map((s) => apiRequest(`/profile/messages/${s.id}?peek=1`))),
     apiRequest("/profile/messages/unread-by-sender"),
+    apiRequest("/chat-rooms?type=direct"),
   ]);
+  myPeers = ((rosterData && rosterData.roster) || []).filter((r) => r.kind === "trainee");
   const unreadCounts = (unreadData && unreadData.counts) || {};
-
-  dmConversations = mySupervisors.map((s, i) => {
-    const data = previews[i];
-    const last = data && data.messages.length ? data.messages[data.messages.length - 1] : null;
-    return { supervisor: s, last, unreadCount: unreadCounts[s.id] || 0 };
+  const peerRoomByUserId = {};
+  ((peerRoomsData && peerRoomsData.rooms) || []).forEach((r) => {
+    if (r.otherUserId) peerRoomByUserId[r.otherUserId] = r;
   });
+
+  const supervisorConversations = mySupervisors.map((s, i) => {
+    const data = supPreviews[i];
+    const last = data && data.messages.length ? data.messages[data.messages.length - 1] : null;
+    return { contact: { id: s.id, full_name: s.full_name, photo: s.photo, kind: "supervisor" }, last, unreadCount: unreadCounts[s.id] || 0, roomId: null };
+  });
+
+  const peerConversations = myPeers.map((p) => {
+    const room = peerRoomByUserId[p.id];
+    return {
+      contact: { id: p.id, full_name: p.fullName, photo: p.photo, kind: "trainee" },
+      last: room && room.lastMessage ? { content: room.lastMessage.preview, createdAt: room.lastMessage.createdAt } : null,
+      unreadCount: room ? Number(room.unreadCount) || 0 : 0,
+      roomId: room ? room.id : null,
+    };
+  });
+
+  dmConversations = [...supervisorConversations, ...peerConversations];
+
+  if (!dmConversations.length) {
+    list.innerHTML = '<li class="empty-state">You have no supervisors or Group members yet.</li>';
+    return;
+  }
 
   dmConversations.sort((a, b) => {
     const at = a.last ? new Date(a.last.createdAt).getTime() : 0;
@@ -5624,20 +5692,20 @@ function renderChatInboxList(filterText) {
   const list = document.getElementById("chatInboxList");
   const query = (filterText || "").trim().toLowerCase();
   const filtered = query
-    ? dmConversations.filter((c) => c.supervisor.full_name.toLowerCase().includes(query))
+    ? dmConversations.filter((c) => c.contact.full_name.toLowerCase().includes(query))
     : dmConversations;
 
   if (!filtered.length) {
-    list.innerHTML = `<li class="empty-state">${query ? "No conversations match \u201c" + escapeHtml(filterText.trim()) + "\u201d." : "You have no supervisors assigned yet."}</li>`;
+    list.innerHTML = `<li class="empty-state">${query ? "No conversations match \u201c" + escapeHtml(filterText.trim()) + "\u201d." : "You have no supervisors or Group members yet."}</li>`;
     return;
   }
 
   list.innerHTML = filtered
-    .map(({ supervisor: s, last, unreadCount }) => `
-      <li class="inbox-item ${Number(s.id) === Number(activeSupervisorId) ? "active" : ""}" data-sup="${s.id}" onclick="openThread(${s.id})">
-        <div class="inbox-avatar">${avatarInnerHtml(s)}</div>
+    .map(({ contact: c, last, unreadCount }) => `
+      <li class="inbox-item ${Number(c.id) === Number(activeSupervisorId) ? "active" : ""}" data-sup="${c.id}" onclick="openThread(${c.id}, '${c.kind}')">
+        <div class="inbox-avatar">${avatarInnerHtml(c)}</div>
         <div class="inbox-info">
-          <strong>${escapeHtml(s.full_name)}${unreadCount ? `<span class="unread-dot${unreadCount > 9 ? " wide" : ""}" style="margin-left:8px;">${unreadCount > 99 ? "99+" : unreadCount}</span>` : ""}</strong>
+          <strong>${escapeHtml(c.full_name)}${unreadCount ? `<span class="unread-dot${unreadCount > 9 ? " wide" : ""}" style="margin-left:8px;">${unreadCount > 99 ? "99+" : unreadCount}</span>` : ""}</strong>
           <span>${last ? escapeHtml(last.content) : "No messages yet \u2014 say hello"}</span>
         </div>
         <div class="inbox-time">${last ? new Date(last.createdAt).toLocaleDateString() : ""}</div>
@@ -5652,28 +5720,67 @@ function markActiveInboxItem() {
   });
 }
 
-async function openThread(supervisorId) {
-  activeSupervisorId = supervisorId;
+// kind defaults to "supervisor" so every pre-existing single-argument call
+// site (the live-socket "newDirectMessage" handler, sendMessage's re-open
+// after posting) keeps working unchanged -- those are always about a
+// supervisor conversation, never a peer one.
+async function openThread(contactId, kind) {
+  activeSupervisorId = contactId;
+  activeContactKind = kind || "supervisor";
+  activeRoomId = null;
   markActiveInboxItem();
 
-  const supervisor = mySupervisors.find((s) => Number(s.id) === Number(supervisorId));
+  const conv = dmConversations.find((c) => Number(c.contact.id) === Number(contactId) && c.contact.kind === activeContactKind);
+  const contact = conv ? conv.contact : null;
   document.getElementById("dmThreadHeader").style.display = "flex";
-  document.getElementById("dmThreadName").textContent = supervisor ? supervisor.full_name : "Conversation";
+  document.getElementById("dmThreadName").textContent = contact ? contact.full_name : "Conversation";
   document.getElementById("dmComposer").style.display = "flex";
 
   const thread = document.getElementById("dmThread");
   thread.innerHTML = '<div class="empty-state">Loading messages...</div>';
-  const data = await apiRequest(`/profile/messages/${supervisorId}`);
+
+  if (activeContactKind === "supervisor") {
+    const data = await apiRequest(`/profile/messages/${contactId}`);
+    if (!data) return;
+    // The GET above already marked this conversation's incoming messages
+    // (and their notifications) read server-side -- refresh the nav badge
+    // and this conversation's own row in the inbox list to match
+    // immediately rather than waiting for the next 60s poll.
+    loadDmUnreadBadge();
+    loadChatInbox();
+    if (!data.messages.length) { thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>'; return; }
+    thread.innerHTML = data.messages
+      .map((m) => `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"}">${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} \u00b7 ${new Date(m.createdAt).toLocaleString()}</div></div>`)
+      .join("");
+    thread.scrollTop = thread.scrollHeight;
+    return;
+  }
+
+  // Peer trainee -- find-or-create the chat_rooms/is_direct thread, the
+  // same infrastructure Master Trainer<->ToT Direct Chat already uses,
+  // since the older chats/messages tables can't hold a trainee-to-trainee
+  // pair. Reuses the room id already known from loadChatInbox() when one
+  // exists so this never creates a duplicate room.
+  let roomId = conv ? conv.roomId : null;
+  if (!roomId) {
+    const created = await apiRequest("/chat-rooms/direct", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: contactId }),
+    });
+    if (!created) return;
+    roomId = created.id;
+  }
+  activeRoomId = roomId;
+
+  const data = await apiRequest(`/chat-rooms/${roomId}/messages`);
   if (!data) return;
-  // The GET above already marked this conversation's incoming messages (and
-  // their notifications) read server-side -- refresh the nav badge and this
-  // conversation's own row in the inbox list to match immediately rather
-  // than waiting for the next 60s poll.
+  await apiRequest(`/chat-rooms/${roomId}/read`, { method: "POST" });
   loadDmUnreadBadge();
   loadChatInbox();
   if (!data.messages.length) { thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>'; return; }
   thread.innerHTML = data.messages
-    .map((m) => `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"}">${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} \u00b7 ${new Date(m.createdAt).toLocaleString()}</div></div>`)
+    .map((m) => `<div class="chat-bubble ${m.senderId === myUserId ? "mine" : "theirs"}">${escapeHtml(m.content || "")}<div class="meta">${escapeHtml(m.senderName)} \u00b7 ${new Date(m.createdAt).toLocaleString()}</div></div>`)
     .join("");
   thread.scrollTop = thread.scrollHeight;
 }
@@ -5684,12 +5791,27 @@ let dmSendInFlight = false;
 
 async function sendMessage() {
   if (dmSendInFlight) return;
-  if (!activeSupervisorId) return showToast("Select a supervisor first", "error");
+  if (!activeSupervisorId) return showToast("Select someone to message first", "error");
   const input = document.getElementById("dmInput");
   const content = input.value.trim();
   if (!content) return;
   dmSendInFlight = true;
   try {
+    if (activeContactKind === "trainee") {
+      if (!activeRoomId) return;
+      const formData = new FormData();
+      formData.append("content", content);
+      const result = await apiRequest(`/chat-rooms/${activeRoomId}/messages`, {
+        method: "POST",
+        body: formData,
+      });
+      if (result) {
+        input.value = "";
+        await openThread(activeSupervisorId, "trainee");
+        await loadChatInbox();
+      }
+      return;
+    }
     const result = await apiRequest(`/profile/messages/${activeSupervisorId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -5697,7 +5819,7 @@ async function sendMessage() {
     });
     if (result) {
       input.value = "";
-      await openThread(activeSupervisorId);
+      await openThread(activeSupervisorId, "supervisor");
       await loadChatInbox();
     }
   } finally {
@@ -5957,12 +6079,10 @@ function gcMessageHtml(m) {
         </div>
         ${m.content ? `<div class="gc-msg-text" style="margin-top:6px;">${escapeHtml(m.content)}</div>` : ""}`
         : `<span class="gc-msg-text">${escapeHtml(m.content || "")}</span>`;
-    const initials = (m.senderName || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-
     return `
     ${dateSepHtml}
     <div class="gc-msg-row ${mine ? "mine" : "theirs"} ${grouped ? "grouped" : ""}">
-      ${!mine ? `<div class="gc-avatar ${grouped ? "spacer" : ""}">${escapeHtml(initials)}</div>` : ""}
+      ${!mine ? `<div class="gc-avatar ${grouped ? "spacer" : ""}">${avatarInnerHtml({ photo: m.senderPhoto, full_name: m.senderName })}</div>` : ""}
       <div class="gc-msg-col">
         ${!grouped && !mine ? `<div class="gc-sender-name">${escapeHtml(m.senderName)}</div>` : ""}
         <div class="chat-bubble ${mine ? "mine" : "theirs"}">${bodyHtml}<span class="gc-msg-time">${time}</span></div>
