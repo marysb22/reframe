@@ -5978,6 +5978,13 @@
         let gtsOccasions = [];
         let attActiveOccasionId = null;
         let attRecordAttendanceKind = "trainee"; // 'trainee' | 'tot'
+        // Set fresh every time the modal opens (see openAttendanceModal) and
+        // read directly by saveAttendance below -- NOT looked up from
+        // gsOccasions/gtsOccasions, which only ever hold single-day
+        // occasions (series_id IS NULL, per GET /group-sessions); a day
+        // belonging to a multi-day Session is never in either list, which
+        // silently no-op'd every Save Attendance click for a multi-day day.
+        let attActiveOccasionDurationMinutes = 0;
 
         let gsSeries = [];
         let gsExpandedSeriesId = null;
@@ -6136,6 +6143,7 @@
             ]);
             if (!data) return;
             const o = data.occasion;
+            attActiveOccasionDurationMinutes = o.durationMinutes;
             const typeLabel = kind === "tot" ? "" : ` (${o.sessionTypeLabel})`;
             document.getElementById("attendanceModalSubtitle").textContent =
                 `${o.title || "Untitled"} — ${new Date(o.date).toLocaleDateString()} — ${(o.durationMinutes / 60).toFixed(2)}h${typeLabel}`;
@@ -6188,9 +6196,7 @@
         async function saveAttendance() {
             if (!attActiveOccasionId || attSaveInFlight) return;
             const kind = attRecordAttendanceKind;
-            const occasion = (kind === "tot" ? gtsOccasions : gsOccasions).find((o) => o.id === attActiveOccasionId);
-            if (!occasion) return;
-            const sessionHours = occasion.durationMinutes / 60;
+            const sessionHours = attActiveOccasionDurationMinutes / 60;
 
             const rows = Array.from(document.querySelectorAll("#attendanceRosterList .att-row"));
             const entries = [];
@@ -8085,7 +8091,7 @@
                 clearEventDraft();
             }
         }
-        document.getElementById("eventForm").addEventListener("input", saveEventDraft);
+        document.getElementById("eventForm")?.addEventListener("input", saveEventDraft);
         restoreEventDraftIfAny();
 
         async function editEvent(id) {
@@ -8143,7 +8149,7 @@
             }
         }
 
-        document.getElementById("eventForm").addEventListener("submit", async (e) => {
+        document.getElementById("eventForm")?.addEventListener("submit", async (e) => {
             e.preventDefault();
 
             const dates = getEventDatesPayload();
@@ -8225,7 +8231,7 @@
             openModal("addEventModal");
         }
 
-        document.getElementById("addEventForm").addEventListener("submit", async (e) => {
+        document.getElementById("addEventForm")?.addEventListener("submit", async (e) => {
             e.preventDefault();
             const result = await apiRequest("/master-trainer/calendar-events", {
                 method: "POST",
