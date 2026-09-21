@@ -6715,7 +6715,7 @@ function applyLibraryFilters() {
     return;
   }
   const list = libraryBooksRaw.filter((b) => {
-    const hay = `${b.title || ""} ${b.author || ""} ${b.publisher || ""} ${b.category || ""} ${RESOURCE_TYPE_LABELS[b.resourceType] || ""}`.toLowerCase();
+    const hay = `${b.title || ""} ${b.author || ""} ${b.publisher || ""} ${b.category || ""} ${RESOURCE_TYPE_LABELS[b.resourceType] || ""} ${b.doi || ""}`.toLowerCase();
     return hay.includes(search);
   });
   renderLibrarySections(list, "Search Results");
@@ -6836,8 +6836,7 @@ function openBookDetails(id) {
           ${b.publicationLocation ? `<dt>Publication location</dt><dd>${escapeHtml(b.publicationLocation)}</dd>` : ""}
           ${b.country ? `<dt>Country</dt><dd>${escapeHtml(b.country)}</dd>` : ""}
           ${b.publicationYear ? `<dt>Publication year</dt><dd>${escapeHtml(String(b.publicationYear))}</dd>` : ""}
-          ${b.isbn ? `<dt>ISBN</dt><dd>${escapeHtml(b.isbn)}</dd>` : ""}
-          ${b.oclcNumber ? `<dt>OCLC</dt><dd>${escapeHtml(b.oclcNumber)}</dd>` : ""}
+          ${b.doi ? `<dt>DOI</dt><dd>${escapeHtml(b.doi)}</dd>` : ""}
           <dt>Added by</dt><dd>${escapeHtml(b.createdByName)} &middot; ${escapeHtml(b.createdByRole)}</dd>
           ${addedDate ? `<dt>Date added</dt><dd>${addedDate}</dd>` : ""}
           <dt>File</dt><dd>${escapeHtml(bookFileInfo(b))} &middot; ${escapeHtml(b.originalName || "")}</dd>

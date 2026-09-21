@@ -1947,9 +1947,9 @@
                     <h3 id="addBookModalTitle">Add a Book</h3>
                     <input type="hidden" id="bookEditId" value="">
                     <div class="book-online-search" id="bookOnlineSearchRow">
-                        <label style="margin-top:0;">Search online by ISBN (optional)</label>
+                        <label style="margin-top:0;">Search online by DOI (optional)</label>
                         <div style="display:flex;gap:8px;">
-                            <input type="text" id="bookSearchIsbn" placeholder="e.g. 9780143127550" style="flex:1;">
+                            <input type="text" id="bookSearchDoi" placeholder="e.g. 10.1000/xyz123" style="flex:1;">
                             <button type="button" class="btn btn-secondary" style="width:auto;" onclick="searchBookOnline()">Search</button>
                         </div>
                         <p class="field-hint" id="bookSearchStatus" style="margin-bottom:0;">Fills in the fields below for you to review -- nothing is saved until you click Add Book.</p>
@@ -1973,10 +1973,9 @@
                             <div><label>Publication location</label><input type="text" id="bookPublicationLocation" placeholder="City, e.g. Paris, France"></div>
                             <div><label>Country</label><select id="bookCountry"><option value="">Select a country...</option></select></div>
                         </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                            <div><label>ISBN</label><input type="text" id="bookIsbn" placeholder="e.g. 9780143127550"></div>
-                            <div><label>OCLC number</label><input type="text" id="bookOclc" placeholder="Optional"></div>
-                        </div>
+                        <label>DOI (Digital Object Identifier)</label>
+                        <input type="text" id="bookDoi" placeholder="e.g. 10.1000/xyz123 -- optional, leave blank if this resource has none">
+
                         <label>Description</label>
                         <textarea id="bookDescription"></textarea>
                         <div id="bookFileFields">
@@ -5364,7 +5363,7 @@ function applyLibraryFilters() {
     return;
   }
   const list = libraryBooksRaw.filter((b) => {
-    const hay = `${b.title || ""} ${b.author || ""} ${b.publisher || ""} ${b.category || ""} ${RESOURCE_TYPE_LABELS[b.resourceType] || ""}`.toLowerCase();
+    const hay = `${b.title || ""} ${b.author || ""} ${b.publisher || ""} ${b.category || ""} ${RESOURCE_TYPE_LABELS[b.resourceType] || ""} ${b.doi || ""}`.toLowerCase();
     return hay.includes(search);
   });
   renderLibrarySections(list, "Search Results");
@@ -5489,8 +5488,7 @@ function openBookDetails(id) {
           ${b.publicationLocation ? `<dt>Publication location</dt><dd>${escapeHtml(b.publicationLocation)}</dd>` : ""}
           ${b.country ? `<dt>Country</dt><dd>${escapeHtml(b.country)}</dd>` : ""}
           ${b.publicationYear ? `<dt>Publication year</dt><dd>${escapeHtml(String(b.publicationYear))}</dd>` : ""}
-          ${b.isbn ? `<dt>ISBN</dt><dd>${escapeHtml(b.isbn)}</dd>` : ""}
-          ${b.oclcNumber ? `<dt>OCLC</dt><dd>${escapeHtml(b.oclcNumber)}</dd>` : ""}
+          ${b.doi ? `<dt>DOI</dt><dd>${escapeHtml(b.doi)}</dd>` : ""}
           <dt>Added by</dt><dd>${escapeHtml(b.createdByName)} &middot; ${escapeHtml(b.createdByRole)}</dd>
           ${addedDate ? `<dt>Date added</dt><dd>${addedDate}</dd>` : ""}
           <dt>File</dt><dd>${escapeHtml(bookFileInfo(b))} &middot; ${escapeHtml(b.originalName || "")}</dd>
@@ -5603,8 +5601,7 @@ function openAddBookModal(book) {
     document.getElementById("bookPublisher").value = book.publisher || "";
     document.getElementById("bookPublicationLocation").value = book.publicationLocation || "";
     document.getElementById("bookCountry").value = book.country || "";
-    document.getElementById("bookIsbn").value = book.isbn || "";
-    document.getElementById("bookOclc").value = book.oclcNumber || "";
+    document.getElementById("bookDoi").value = book.doi || "";
     document.getElementById("bookDescription").value = book.description || "";
   }
 
@@ -5620,19 +5617,19 @@ function closeAddBookModal() {
   document.getElementById("addBookModal").classList.remove("show");
 }
 
-// Optional helper for the Add flow only -- looks up an ISBN via the
+// Optional helper for the Add flow only -- looks up a DOI via the
 // backend's online-search proxy and fills in the form fields for review.
 // Never saves anything itself; POST /library/books (below) is still the
 // only thing that writes a book.
 async function searchBookOnline() {
-  const isbn = document.getElementById("bookSearchIsbn").value.trim();
+  const doi = document.getElementById("bookSearchDoi").value.trim();
   const statusEl = document.getElementById("bookSearchStatus");
-  if (!isbn) {
-    statusEl.textContent = "Enter an ISBN first.";
+  if (!doi) {
+    statusEl.textContent = "Enter a DOI first.";
     return;
   }
   statusEl.textContent = "Searching...";
-  const data = await apiRequest(`/library/online-search?isbn=${encodeURIComponent(isbn)}`);
+  const data = await apiRequest(`/library/online-search?doi=${encodeURIComponent(doi)}`);
   if (!data) {
     statusEl.textContent = "No result -- you can still enter details manually below.";
     return;
@@ -5643,8 +5640,7 @@ async function searchBookOnline() {
   if (data.publicationLocation) document.getElementById("bookPublicationLocation").value = data.publicationLocation;
   if (data.publicationYear) document.getElementById("bookPublicationYear").value = data.publicationYear;
   if (data.description) document.getElementById("bookDescription").value = data.description;
-  if (data.oclcNumber) document.getElementById("bookOclc").value = data.oclcNumber;
-  document.getElementById("bookIsbn").value = data.isbn || isbn;
+  document.getElementById("bookDoi").value = data.doi || doi;
   statusEl.textContent = "Found -- review the fields below before saving.";
 }
 
@@ -5672,8 +5668,7 @@ document.getElementById("addBookForm").addEventListener("submit", async (e) => {
       publicationLocation: document.getElementById("bookPublicationLocation").value,
       publicationYear: document.getElementById("bookPublicationYear").value || undefined,
       country: document.getElementById("bookCountry").value,
-      isbn: document.getElementById("bookIsbn").value,
-      oclcNumber: document.getElementById("bookOclc").value,
+      doi: document.getElementById("bookDoi").value,
     };
     const result = await apiRequest(`/library/books/${editId}`, {
       method: "PUT",
@@ -5705,8 +5700,7 @@ document.getElementById("addBookForm").addEventListener("submit", async (e) => {
   const publicationYear = document.getElementById("bookPublicationYear").value;
   if (publicationYear) form.append("publicationYear", publicationYear);
   form.append("country", document.getElementById("bookCountry").value);
-  form.append("isbn", document.getElementById("bookIsbn").value);
-  form.append("oclcNumber", document.getElementById("bookOclc").value);
+  form.append("doi", document.getElementById("bookDoi").value);
   form.append("file", file);
   const cover = document.getElementById("bookCoverInput").files[0];
   if (cover) form.append("coverImage", cover);

@@ -57,12 +57,12 @@ const CURRENT_YEAR = new Date().getFullYear();
 // security testing (long-input case) surfacing as a raw 500.
 const FIELD_LIMITS = {
   title: 255, author: 255, publisher: 255, publicationLocation: 255,
-  category: 100, country: 100, isbn: 20, oclcNumber: 20,
+  category: 100, country: 100, doi: 255,
 };
 const FIELD_LABELS = {
   title: "Title", author: "Author", publisher: "Publisher",
   publicationLocation: "Publication location", category: "Category",
-  country: "Country", isbn: "ISBN", oclcNumber: "OCLC number",
+  country: "Country", doi: "DOI",
 };
 
 function findTooLongField(body) {
@@ -99,8 +99,7 @@ function toBook(row) {
     publicationYear: row.publication_year,
     resourceType: row.resource_type,
     country: row.country,
-    isbn: row.isbn,
-    oclcNumber: row.oclc_number,
+    doi: row.doi,
     createdByName,
     createdByRole,
     createdAt: row.created_at,
@@ -177,7 +176,7 @@ router.post("/books", requireAdminPermissionIfAdmin("library.add"), (req, res) =
       return res.status(status).json({ error });
     };
     try {
-      const { title, author, description, category, publisher, publicationLocation, resourceType, country, isbn, oclcNumber } = req.body || {};
+      const { title, author, description, category, publisher, publicationLocation, resourceType, country, doi } = req.body || {};
       if (!title || !title.trim()) return fail(400, "Title is required");
       if (!author || !author.trim()) return fail(400, "Author is required");
       if (!resourceType || !RESOURCE_TYPES.includes(resourceType)) {
@@ -239,13 +238,13 @@ router.post("/books", requireAdminPermissionIfAdmin("library.add"), (req, res) =
 
       const insert = await pool.query(
         `INSERT INTO learning_materials
-           (supervisor_id, admin_id, student_id, title, author, description, category, material_type, filename, original_name, cover_image, publisher, publication_location, publication_year, resource_type, file_hash, country, isbn, oclc_number)
-         VALUES (?,?,NULL,?,?,?,?,'book',?,?,?,?,?,?,?,?,?,?,?)`,
+           (supervisor_id, admin_id, student_id, title, author, description, category, material_type, filename, original_name, cover_image, publisher, publication_location, publication_year, resource_type, file_hash, country, doi)
+         VALUES (?,?,NULL,?,?,?,?,'book',?,?,?,?,?,?,?,?,?,?)`,
         [
           supervisorId, adminId, title.trim(), author.trim(), description || null, category || null,
           file.filename, file.originalname, cover ? cover.filename : null,
           publisher || null, publicationLocation ? String(publicationLocation).trim() : null, publicationYear, resourceType, fileHash,
-          country || null, isbn ? isbn.trim() : null, oclcNumber ? oclcNumber.trim() : null,
+          country || null, doi ? doi.trim() : null,
         ]
       );
       await pool.query(
@@ -265,8 +264,7 @@ router.post("/books", requireAdminPermissionIfAdmin("library.add"), (req, res) =
         publicationYear,
         resourceType,
         country: country || null,
-        isbn: isbn ? isbn.trim() : null,
-        oclcNumber: oclcNumber ? oclcNumber.trim() : null,
+        doi: doi ? doi.trim() : null,
         filename: file.filename,
         originalName: file.originalname,
         coverImage: cover ? cover.filename : null,
@@ -342,7 +340,7 @@ router.put(
     const { rows } = await db.query("SELECT id FROM learning_materials WHERE id = ? AND material_type = 'book'", [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: "Book not found" });
 
-    const { title, author, description, category, publisher, publicationLocation, resourceType, country, isbn, oclcNumber } = req.body || {};
+    const { title, author, description, category, publisher, publicationLocation, resourceType, country, doi } = req.body || {};
     if (!title || !String(title).trim()) return res.status(400).json({ error: "Title is required" });
     if (!author || !String(author).trim()) return res.status(400).json({ error: "Author is required" });
     if (!resourceType || !RESOURCE_TYPES.includes(resourceType)) {
@@ -364,12 +362,12 @@ router.put(
     await db.query(
       `UPDATE learning_materials SET
          title = ?, author = ?, description = ?, category = ?, publisher = ?, publication_location = ?, publication_year = ?,
-         resource_type = ?, country = ?, isbn = ?, oclc_number = ?
+         resource_type = ?, country = ?, doi = ?
        WHERE id = ?`,
       [
         title.trim(), author.trim(), description || null, category || null, publisher || null,
         publicationLocation ? String(publicationLocation).trim() : null, publicationYear,
-        resourceType, country || null, isbn ? isbn.trim() : null, oclcNumber ? oclcNumber.trim() : null,
+        resourceType, country || null, doi ? doi.trim() : null,
         req.params.id,
       ]
     );
@@ -390,22 +388,24 @@ router.put(
   })
 );
 
-// GET /api/library/online-search?isbn=&oclc= -- optional lookup an Admin or
+// GET /api/library/online-search?doi= -- optional lookup an Admin or
 // Supervisor can use while filling the Add Book form; never writes
 // anything itself (see POST /books, still the only way a book actually
 // gets saved) -- purely fetches candidate metadata for the caller to
-// review and edit before submitting. ISBN is looked up via Open Library's
-// free, keyless catalog (openlibrary.org/isbn/<isbn>.json -- verified
-// directly against the live API before wiring this in; Open Library's
-// older bibkeys/jscmd "Books API" variant returns a bare 404 for every
-// ISBN as of this writing, so this deliberately does NOT use that one).
-// Author names require one extra lookup per author key (the /isbn/ record
-// only references them by key) -- capped at 3 and run in parallel, still
-// one book lookup's worth of latency in practice. There is no equivalent
-// free/keyless public OCLC lookup (WorldCat's Search API requires a paid
-// institutional key this app doesn't have), so an oclc value is accepted
-// and echoed back but not actually resolved -- honest about that limit
-// rather than faking a result.
+// review and edit before submitting.
+//
+// This used to look ISBN up via Open Library. Now that the Library's only
+// identifier is DOI, it looks the DOI up via Crossref's free, keyless
+// metadata API (api.crossref.org/works/<doi> -- verified directly against
+// the live API, including a real 404 for an unknown DOI, before wiring this
+// in) -- Crossref is the actual DOI registration agency's own public
+// lookup, i.e. the correct provider for a DOI, not a repurposed ISBN
+// catalog. Crossref's records (mostly journal articles/papers/theses) have
+// no "place published" concept the way a physical book does, so
+// publicationLocation is deliberately left unmapped here -- never guessed
+// -- exactly like Open Library's own lookup left country unmapped for the
+// same reason. Crossref also has no cover-image field, so coverImageUrl is
+// always null here (never faked).
 router.get(
   "/online-search",
   (req, res, next) => {
@@ -416,59 +416,42 @@ router.get(
   },
   requireAdminPermissionIfAdmin("library.add"),
   asyncRoute(async (req, res) => {
-    const isbn = (req.query.isbn || "").replace(/[^0-9Xx]/g, "");
-    if (!isbn) return res.status(400).json({ error: "A valid ISBN is required" });
+    const doi = (req.query.doi || "").trim();
+    if (!doi) return res.status(400).json({ error: "A valid DOI is required" });
 
-    let book;
+    let work;
     try {
-      const upstream = await fetch(`https://openlibrary.org/isbn/${encodeURIComponent(isbn)}.json`, {
+      const upstream = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {
         signal: AbortSignal.timeout(8000),
       });
-      if (upstream.status === 404) return res.status(404).json({ error: "No book found for that ISBN" });
-      if (!upstream.ok) throw new Error(`Open Library responded ${upstream.status}`);
-      book = await upstream.json();
+      if (upstream.status === 404) return res.status(404).json({ error: "No record found for that DOI" });
+      if (!upstream.ok) throw new Error(`Crossref responded ${upstream.status}`);
+      const body = await upstream.json();
+      work = body.message;
     } catch (err) {
       console.error("[library] online search failed:", err.message);
-      return res.status(502).json({ error: "Couldn't reach the online book catalog. You can still enter details manually." });
+      return res.status(502).json({ error: "Couldn't reach the online catalog. You can still enter details manually." });
     }
 
-    let author = null;
-    if (Array.isArray(book.authors) && book.authors.length) {
-      try {
-        const names = await Promise.all(
-          book.authors.slice(0, 3).map(async (a) => {
-            const r = await fetch(`https://openlibrary.org${a.key}.json`, { signal: AbortSignal.timeout(5000) });
-            if (!r.ok) return null;
-            const d = await r.json();
-            return d.name || null;
-          })
-        );
-        author = names.filter(Boolean).join(", ") || null;
-      } catch (err) {
-        console.error("[library] online search: author lookup failed, continuing without it:", err.message);
-      }
-    }
+    const author = Array.isArray(work.author) && work.author.length
+      ? work.author.map((a) => [a.given, a.family].filter(Boolean).join(" ")).filter(Boolean).join(", ") || null
+      : null;
+    const dateParts = (work["published-print"] || work["published-online"] || work.created || {})["date-parts"];
+    const publicationYear = Array.isArray(dateParts) && Array.isArray(dateParts[0]) ? dateParts[0][0] || null : null;
+    // Crossref abstracts (when present at all) come wrapped in JATS XML
+    // tags (e.g. "<jats:p>...</jats:p>") -- stripped to plain text rather
+    // than dumping raw markup into the Description field.
+    const description = typeof work.abstract === "string" ? work.abstract.replace(/<[^>]+>/g, "").trim() || null : null;
 
-    // publish_places is Open Library's own free-text field for exactly this
-    // ("Paris, France", "New York, USA" -- verified directly against the
-    // live API) -- mapped to publicationLocation as-is, never split or
-    // parsed to guess a Country from it. There is no separate country
-    // field in this record at all, so country is deliberately left
-    // unmapped here rather than inferred from the location string -- the
-    // reviewer picks it from the dropdown if they can confirm it.
-    // oclc_numbers is also sometimes present directly in the ISBN record
-    // itself (distinct from a WorldCat Search API lookup, which this app
-    // has no key for) -- mapped when the source actually provides it.
     res.json({
-      title: book.title || null,
+      title: (Array.isArray(work.title) && work.title[0]) || null,
       author,
-      publisher: (Array.isArray(book.publishers) && book.publishers[0]) || null,
-      publicationLocation: (Array.isArray(book.publish_places) && book.publish_places[0]) || null,
-      publicationYear: book.publish_date ? Number(String(book.publish_date).match(/\d{4}/)?.[0]) || null : null,
-      oclcNumber: (Array.isArray(book.oclc_numbers) && book.oclc_numbers[0]) || null,
-      description: typeof book.notes === "string" ? book.notes : (book.notes && book.notes.value) || null,
-      coverImageUrl: Array.isArray(book.covers) && book.covers[0] ? `https://covers.openlibrary.org/b/id/${book.covers[0]}-L.jpg` : null,
-      isbn,
+      publisher: work.publisher || null,
+      publicationLocation: null,
+      publicationYear,
+      description,
+      coverImageUrl: null,
+      doi,
     });
   })
 );
