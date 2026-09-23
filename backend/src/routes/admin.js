@@ -751,6 +751,22 @@ router.delete(
     if (!rows.length) return res.status(404).json({ error: "Account not found" });
     const targetRole = rows[0].role;
 
+    // Captured now, before any deletion -- cv_file/photo are plain
+    // filenames on disk with no DB-level cascade of their own (unlike
+    // every table checked below, which does cascade or get explicitly
+    // blocked). Without this, a deleted account's CV and photo files sit
+    // on disk forever with nothing left in the database that references
+    // them -- confirmed directly: several such orphan files already exist
+    // in uploads/cv from earlier deleted test accounts. Read for both
+    // possible tables since targetRole is known but the row could be
+    // either; the one that doesn't apply just returns no rows.
+    const { rows: filesRows } = await db.query(
+      `SELECT cv_file, photo FROM students WHERE id = ?
+       UNION ALL SELECT cv_file, photo FROM supervisors WHERE id = ?`,
+      [id, id]
+    );
+    const filesToRemove = filesRows[0] || {};
+
     // Payment transactions are a financial audit trail and are never
     // force-deletable, for anyone, regardless of role -- this is a hard
     // boundary, not a preference.
@@ -854,6 +870,22 @@ router.delete(
         return res.status(409).json({ error: message });
       }
       throw err;
+    }
+
+    // The row is gone; nothing else references these filenames now. Best-
+    // effort (a failed unlink here shouldn't turn a successful account
+    // deletion into an error response) -- same pattern already used by
+    // every other delete route that also removes an on-disk file (e.g.
+    // library.js's DELETE /books/:id).
+    if (filesToRemove.cv_file) {
+      fs.unlink(path.join(config.uploadsDir, "cv", filesToRemove.cv_file), (err) => {
+        if (err && err.code !== "ENOENT") console.error("Failed to delete deleted account's CV file:", err);
+      });
+    }
+    if (filesToRemove.photo) {
+      fs.unlink(path.join(config.uploadsDir, "photos", filesToRemove.photo), (err) => {
+        if (err && err.code !== "ENOENT") console.error("Failed to delete deleted account's photo file:", err);
+      });
     }
 
     await db.query(
@@ -2111,8 +2143,28 @@ router.put(
     if (!Number.isFinite(totalFee) || totalFee < 0) {
       return res.status(400).json({ error: "totalFee must be a non-negative number" });
     }
+    // total_fee_cents/discount_cents are both a plain SQL INT column (max
+    // ~2.147 billion) -- an amount past this cap doesn't overflow into a
+    // wrong stored value, it reaches the database as a value the column
+    // physically cannot hold and 500s (confirmed directly: totalFee =
+    // 99999999999 raised a raw ER_WARN_DATA_OUT_OF_RANGE). $10,000,000 is
+    // comfortably above any real training fee and comfortably under the
+    // column's actual ~$21.47M ceiling, so this rejects the nonsensical
+    // input cleanly before it ever reaches SQL, rather than exposing the
+    // database's own storage limit as a 500.
+    const MAX_FEE_DOLLARS = 10_000_000;
+    if (totalFee > MAX_FEE_DOLLARS) {
+      return res.status(400).json({ error: `totalFee can't exceed $${MAX_FEE_DOLLARS.toLocaleString()}` });
+    }
     const totalFeeCents = Math.round(totalFee * 100);
-    const discountCents = req.body?.discount != null ? Math.round(Number(req.body.discount) * 100) : 0;
+    let discountCents = 0;
+    if (req.body?.discount != null) {
+      const discount = Number(req.body.discount);
+      if (!Number.isFinite(discount) || discount < 0 || discount > MAX_FEE_DOLLARS) {
+        return res.status(400).json({ error: `discount must be a non-negative number, no more than $${MAX_FEE_DOLLARS.toLocaleString()}` });
+      }
+      discountCents = Math.round(discount * 100);
+    }
     const paymentPlan = ["full", "installment", "custom"].includes(req.body?.paymentPlan)
       ? req.body.paymentPlan
       : null;
@@ -2193,6 +2245,13 @@ router.post(
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount === 0) {
       return res.status(400).json({ error: "amount must be a non-zero number" });
+    }
+    // amount_cents is a plain SQL INT column -- see the identical check on
+    // PUT .../total-fee above for why this needs its own bound instead of
+    // reaching the database and surfacing as a raw 500.
+    const MAX_TX_DOLLARS = 10_000_000;
+    if (Math.abs(numericAmount) > MAX_TX_DOLLARS) {
+      return res.status(400).json({ error: `amount can't exceed $${MAX_TX_DOLLARS.toLocaleString()} in magnitude` });
     }
     if (!date) return res.status(400).json({ error: "date is required" });
     const amountCents = Math.round(numericAmount * 100);
