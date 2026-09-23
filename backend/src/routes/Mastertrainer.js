@@ -197,6 +197,13 @@ async function getOrCreateTotRoom(db, masterTrainerId, totId, groupId) {
 // conversation read (chat_room_members.last_read_at + the matching
 // notifications) unless called with ?peek=1, exactly like supervisor.js's
 // mirror of this same endpoint shape.
+//
+// Capped at the 200 most recent messages -- this route has no "load older"
+// UI on either dashboard (unlike Group Chats' GET /chat-rooms/:id/messages,
+// which is properly cursor-paginated), so a full page/cursor param would go
+// nowhere; the cap alone is what stops a years-old, heavily-used MT<->ToT
+// conversation from loading its entire history -- potentially thousands of
+// rows -- into memory on every single open.
 router.get(
     "/tots/:totId/messages",
     asyncRoute(async (req, res, db) => {
@@ -206,13 +213,14 @@ router.get(
         if (!tot) return;
 
         const roomId = await getOrCreateTotRoom(db, masterTrainerId, totId, groupId);
-        const { rows } = await db.query(
+        const { rows: recentDesc } = await db.query(
             `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM chat_room_messages m
        LEFT JOIN supervisors sup ON sup.id = m.sender_id
        LEFT JOIN students st ON st.id = m.sender_id
-       WHERE m.room_id = ? ORDER BY m.created_at ASC`,
+       WHERE m.room_id = ? ORDER BY m.created_at DESC, m.id DESC LIMIT 200`,
             [roomId]
         );
+        const rows = recentDesc.reverse();
 
         if (req.query.peek !== "1") {
             await db.query("UPDATE chat_room_members SET last_read_at = NOW() WHERE room_id = ? AND user_id = ?", [

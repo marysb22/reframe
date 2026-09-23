@@ -1956,13 +1956,16 @@ router.get(
     if (!student) return;
 
     const chatId = await getOrCreateChat(db, req.user.id, studentId);
-    const { rows } = await db.query(
+    // Capped at the 200 most recent messages -- see profile.js's mirror of
+    // this same route for why (no "load older" pagination UI here).
+    const { rows: recentDesc } = await db.query(
       `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM messages m
        LEFT JOIN supervisors sup ON sup.id = m.sender_id
        LEFT JOIN students st ON st.id = m.sender_id
-       WHERE m.chat_id = ? ORDER BY m.created_at ASC`,
+       WHERE m.chat_id = ? ORDER BY m.created_at DESC, m.id DESC LIMIT 200`,
       [chatId]
     );
+    const rows = recentDesc.reverse();
 
     if (req.query.peek !== "1") {
       await db.query("UPDATE messages SET is_read = TRUE WHERE chat_id = ? AND sender_id != ? AND is_read = FALSE", [
@@ -2129,6 +2132,9 @@ router.get(
 );
 
 // GET /api/supervisor/master-trainer/messages?peek=1
+// Capped at the 200 most recent messages -- see Mastertrainer.js's mirror
+// of this same route for why (no "load older" UI on this chat pane, unlike
+// Group Chats' properly cursor-paginated history endpoint).
 router.get(
   "/master-trainer/messages",
   asyncRoute(async (req, res, db) => {
@@ -2138,13 +2144,14 @@ router.get(
     if (!groupId || !mt) return res.status(404).json({ error: "No Master Trainer assigned yet" });
 
     const roomId = await getOrCreateMasterTrainerRoom(db, req.user.id, mt.id, groupId);
-    const { rows } = await db.query(
+    const { rows: recentDesc } = await db.query(
       `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM chat_room_messages m
        LEFT JOIN supervisors sup ON sup.id = m.sender_id
        LEFT JOIN students st ON st.id = m.sender_id
-       WHERE m.room_id = ? ORDER BY m.created_at ASC`,
+       WHERE m.room_id = ? ORDER BY m.created_at DESC, m.id DESC LIMIT 200`,
       [roomId]
     );
+    const rows = recentDesc.reverse();
 
     if (req.query.peek !== "1") {
       await db.query("UPDATE chat_room_members SET last_read_at = NOW() WHERE room_id = ? AND user_id = ?", [

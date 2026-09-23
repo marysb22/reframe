@@ -63,7 +63,23 @@ async function isCaseloadMatch(supervisorId, studentId) {
 // One authorizer per upload subfolder -- (user, filename) -> boolean.
 // Each mirrors the exact same ownership/caseload rule already enforced by
 // the route that lists or manages that file type elsewhere in the app.
-const AUTHORIZERS = {
+//
+// Object.create(null) -- not `{}` -- deliberately: both call sites below
+// look this up as AUTHORIZERS[req.params.subfolder]/[req.query.subfolder],
+// straight from the URL. A plain object literal inherits Object.prototype,
+// so a request for subfolder "constructor" or "toString" would resolve to
+// a real (inherited) value there instead of undefined, skipping the "not
+// a real subfolder" 404 -- confirmed directly: "constructor"/"toString"
+// fell through to a 404 from the missing file itself rather than the
+// intended "Not found" from the authorizer lookup, and "__proto__" 500'd
+// (that property IS Object.prototype, called as a function). No real
+// upload folder happens to share a name with an Object.prototype member,
+// so none of this ever served a real file -- but it's the kind of gap
+// that stops being harmless the moment a folder name collides with one.
+// A null-prototype object has no inherited members at all, so every
+// lookup for a key that isn't one of the ones actually listed below
+// resolves to plain undefined, exactly as the code already assumes.
+const AUTHORIZERS = Object.assign(Object.create(null), {
   // Profile photos are shown broadly as avatars across chat, group
   // rosters, and tables throughout the app for every role -- low
   // sensitivity, and a real per-file ownership check would break normal
@@ -222,7 +238,7 @@ const AUTHORIZERS = {
     );
     return memberRows.length > 0;
   },
-};
+});
 
 // GET /uploads/preview-link?subfolder=X&filename=Y -- issues a short-lived,
 // single-file signed link so an external renderer (Google Docs Viewer,

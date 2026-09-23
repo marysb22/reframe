@@ -1229,13 +1229,25 @@ router.get(
     const supervisorId = Number(req.params.supervisorId);
     if (!(await requireAssignedSupervisor(db, req.user.id, supervisorId, res))) return;
     const chatId = await getOrCreateChat(db, supervisorId, req.user.id);
-    const { rows } = await db.query(
+    // Capped at the 200 most recent messages -- this conversation view has
+    // no "load older" pagination UI, and a years-long Trainee<->Supervisor
+    // conversation could otherwise accumulate thousands of rows, all
+    // fetched in full on every single open. `, m.id DESC` is a required
+    // tie-breaker, not decoration -- `created_at` alone is not unique (two
+    // messages sent within the same second, a real thing under normal use,
+    // not just a race), and MySQL/MariaDB does not guarantee any particular
+    // order among tied rows. Confirmed directly: without the tie-breaker,
+    // three messages sent back-to-back came back out of order after this
+    // DESC-then-reverse. `id` is auto-increment, so it's the one column
+    // that's always both unique and exactly insertion-ordered.
+    const { rows: recentDesc } = await db.query(
       `SELECT m.*, COALESCE(sup.full_name, st.full_name) AS sender_name FROM messages m
        LEFT JOIN supervisors sup ON sup.id = m.sender_id
        LEFT JOIN students st ON st.id = m.sender_id
-       WHERE m.chat_id = ? ORDER BY m.created_at ASC`,
+       WHERE m.chat_id = ? ORDER BY m.created_at DESC, m.id DESC LIMIT 200`,
       [chatId]
     );
+    const rows = recentDesc.reverse();
 
     if (req.query.peek !== "1") {
       await db.query("UPDATE messages SET is_read = TRUE WHERE chat_id = ? AND sender_id != ? AND is_read = FALSE", [

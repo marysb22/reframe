@@ -14,6 +14,7 @@ const { materialUpload } = require("../utils/uploads");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { createUploadGuard, hashFile } = require("../utils/uploadGuard");
+const { checkAndRecord } = require("../utils/rateLimit");
 
 const router = express.Router();
 
@@ -418,6 +419,18 @@ router.get(
   asyncRoute(async (req, res) => {
     const doi = (req.query.doi || "").trim();
     if (!doi) return res.status(400).json({ error: "A valid DOI is required" });
+
+    // Every call here forwards straight to Crossref, an external API this
+    // app doesn't control -- with nothing capping it, one account (or a
+    // leaked token) hammering this route fast enough could get this
+    // server's own IP rate-limited or blocked by Crossref, breaking the
+    // lookup for every user, not just the caller. Keyed by account, not IP
+    // -- a shared office network legitimately has several people using
+    // this at once.
+    const rate = checkAndRecord(`library-online-search:${req.user.id}`, { max: 20, windowMs: 60 * 1000 });
+    if (rate.blocked) {
+      return res.status(429).json({ error: `Too many lookups -- try again in ${rate.retryAfterSeconds}s.` });
+    }
 
     let work;
     try {
