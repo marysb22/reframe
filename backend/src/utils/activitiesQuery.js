@@ -31,7 +31,9 @@ const UNION_BASE = `
          (SELECT COUNT(*) FROM sessions s JOIN attendance a ON a.session_id = s.id WHERE s.occasion_id = so.id) AS recorded_count,
          (SELECT GROUP_CONCAT(st.full_name, ' ', uc.member_code SEPARATOR '  ')
             FROM sessions s JOIN students st ON st.id = s.student_id JOIN user_credentials uc ON uc.id = st.id
-           WHERE s.occasion_id = so.id) AS trainee_blob
+           WHERE s.occasion_id = so.id) AS trainee_blob,
+         1 AS day_count,
+         (SELECT COUNT(*) FROM sessions s WHERE s.occasion_id = so.id) AS slot_count
   FROM session_occasions so
   JOIN hour_types ht ON ht.code = so.session_type
   WHERE so.supervisor_id = ? AND so.series_id IS NULL
@@ -43,13 +45,44 @@ const UNION_BASE = `
          s.student_id, s.notes, att.status AS attendance_status, st.full_name AS student_name, uc.member_code AS student_code,
          1 AS trainee_count,
          (SELECT COUNT(*) FROM attendance a WHERE a.session_id = s.id) AS recorded_count,
-         CONCAT(st.full_name, ' ', uc.member_code) AS trainee_blob
+         CONCAT(st.full_name, ' ', uc.member_code) AS trainee_blob,
+         1 AS day_count,
+         1 AS slot_count
   FROM sessions s
   JOIN students st ON st.id = s.student_id
   JOIN user_credentials uc ON uc.id = st.id
   JOIN hour_types ht ON ht.code = s.session_type
   LEFT JOIN attendance att ON att.session_id = s.id
   WHERE s.supervisor_id = ? AND s.occasion_id IS NULL
+
+  UNION ALL
+
+  -- A whole multi-day Session (session_series, migration 030) as ONE row,
+  -- sorted by its earliest day, so it takes its real place in the
+  -- chronological feed instead of only living in the separate "Multi-day
+  -- Sessions" list below it (see Totdashboard.html's #sessionSeriesBody
+  -- comment) -- a Session spanning several dates was otherwise invisible
+  -- here entirely, breaking chronological ordering across the two lists.
+  -- Correlated scalar subqueries on purpose, not a nested derived table --
+  -- see the MariaDB derived-table correlation-loss note elsewhere in this
+  -- codebase (memberListSql) for why.
+  SELECT 'series' AS kind, ss.id, ss.title, ss.session_type AS type_code, ht.label AS type_label,
+         (SELECT MIN(so.session_date) FROM session_occasions so WHERE so.series_id = ss.id) AS activity_date,
+         NULL AS activity_time,
+         (SELECT SUM(so.duration_minutes) FROM session_occasions so WHERE so.series_id = ss.id) AS duration_minutes,
+         ss.created_at,
+         NULL AS student_id, ss.notes, NULL AS attendance_status, NULL AS student_name, NULL AS student_code,
+         (SELECT COUNT(DISTINCT s.student_id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS trainee_count,
+         (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id WHERE so.series_id = ss.id) AS recorded_count,
+         (SELECT GROUP_CONCAT(DISTINCT st.full_name, ' ', uc.member_code SEPARATOR '  ')
+            FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id
+            JOIN students st ON st.id = s.student_id JOIN user_credentials uc ON uc.id = st.id
+           WHERE so.series_id = ss.id) AS trainee_blob,
+         (SELECT COUNT(*) FROM session_occasions so WHERE so.series_id = ss.id) AS day_count,
+         (SELECT COUNT(DISTINCT s.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS slot_count
+  FROM session_series ss
+  JOIN hour_types ht ON ht.code = ss.session_type
+  WHERE ss.supervisor_id = ?
 `;
 
 /**
@@ -77,13 +110,13 @@ function buildActivitiesQuery(supervisorId, filters = {}) {
     ORDER BY ${sort}
     LIMIT ? OFFSET ?
   `;
-  return { sql, params: [supervisorId, supervisorId, ...params, pageSize, offset], page, pageSize };
+  return { sql, params: [supervisorId, supervisorId, supervisorId, ...params, pageSize, offset], page, pageSize };
 }
 
 function buildCountQuery(supervisorId, filters = {}) {
   const { where, params } = buildWhere(filters);
   const sql = `SELECT COUNT(*) AS total FROM (${UNION_BASE}) combined ${where}`;
-  return { sql, params: [supervisorId, supervisorId, ...params] };
+  return { sql, params: [supervisorId, supervisorId, supervisorId, ...params] };
 }
 
 function buildWhere(filters) {
@@ -102,7 +135,7 @@ function buildWhere(filters) {
   } else if (filters.type === "app") {
     clauses.push("combined.type_code NOT IN ('training', 'supervision')");
   } else if (filters.type === "group") {
-    clauses.push("combined.kind = 'occasion'");
+    clauses.push("combined.kind IN ('occasion', 'series')");
   }
 
   if (filters.dateFrom) {
@@ -119,9 +152,13 @@ function buildWhere(filters) {
       `(
         (combined.kind = 'single' AND combined.id IN (SELECT id FROM sessions WHERE student_id = ? AND occasion_id IS NULL))
         OR (combined.kind = 'occasion' AND combined.id IN (SELECT occasion_id FROM sessions WHERE student_id = ? AND occasion_id IS NOT NULL))
+        OR (combined.kind = 'series' AND combined.id IN (
+          SELECT so.series_id FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id
+          WHERE s.student_id = ? AND so.series_id IS NOT NULL
+        ))
       )`
     );
-    params.push(Number(filters.traineeId), Number(filters.traineeId));
+    params.push(Number(filters.traineeId), Number(filters.traineeId), Number(filters.traineeId));
   }
 
   return { where: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "", params };
@@ -140,10 +177,10 @@ async function buildActivitiesSummary(db, supervisorId) {
       `SELECT
          COUNT(*) AS total_activities,
          SUM(CASE WHEN type_code = 'training' THEN 1 ELSE 0 END) AS training_activities,
-         SUM(CASE WHEN recorded_count < trainee_count THEN 1 ELSE 0 END) AS pending_attendance,
+         SUM(CASE WHEN recorded_count < slot_count THEN 1 ELSE 0 END) AS pending_attendance,
          (SELECT COUNT(DISTINCT student_id) FROM sessions WHERE supervisor_id = ?) AS trainees_covered
        FROM (${UNION_BASE}) combined`,
-      [supervisorId, supervisorId, supervisorId]
+      [supervisorId, supervisorId, supervisorId, supervisorId]
     ),
     computeHoursByType(db, { supervisorId }),
   ]);

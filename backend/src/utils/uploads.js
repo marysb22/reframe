@@ -233,6 +233,20 @@ const sessionAttachmentUpload = multer({
   },
 });
 
+// A Notes record's own optional "Memo" attachment -- same optional
+// reference-document use case as a session/assignment attachment, same
+// allowed types/limit.
+const noteAttachmentUpload = multer({
+  storage: makeDiskStorage("notes"),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_DOCUMENT_TYPES.has(file.mimetype)) {
+      return cb(new Error("Only PDF, Word, or image files are allowed"));
+    }
+    cb(null, true);
+  },
+});
+
 // Group chat attachments: broader than a plain document (adds Excel/
 // PowerPoint/ZIP per the Group Chats feature's requirements) but capped
 // lower than learning materials, since chat isn't meant for large media.
@@ -271,6 +285,7 @@ module.exports = {
   submissionUpload,
   assignmentAttachmentUpload,
   sessionAttachmentUpload,
+  noteAttachmentUpload,
   chatAttachmentUpload,
   requireValidFileContent,
   optimizeUploadedImage,

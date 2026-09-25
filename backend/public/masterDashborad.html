@@ -1948,6 +1948,32 @@
             cursor: pointer;
         }
 
+        /* An equal 1fr 1fr 1fr looks fair on paper, but a native <input
+           type="date"> or type="time"> refuses to shrink below its own
+           built-in picker UI's width, while a plain <input type="number">
+           (Hours) has no such floor -- so under real narrow-viewport
+           pressure, Date and Time claim their required minimum first and
+           Hours gets whatever's left, confirmed directly to collapse to
+           ~32px (barely one digit) at a 390px phone width, distorting the
+           whole row's spacing including where Time visually lands. Below
+           480px, stack each field on its own full-width row instead of
+           forcing three native pickers plus a delete button into one --
+           the desktop 3-up layout above is untouched. */
+        @media (max-width: 480px) {
+            .gs-day-row {
+                grid-template-columns: 1fr auto;
+                grid-template-areas:
+                    "date remove"
+                    "hours remove"
+                    "time remove";
+                row-gap: 8px;
+            }
+            .gs-day-row > div:nth-child(2) { grid-area: date; }
+            .gs-day-row > div:nth-child(3) { grid-area: hours; }
+            .gs-day-row > div:nth-child(4) { grid-area: time; }
+            .gs-day-remove { grid-area: remove; align-self: center; }
+        }
+
         .record-form label {
             margin-top: 0;
         }
@@ -1985,6 +2011,17 @@
         .record-item .rcontent {
             margin-top: 6px;
             font-size: 12.5px;
+            /* Arabic+English mixed content (e.g. a Notes record) needs its
+               own paragraph-level base direction auto-detected from its
+               first strong character, not inherited ltr from the page --
+               otherwise a mostly-Arabic note still flows/aligns as if it
+               were English. white-space/overflow-wrap keep a long
+               unbroken line (either script) from overflowing the card
+               instead of wrapping. */
+            unicode-bidi: plain-text;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
         
         .doc-list {
@@ -4313,6 +4350,7 @@
             <div id="attendanceRosterList" class="member-select-list" style="max-height:400px;">
                 <div class="empty-state">Loading...</div>
             </div>
+            <div id="attendanceTally" style="margin:12px 0 0;font-size:13px;font-weight:600;color:var(--muted);">&nbsp;</div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('attendanceModal')">Cancel</button>
                 <button type="button" class="btn" id="saveAttendanceBtn" onclick="saveAttendance()">Save Attendance</button>
@@ -5850,7 +5888,7 @@
                 result = await apiRequest(`/master-trainer/group-sessions/${editOccasionId}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes }),
+                    body: JSON.stringify({ sessionType, title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes }),
                 });
             } else if (days.length > 1) {
                 const payload = { sessionType, title, notes, days };
@@ -6037,7 +6075,7 @@
         function sessionOccasionRowHtml(o) {
             return `
         <tr>
-          <td>${escapeHtml(o.title || "Untitled")}</td>
+          <td>${escapeHtml(o.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(Single-Day Session)</span></td>
           <td>${escapeHtml(o.sessionTypeLabel)}</td>
           <td>${new Date(o.date).toLocaleDateString()}${o.time ? " " + o.time.slice(0, 5) : ""}</td>
           <td>${(o.durationMinutes / 60).toFixed(2)}h</td>
@@ -6148,6 +6186,24 @@
             document.getElementById("attendanceModalSubtitle").textContent =
                 `${o.title || "Untitled"} — ${new Date(o.date).toLocaleDateString()} — ${(o.durationMinutes / 60).toFixed(2)}h${typeLabel}`;
             list.innerHTML = data.roster.map((r) => attendanceRowHtml(r, reasons)).join("");
+            updateAttendanceTally();
+        }
+
+        // Live "N Present · N Absent · ..." readout, shown right in the
+        // modal so a trainer can see the calculation forming as they pick
+        // statuses instead of only discovering it in the closed row after
+        // Save -- see attendanceModal + onAttStatusChange below.
+        function updateAttendanceTally() {
+            const counts = { present: 0, absent: 0, partial: 0, excused: 0 };
+            const rows = document.querySelectorAll("#attendanceRosterList .att-row");
+            rows.forEach((row) => {
+                const status = row.querySelector(".att-status").value;
+                if (counts[status] != null) counts[status]++;
+            });
+            const el = document.getElementById("attendanceTally");
+            if (el) {
+                el.textContent = `${counts.present} Attended · ${counts.absent} Not Attended · ${counts.partial} Partially Attended · ${counts.excused} Excused (${rows.length} total)`;
+            }
         }
 
         // Attended/Not Attended/Partially Attended/Excused mirror this app's
@@ -6189,6 +6245,7 @@
             excuseSelect.style.display = select.value === "excused" ? "" : "none";
             if (select.value !== "partial") hoursInput.value = "";
             if (select.value !== "excused") excuseSelect.value = "";
+            updateAttendanceTally();
         }
 
         let attSaveInFlight = false;

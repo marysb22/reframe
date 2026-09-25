@@ -1404,11 +1404,12 @@ router.put(
     })
 );
 
-// PUT /api/master-trainer/group-sessions/:id -- edit one day's own info.
+// PUT /api/master-trainer/group-sessions/:id -- edit one day's own info,
+// sessionType included -- omitted, the occasion keeps its current type.
 router.put(
     "/group-sessions/:id",
     asyncRoute(async (req, res, db) => {
-        const { date, time, durationMinutes, title, notes } = req.body || {};
+        const { date, time, durationMinutes, title, notes, sessionType } = req.body || {};
         const result = await updateSessionOccasion(db, {
             occasionId: Number(req.params.id),
             supervisorId: req.masterTrainer.id,
@@ -1417,6 +1418,7 @@ router.put(
             durationMinutes,
             title,
             notes,
+            sessionType,
         });
         if (result.error) {
             return res.status(result.error === "Session occasion not found" ? 404 : 400).json({ error: result.error });
@@ -1449,18 +1451,27 @@ router.delete(
 router.get(
     "/group-session-series",
     asyncRoute(async (req, res, db) => {
+        // Correlated scalar subqueries on purpose, not the LEFT JOIN ...
+        // GROUP BY this used to be -- joining session_occasions through to
+        // sessions/attendance to aggregate in one query fans a single day's
+        // row out to one-per-trainee before SUM(so.duration_minutes) ever
+        // runs, inflating a Session's real total (e.g. 3 days x 5h = 15h)
+        // by its trainee count (17 trainees -> 255h shown instead of 15h).
+        // Each total here is now computed independently against
+        // session_occasions alone, so no join fan-out can multiply it. See
+        // supervisor.js's own copy of this route for the full note.
         const { rows } = await db.query(
             `SELECT ss.id, ss.title, ht.label AS session_type_label, ss.notes,
-              MIN(so.session_date) AS start_date, MAX(so.session_date) AS end_date,
-              COUNT(DISTINCT so.id) AS day_count, SUM(so.duration_minutes) AS total_minutes,
-              COUNT(DISTINCT s.student_id) AS trainee_count, COUNT(DISTINCT s.id) AS slot_count, COUNT(a.id) AS recorded_count
+              (SELECT MIN(so.session_date) FROM session_occasions so WHERE so.series_id = ss.id) AS start_date,
+              (SELECT MAX(so.session_date) FROM session_occasions so WHERE so.series_id = ss.id) AS end_date,
+              (SELECT COUNT(*) FROM session_occasions so WHERE so.series_id = ss.id) AS day_count,
+              (SELECT SUM(so.duration_minutes) FROM session_occasions so WHERE so.series_id = ss.id) AS total_minutes,
+              (SELECT COUNT(DISTINCT s.student_id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS trainee_count,
+              (SELECT COUNT(DISTINCT s.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS slot_count,
+              (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id WHERE so.series_id = ss.id) AS recorded_count
        FROM session_series ss
        JOIN hour_types ht ON ht.code = ss.session_type
-       LEFT JOIN session_occasions so ON so.series_id = ss.id
-       LEFT JOIN sessions s ON s.occasion_id = so.id
-       LEFT JOIN attendance a ON a.session_id = s.id
        WHERE ss.supervisor_id = ?
-       GROUP BY ss.id
        ORDER BY start_date DESC, ss.created_at DESC`,
             [req.masterTrainer.id]
         );
@@ -1537,7 +1548,7 @@ router.get(
 router.put(
     "/group-session-series/:id",
     asyncRoute(async (req, res, db) => {
-        const { title, notes, days } = req.body || {};
+        const { sessionType, title, notes, days } = req.body || {};
         const { rows } = await db.query(
             `SELECT DISTINCT s.student_id FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ?`,
             [Number(req.params.id)]
@@ -1545,6 +1556,7 @@ router.put(
         const result = await updateSessionSeries(db, {
             seriesId: Number(req.params.id),
             supervisorId: req.masterTrainer.id,
+            sessionType,
             title,
             notes,
             days,

@@ -1395,6 +1395,32 @@
             cursor: pointer;
         }
 
+        /* An equal 1fr 1fr 1fr looks fair on paper, but a native <input
+           type="date"> or type="time"> refuses to shrink below its own
+           built-in picker UI's width, while a plain <input type="number">
+           (Hours) has no such floor -- so under real narrow-viewport
+           pressure, Date and Time claim their required minimum first and
+           Hours gets whatever's left, confirmed directly to collapse to
+           ~32px (barely one digit) at a 390px phone width, distorting the
+           whole row's spacing including where Time visually lands. Below
+           480px, stack each field on its own full-width row instead of
+           forcing three native pickers plus a delete button into one --
+           the desktop 3-up layout above is untouched. */
+        @media (max-width: 480px) {
+            .gs-day-row {
+                grid-template-columns: 1fr auto;
+                grid-template-areas:
+                    "date remove"
+                    "hours remove"
+                    "time remove";
+                row-gap: 8px;
+            }
+            .gs-day-row > div:nth-child(2) { grid-area: date; }
+            .gs-day-row > div:nth-child(3) { grid-area: hours; }
+            .gs-day-row > div:nth-child(4) { grid-area: time; }
+            .gs-day-remove { grid-area: remove; align-self: center; }
+        }
+
         .record-form label {
             margin-top: 0;
         }
@@ -1432,6 +1458,17 @@
         .record-item .rcontent {
             margin-top: 6px;
             font-size: 12.5px;
+            /* Arabic+English mixed content (e.g. a Notes record) needs its
+               own paragraph-level base direction auto-detected from its
+               first strong character, not inherited ltr from the page --
+               otherwise a mostly-Arabic note still flows/aligns as if it
+               were English. white-space/overflow-wrap keep a long
+               unbroken line (either script) from overflowing the card
+               instead of wrapping. */
+            unicode-bidi: plain-text;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
         
         .doc-list {
@@ -4614,6 +4651,7 @@
             <div id="attendanceRosterList" class="member-select-list" style="max-height:400px;">
                 <div class="empty-state">Loading...</div>
             </div>
+            <div id="attendanceTally" style="margin:12px 0 0;font-size:13px;font-weight:600;color:var(--muted);">&nbsp;</div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('attendanceModal')">Cancel</button>
                 <button type="button" class="btn" id="saveAttendanceBtn" onclick="saveAttendance()">Save Attendance</button>
@@ -6090,6 +6128,7 @@ function recordItemHtml(type, r) {
         ${r.title ? `<strong>${escapeHtml(r.title)}</strong>` : ""}
         <div class="rmeta">${bits.join(" &middot; ")} &middot; logged by ${escapeHtml(r.supervisorName)}</div>
         ${r.content ? `<div class="rcontent">${escapeHtml(r.content)}</div>` : ""}
+        ${type === "note" ? noteMemoHtml(r) : ""}
       </div>
       <div class="row-actions">
         <button class="icon-btn" title="Edit" onclick="editRecord(${r.id})"><i class="fa fa-pen"></i></button>
@@ -6097,6 +6136,57 @@ function recordItemHtml(type, r) {
       </div>
     </li>
   `;
+}
+
+// A Notes record's own optional "Memo" file attachment -- View/Download it
+// inline once uploaded, or Upload/Replace/Remove it, via the dedicated
+// POST/DELETE /supervisor/records/note/:id/attachment endpoints (kept
+// separate from the generic record PUT so it can use multer without
+// disturbing that route's plain-JSON shape).
+function noteMemoHtml(r) {
+  if (r.attachmentFilename) {
+    const viewUrl = `${UPLOADS}/notes/${r.attachmentFilename}${TOKEN_Q}`;
+    const downloadUrl = withDownloadMode(viewUrl);
+    return `
+      <div class="rmeta" style="margin-top:6px;">
+        <i class="fa fa-paperclip"></i> Memo:
+        <a href="${viewUrl}" target="_blank" rel="noopener">${escapeHtml(r.attachmentOriginalName || "View")}</a>
+        &middot; <a href="${downloadUrl}" target="_blank" rel="noopener" download="${escapeHtml(r.attachmentOriginalName || "")}">Download</a>
+        &middot; <a href="#" onclick="event.preventDefault();removeNoteMemo(${r.id})">Remove</a>
+        &middot; <a href="#" onclick="event.preventDefault();document.getElementById('noteMemoInput-${r.id}').click();">Replace</a>
+        <input type="file" id="noteMemoInput-${r.id}" style="display:none;" onchange="uploadNoteMemo(${r.id}, this)">
+      </div>`;
+  }
+  return `
+    <div class="rmeta" style="margin-top:6px;">
+      <a href="#" onclick="event.preventDefault();document.getElementById('noteMemoInput-${r.id}').click();"><i class="fa fa-paperclip"></i> Upload Memo</a>
+      <input type="file" id="noteMemoInput-${r.id}" style="display:none;" onchange="uploadNoteMemo(${r.id}, this)">
+    </div>`;
+}
+
+async function uploadNoteMemo(recordId, input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append("attachment", file);
+  const result = await apiRequest(`/supervisor/records/note/${recordId}/attachment`, {
+    method: "POST",
+    body: formData,
+  });
+  input.value = "";
+  if (result) {
+    showToast("Memo uploaded", "success");
+    await refreshCurrentStudent();
+  }
+}
+
+async function removeNoteMemo(recordId) {
+  if (!confirm("Remove this Memo file? The note itself is kept.")) return;
+  const result = await apiRequest(`/supervisor/records/note/${recordId}/attachment`, { method: "DELETE" });
+  if (result) {
+    showToast("Memo removed", "success");
+    await refreshCurrentStudent();
+  }
 }
 
 function editRecord(id) {
@@ -7087,13 +7177,17 @@ function actTypeBadgeClass(typeCode) {
 }
 
 function actAttendanceCell(a) {
-  if (a.kind === "occasion") {
-    const pct = a.traineeCount ? a.recordedCount / a.traineeCount : 0;
+  if (a.kind === "occasion" || a.kind === "series") {
+    // slotCount, not traineeCount -- a multi-day 'series' row has
+    // traineeCount x dayCount possible attendance entries, not just
+    // traineeCount (matches the same distinction the old standalone
+    // Multi-day Sessions list already made for recordedCount/slotCount).
+    const pct = a.slotCount ? a.recordedCount / a.slotCount : 0;
     const fillClass = pct >= 1 ? "" : "partial";
     return `
       <div class="act-attendance-cell">
         <div class="act-progress-track"><div class="act-progress-fill ${fillClass}" style="width:${Math.round(pct * 100)}%;"></div></div>
-        <span>${a.recordedCount}/${a.traineeCount}</span>
+        <span>${a.recordedCount}/${a.slotCount}</span>
       </div>`;
   }
   if (!a.attendanceStatus) return '<span style="color:var(--faint);">Not recorded</span>';
@@ -7170,10 +7264,20 @@ function renderActivities() {
       const key = `${a.kind}:${a.id}`;
       const expanded = actExpandedId === key;
       const isOccasion = a.kind === "occasion";
-      const traineesCell = isOccasion
-        ? `${a.traineeCount} trainee${a.traineeCount === 1 ? "" : "s"}`
+      const isSeries = a.kind === "series";
+      const isGroup = isOccasion || isSeries;
+      const traineesCell = isGroup
+        ? `${a.traineeCount} trainee${a.traineeCount === 1 ? "" : "s"}${isSeries ? ` &middot; ${a.dayCount} days` : ""}`
         : `${escapeHtml(a.studentName)} <span style="color:var(--faint);">(${escapeHtml(a.studentCode)})</span>`;
-      const actionsCell = isOccasion
+      // Attendance for a multi-day Session is recorded one day at a time
+      // (see gsSeriesDaysHtml in the expand panel below) -- there's no
+      // single occasion id a top-level "Attendance" button could open.
+      const actionsCell = isSeries
+        ? `<div class="row-actions">
+             <button class="icon-btn" title="Edit" onclick="event.stopPropagation();editGroupSessionSeries(${a.id})"><i class="fa fa-pen"></i></button>
+             <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();deleteGroupSessionSeries(${a.id})"><i class="fa fa-trash"></i></button>
+           </div>`
+        : isOccasion
         ? `<div class="row-actions">
              <button class="btn btn-secondary btn-sm" style="width:auto;" onclick="event.stopPropagation();openAttendanceModal(${a.id})">Attendance</button>
              <button class="icon-btn" title="Edit" onclick="event.stopPropagation();editGroupSessionOccasion(${a.id})"><i class="fa fa-pen"></i></button>
@@ -7184,13 +7288,22 @@ function renderActivities() {
              <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();confirmDeleteSession(${a.id})"><i class="fa fa-trash"></i></button>
            </div>`;
 
+      // Explicit Single-Day/Multi-day indicator next to the title, so a
+      // Session's shape doesn't have to be inferred from which list it
+      // happens to be sitting in.
+      const kindBadge = isSeries
+        ? `<span>Multi-day Session (${a.dayCount}-day)</span>`
+        : isOccasion
+        ? '<span>Group Session (Single-Day)</span>'
+        : "";
+
       const mainRow = `
-        <div class="act-row-main ${isOccasion ? "" : "no-expand"}" ${isOccasion ? `onclick="toggleActivityExpand('${key}')"` : ""}>
+        <div class="act-row-main ${isGroup ? "" : "no-expand"}" ${isGroup ? `onclick="toggleActivityExpand('${key}')"` : ""}>
           <div class="act-title-cell">
-            ${isOccasion ? `<span class="act-chevron"><i class="fa fa-chevron-right"></i></span>` : `<span class="act-chevron"></span>`}
+            ${isGroup ? `<span class="act-chevron"><i class="fa fa-chevron-right"></i></span>` : `<span class="act-chevron"></span>`}
             <div class="act-title-text">
               <strong>${escapeHtml(a.title || "Untitled")}</strong>
-              ${isOccasion ? '<span>Group Session</span>' : ""}
+              ${kindBadge}
             </div>
           </div>
           <div><span class="act-label">Type</span><span class="sched-badge ${actTypeBadgeClass(a.typeCode)}">${escapeHtml(a.typeLabel)}</span></div>
@@ -7201,11 +7314,19 @@ function renderActivities() {
           <div><span class="act-label">Actions</span>${actionsCell}</div>
         </div>`;
 
-      const detailRow = isOccasion && expanded ? `<div class="act-detail" id="act-detail-${a.id}">${actRosterHtml(a)}</div>` : "";
+      const detailRow = isGroup && expanded
+        ? `<div class="act-detail" id="act-detail-${a.id}">${isSeries ? actSeriesDetailHtml(a) : actRosterHtml(a)}</div>`
+        : "";
 
       return `<div class="act-item ${expanded ? "expanded" : ""}">${mainRow}${detailRow}</div>`;
     })
     .join("");
+}
+
+function actSeriesDetailHtml(a) {
+  const days = gsSeriesDayRosterCache.get(a.id);
+  if (!days) return '<div style="padding:14px 0;color:var(--faint);font-size:12.5px;">Loading days&hellip;</div>';
+  return gsSeriesDaysHtml(days);
 }
 
 function actRosterHtml(a) {
@@ -7238,12 +7359,21 @@ async function toggleActivityExpand(key) {
   renderActivities();
   if (actExpandedId !== key) return;
 
+  const el = document.getElementById(`act-detail-${id}`);
+  const activity = allActivities.find((a) => a.kind === kind && a.id === id);
+  if (kind === "series") {
+    if (!gsSeriesDayRosterCache.has(id)) {
+      const data = await apiRequest(`/supervisor/session-series/${id}`);
+      if (data) gsSeriesDayRosterCache.set(id, data.days);
+    }
+    if (el && activity) el.innerHTML = actSeriesDetailHtml(activity);
+    return;
+  }
+
   if (!actRosterCache.has(id)) {
     const data = await apiRequest(`/supervisor/session-occasions/${id}`);
     if (data) actRosterCache.set(id, data.roster);
   }
-  const el = document.getElementById(`act-detail-${id}`);
-  const activity = allActivities.find((a) => a.kind === kind && a.id === id);
   if (el && activity) el.innerHTML = actRosterHtml(activity);
 }
 
@@ -7452,7 +7582,7 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
     result = await apiRequest(`/supervisor/session-occasions/${editOccasionId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes }),
+      body: JSON.stringify({ sessionType, title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes }),
     });
   } else if (days.length > 1) {
     if (attachmentFile) {
@@ -7649,6 +7779,24 @@ async function openAttendanceModal(occasionId) {
   document.getElementById("attendanceModalSubtitle").textContent =
     `${o.title || "Untitled"} — ${new Date(o.date).toLocaleDateString()} — ${(o.durationMinutes / 60).toFixed(2)}h (${o.sessionTypeLabel})`;
   list.innerHTML = data.roster.map((r) => attendanceRowHtml(r, reasons)).join("");
+  updateAttendanceTally();
+}
+
+// Live "N Present · N Absent · ..." readout, shown right in the modal so a
+// ToT can see the calculation forming as they pick statuses instead of only
+// discovering it in the collapsed activity row after Save -- see
+// attendanceModal + onAttStatusChange below.
+function updateAttendanceTally() {
+  const counts = { present: 0, absent: 0, partial: 0, excused: 0 };
+  const rows = document.querySelectorAll("#attendanceRosterList .att-row");
+  rows.forEach((row) => {
+    const status = row.querySelector(".att-status").value;
+    if (counts[status] != null) counts[status]++;
+  });
+  const el = document.getElementById("attendanceTally");
+  if (el) {
+    el.textContent = `${counts.present} Attended · ${counts.absent} Not Attended · ${counts.partial} Partially Attended · ${counts.excused} Excused (${rows.length} total)`;
+  }
 }
 
 // Attended/Not Attended/Partially Attended/Excused mirror this app's
@@ -7685,6 +7833,7 @@ function onAttStatusChange(select) {
   excuseSelect.style.display = select.value === "excused" ? "" : "none";
   if (select.value !== "partial") hoursInput.value = "";
   if (select.value !== "excused") excuseSelect.value = "";
+  updateAttendanceTally();
 }
 
 let attSaveInFlight = false;
@@ -7736,6 +7885,21 @@ async function saveAttendance() {
       // day belongs to an expanded series (loadSessionSeriesList re-fetches
       // its day list so the recorded count shown there stays current).
       loadSessionSeriesList();
+      // loadSessionSeriesList() unconditionally clears gsSeriesDayRosterCache
+      // (shared with the Training Activities feed's own series expand panel,
+      // see actSeriesDetailHtml) but only repopulates it for the *separate*
+      // Multi-day Sessions table's own expanded row -- refresh this feed's
+      // expanded series row too, or it's left stuck on "Loading days...".
+      if (actExpandedId && actExpandedId.startsWith("series:")) {
+        const seriesId = Number(actExpandedId.split(":")[1]);
+        apiRequest(`/supervisor/session-series/${seriesId}`).then((data) => {
+          if (!data) return;
+          gsSeriesDayRosterCache.set(seriesId, data.days);
+          const el = document.getElementById(`act-detail-${seriesId}`);
+          const activity = allActivities.find((a) => a.kind === "series" && a.id === seriesId);
+          if (el && activity) el.innerHTML = actSeriesDetailHtml(activity);
+        });
+      }
     }
   } finally {
     attSaveInFlight = false;

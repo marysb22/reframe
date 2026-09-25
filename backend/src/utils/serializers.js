@@ -252,6 +252,9 @@ function toRecord(row) {
     // minutes, distinct from the session's own lifecycle status above.
     attendanceStatus: row.attendance_status,
     attendanceMinutesCompleted: row.attendance_minutes_completed,
+    // 'note' rows only -- the record's own optional "Memo" attachment.
+    attachmentFilename: row.attachment_filename,
+    attachmentOriginalName: row.attachment_original_name,
   };
 }
 

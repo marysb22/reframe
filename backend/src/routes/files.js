@@ -226,6 +226,22 @@ const AUTHORIZERS = Object.assign(Object.create(null), {
     return false;
   },
 
+  // A Notes record's own optional "Memo" attachment -- same ownership
+  // shape as a session/assignment attachment: the trainee it's about, or
+  // the exact ToT who wrote the note.
+  notes: async (user, filename) => {
+    const { rows } = await pool.query(
+      "SELECT student_id, supervisor_id FROM supervisor_notes WHERE attachment_filename = ?",
+      [filename]
+    );
+    if (!rows.length) return false;
+    const { student_id: studentId, supervisor_id: supervisorId } = rows[0];
+    if (user.role === "admin") return true;
+    if (user.role === "trainee") return Number(user.id) === studentId;
+    if (user.role === "supervisor") return Number(user.id) === supervisorId;
+    return false;
+  },
+
   chat: async (user, filename) => {
     const { rows } = await pool.query("SELECT room_id FROM chat_room_messages WHERE attachment_filename = ?", [
       filename,

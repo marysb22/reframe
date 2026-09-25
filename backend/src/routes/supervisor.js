@@ -16,7 +16,7 @@ const {
   toPublicEvent,
   toEventDetail,
 } = require("../utils/serializers");
-const { documentUpload, materialUpload, MATERIAL_UPLOAD_MAX_BYTES, assignmentAttachmentUpload, sessionAttachmentUpload, eventImageUpload } = require("../utils/uploads");
+const { documentUpload, materialUpload, MATERIAL_UPLOAD_MAX_BYTES, assignmentAttachmentUpload, sessionAttachmentUpload, noteAttachmentUpload, eventImageUpload } = require("../utils/uploads");
 const { createUploadGuard, hashFile } = require("../utils/uploadGuard");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
@@ -261,8 +261,19 @@ router.post(
         if (!isFuture && !["present", "absent", "excused", "partial"].includes(attendanceStatus)) {
           return res.status(400).json({ error: "attendanceStatus is required for a session dated today or earlier" });
         }
-        if (attendanceStatus === "partial" && !(Number.isFinite(Number(minutesCompleted)) && Number(minutesCompleted) >= 0)) {
-          return res.status(400).json({ error: "minutesCompleted is required and must be a non-negative number when attendanceStatus is 'partial'" });
+        if (attendanceStatus === "partial") {
+          if (!(Number.isFinite(Number(minutesCompleted)) && Number(minutesCompleted) >= 0)) {
+            return res.status(400).json({ error: "minutesCompleted is required and must be a non-negative number when attendanceStatus is 'partial'" });
+          }
+          // Only ever enforced client-side before (the "Actual hours" field
+          // capped at the session's own duration) -- a direct API call had
+          // no server-side bound, so a bad value could be recorded and then
+          // inflate every hours total that reads minutes_completed.
+          if (Number(minutesCompleted) > Number(durationMinutes)) {
+            return res.status(400).json({
+              error: `minutesCompleted (${Number(minutesCompleted)}) can't exceed the session's own duration (${Number(durationMinutes)} minutes)`,
+            });
+          }
         }
         // Duplicate-submission guard (same student/type/date/duration
         // within the last 10 seconds) -- catches a double-click or a
@@ -618,13 +629,15 @@ router.put(
 );
 
 // PUT /api/supervisor/session-occasions/:id -- edit one day's own info
-// (date/time/duration/title/notes). Works for an ordinary single-day
-// Session and for one day of a multi-day Session alike -- editing a
-// multi-day Session's days as a set is PUT /session-series/:id below.
+// (date/time/duration/title/notes/sessionType). Works for an ordinary
+// single-day Session and for one day of a multi-day Session alike --
+// editing a multi-day Session's days as a set is PUT /session-series/:id
+// below. sessionType is optional -- omitted, the occasion keeps its
+// current type.
 router.put(
   "/session-occasions/:id",
   asyncRoute(async (req, res, db) => {
-    const { date, time, durationMinutes, title, notes } = req.body || {};
+    const { date, time, durationMinutes, title, notes, sessionType } = req.body || {};
     const result = await updateSessionOccasion(db, {
       occasionId: Number(req.params.id),
       supervisorId: req.user.id,
@@ -633,6 +646,7 @@ router.put(
       durationMinutes,
       title,
       notes,
+      sessionType,
     });
     if (result.error) {
       return res.status(result.error === "Session occasion not found" ? 404 : 400).json({ error: result.error });
@@ -669,18 +683,26 @@ router.delete(
 router.get(
   "/session-series",
   asyncRoute(async (req, res, db) => {
+    // Correlated scalar subqueries on purpose, not the LEFT JOIN ...
+    // GROUP BY this used to be -- joining session_occasions through to
+    // sessions/attendance to aggregate in one query fans a single day's
+    // row out to one-per-trainee before SUM(so.duration_minutes) ever
+    // runs, inflating a Session's real total (e.g. 3 days x 5h = 15h) by
+    // its trainee count (17 trainees -> 255h shown instead of 15h). Each
+    // total here is now computed independently against session_occasions
+    // alone, so no join fan-out can multiply it.
     const { rows } = await db.query(
       `SELECT ss.id, ss.title, ht.label AS session_type_label, ss.notes,
-              MIN(so.session_date) AS start_date, MAX(so.session_date) AS end_date,
-              COUNT(DISTINCT so.id) AS day_count, SUM(so.duration_minutes) AS total_minutes,
-              COUNT(DISTINCT s.student_id) AS trainee_count, COUNT(DISTINCT s.id) AS slot_count, COUNT(a.id) AS recorded_count
+              (SELECT MIN(so.session_date) FROM session_occasions so WHERE so.series_id = ss.id) AS start_date,
+              (SELECT MAX(so.session_date) FROM session_occasions so WHERE so.series_id = ss.id) AS end_date,
+              (SELECT COUNT(*) FROM session_occasions so WHERE so.series_id = ss.id) AS day_count,
+              (SELECT SUM(so.duration_minutes) FROM session_occasions so WHERE so.series_id = ss.id) AS total_minutes,
+              (SELECT COUNT(DISTINCT s.student_id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS trainee_count,
+              (SELECT COUNT(DISTINCT s.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS slot_count,
+              (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id WHERE so.series_id = ss.id) AS recorded_count
        FROM session_series ss
        JOIN hour_types ht ON ht.code = ss.session_type
-       LEFT JOIN session_occasions so ON so.series_id = ss.id
-       LEFT JOIN sessions s ON s.occasion_id = so.id
-       LEFT JOIN attendance a ON a.session_id = s.id
        WHERE ss.supervisor_id = ?
-       GROUP BY ss.id
        ORDER BY start_date DESC, ss.created_at DESC`,
       [req.user.id]
     );
@@ -759,7 +781,7 @@ router.get(
 router.put(
   "/session-series/:id",
   asyncRoute(async (req, res, db) => {
-    const { title, notes, days } = req.body || {};
+    const { sessionType, title, notes, days } = req.body || {};
     const { rows } = await db.query(
       `SELECT DISTINCT s.student_id FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ?`,
       [Number(req.params.id)]
@@ -767,6 +789,7 @@ router.put(
     const result = await updateSessionSeries(db, {
       seriesId: Number(req.params.id),
       supervisorId: req.user.id,
+      sessionType,
       title,
       notes,
       days,
@@ -824,7 +847,7 @@ router.get(
     res.json({
       activities: rows.map((r) => ({
         id: r.id,
-        kind: r.kind, // 'occasion' | 'single'
+        kind: r.kind, // 'occasion' | 'single' | 'series'
         title: r.title,
         typeCode: r.type_code,
         typeLabel: r.type_label,
@@ -834,9 +857,17 @@ router.get(
         notes: r.notes,
         traineeCount: Number(r.trainee_count),
         recordedCount: Number(r.recorded_count),
+        // 'occasion'/'series' only -- the progress bar's real denominator
+        // (trainees x days for a multi-day 'series' row, same as
+        // traineeCount for a single-day 'occasion' row).
+        slotCount: Number(r.slot_count),
+        // 'series' only -- how many days it spans, for the "(N-day
+        // Session)" badge; always 1 for 'occasion'/'single'.
+        dayCount: Number(r.day_count),
         // 'single' kind only -- lets the row render/edit/delete without a
-        // second round-trip; always null for an 'occasion' row (multiple
-        // trainees, see the expand panel's own roster fetch instead).
+        // second round-trip; always null for an 'occasion'/'series' row
+        // (multiple trainees, see the expand panel's own roster/day fetch
+        // instead).
         studentId: r.student_id,
         studentName: r.student_name,
         studentCode: r.student_code,
@@ -908,8 +939,21 @@ router.put(
       // row. Also flips the session's own lifecycle status to 'completed'
       // now that attendance -- and therefore its hours -- are known.
       if (["present", "absent", "excused", "partial"].includes(attendanceStatus)) {
-        if (attendanceStatus === "partial" && !(Number.isFinite(Number(minutesCompleted)) && Number(minutesCompleted) >= 0)) {
-          return res.status(400).json({ error: "minutesCompleted is required and must be a non-negative number when attendanceStatus is 'partial'" });
+        if (attendanceStatus === "partial") {
+          if (!(Number.isFinite(Number(minutesCompleted)) && Number(minutesCompleted) >= 0)) {
+            return res.status(400).json({ error: "minutesCompleted is required and must be a non-negative number when attendanceStatus is 'partial'" });
+          }
+          // Effective duration is whatever this same request just set, or
+          // (COALESCE's own fallback) the record's existing duration --
+          // already fetched above as `existing`. Only ever enforced
+          // client-side before; see the identical check on POST above for
+          // why that's not enough on its own.
+          const effectiveDurationMinutes = durationMinutes ?? existing.duration_minutes;
+          if (Number(minutesCompleted) > Number(effectiveDurationMinutes)) {
+            return res.status(400).json({
+              error: `minutesCompleted (${Number(minutesCompleted)}) can't exceed the session's own duration (${Number(effectiveDurationMinutes)} minutes)`,
+            });
+          }
         }
         const minutesToStore = attendanceStatus === "partial" ? Number(minutesCompleted) : null;
         const { rows: attRows } = await db.query("SELECT id FROM attendance WHERE session_id = ?", [recordId]);
@@ -1005,10 +1049,101 @@ router.delete(
         if (err && err.code !== "ENOENT") console.error("Failed to delete assignment attachment file:", err);
       });
     }
+    if (recordType === "note" && existing.attachment_filename) {
+      const filePath = path.join(config.uploadsDir, "notes", existing.attachment_filename);
+      fs.unlink(filePath, (err) => {
+        if (err && err.code !== "ENOENT") console.error("Failed to delete note attachment file:", err);
+      });
+    }
     await db.query(
       "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, ?, ?, ?, ?)",
       [req.user.id, `${recordType.replace(/_/g, " ")} deleted`, recordType, recordId, JSON.stringify(existing)]
     );
+    res.json({ success: true });
+  })
+);
+
+// POST /api/supervisor/records/note/:recordId/attachment -- upload/replace
+// a Notes record's own optional "Memo" file. Deliberately a separate
+// endpoint from the generic PUT above (not folded into it) so it can use
+// multer for multipart/form-data without disturbing the generic
+// records PUT/POST's plain-JSON, single-transaction shape used by every
+// other record type.
+router.post("/records/note/:recordId/attachment", (req, res) => {
+  const { pool } = require("../db");
+  const recordId = Number(req.params.recordId);
+
+  const handle = async () => {
+    const { rows } = await pool.query("SELECT * FROM supervisor_notes WHERE id = ?", [recordId]);
+    if (!rows.length) return res.status(404).json({ error: "Note not found" });
+    const existing = rows[0];
+    const { rows: assignRows } = await pool.query(
+      "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
+      [req.user.id, existing.student_id]
+    );
+    if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
+    if (existing.supervisor_id !== req.user.id) {
+      return res.status(403).json({ error: "You can only attach a Memo to a note you wrote" });
+    }
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const check = checkFileContent(req.file.path, ["pdf", "office", "image"]);
+    if (!check.safe) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: check.reason });
+    }
+    await optimizeImageIfPossible(req.file.path, { maxDimension: 1920 });
+
+    await pool.query(
+      "UPDATE supervisor_notes SET attachment_filename = ?, attachment_original_name = ? WHERE id = ?",
+      [req.file.filename, req.file.originalname, recordId]
+    );
+    // Replacing an existing Memo -- clean up the file it's replacing so
+    // uploads don't accumulate orphaned files on disk.
+    if (existing.attachment_filename) {
+      const oldPath = path.join(config.uploadsDir, "notes", existing.attachment_filename);
+      fs.unlink(oldPath, (err) => {
+        if (err && err.code !== "ENOENT") console.error("Failed to delete replaced note attachment file:", err);
+      });
+    }
+    res.json({ attachmentFilename: req.file.filename, attachmentOriginalName: req.file.originalname });
+  };
+
+  // requireAuth/requireSupervisor already ran via this router's own
+  // router.use() above (see top of file) -- req.user is already populated.
+  noteAttachmentUpload.single("attachment")(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    handle().catch((err) => {
+      console.error("[supervisor] note attachment upload failed:", err);
+      if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+    });
+  });
+});
+
+// DELETE /api/supervisor/records/note/:recordId/attachment -- removes a
+// Notes record's Memo file without deleting the note itself.
+router.delete(
+  "/records/note/:recordId/attachment",
+  asyncRoute(async (req, res, db) => {
+    const recordId = Number(req.params.recordId);
+    const { rows } = await db.query("SELECT * FROM supervisor_notes WHERE id = ?", [recordId]);
+    if (!rows.length) return res.status(404).json({ error: "Note not found" });
+    const existing = rows[0];
+    const { rows: assignRows } = await db.query(
+      "SELECT 1 FROM supervisor_students WHERE supervisor_id = ? AND student_id = ?",
+      [req.user.id, existing.student_id]
+    );
+    if (!assignRows.length) return res.status(403).json({ error: "You are not assigned to this trainee" });
+    if (existing.supervisor_id !== req.user.id) {
+      return res.status(403).json({ error: "You can only remove a Memo from a note you wrote" });
+    }
+    if (!existing.attachment_filename) return res.json({ success: true });
+
+    await db.query("UPDATE supervisor_notes SET attachment_filename = NULL, attachment_original_name = NULL WHERE id = ?", [recordId]);
+    const filePath = path.join(config.uploadsDir, "notes", existing.attachment_filename);
+    fs.unlink(filePath, (err) => {
+      if (err && err.code !== "ENOENT") console.error("Failed to delete note attachment file:", err);
+    });
     res.json({ success: true });
   })
 );

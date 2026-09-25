@@ -133,13 +133,14 @@ async function createSessionOccasion(db, params) {
  */
 async function recordSessionOccasionAttendance(db, { occasionId, supervisorId, recordedBy, entries }) {
   const { rows: occRows } = await db.query(
-    "SELECT id, supervisor_id, session_date FROM session_occasions WHERE id = ?",
+    "SELECT id, supervisor_id, session_date, duration_minutes FROM session_occasions WHERE id = ?",
     [occasionId]
   );
   if (!occRows.length || Number(occRows[0].supervisor_id) !== Number(supervisorId)) {
     return { error: "Session occasion not found" };
   }
   const attendanceDate = occRows[0].session_date;
+  const occasionDurationMinutes = Number(occRows[0].duration_minutes);
 
   if (!Array.isArray(entries) || !entries.length) {
     return { error: "At least one attendance entry is required" };
@@ -148,8 +149,21 @@ async function recordSessionOccasionAttendance(db, { occasionId, supervisorId, r
     if (!ATTENDANCE_STATUSES.includes(entry.status)) {
       return { error: `Trainee ${entry.studentId}: a valid attendance status is required` };
     }
-    if (entry.status === "partial" && !(Number.isFinite(Number(entry.minutesCompleted)) && Number(entry.minutesCompleted) >= 0)) {
-      return { error: `Trainee ${entry.studentId}: minutesCompleted is required and must be a non-negative number when status is 'partial'` };
+    if (entry.status === "partial") {
+      if (!(Number.isFinite(Number(entry.minutesCompleted)) && Number(entry.minutesCompleted) >= 0)) {
+        return { error: `Trainee ${entry.studentId}: minutesCompleted is required and must be a non-negative number when status is 'partial'` };
+      }
+      // The UI already caps this at the session's own duration (an
+      // attendee can't have attended more of a 4-hour session than 4
+      // hours), but that was only ever enforced client-side -- a direct
+      // API call had no server-side bound at all, so a stray/malformed
+      // value could be recorded and then double as an inflated hours
+      // total everywhere computeHoursByType reads minutes_completed.
+      if (Number(entry.minutesCompleted) > occasionDurationMinutes) {
+        return {
+          error: `Trainee ${entry.studentId}: minutesCompleted (${Number(entry.minutesCompleted)}) can't exceed the session's own duration (${occasionDurationMinutes} minutes)`,
+        };
+      }
     }
   }
 
@@ -279,15 +293,27 @@ async function createMultiDaySession(db, params) {
 
 /**
  * Edits one day of a Session (single-day or one day of a multi-day
- * series) -- date/time/duration/title/notes cascade to every attendee's
- * own sessions row under this occasion, which is what computeHoursByType
- * actually reads, so a duration change is reflected in Training Hours
- * immediately without touching attendance or creating any new hour
+ * series) -- date/time/duration/title/notes/sessionType cascade to every
+ * attendee's own sessions row under this occasion, which is what
+ * computeHoursByType actually reads, so a change is reflected in Training
+ * Hours immediately without touching attendance or creating any new hour
  * record (see module comment: hours are always computed live from
  * current sessions+attendance state, never stored/accumulated).
+ *
+ * sessionType is optional -- omitted (undefined), the occasion keeps
+ * whatever type it already had. This used to be silently unsupported: the
+ * UPDATE statements here never touched session_type at all, no matter
+ * what the caller passed, so an edited Session's Type dropdown visually
+ * showed a different value and "saved" successfully, but every hours
+ * computation (which reads sessions.session_type/session_occasions.
+ * session_type, never session_series.session_type) kept using the
+ * original type forever. Confirmed as the reported bug's root cause
+ * before fixing it: the frontend already read the dropdown's value into
+ * a local `sessionType` variable, it just never made it into the PUT
+ * body for a single-occasion edit.
  */
-async function updateSessionOccasion(db, { occasionId, supervisorId, date, time, durationMinutes, title, notes }) {
-  const { rows } = await db.query("SELECT id, supervisor_id FROM session_occasions WHERE id = ?", [occasionId]);
+async function updateSessionOccasion(db, { occasionId, supervisorId, date, time, durationMinutes, title, notes, sessionType }) {
+  const { rows } = await db.query("SELECT id, supervisor_id, session_type FROM session_occasions WHERE id = ?", [occasionId]);
   if (!rows.length || Number(rows[0].supervisor_id) !== Number(supervisorId)) {
     return { error: "Session occasion not found" };
   }
@@ -296,18 +322,26 @@ async function updateSessionOccasion(db, { occasionId, supervisorId, date, time,
     return { error: "durationMinutes is required and must be a non-negative number" };
   }
 
+  let effectiveType = rows[0].session_type;
+  if (sessionType != null && sessionType !== effectiveType) {
+    const { rows: htRows } = await db.query("SELECT code FROM hour_types WHERE code = ? AND is_active = 1", [sessionType]);
+    if (!htRows.length) return { error: "That session type does not exist or is inactive" };
+    effectiveType = sessionType;
+  }
+
   await db.query(
-    `UPDATE session_occasions SET session_date = ?, session_time = ?, duration_minutes = ?, title = ?, notes = ?, updated_at = NOW()
+    `UPDATE session_occasions SET session_date = ?, session_time = ?, duration_minutes = ?, title = ?, notes = ?, session_type = ?, updated_at = NOW()
      WHERE id = ?`,
-    [date, time || null, Number(durationMinutes), title || null, notes || null, occasionId]
+    [date, time || null, Number(durationMinutes), title || null, notes || null, effectiveType, occasionId]
   );
   // Every attendee's own sessions row under this occasion must carry the
-  // same date/duration/title -- that row, not the occasion row, is what
-  // the hours formula and each trainee's own activity list actually read.
+  // same date/duration/title/type -- that row, not the occasion row, is
+  // what the hours formula and each trainee's own activity list actually
+  // read.
   await db.query(
-    `UPDATE sessions SET session_date = ?, session_time = ?, duration_minutes = ?, title = ?, notes = ?, updated_at = NOW()
+    `UPDATE sessions SET session_date = ?, session_time = ?, duration_minutes = ?, title = ?, notes = ?, session_type = ?, updated_at = NOW()
      WHERE occasion_id = ?`,
-    [date, time || null, Number(durationMinutes), title || null, notes || null, occasionId]
+    [date, time || null, Number(durationMinutes), title || null, notes || null, effectiveType, occasionId]
   );
 
   return { updated: true };
@@ -364,6 +398,14 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
     [sessionType || null, title || null, notes || null, seriesId]
   );
 
+  // Resolved once, up front, so every day -- existing or brand-new -- gets
+  // the exact same type as the series row just above. Previously this was
+  // only ever resolved for a brand-new day (createSessionOccasion below);
+  // an existing day kept whatever type it already had regardless of a
+  // type change in this same edit, leaving the series row and its own
+  // days' actual hours-computation type inconsistent with each other.
+  const effectiveType = sessionType || (await currentSeriesType(db, seriesId));
+
   const { rows: existingRows } = await db.query("SELECT id FROM session_occasions WHERE series_id = ?", [seriesId]);
   const existingIds = new Set(existingRows.map((r) => Number(r.id)));
   const keptIds = new Set();
@@ -378,13 +420,14 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
         durationMinutes: day.durationMinutes,
         title: title,
         notes: notes,
+        sessionType: effectiveType,
       });
       if (result.error) return { error: `Day ${day.date}: ${result.error}` };
       keptIds.add(Number(day.occasionId));
     } else {
       const result = await createSessionOccasion(db, {
         supervisorId,
-        sessionType: sessionType || (await currentSeriesType(db, seriesId)),
+        sessionType: effectiveType,
         title,
         date: day.date,
         time: day.time,

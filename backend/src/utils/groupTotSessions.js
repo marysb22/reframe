@@ -74,12 +74,13 @@ async function createTotSessionOccasion(db, params) {
  */
 async function recordTotSessionOccasionAttendance(db, { occasionId, masterTrainerId, recordedBy, entries }) {
   const { rows: occRows } = await db.query(
-    "SELECT id, master_trainer_id FROM tot_session_occasions WHERE id = ?",
+    "SELECT id, master_trainer_id, duration_minutes FROM tot_session_occasions WHERE id = ?",
     [occasionId]
   );
   if (!occRows.length || Number(occRows[0].master_trainer_id) !== Number(masterTrainerId)) {
     return { error: "Session occasion not found" };
   }
+  const occasionDurationMinutes = Number(occRows[0].duration_minutes);
 
   if (!Array.isArray(entries) || !entries.length) {
     return { error: "At least one attendance entry is required" };
@@ -88,8 +89,17 @@ async function recordTotSessionOccasionAttendance(db, { occasionId, masterTraine
     if (!ATTENDANCE_STATUSES.includes(entry.status)) {
       return { error: `TOT ${entry.totId}: a valid attendance status is required` };
     }
-    if (entry.status === "partial" && !(Number.isFinite(Number(entry.minutesCompleted)) && Number(entry.minutesCompleted) >= 0)) {
-      return { error: `TOT ${entry.totId}: minutesCompleted is required and must be a non-negative number when status is 'partial'` };
+    if (entry.status === "partial") {
+      if (!(Number.isFinite(Number(entry.minutesCompleted)) && Number(entry.minutesCompleted) >= 0)) {
+        return { error: `TOT ${entry.totId}: minutesCompleted is required and must be a non-negative number when status is 'partial'` };
+      }
+      // Only ever enforced client-side before -- see groupSessions.js's
+      // identical check for why that's not enough on its own.
+      if (Number(entry.minutesCompleted) > occasionDurationMinutes) {
+        return {
+          error: `TOT ${entry.totId}: minutesCompleted (${Number(entry.minutesCompleted)}) can't exceed the session's own duration (${occasionDurationMinutes} minutes)`,
+        };
+      }
     }
   }
 

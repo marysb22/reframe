@@ -1386,6 +1386,17 @@
         .record-item .rcontent {
             margin-top: 6px;
             font-size: 12.5px;
+            /* Arabic+English mixed content (e.g. a Notes record) needs its
+               own paragraph-level base direction auto-detected from its
+               first strong character, not inherited ltr from the page --
+               otherwise a mostly-Arabic note still flows/aligns as if it
+               were English. white-space/overflow-wrap keep a long
+               unbroken line (either script) from overflowing the card
+               instead of wrapping. */
+            unicode-bidi: plain-text;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
         
         .doc-list {
