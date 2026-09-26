@@ -7957,16 +7957,19 @@ function editSession(id) {
 document.getElementById("sessionModalForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const editId = document.getElementById("sesEditId").value;
-  // FIX (rename pass): use the record's actual stored type for the PUT URL,
-  // not whatever the "Activity type" dropdown currently shows -- the backend
-  // can't move a record between tables on update, and a training_session's
-  // stored type never actually changes on edit.
+  // The PUT URL still uses the record's originally-stored type (editType),
+  // not whatever the dropdown shows now -- training_session/
+  // supervision_session/hour_session all resolve to the same underlying
+  // `sessions` table server-side (RECORD_TYPE_TABLES), and the backend
+  // picks up an actual type CHANGE from payload.sessionType below, same as
+  // the Group Session edit path already does.
   const editType = document.getElementById("sesEditType").value;
   const studentId = document.getElementById("sesStudent").value;
   const rawType = document.getElementById("sesType").value;
   const isDynamicType = rawType.startsWith("hour_session:");
   const payload = {
     recordType: isDynamicType ? "hour_session" : rawType,
+    sessionType: gsRawTypeToSessionType(rawType),
     title: document.getElementById("sesTitle").value,
     date: document.getElementById("sesDate").value,
     time: document.getElementById("sesTime").value,

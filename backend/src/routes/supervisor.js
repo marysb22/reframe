@@ -921,16 +921,28 @@ router.put(
       return res.status(403).json({ error: "You can only edit records you created" });
     }
 
-    const { date, time, durationMinutes, status, title, content, score, attendanceStatus, minutesCompleted } = req.body || {};
+    const { date, time, durationMinutes, status, title, content, score, attendanceStatus, minutesCompleted, sessionType, hourTypeCode } =
+      req.body || {};
 
     if (recordType === "training_session" || recordType === "supervision_session" || recordType === "hour_session") {
+      // A single-trainee session's type (training_session/supervision_session/
+      // hour_session) used to be treated as immutable on edit -- all three
+      // actually live in the same `sessions` table (RECORD_TYPE_TABLES), so
+      // there's no cross-table move to worry about; only its session_type
+      // value needs to change, same as the Group Session edit path already
+      // does via updateSessionOccasion.
+      const newType = hourTypeCode || sessionType;
+      if (newType && newType !== existing.session_type) {
+        const { rows: htRows } = await db.query("SELECT code FROM hour_types WHERE code = ? AND is_active = 1", [newType]);
+        if (!htRows.length) return res.status(400).json({ error: "That session type does not exist or is inactive" });
+      }
       await db.query(
         `UPDATE sessions SET
           session_date = COALESCE(?, session_date), session_time = COALESCE(?, session_time),
           duration_minutes = COALESCE(?, duration_minutes), title = COALESCE(?, title),
-          notes = COALESCE(?, notes), updated_at = NOW()
+          notes = COALESCE(?, notes), session_type = COALESCE(?, session_type), updated_at = NOW()
          WHERE id = ?`,
-        [date ?? null, time ?? null, durationMinutes ?? null, title ?? null, content ?? null, recordId]
+        [date ?? null, time ?? null, durationMinutes ?? null, title ?? null, content ?? null, newType || null, recordId]
       );
       // Completing a previously-scheduled session: it may not have an
       // attendance row yet (none is created at scheduling time, since
@@ -1002,7 +1014,20 @@ router.put(
       [req.user.id, `${recordType.replace(/_/g, " ")} updated`, recordType, recordId, JSON.stringify(existing)]
     );
 
-    const freshRq = buildRecordsQuery(existing.student_id, recordType);
+    // buildRecordsQuery derives record_type live from the row's own current
+    // session_type (see recordsQuery.js's CASE expression) -- after a real
+    // type change above, filtering by the URL's original recordType would
+    // no longer match the row at all (it now computes to a different
+    // synthetic type), leaving freshRows empty and toRecord(undefined)
+    // crashing. Re-derive the type the row actually has now instead.
+    let effectiveRecordType = recordType;
+    if (recordType === "training_session" || recordType === "supervision_session" || recordType === "hour_session") {
+      const newType = hourTypeCode || sessionType;
+      if (newType) {
+        effectiveRecordType = newType === "training" ? "training_session" : newType === "supervision" ? "supervision_session" : "hour_session";
+      }
+    }
+    const freshRq = buildRecordsQuery(existing.student_id, effectiveRecordType);
     const { rows: freshRows } = await db.query(freshRq.sql, freshRq.params);
     const [withName] = await attachSupervisorNames(db, freshRows.filter((r) => String(r.id) === String(recordId)));
     res.json(toRecord(withName));
