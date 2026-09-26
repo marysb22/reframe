@@ -3932,7 +3932,7 @@
                     </div>
                     <div class="chat-mode-tabs">
                         <button type="button" class="chat-mode-tab active" id="chatModeDirectTab" onclick="switchChatMode('direct')">Direct Messages<span class="unread-dot" id="dmTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
-                        <button type="button" class="chat-mode-tab" id="chatModeGroupTab" onclick="switchChatMode('group')">Group Chats</button>
+                        <button type="button" class="chat-mode-tab" id="chatModeGroupTab" onclick="switchChatMode('group')">Group Chats<span class="unread-dot" id="groupTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
                     </div>
 
                     <div id="directChatPanel">
@@ -7224,7 +7224,9 @@
                 loadGcRoomList();
                 if (payload.roomId === gcActiveRoomId) {
                     appendGcMessage(payload.message);
-                    markGcRoomRead(gcActiveRoomId);
+                    markGcRoomRead(gcActiveRoomId).then(loadDmUnreadBadge);
+                } else {
+                    loadDmUnreadBadge();
                 }
             });
             setTimeout(() => {
@@ -7298,6 +7300,7 @@
             if (gcSocket) gcSocket.emit("joinRoom", roomId);
             await loadGcThread(roomId);
             await markGcRoomRead(roomId);
+            loadDmUnreadBadge();
         }
 
         let gcLastRenderedMsg = null; // { senderId, dateKey, time } -- drives grouping/date-separator decisions across both a full reload and a single appended message
@@ -7621,18 +7624,27 @@
         }
 
         async function loadDmUnreadBadge() {
-            const data = await apiRequest("/master-trainer/messages/unread-count");
-            // A failed/errored request (data === null, e.g. a transient
-            // network hiccup on the 60s background poll) must never be
-            // treated as "0 unread" -- that silently hid a real badge until
-            // the next successful poll, which read as the badge randomly
+            // A failed/errored request (null, e.g. a transient network
+            // hiccup on the 60s background poll) must never be treated as
+            // "0 unread" -- that silently hid a real badge until the next
+            // successful poll, which read as the badge randomly
             // appearing/disappearing. Leave it exactly as it already is and
             // let the next poll (or the next real event) correct it.
-            if (!data) return;
-            const count = Number(data.count) || 0;
-            const label = count > 99 ? "99+" : String(count);
-            [document.getElementById("chatNavUnreadBadge"), document.getElementById("dmTabUnreadBadge")].forEach((el) => {
+            const [dmData, roomsData] = await Promise.all([
+                apiRequest("/master-trainer/messages/unread-count"),
+                apiRequest("/chat-rooms?type=group"),
+            ]);
+            if (!dmData && !roomsData) return;
+            const dmCount = dmData ? Number(dmData.count) || 0 : 0;
+            // Group Chats never write to the `notifications` table the DM
+            // system uses -- its unread count is computed independently
+            // (chat_room_members.last_read_at vs. chat_room_messages) and has
+            // to be summed here across every room, not read off one endpoint.
+            const groupCount = roomsData ? roomsData.rooms.reduce((sum, r) => sum + (Number(r.unreadCount) || 0), 0) : 0;
+
+            const setBadge = (el, count) => {
                 if (!el) return;
+                const label = count > 99 ? "99+" : String(count);
                 el.textContent = label;
                 el.classList.toggle("wide", label.length > 1);
                 // setProperty(..., "important") -- .unread-dot's own CSS sets
@@ -7643,7 +7655,10 @@
                 // it. 0 unread was rendering a visible red "0" badge instead
                 // of hiding it.
                 el.style.setProperty("display", count > 0 ? "inline-flex" : "none", "important");
-            });
+            };
+            if (dmData) setBadge(document.getElementById("dmTabUnreadBadge"), dmCount);
+            if (roomsData) setBadge(document.getElementById("groupTabUnreadBadge"), groupCount);
+            setBadge(document.getElementById("chatNavUnreadBadge"), dmCount + groupCount);
         }
 
         // Direct Messages and Group Chats live under one "Chat" nav item,

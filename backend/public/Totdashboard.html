@@ -4123,7 +4123,7 @@
                     </div>
                     <div class="chat-mode-tabs">
                         <button type="button" class="chat-mode-tab active" id="chatModeDirectTab" onclick="switchChatMode('direct')">Direct Messages<span class="unread-dot" id="dmTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
-                        <button type="button" class="chat-mode-tab" id="chatModeGroupTab" onclick="switchChatMode('group')">Group Chats</button>
+                        <button type="button" class="chat-mode-tab" id="chatModeGroupTab" onclick="switchChatMode('group')">Group Chats<span class="unread-dot" id="groupTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
                     </div>
 
                     <div id="directChatPanel">
@@ -5453,27 +5453,40 @@
             dot.style.display = data && data.count > 0 ? "block" : "none";
         }
 
-        // Red badge outside the Direct Message section (sidebar "Chat" link +
-        // the "Direct Messages" tab itself) -- backed by GET
-        // /supervisor/messages/unread-count, which counts unread 'message'
-        // notifications (never week-scoped, unlike the general notif dot
-        // above). Refreshed on the same 60s heartbeat as that dot, plus
-        // instantly whenever a message arrives over the live socket or is
-        // marked read by opening a conversation -- see openDirectThread()
-        // and the "newDirectMessage" socket listener below.
+        // Red badges for the Chat section: the sidebar "Chat" nav link, the
+        // "Direct Messages" tab, and the "Group Chats" tab. Direct Messages
+        // is backed by GET /supervisor/messages/unread-count (counts unread
+        // 'message' notifications -- the old chats/messages table is the
+        // only thing that ever writes those). Group Chats (chat_rooms) has
+        // its own, separate unread tracking (chat_room_members.last_read_at
+        // vs. chat_room_messages.created_at, see GET /chat-rooms) and never
+        // writes a notifications row at all -- omitting it here was exactly
+        // why the sidebar dot stayed hidden while a Group Chat had unread
+        // messages waiting. The sidebar link covers the whole Chat section,
+        // so its badge is the sum of both; each tab's own badge stays scoped
+        // to just its own kind. Refreshed on the same 60s heartbeat as the
+        // general notif dot, plus instantly whenever a message arrives over
+        // the live socket or is marked read by opening a conversation/room --
+        // see openDirectThread()/openGroupChatRoom() and the socket
+        // listeners below.
         async function loadDmUnreadBadge() {
-            const data = await apiRequest("/supervisor/messages/unread-count");
+            const [dmData, roomsData] = await Promise.all([
+                apiRequest("/supervisor/messages/unread-count"),
+                apiRequest("/chat-rooms?type=group"),
+            ]);
             // A failed/errored request (data === null, e.g. a transient
             // network hiccup on the 60s background poll) must never be
             // treated as "0 unread" -- that silently hid a real badge until
             // the next successful poll, which read as the badge randomly
             // appearing/disappearing. Leave it exactly as it already is and
             // let the next poll (or the next real event) correct it.
-            if (!data) return;
-            const count = Number(data.count) || 0;
-            const label = count > 99 ? "99+" : String(count);
-            [document.getElementById("chatNavUnreadBadge"), document.getElementById("dmTabUnreadBadge")].forEach((el) => {
+            if (!dmData && !roomsData) return;
+            const dmCount = dmData ? Number(dmData.count) || 0 : 0;
+            const groupCount = roomsData ? roomsData.rooms.reduce((sum, r) => sum + (Number(r.unreadCount) || 0), 0) : 0;
+
+            const setBadge = (el, count) => {
                 if (!el) return;
+                const label = count > 99 ? "99+" : String(count);
                 el.textContent = label;
                 el.classList.toggle("wide", label.length > 1);
                 // setProperty(..., "important") -- .unread-dot's own CSS sets
@@ -5484,7 +5497,10 @@
                 // stylesheet rule that has it. 0 unread was rendering a
                 // visible red "0" badge instead of hiding it.
                 el.style.setProperty("display", count > 0 ? "inline-flex" : "none", "important");
-            });
+            };
+            if (dmData) setBadge(document.getElementById("dmTabUnreadBadge"), dmCount);
+            if (roomsData) setBadge(document.getElementById("groupTabUnreadBadge"), groupCount);
+            setBadge(document.getElementById("chatNavUnreadBadge"), dmCount + groupCount);
         }
 
         async function loadNotifList() {
@@ -8318,7 +8334,9 @@ function connectGcSocket() {
     loadGcRoomList();
     if (payload.roomId === gcActiveRoomId) {
       appendGcMessage(payload.message);
-      markGcRoomRead(gcActiveRoomId);
+      markGcRoomRead(gcActiveRoomId).then(loadDmUnreadBadge);
+    } else {
+      loadDmUnreadBadge();
     }
   });
   // Direct Messages (1:1) share this same socket connection -- a distinct
@@ -8419,6 +8437,7 @@ async function openGcRoom(roomId) {
   if (gcSocket) gcSocket.emit("joinRoom", roomId);
   await loadGcThread(roomId);
   await markGcRoomRead(roomId);
+  loadDmUnreadBadge();
 }
 
 let gcLastRenderedMsg = null; // { senderId, dateKey, time } -- drives grouping/date-separator decisions across both a full reload and a single appended message

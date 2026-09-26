@@ -3811,7 +3811,7 @@
                     </div>
                     <div class="chat-mode-tabs">
                         <button type="button" class="chat-mode-tab active" id="chatModeDirectTab" onclick="switchChatMode('direct')">Direct Messages<span class="unread-dot" id="dmTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
-                        <button type="button" class="chat-mode-tab" id="chatModeGroupTab" onclick="switchChatMode('group')">Group Chats</button>
+                        <button type="button" class="chat-mode-tab" id="chatModeGroupTab" onclick="switchChatMode('group')">Group Chats<span class="unread-dot" id="groupTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
                     </div>
 
                     <div id="directChatPanel">
@@ -4355,30 +4355,35 @@
         // marked read by opening a conversation -- see openThread() and the
         // "newDirectMessage" socket listener below.
         async function loadDmUnreadBadge() {
-            // Two independent unread sources feed this one badge: supervisor
-            // conversations (old chats/messages tables, via notifications)
-            // and peer-trainee Direct Chats (chat_rooms, is_direct=TRUE --
-            // added for the "show all Group members" fix, which moved peer
+            // Three independent unread sources feed these badges: supervisor
+            // conversations (old chats/messages tables, via notifications),
+            // peer-trainee Direct Chats (chat_rooms, is_direct=TRUE -- added
+            // for the "show all Group members" fix, which moved peer
             // messaging onto chat_rooms since the typed chats/messages
-            // tables can't hold a trainee-to-trainee pair). Both must
-            // resolve before the badge updates -- see the no-null-as-zero
-            // reasoning below, which applies identically to either source.
-            const [data, roomsData] = await Promise.all([
+            // tables can't hold a trainee-to-trainee pair), and actual Group
+            // Chat rooms (chat_rooms, is_direct=FALSE), which never write to
+            // `notifications` at all -- its unread count is only computed
+            // via chat_room_members.last_read_at vs. chat_room_messages, per
+            // room, so it has to be summed here.
+            const [data, dmRoomsData, groupRoomsData] = await Promise.all([
                 apiRequest("/profile/messages/unread-count"),
                 apiRequest("/chat-rooms?type=direct"),
+                apiRequest("/chat-rooms?type=group"),
             ]);
-            // A failed/errored request (data === null, e.g. a transient
-            // network hiccup on the 60s background poll) must never be
-            // treated as "0 unread" -- that silently hid a real badge until
-            // the next successful poll, which read as the badge randomly
+            // A failed/errored request (null, e.g. a transient network
+            // hiccup on the 60s background poll) must never be treated as
+            // "0 unread" -- that silently hid a real badge until the next
+            // successful poll, which read as the badge randomly
             // appearing/disappearing. Leave it exactly as it already is and
             // let the next poll (or the next real event) correct it.
-            if (!data || !roomsData) return;
-            const peerUnread = roomsData.rooms.reduce((sum, r) => sum + (Number(r.unreadCount) || 0), 0);
-            const count = (Number(data.count) || 0) + peerUnread;
-            const label = count > 99 ? "99+" : String(count);
-            [document.getElementById("chatNavUnreadBadge"), document.getElementById("dmTabUnreadBadge")].forEach((el) => {
+            if (!data && !dmRoomsData && !groupRoomsData) return;
+            const peerUnread = dmRoomsData ? dmRoomsData.rooms.reduce((sum, r) => sum + (Number(r.unreadCount) || 0), 0) : 0;
+            const dmCount = (data ? Number(data.count) || 0 : 0) + peerUnread;
+            const groupCount = groupRoomsData ? groupRoomsData.rooms.reduce((sum, r) => sum + (Number(r.unreadCount) || 0), 0) : 0;
+
+            const setBadge = (el, count) => {
                 if (!el) return;
+                const label = count > 99 ? "99+" : String(count);
                 el.textContent = label;
                 el.classList.toggle("wide", label.length > 1);
                 // setProperty(..., "important") -- .unread-dot's own CSS sets
@@ -4389,7 +4394,10 @@
                 // it. 0 unread was rendering a visible red "0" badge instead
                 // of hiding it.
                 el.style.setProperty("display", count > 0 ? "inline-flex" : "none", "important");
-            });
+            };
+            if (data || dmRoomsData) setBadge(document.getElementById("dmTabUnreadBadge"), dmCount);
+            if (groupRoomsData) setBadge(document.getElementById("groupTabUnreadBadge"), groupCount);
+            setBadge(document.getElementById("chatNavUnreadBadge"), dmCount + groupCount);
         }
 
         async function loadNotifList() {
@@ -5881,7 +5889,9 @@ function connectGcSocket() {
         loadGcRoomList();
         if (payload.roomId === gcActiveRoomId) {
             appendGcMessage(payload.message);
-            markGcRoomRead(gcActiveRoomId);
+            markGcRoomRead(gcActiveRoomId).then(loadDmUnreadBadge);
+        } else {
+            loadDmUnreadBadge();
         }
     });
     // Direct Messages (1:1) share this same socket connection -- a distinct
@@ -5966,6 +5976,7 @@ async function openGcRoom(roomId) {
     if (gcSocket) gcSocket.emit("joinRoom", roomId);
     await loadGcThread(roomId);
     await markGcRoomRead(roomId);
+    loadDmUnreadBadge();
 }
 
 let gcLastRenderedMsg = null; // { senderId, dateKey, time } -- drives grouping/date-separator decisions across both a full reload and a single appended message
