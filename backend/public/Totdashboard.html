@@ -5100,7 +5100,6 @@
                     <h3 id="sdName">&mdash;</h3>
                     <p id="sdMeta">&mdash;</p>
                 </div>
-                <button class="btn btn-danger btn-sm" onclick="confirmRemoveCurrentStudent()"><i class="fa fa-user-xmark"></i> Remove from To Trainees</button>
             </div>
 
             <div class="progress-grid" id="sdProgress"></div>
@@ -6750,22 +6749,6 @@ function renderDocumentsPanel(container) {
       submitBtn.textContent = originalLabel;
     }
   });
-}
-
-function confirmRemoveCurrentStudent() {
-  openConfirm(
-    "Remove this trainee?",
-    "This removes them from your caseload. Their records and history stay intact and can be restored by re-assigning their ID.",
-    removeCurrentStudent
-  );
-}
-async function removeCurrentStudent() {
-  const result = await apiRequest(`/supervisor/students/${currentStudentId}`, { method: "DELETE" });
-  if (result) {
-    showToast("Trainee removed from your list", "success");
-    closeModal("studentModal");
-    loadStudents();
-  }
 }
 
 const MATERIAL_ICONS = {

@@ -1753,17 +1753,21 @@ async function getTrainersAndHours(db, studentId, studentFullName) {
   const hoursBySupervisor = {};
   hoursRows.forEach((r) => (hoursBySupervisor[r.supervisor_id] = Number(r.hours)));
 
-  const { rows: traineeHoursRows } = await db.query(
-    `SELECT
-       COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id = ?), 0) +
-       COALESCE((SELECT SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60 FROM sessions s
-         JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-         WHERE s.student_id = ? AND s.session_type = 'training' AND s.status != 'cancelled'), 0) +
-       COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'training'), 0)
-     AS hours`,
-    [studentId, studentId, studentId]
-  );
-  const traineeHours = Number(traineeHoursRows[0].hours);
+  // Training hours -- reads the exact same computeHoursByType() total every
+  // other trainee-hours view in the app already trusts (Trainee Profile's
+  // own progress card, the ToT/Master Trainer dashboards, ...), instead of
+  // a separate hand-written query. That query used to exist here as its own
+  // "Same three-part formula as computeHoursByType" reimplementation --
+  // correct by coincidence (the a.status IN ('present','partial') WHERE
+  // filter happened to make its CASE...ELSE equivalent to the canonical
+  // CASE...WHEN), but a genuine "second calculation" the way section 5 of
+  // this audit specifically calls out: any future change to one formula
+  // and not the other would have silently made this card disagree with
+  // the trainee's own total shown everywhere else. hoursByType (below) was
+  // already being computed on the very next line for a different field, so
+  // this was always redundant, not just risky.
+  const hoursByType = await computeHoursByType(db, { studentId });
+  const traineeHours = hoursByType.find((h) => h.code === "training")?.hours || 0;
 
   function toTrainerInfo(row) {
     return {
@@ -1784,11 +1788,6 @@ async function getTrainersAndHours(db, studentId, studentFullName) {
 
   const masterTrainer = masterTrainerRow ? toTrainerInfo(masterTrainerRow) : null;
   const totTrainers = totTrainerRows.map(toTrainerInfo);
-
-  // Additive, generic-over-however-many-active-hour-types breakdown for
-  // this trainee -- every field above (trainingHours, hoursBySupervisor)
-  // stays exactly as it is; this is purely extra detail for any future UI.
-  const hoursByType = await computeHoursByType(db, { studentId });
 
   return {
     masterTrainer,
