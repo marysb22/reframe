@@ -3782,6 +3782,151 @@
                 width: auto;
             }
         }
+
+        /* ---- Trainee Profiles table (redesigned) ------------------------
+           Was a bare <table>/<th>/<td> with no responsive handling beyond
+           a generic horizontal-scroll fallback (see the app-wide
+           `table { overflow-x:auto }` rule) -- given the same CSS-grid
+           table -> stacked-card pattern as the Training Activities table
+           above, including the corrected breakpoint that accounts for the
+           sidebar's fixed 264px width instead of sizing off full viewport
+           width. */
+        .tr-table {
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .tr-thead,
+        .tr-row-main {
+            display: grid;
+            grid-template-columns: 2.3fr 1fr 1.1fr .8fr .9fr .95fr;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .tr-thead {
+            padding: 12px 18px;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--faint);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-2);
+        }
+
+        .tr-tbody {
+            background: var(--surface);
+        }
+
+        .tr-row-main {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-soft);
+            transition: background .12s;
+        }
+
+        .tr-tbody .tr-row-main:last-child {
+            border-bottom: none;
+        }
+
+        .tr-row-main:hover {
+            background: var(--surface-2);
+        }
+
+        .tr-row-main>div {
+            min-width: 0;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .tr-name {
+            display: block;
+            font-size: 13.5px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tr-row-main .row-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+
+        .tr-label {
+            display: none;
+        }
+
+        @media (max-width: 1100px) {
+            .tr-thead {
+                display: none;
+            }
+
+            .tr-table {
+                border: none;
+                border-radius: 0;
+                background: transparent;
+            }
+
+            .tr-tbody {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .tr-row-main {
+                grid-template-columns: 1fr;
+                gap: 8px;
+                padding: 14px;
+                border: 1px solid var(--border-soft);
+                border-radius: var(--radius-md);
+                background: var(--surface);
+            }
+
+            .tr-row-main>div {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                font-size: 12.5px;
+                gap: 10px;
+            }
+
+            .tr-row-main>div:first-child {
+                display: block;
+                padding-bottom: 8px;
+                border-bottom: 1px solid var(--border-soft);
+            }
+
+            .tr-row-main>div:first-child .tr-label {
+                display: none;
+            }
+
+            .tr-row-main>div:last-child {
+                justify-content: flex-end;
+                padding-top: 4px;
+            }
+
+            .tr-row-main .row-actions {
+                width: 100%;
+            }
+
+            .tr-label {
+                display: inline;
+                color: var(--faint);
+                font-weight: 600;
+                font-size: 10.5px;
+                text-transform: uppercase;
+                letter-spacing: .04em;
+                flex-shrink: 0;
+            }
+
+            .tr-name {
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
 
@@ -3976,23 +4121,19 @@
                         <input type="text" id="studentSearch" placeholder="Search by name or trainee ID...">
                     </div>
 
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Trainee ID</th>
-                                <th>Cohort</th>
-                                <th>Year</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="studentsBody">
-                            <tr class="loading-row">
-                                <td colspan="6">Loading trainees...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="tr-table">
+                        <div class="tr-thead">
+                            <div>Name</div>
+                            <div>Trainee ID</div>
+                            <div>Cohort</div>
+                            <div>Year</div>
+                            <div>Status</div>
+                            <div>Actions</div>
+                        </div>
+                        <div class="tr-tbody" id="studentsBody">
+                            <div class="empty-state">Loading trainees...</div>
+                        </div>
+                    </div>
                 </section>
 
                 <section class="system-card">
@@ -5913,26 +6054,26 @@
 
             const body = document.getElementById("studentsBody");
             if (!filtered.length) {
-                body.innerHTML = `<tr><td colspan="6" class="empty-state">No trainees match.</td></tr>`;
+                body.innerHTML = `<div class="empty-state">No trainees match.</div>`;
                 return;
             }
 
             body.innerHTML = filtered
                 .map(
                     (s) => `
-    <tr>
-      <td><strong>${escapeHtml(s.full_name)}</strong></td>
-      <td>${escapeHtml(s.memberCode)}</td>
-      <td>${escapeHtml(s.cohort || "&mdash;")}</td>
-      <td>${s.currentYear ? "Year " + s.currentYear : "&mdash;"}</td>
-      <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td>
-      <td>
+    <div class="tr-row-main">
+      <div><span class="tr-label">Name</span><strong class="tr-name">${escapeHtml(s.full_name)}</strong></div>
+      <div><span class="tr-label">Trainee ID</span>${escapeHtml(s.memberCode)}</div>
+      <div><span class="tr-label">Cohort</span>${s.cohort ? escapeHtml(s.cohort) : "&mdash;"}</div>
+      <div><span class="tr-label">Year</span>${s.currentYear ? "Year " + s.currentYear : "&mdash;"}</div>
+      <div><span class="tr-label">Status</span><span class="pill ${s.status}">${escapeHtml(s.status)}</span></div>
+      <div><span class="tr-label">Actions</span>
         <div class="row-actions">
           <button class="icon-btn" title="Open profile" onclick="openStudent(${s.id})"><i class="fa fa-eye"></i></button>
           <button class="icon-btn" title="Message" onclick="openDirectMessageFor(${s.id})"><i class="fa fa-comment"></i></button>
         </div>
-      </td>
-    </tr>
+      </div>
+    </div>
   `
                 )
                 .join("");
