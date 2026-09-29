@@ -7198,12 +7198,18 @@ function actAttendanceCell(a) {
     // traineeCount x dayCount possible attendance entries, not just
     // traineeCount (matches the same distinction the old standalone
     // Multi-day Sessions list already made for recordedCount/slotCount).
-    const pct = a.slotCount ? a.recordedCount / a.slotCount : 0;
+    //
+    // presentCount (status IN present/partial), not recordedCount (has
+    // ANY status entered, including absent/excused) -- this column reads
+    // as an attendance/presence rate, so an occasion where everyone was
+    // marked Absent must show 0/N, not N/N just because every trainee
+    // got *a* status recorded.
+    const pct = a.slotCount ? a.presentCount / a.slotCount : 0;
     const fillClass = pct >= 1 ? "" : "partial";
     return `
       <div class="act-attendance-cell">
         <div class="act-progress-track"><div class="act-progress-fill ${fillClass}" style="width:${Math.round(pct * 100)}%;"></div></div>
-        <span>${a.recordedCount}/${a.slotCount}</span>
+        <span>${a.presentCount}/${a.slotCount}</span>
       </div>`;
   }
   if (!a.attendanceStatus) return '<span style="color:var(--faint);">Not recorded</span>';
@@ -7712,7 +7718,7 @@ function sessionSeriesRowHtml(s) {
       <td>${escapeHtml(s.sessionTypeLabel)}</td>
       <td>${dateRange}</td>
       <td>${(s.totalMinutes / 60).toFixed(2)}h total</td>
-      <td>${s.recordedCount}/${s.slotCount} recorded</td>
+      <td>${s.presentCount}/${s.slotCount} attended</td>
       <td class="row-actions" onclick="event.stopPropagation();">
         <button class="icon-btn" title="Edit" onclick="editGroupSessionSeries(${s.id})"><i class="fa fa-pen"></i></button>
         <button class="icon-btn danger" title="Delete" onclick="deleteGroupSessionSeries(${s.id})"><i class="fa fa-trash"></i></button>
@@ -7743,7 +7749,7 @@ function gsSeriesDaysHtml(days) {
         .map(
           (d) => `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;background:var(--surface-2);border-radius:8px;">
-          <span>${new Date(d.date).toLocaleDateString()}${d.time ? " " + d.time.slice(0, 5) : ""} &middot; ${(d.durationMinutes / 60).toFixed(2)}h &middot; ${d.recordedCount}/${d.traineeCount} recorded</span>
+          <span>${new Date(d.date).toLocaleDateString()}${d.time ? " " + d.time.slice(0, 5) : ""} &middot; ${(d.durationMinutes / 60).toFixed(2)}h &middot; ${d.presentCount}/${d.traineeCount} attended${d.recordedCount < d.traineeCount ? ` (${d.traineeCount - d.recordedCount} not yet recorded)` : ""}</span>
           <button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="openAttendanceModal(${d.occasionId})">Attendance</button>
         </div>`
         )

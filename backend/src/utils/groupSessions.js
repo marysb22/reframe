@@ -329,32 +329,46 @@ async function updateSessionOccasion(db, { occasionId, supervisorId, date, time,
     effectiveType = sessionType;
   }
 
+  // COALESCE(?, title/notes), not a direct SET -- title/notes are optional
+  // on this call (e.g. a caller only changing sessionType/date, like
+  // updateSessionSeries's per-day sessionType-only reconciliation). A
+  // direct SET with an omitted (undefined -> null) value would silently
+  // wipe an existing title/notes on any edit that didn't happen to resend
+  // them -- COALESCE only overwrites when the caller actually passed a
+  // value (including an explicit "" to intentionally clear it, which is
+  // not NULL and so still applies).
   await db.query(
-    `UPDATE session_occasions SET session_date = ?, session_time = ?, duration_minutes = ?, title = ?, notes = ?, session_type = ?, updated_at = NOW()
+    `UPDATE session_occasions SET session_date = ?, session_time = ?, duration_minutes = ?, title = COALESCE(?, title), notes = COALESCE(?, notes), session_type = ?, updated_at = NOW()
      WHERE id = ?`,
-    [date, time || null, Number(durationMinutes), title || null, notes || null, effectiveType, occasionId]
+    [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, occasionId]
   );
   // Every attendee's own sessions row under this occasion must carry the
   // same date/duration/title/type -- that row, not the occasion row, is
   // what the hours formula and each trainee's own activity list actually
   // read.
   await db.query(
-    `UPDATE sessions SET session_date = ?, session_time = ?, duration_minutes = ?, title = ?, notes = ?, session_type = ?, updated_at = NOW()
+    `UPDATE sessions SET session_date = ?, session_time = ?, duration_minutes = ?, title = COALESCE(?, title), notes = COALESCE(?, notes), session_type = ?, updated_at = NOW()
      WHERE occasion_id = ?`,
-    [date, time || null, Number(durationMinutes), title || null, notes || null, effectiveType, occasionId]
+    [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, occasionId]
   );
 
   return { updated: true };
 }
 
 /**
- * Deletes one occasion (one day). CASCADEs (via the existing FKs from
- * migration 024) to every attendee's sessions row, which in turn sets
- * their attendance.session_id to NULL -- so that day's hours drop out of
- * computeHoursByType immediately (its derived-hours query requires a live
- * sessions row), while the now-orphaned attendance row itself is kept
- * rather than destroyed, matching how a single-session delete has always
- * behaved (see routes' DELETE /records/:recordType/:recordId).
+ * Deletes one occasion (one day). Explicitly deletes every attendee's
+ * attendance row first, then the occasion itself -- CASCADEs (via the
+ * existing FKs from migration 024) to every attendee's sessions row.
+ * attendance.session_id is only ON DELETE SET NULL (not CASCADE), so
+ * without this explicit delete the attendance rows would survive as
+ * orphans (session_id=NULL) rather than being removed -- correct for
+ * hours (computeHoursByType's derived-hours query requires a live
+ * sessions row, so an orphan already contributes 0) but wrong for
+ * Attendance Rate (a simple COUNT(*) over attendance, which an orphaned
+ * row still inflates forever). Mirrors the single-session delete route's
+ * own explicit `DELETE FROM attendance WHERE session_id = ?` (see
+ * routes' DELETE /records/:recordType/:recordId) -- this brought the
+ * Group Session path in line with that already-correct behavior.
  */
 async function deleteSessionOccasion(db, { occasionId, supervisorId }) {
   const { rows } = await db.query(
@@ -364,6 +378,7 @@ async function deleteSessionOccasion(db, { occasionId, supervisorId }) {
   if (!rows.length || Number(rows[0].supervisor_id) !== Number(supervisorId)) {
     return { error: "Session occasion not found" };
   }
+  await db.query("DELETE FROM attendance WHERE session_id IN (SELECT id FROM sessions WHERE occasion_id = ?)", [occasionId]);
   await db.query("DELETE FROM session_occasions WHERE id = ?", [occasionId]);
   return { deleted: true, attachmentFilename: rows[0].attachment_filename || null };
 }
@@ -483,7 +498,13 @@ async function deleteSessionSeries(db, { seriesId, supervisorId }) {
   // sessions rows, however many) is reliable on its own. Each
   // DELETE FROM sessions WHERE occasion_id = ? here is exactly that
   // already-proven single-level cascade, done explicitly.
+  //
+  // Attendance is deleted first, same reasoning as deleteSessionOccasion
+  // above -- attendance.session_id is only ON DELETE SET NULL, so without
+  // this every day's attendance would survive the sessions delete as an
+  // orphaned row instead of being removed with the rest of the Session.
   for (const occ of occRows) {
+    await db.query("DELETE FROM attendance WHERE session_id IN (SELECT id FROM sessions WHERE occasion_id = ?)", [occ.id]);
     await db.query("DELETE FROM sessions WHERE occasion_id = ?", [occ.id]);
   }
   await db.query("DELETE FROM session_series WHERE id = ?", [seriesId]);

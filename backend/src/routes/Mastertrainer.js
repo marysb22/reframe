@@ -1310,7 +1310,8 @@ router.get(
         const { rows } = await db.query(
             `SELECT so.id, so.title, ht.label AS session_type_label, so.session_date, so.session_time, so.duration_minutes,
               COUNT(s.id) AS trainee_count,
-              COUNT(a.id) AS recorded_count
+              COUNT(a.id) AS recorded_count,
+              COUNT(CASE WHEN a.status IN ('present', 'partial') THEN 1 END) AS present_count
        FROM session_occasions so
        JOIN hour_types ht ON ht.code = so.session_type
        LEFT JOIN sessions s ON s.occasion_id = so.id
@@ -1330,6 +1331,7 @@ router.get(
                 durationMinutes: r.duration_minutes,
                 traineeCount: Number(r.trainee_count),
                 recordedCount: Number(r.recorded_count),
+                presentCount: Number(r.present_count),
             })),
         });
     })
@@ -1468,7 +1470,9 @@ router.get(
               (SELECT SUM(so.duration_minutes) FROM session_occasions so WHERE so.series_id = ss.id) AS total_minutes,
               (SELECT COUNT(DISTINCT s.student_id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS trainee_count,
               (SELECT COUNT(DISTINCT s.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS slot_count,
-              (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id WHERE so.series_id = ss.id) AS recorded_count
+              (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id WHERE so.series_id = ss.id) AS recorded_count,
+              (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id
+                WHERE so.series_id = ss.id AND a.status IN ('present', 'partial')) AS present_count
        FROM session_series ss
        JOIN hour_types ht ON ht.code = ss.session_type
        WHERE ss.supervisor_id = ?
@@ -1490,6 +1494,7 @@ router.get(
                 // traineeCount.
                 slotCount: Number(r.slot_count),
                 recordedCount: Number(r.recorded_count),
+                presentCount: Number(r.present_count),
             })),
         });
     })
@@ -1511,7 +1516,8 @@ router.get(
 
         const { rows: dayRows } = await db.query(
             `SELECT so.id, so.session_date, so.session_time, so.duration_minutes,
-              COUNT(s.id) AS trainee_count, COUNT(a.id) AS recorded_count
+              COUNT(s.id) AS trainee_count, COUNT(a.id) AS recorded_count,
+              COUNT(CASE WHEN a.status IN ('present', 'partial') THEN 1 END) AS present_count
        FROM session_occasions so
        LEFT JOIN sessions s ON s.occasion_id = so.id
        LEFT JOIN attendance a ON a.session_id = s.id
@@ -1538,6 +1544,7 @@ router.get(
                 durationMinutes: r.duration_minutes,
                 traineeCount: Number(r.trainee_count),
                 recordedCount: Number(r.recorded_count),
+                presentCount: Number(r.present_count),
             })),
             roster: rosterRows.map((r) => ({ studentId: r.student_id, fullName: r.full_name })),
         });

@@ -699,7 +699,9 @@ router.get(
               (SELECT SUM(so.duration_minutes) FROM session_occasions so WHERE so.series_id = ss.id) AS total_minutes,
               (SELECT COUNT(DISTINCT s.student_id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS trainee_count,
               (SELECT COUNT(DISTINCT s.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS slot_count,
-              (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id WHERE so.series_id = ss.id) AS recorded_count
+              (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id WHERE so.series_id = ss.id) AS recorded_count,
+              (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id
+                WHERE so.series_id = ss.id AND a.status IN ('present', 'partial')) AS present_count
        FROM session_series ss
        JOIN hour_types ht ON ht.code = ss.session_type
        WHERE ss.supervisor_id = ?
@@ -722,6 +724,7 @@ router.get(
         // attendance entries, never 3.
         slotCount: Number(r.slot_count),
         recordedCount: Number(r.recorded_count),
+        presentCount: Number(r.present_count),
       })),
     });
   })
@@ -744,7 +747,8 @@ router.get(
 
     const { rows: dayRows } = await db.query(
       `SELECT so.id, so.session_date, so.session_time, so.duration_minutes,
-              COUNT(s.id) AS trainee_count, COUNT(a.id) AS recorded_count
+              COUNT(s.id) AS trainee_count, COUNT(a.id) AS recorded_count,
+              COUNT(CASE WHEN a.status IN ('present', 'partial') THEN 1 END) AS present_count
        FROM session_occasions so
        LEFT JOIN sessions s ON s.occasion_id = so.id
        LEFT JOIN attendance a ON a.session_id = s.id
@@ -771,6 +775,7 @@ router.get(
         durationMinutes: r.duration_minutes,
         traineeCount: Number(r.trainee_count),
         recordedCount: Number(r.recorded_count),
+        presentCount: Number(r.present_count),
       })),
       roster: rosterRows.map((r) => ({ studentId: r.student_id, fullName: r.full_name })),
     });
@@ -857,6 +862,10 @@ router.get(
         notes: r.notes,
         traineeCount: Number(r.trainee_count),
         recordedCount: Number(r.recorded_count),
+        // Actually-present count (status IN present/partial) -- what the
+        // Attendance column's progress bar/fraction is measured against,
+        // as distinct from recordedCount (has any status entered at all).
+        presentCount: Number(r.present_count),
         // 'occasion'/'series' only -- the progress bar's real denominator
         // (trainees x days for a multi-day 'series' row, same as
         // traineeCount for a single-day 'occasion' row).

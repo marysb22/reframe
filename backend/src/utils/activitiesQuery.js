@@ -29,6 +29,12 @@ const UNION_BASE = `
          NULL AS student_id, so.notes, NULL AS attendance_status, NULL AS student_name, NULL AS student_code,
          (SELECT COUNT(*) FROM sessions s WHERE s.occasion_id = so.id) AS trainee_count,
          (SELECT COUNT(*) FROM sessions s JOIN attendance a ON a.session_id = s.id WHERE s.occasion_id = so.id) AS recorded_count,
+         -- Actually attended (present or partial), not merely "has an
+         -- attendance row" -- an Absent/Excused entry IS recorded but must
+         -- not count toward the Attendance column, which the user reads as
+         -- a presence rate (see actAttendanceCell in Totdashboard.html).
+         (SELECT COUNT(*) FROM sessions s JOIN attendance a ON a.session_id = s.id
+           WHERE s.occasion_id = so.id AND a.status IN ('present', 'partial')) AS present_count,
          (SELECT GROUP_CONCAT(st.full_name, ' ', uc.member_code SEPARATOR '  ')
             FROM sessions s JOIN students st ON st.id = s.student_id JOIN user_credentials uc ON uc.id = st.id
            WHERE s.occasion_id = so.id) AS trainee_blob,
@@ -45,6 +51,7 @@ const UNION_BASE = `
          s.student_id, s.notes, att.status AS attendance_status, st.full_name AS student_name, uc.member_code AS student_code,
          1 AS trainee_count,
          (SELECT COUNT(*) FROM attendance a WHERE a.session_id = s.id) AS recorded_count,
+         (SELECT COUNT(*) FROM attendance a WHERE a.session_id = s.id AND a.status IN ('present', 'partial')) AS present_count,
          CONCAT(st.full_name, ' ', uc.member_code) AS trainee_blob,
          1 AS day_count,
          1 AS slot_count
@@ -74,6 +81,8 @@ const UNION_BASE = `
          NULL AS student_id, ss.notes, NULL AS attendance_status, NULL AS student_name, NULL AS student_code,
          (SELECT COUNT(DISTINCT s.student_id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS trainee_count,
          (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id WHERE so.series_id = ss.id) AS recorded_count,
+         (SELECT COUNT(a.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id JOIN attendance a ON a.session_id = s.id
+           WHERE so.series_id = ss.id AND a.status IN ('present', 'partial')) AS present_count,
          (SELECT GROUP_CONCAT(DISTINCT st.full_name, ' ', uc.member_code SEPARATOR '  ')
             FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id
             JOIN students st ON st.id = s.student_id JOIN user_credentials uc ON uc.id = st.id
