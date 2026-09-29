@@ -37,6 +37,23 @@ function parseSupervisorsField(value) {
 }
 
 function toPublicUser(row) {
+  // currentYear: the same computed training-program year toProfileResponse()
+  // calls `trainingYear` (Start Date + "today", via trainingTimeline.js) --
+  // this list endpoint (GET /admin/users) never exposed either cohort or a
+  // year at all before, so the Admin Dashboard's own Trainees table always
+  // showed "--" for both regardless of real data, same root cause as
+  // toStudentSummary's identical fix (a dead students.current_year column
+  // was never the actual gap here -- this function just never read any
+  // year-shaped field). `row.training_start_date` undefined (a query that
+  // didn't select it) falls back to trainingYear: null, same as before.
+  const progress =
+    row.training_start_date === undefined
+      ? { trainingYear: null }
+      : calculateTrainingProgress(
+          row.training_start_date,
+          row.training_today,
+          row.training_duration_years || TRAINING_DURATION_YEARS
+        );
   return {
     id: row.id,
     memberCode: row.member_code,
@@ -65,6 +82,8 @@ function toPublicUser(row) {
     institution: row.institution,
     certifications: row.certifications,
     cvFile: row.cv_file,
+    cohort: row.cohort_name,
+    currentYear: progress.trainingYear,
     // Supervisor-only (null for a student/admin row)
     specialization: row.specialization,
     bio: row.bio,
@@ -106,7 +125,16 @@ function toProfileResponse(row) {
     address: row.address,
     cohort: row.cohort_name,
     cohortId: row.cohort_id,
-    currentYear: row.current_year,
+    // currentYear used to read the dead students.current_year column here
+    // (nothing in the app ever wrote to it -- see toStudentSummary's own
+    // identical fix) and silently overwrote the already-correct value
+    // toPublicUser(row) had just set via the spread above with that same
+    // always-null one. Every consumer of this response (Admin's CV panel
+    // and profile KPI, PersonalProfile.html, a ToT's per-student detail
+    // panel) reads `currentYear`, not `trainingYear`, so this was the one
+    // remaining place still serving the broken value even after
+    // toPublicUser/toStudentSummary were fixed.
+    currentYear: progress.trainingYear,
     // Administrative training-lifecycle status (undefined for a
     // supervisor/admin row, whose queries never select it).
     lifecycleStatus: row.lifecycle_status,
@@ -379,6 +407,30 @@ function toAnnouncement(row) {
 }
 
 function toStudentSummary(row) {
+  // currentYear here is the computed training-program year (Start Date +
+  // "today", via trainingTimeline.js) -- the exact same value
+  // toProfileResponse() calls `trainingYear`, and the one every other
+  // trainee-facing view in the app already shows. row.current_year (the
+  // raw students.current_year column) is a *different*, separate field
+  // that nothing in the app ever writes to through any real UI -- no
+  // create-trainee or edit-trainee form sends it, so it's permanently
+  // NULL in practice. Reading that dead column here (as this function
+  // used to) is why the Trainee Profiles table's "Year" showed "--" for
+  // every trainee even when they had a real, populated training start
+  // date -- confirmed live: switching to the computed value immediately
+  // showed the correct year. Callers must select training_start_date
+  // (+ optionally training_duration_years) and `CURDATE() AS training_today`
+  // alongside the usual columns for this to resolve; both are undefined
+  // (not null) for a query that doesn't select them, in which case this
+  // silently falls back to null exactly like the dead column did before.
+  const progress =
+    row.training_start_date === undefined
+      ? { trainingYear: null }
+      : calculateTrainingProgress(
+          row.training_start_date,
+          row.training_today,
+          row.training_duration_years || TRAINING_DURATION_YEARS
+        );
   return {
     id: row.id,
     memberCode: row.member_code,
@@ -391,7 +443,7 @@ function toStudentSummary(row) {
     // to your students" on assignment -- reproduced and confirmed live.
     status: row.status,
     cohort: row.cohort_name,
-    currentYear: row.current_year,
+    currentYear: progress.trainingYear,
     photo: row.photo,
   };
 }

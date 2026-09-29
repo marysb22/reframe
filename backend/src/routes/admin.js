@@ -56,6 +56,7 @@ const USER_SELECT = `
     sup.group_id AS supervisor_group_id, st.group_id AS student_group_id,
     tg.id AS group_id, tg.name AS group_name,
     COALESCE(sup.training_start_date, st.training_start_date) AS training_start_date,
+    COALESCE(sup.training_duration_years, st.training_duration_years) AS training_duration_years,
     CURDATE() AS training_today,
     COALESCE(
       (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', sup2.id, 'full_name', sup2.full_name, 'supervisor_type', sup2.supervisor_type))

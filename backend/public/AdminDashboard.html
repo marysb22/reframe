@@ -2800,6 +2800,12 @@
                     <div class="field-hint" id="emGroupHint"></div>
                 </div>
 
+                <div id="emCohortWrap">
+                    <label>Cohort</label>
+                    <input type="text" id="emCohort" placeholder="e.g. 2026A">
+                    <div class="field-hint">Free text -- a cohort name that doesn't exist yet is created automatically. Leave blank to clear it.</div>
+                </div>
+
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeEditMemberModal()">Cancel</button>
                     <button type="submit" class="btn">Save changes</button>
@@ -3788,6 +3794,12 @@ async function openEditMemberModal(id) {
     ? "Changing the Group requires the new Group to already have an active Master Trainer."
     : "";
 
+  // Cohort is a Trainee-only field (see PUT /admin/users/:id, which only
+  // applies it when existing.role === "trainee") -- hidden for a
+  // Master Trainer/Trainer row rather than shown-but-ignored.
+  document.getElementById("emCohortWrap").style.display = isTrainee ? "" : "none";
+  document.getElementById("emCohort").value = profile.cohort || "";
+
   document.getElementById("editMemberModal").classList.add("show");
 }
 
@@ -3811,9 +3823,10 @@ document.getElementById("editMemberForm").addEventListener("submit", async (e) =
     // Moving a Trainee to a new Group automatically re-links them to that
     // Group's whole training team server-side -- there is no per-trainee
     // Trainer (ToT) selection to send here.
+    const cohort = document.getElementById("emCohort").value.trim();
     const result = await apiRequest(`/admin/users/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ fullName, groupId: newGroupId }),
+      body: JSON.stringify({ fullName, groupId: newGroupId, cohort }),
     });
     if (!result) return;
   } else if (isSupervisor) {
