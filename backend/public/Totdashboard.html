@@ -3044,8 +3044,34 @@
             grid-template-columns: 1fr 1fr;
             gap: 16px;
         }
-        
-        @media(max-width:900px) {
+
+        /* Grid's default align-items:stretch already gives every card in a
+           row the same height (the "consistent height" ask) -- this just
+           stops that height (a taller Notification preferences card, say)
+           from also leaving a gap below a shorter Security & password
+           card, since the grid's own `gap` already spaces the rows.
+
+           min-width:0 overrides a grid item's default min-width:auto,
+           which otherwise refuses to shrink a track below its content's
+           natural width -- the Hour types card's <table> (unrelated to
+           this change, pre-existing) is wide enough on its own to blow
+           the whole grid past the viewport at phone widths without this,
+           forcing every card in the row out past the screen edge with it
+           (confirmed live: cards rendered ~503px wide inside a 390px
+           viewport). With this, that table's own already-existing
+           `overflow-x:auto` mobile rule can actually take effect as a
+           contained horizontal scroll instead. */
+        .settings-grid>.system-card {
+            margin-bottom: 0;
+            min-width: 0;
+        }
+
+        /* Viewport width alone overstates how much room these cards
+           actually get -- the sidebar's fixed 264px comes out of it first
+           (same real-content-width gap covered for the other redesigned
+           tables in this file), so this stacks earlier than a plain
+           900px-viewport breakpoint would. */
+        @media(max-width:1100px) {
             .settings-grid {
                 grid-template-columns: 1fr;
             }
@@ -4683,7 +4709,7 @@
                         </form>
                     </div>
 
-                    <div class="system-card" style="grid-column:1/-1;">
+                    <div class="system-card">
                         <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-bell" style="color:var(--primary);"></i>Notification preferences</h2>
                         <div class="toggle-row">
                             <div><strong>New messages</strong><span>Get notified when a trainee sends you a message.</span></div>
