@@ -4726,15 +4726,6 @@
                         </form>
                     </div>
 
-                    <div class="system-card" style="grid-column:1/-1;">
-                        <h2 style="font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:9px;"><i class="fa fa-user-shield" style="color:var(--primary);"></i>Privacy</h2>
-                        <div class="toggle-row">
-                            <div><strong>Show my profile photo to trainees</strong><span>If off, trainees see your initials instead of your photo.</span></div>
-                            <label class="switch"><input type="checkbox" id="privacyShowPhoto" checked><span class="switch-track"></span></label>
-                        </div>
-                        <button class="btn" style="width:auto;" onclick="saveNotificationPrefs()">Save preferences</button>
-                    </div>
-
                 </div>
             </section>
 
@@ -9757,7 +9748,6 @@ document.getElementById("passwordForm").addEventListener("submit", async (e) => 
   }
 });
 
-const SHOW_PHOTO_KEY = "reframe_supervisor_show_photo"; // no settings column for this yet -- stays client-side only
 async function loadNotificationPrefs() {
   const prefs = await apiRequest("/profile/notification-preferences");
   if (prefs) {
@@ -9765,10 +9755,6 @@ async function loadNotificationPrefs() {
     document.getElementById("notifAssignments").checked = prefs.notifyAssignments;
     document.getElementById("notifSessions").checked = prefs.notifySessions;
   }
-  try {
-    const raw = localStorage.getItem(SHOW_PHOTO_KEY);
-    if (raw !== null) document.getElementById("privacyShowPhoto").checked = raw === "true";
-  } catch (err) { /* ignore malformed local data */ }
 }
 // ---- Hour types -------------------------------------------------------
 // Master Trainer and Trainer (ToT) both manage this shared, system-wide
@@ -9856,7 +9842,6 @@ async function saveNotificationPrefs() {
       notifySessions: document.getElementById("notifSessions").checked,
     }),
   });
-  localStorage.setItem(SHOW_PHOTO_KEY, document.getElementById("privacyShowPhoto").checked);
   if (result) showSuccessNotification("Settings Saved", "Your notification preferences have been updated.");
 }
 
