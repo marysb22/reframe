@@ -318,6 +318,33 @@ router.get(
     })
 );
 
+// GET /api/master-trainer/messages/previews -- last-message preview for
+// every ToT Direct Message thread this Master Trainer has, in one query.
+// Mirrors supervisor.js's identical fix -- loadChatInbox() used to call
+// GET /tots/:id/messages?peek=1 once per ToT, each of which fetches up to
+// 200 full chat_room_messages rows just to read the last one.
+router.get(
+    "/messages/previews",
+    asyncRoute(async (req, res, db) => {
+        const { rows } = await db.query(
+            `SELECT other.user_id AS tot_id, lm.content, lm.created_at
+       FROM chat_room_members me
+       JOIN chat_rooms r ON r.id = me.room_id AND r.is_direct = TRUE
+       JOIN chat_room_members other ON other.room_id = r.id AND other.user_id != me.user_id
+       LEFT JOIN chat_room_messages lm ON lm.id = (
+         SELECT id FROM chat_room_messages WHERE room_id = r.id ORDER BY created_at DESC, id DESC LIMIT 1
+       )
+       WHERE me.user_id = ?`,
+            [req.masterTrainer.id]
+        );
+        const previews = {};
+        rows.forEach((r) => {
+            previews[r.tot_id] = r.created_at ? { content: r.content, createdAt: r.created_at } : null;
+        });
+        res.json({ previews });
+    })
+);
+
 /** Confirms studentId belongs (via students.group_id) to the calling MT's group. */
 async function loadGroupStudent(db, groupId, studentId, res) {
     const { rows } = await db.query(

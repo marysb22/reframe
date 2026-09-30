@@ -2270,6 +2270,38 @@ router.get(
   })
 );
 
+// GET /api/supervisor/messages/previews -- last-message preview for every
+// Direct Message conversation this ToT/Master Trainer has (every assigned
+// trainee, plus the one Master Trainer thread if any), in a single query.
+// Replaces loadChatInbox()'s previous approach: calling
+// GET /students/:id/messages?peek=1 once per contact, each of which fetches
+// up to 200 full message rows only to read the very last one -- an
+// 18-trainee caseload fired 18 parallel requests and pulled up to 3600
+// message rows just to render 18 one-line previews, on every single inbox
+// load AND after every single message sent (see sendDirectMessage()).
+// Never marks anything read -- purely a read, same contract as peek=1 did.
+router.get(
+  "/messages/previews",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      `SELECT c.student_id, c.target_supervisor_id, lm.content, lm.created_at
+       FROM chats c
+       LEFT JOIN messages lm ON lm.id = (
+         SELECT id FROM messages m2 WHERE m2.chat_id = c.id ORDER BY m2.created_at DESC, m2.id DESC LIMIT 1
+       )
+       WHERE c.supervisor_id = ?`,
+      [req.user.id]
+    );
+    const previews = {};
+    rows.forEach((r) => {
+      const contactId = r.student_id != null ? r.student_id : r.target_supervisor_id;
+      if (contactId == null) return;
+      previews[contactId] = r.created_at ? { content: r.content, createdAt: r.created_at } : null;
+    });
+    res.json({ previews });
+  })
+);
+
 router.post(
   "/students/:studentId/messages",
   asyncRoute(async (req, res, db) => {

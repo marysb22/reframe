@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node tests/trainee-profile-audit.test.js"
+    "test": "node tests/trainee-profile-audit.test.js && node tests/tot-console-audit.test.js && node tests/chat-performance-audit.test.js"
   },
   "keywords": [],
   "author": "",

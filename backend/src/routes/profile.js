@@ -1214,6 +1214,33 @@ router.get(
   })
 );
 
+// GET /api/profile/messages/previews -- last-message preview for every
+// Direct Message conversation this trainee has (one per assigned
+// supervisor), in a single query. Mirrors supervisor.js's identical fix --
+// loadChatInbox() used to call GET /messages/:id?peek=1 once per
+// supervisor, each of which fetches up to 200 full message rows just to
+// read the last one. Never marks anything read.
+router.get(
+  "/messages/previews",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      `SELECT c.supervisor_id, lm.content, lm.created_at
+       FROM chats c
+       LEFT JOIN messages lm ON lm.id = (
+         SELECT id FROM messages m2 WHERE m2.chat_id = c.id ORDER BY m2.created_at DESC, m2.id DESC LIMIT 1
+       )
+       WHERE c.student_id = ?`,
+      [req.user.id]
+    );
+    const previews = {};
+    rows.forEach((r) => {
+      previews[r.supervisor_id] = r.created_at ? { content: r.content, createdAt: r.created_at } : null;
+    });
+    res.json({ previews });
+  })
+);
+
 // GET /api/profile/messages/:supervisorId
 // Marks this conversation read (every incoming message + its matching
 // notification) UNLESS called with ?peek=1 -- reserved for a future

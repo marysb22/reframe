@@ -656,7 +656,26 @@
             margin-top: 4px;
             white-space: nowrap;
         }
-        
+
+        .chat-bubble.sending {
+            opacity: .6;
+        }
+
+        .chat-bubble.failed {
+            background: var(--danger-bg);
+            color: var(--danger);
+            cursor: pointer;
+        }
+
+        .gc-msg-status {
+            font-size: 9px;
+            margin-left: 4px;
+        }
+
+        .gc-msg-status.failed {
+            color: var(--danger);
+        }
+
         .gc-layout {
             display: grid;
             grid-template-columns: 240px 1fr;
@@ -4686,10 +4705,13 @@
 
         // ---- Boot -----------------------------------------------------------
 
+        let currentProfile = null; // this Master Trainer's own profile, for optimistic Group Chat sends (see sendGcMessage)
+
         async function loadMe() {
             const me = await apiRequest("/master-trainer/me");
             if (!me) return;
             const p = me.profile;
+            currentProfile = p;
             document.getElementById("mtName").textContent = p.full_name;
             document.getElementById("mtInitials").textContent = initials(p.full_name);
             if (p.photo) {
@@ -7221,11 +7243,12 @@
                 if (!gcUsingSocket) startGcPolling();
             });
             gcSocket.on("newMessage", (payload) => {
-                loadGcRoomList();
                 if (payload.roomId === gcActiveRoomId) {
                     appendGcMessage(payload.message);
+                    updateGcRoomPreview(payload.roomId, payload.message);
                     markGcRoomRead(gcActiveRoomId).then(loadDmUnreadBadge);
                 } else {
+                    updateGcRoomPreview(payload.roomId, payload.message, { incrementUnread: true });
                     loadDmUnreadBadge();
                 }
             });
@@ -7260,6 +7283,33 @@
             const data = await apiRequest("/chat-rooms");
             if (!data) return;
             gcRooms = data.rooms;
+            const searchInput = document.getElementById("gcSearchInput");
+            renderGcRoomList(searchInput ? searchInput.value : "");
+        }
+
+        // Updates one room's preview/unread count locally from a message
+        // already in hand -- no network round trip. Replaces calling
+        // loadGcRoomList() (a full GET /chat-rooms re-fetch, recomputing
+        // last-message + unread-count for every room) on every message
+        // sent or received. See Totdashboard.html's identical fix for the
+        // full performance-audit note.
+        function updateGcRoomPreview(roomId, message, { incrementUnread } = {}) {
+            const room = gcRooms.find((r) => r.id === roomId);
+            if (!room) {
+                loadGcRoomList();
+                return;
+            }
+            room.lastMessage = {
+                preview: message.content || (message.attachment ? `📎 ${message.attachment.originalName}` : ""),
+                senderName: message.senderName,
+                createdAt: message.createdAt,
+            };
+            if (incrementUnread) room.unreadCount = (room.unreadCount || 0) + 1;
+            gcRooms.sort((a, b) => {
+                const at = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : -Infinity;
+                const bt = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : -Infinity;
+                return bt - at;
+            });
             const searchInput = document.getElementById("gcSearchInput");
             renderGcRoomList(searchInput ? searchInput.value : "");
         }
@@ -7424,13 +7474,18 @@
             </div>
             ${m.content ? `<div class="gc-msg-text" style="margin-top:6px;">${escapeHtml(m.content)}</div>` : ""}`
                 : `<span class="gc-msg-text">${escapeHtml(m.content || "")}</span>`;
+            const statusHtml = m.status === "sending"
+                ? `<i class="fa fa-clock gc-msg-status" title="Sending..."></i>`
+                : m.status === "failed"
+                ? `<i class="fa fa-triangle-exclamation gc-msg-status failed" title="Failed to send -- tap to retry"></i>`
+                : "";
             return `
         ${dateSepHtml}
-        <div class="gc-msg-row ${mine ? "mine" : "theirs"} ${grouped ? "grouped" : ""}">
+        <div class="gc-msg-row ${mine ? "mine" : "theirs"} ${grouped ? "grouped" : ""}"${m.clientId ? ` data-client-id="${m.clientId}"` : ""}${m.status === "failed" ? ` onclick="retryGcMessage('${m.clientId}')"` : ""}>
           ${!mine ? `<div class="gc-avatar ${grouped ? "spacer" : ""}">${avatarInnerHtml({ photo: m.senderPhoto, full_name: m.senderName })}</div>` : ""}
           <div class="gc-msg-col">
             ${!grouped && !mine ? `<div class="gc-sender-name">${escapeHtml(m.senderName)}</div>` : ""}
-            <div class="chat-bubble ${mine ? "mine" : "theirs"}">${bodyHtml}<span class="gc-msg-time">${time}</span></div>
+            <div class="chat-bubble ${mine ? "mine" : "theirs"} ${m.status || ""}">${bodyHtml}<span class="gc-msg-time">${time}${statusHtml}</span></div>
           </div>
         </div>
       `;
@@ -7467,20 +7522,80 @@
             const content = input.value.trim();
             if (!content && !gcPendingAttachment) return;
 
-            const formData = new FormData();
-            if (content) formData.append("content", content);
-            if (gcPendingAttachment) formData.append("attachment", gcPendingAttachment);
+            const roomId = gcActiveRoomId;
 
-            const result = await apiRequest(`/chat-rooms/${gcActiveRoomId}/messages`, {
-                method: "POST",
-                body: formData,
-            });
-            if (result) {
-                input.value = "";
-                clearGcAttachment();
-                appendGcMessage(result);
-                loadGcRoomList();
+            // An attachment still waits for the real response -- see
+            // Totdashboard.html's identical function for why.
+            if (gcPendingAttachment) {
+                const formData = new FormData();
+                if (content) formData.append("content", content);
+                formData.append("attachment", gcPendingAttachment);
+                const result = await apiRequest(`/chat-rooms/${roomId}/messages`, { method: "POST", body: formData });
+                if (result) {
+                    input.value = "";
+                    clearGcAttachment();
+                    appendGcMessage(result);
+                    updateGcRoomPreview(roomId, result);
+                }
+                return;
             }
+
+            // Text-only send: optimistic UI -- see Totdashboard.html's
+            // identical function for the full note.
+            const clientId = "tmp-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+            appendGcMessage({
+                clientId,
+                senderId: myUserId,
+                senderName: (currentProfile && currentProfile.full_name) || "",
+                senderPhoto: currentProfile && currentProfile.photo,
+                content,
+                attachment: null,
+                createdAt: new Date().toISOString(),
+                status: "sending",
+            });
+            input.value = "";
+
+            await sendGcTextMessage(roomId, content, clientId);
+        }
+
+        async function sendGcTextMessage(roomId, content, clientId) {
+            const formData = new FormData();
+            formData.append("content", content);
+            const result = await apiRequest(`/chat-rooms/${roomId}/messages`, { method: "POST", body: formData });
+            const row = document.querySelector(`.gc-msg-row[data-client-id="${clientId}"]`);
+            if (!row) return;
+            const bubble = row.querySelector(".chat-bubble");
+            if (result) {
+                bubble.classList.remove("sending");
+                const statusIcon = bubble.querySelector(".gc-msg-status");
+                if (statusIcon) statusIcon.remove();
+                if (roomId === gcActiveRoomId) updateGcRoomPreview(roomId, result);
+            } else {
+                bubble.classList.remove("sending");
+                bubble.classList.add("failed");
+                row.setAttribute("onclick", `retryGcMessage('${clientId}')`);
+                const statusIcon = bubble.querySelector(".gc-msg-status");
+                if (statusIcon) {
+                    statusIcon.className = "fa fa-triangle-exclamation gc-msg-status failed";
+                    statusIcon.title = "Failed to send -- tap to retry";
+                }
+            }
+        }
+
+        async function retryGcMessage(clientId) {
+            const row = document.querySelector(`.gc-msg-row[data-client-id="${clientId}"]`);
+            if (!row || !gcActiveRoomId) return;
+            const bubble = row.querySelector(".chat-bubble");
+            const content = bubble.querySelector(".gc-msg-text").textContent;
+            row.removeAttribute("onclick");
+            bubble.classList.remove("failed");
+            bubble.classList.add("sending");
+            const statusIcon = bubble.querySelector(".gc-msg-status");
+            if (statusIcon) {
+                statusIcon.className = "fa fa-clock gc-msg-status";
+                statusIcon.title = "Sending...";
+            }
+            await sendGcTextMessage(gcActiveRoomId, content, clientId);
         }
 
         // ---- New Room ---------------------------------------------------
@@ -7520,15 +7635,18 @@
                 return;
             }
 
-            const [previews, unreadData] = await Promise.all([
-                Promise.all(allTots.map((t) => apiRequest(`/master-trainer/tots/${t.id}/messages?peek=1`))),
+            // One request for every conversation's preview, not one per ToT --
+            // see supervisor.js's identical fix (GET .../messages/previews)
+            // for the full performance-audit note.
+            const [previewData, unreadData] = await Promise.all([
+                apiRequest("/master-trainer/messages/previews"),
                 apiRequest("/master-trainer/messages/unread-by-sender"),
             ]);
+            const previews = (previewData && previewData.previews) || {};
             const unreadCounts = (unreadData && unreadData.counts) || {};
 
-            dmConversations = allTots.map((t, i) => {
-                const data = previews[i];
-                const last = data && data.messages.length ? data.messages[data.messages.length - 1] : null;
+            dmConversations = allTots.map((t) => {
+                const last = previews[t.id] || null;
                 return { tot: t, last, unreadCount: unreadCounts[t.id] || 0 };
             });
 
@@ -7593,10 +7711,40 @@
                 thread.innerHTML = '<div class="empty-state">No messages yet. Say hello!</div>';
                 return;
             }
-            thread.innerHTML = data.messages
-                .map((m) => `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"}">${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}</div></div>`)
-                .join("");
+            thread.innerHTML = data.messages.map(dmMessageHtml).join("");
             thread.scrollTop = thread.scrollHeight;
+        }
+
+        function dmMessageHtml(m) {
+            const statusHtml = m.status === "sending"
+                ? `<i class="fa fa-clock gc-msg-status" title="Sending..."></i>`
+                : m.status === "failed"
+                ? `<i class="fa fa-triangle-exclamation gc-msg-status failed" title="Failed to send -- tap to retry"></i>`
+                : "";
+            return `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"} ${m.status || ""}"${m.clientId ? ` data-client-id="${m.clientId}"` : ""}${m.status === "failed" ? ` onclick="retryDmMessage('${m.clientId}')"` : ""}>${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}${statusHtml}</div></div>`;
+        }
+
+        function appendDmMessage(m) {
+            const thread = document.getElementById("dmThread");
+            if (thread.querySelector(".empty-state")) thread.innerHTML = "";
+            thread.insertAdjacentHTML("beforeend", dmMessageHtml(m));
+            thread.scrollTop = thread.scrollHeight;
+        }
+
+        function updateDmConversationPreview(totId, message) {
+            const convo = dmConversations.find((c) => Number(c.tot.id) === Number(totId));
+            if (!convo) {
+                loadChatInbox();
+                return;
+            }
+            convo.last = { content: message.content, createdAt: message.createdAt };
+            dmConversations.sort((a, b) => {
+                const at = a.last ? new Date(a.last.createdAt).getTime() : 0;
+                const bt = b.last ? new Date(b.last.createdAt).getTime() : 0;
+                return bt - at;
+            });
+            const searchInput = document.getElementById("dmSearchInput");
+            renderChatInboxList(searchInput ? searchInput.value : "");
         }
 
         let dmSendInFlight = false;
@@ -7606,21 +7754,63 @@
             const input = document.getElementById("dmInput");
             const content = input.value.trim();
             if (!content) return;
+            const totId = dmActiveTotId;
+
+            // Optimistic UI -- see Totdashboard.html's identical function
+            // for the full note.
+            const clientId = "tmp-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+            const myName = (currentProfile && currentProfile.full_name) || "";
+            appendDmMessage({ clientId, isMine: true, content, senderName: myName, createdAt: new Date().toISOString(), status: "sending" });
+            input.value = "";
+
+            await sendDmTextMessage(totId, content, clientId);
+        }
+
+        async function sendDmTextMessage(totId, content, clientId) {
             dmSendInFlight = true;
             try {
-                const result = await apiRequest(`/master-trainer/tots/${dmActiveTotId}/messages`, {
+                const result = await apiRequest(`/master-trainer/tots/${totId}/messages`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ content }),
                 });
+                const bubble = document.querySelector(`.chat-bubble[data-client-id="${clientId}"]`);
                 if (result) {
-                    input.value = "";
-                    await openDirectThread(dmActiveTotId);
-                    await loadChatInbox();
+                    updateDmConversationPreview(totId, result);
+                    if (bubble) {
+                        bubble.classList.remove("sending");
+                        const statusIcon = bubble.querySelector(".gc-msg-status");
+                        if (statusIcon) statusIcon.remove();
+                    }
+                } else if (bubble) {
+                    bubble.classList.remove("sending");
+                    bubble.classList.add("failed");
+                    bubble.setAttribute("onclick", `retryDmMessage('${clientId}')`);
+                    const statusIcon = bubble.querySelector(".gc-msg-status");
+                    if (statusIcon) {
+                        statusIcon.className = "fa fa-triangle-exclamation gc-msg-status failed";
+                        statusIcon.title = "Failed to send -- tap to retry";
+                    }
                 }
             } finally {
                 dmSendInFlight = false;
             }
+        }
+
+        async function retryDmMessage(clientId) {
+            if (dmSendInFlight || !dmActiveTotId) return;
+            const bubble = document.querySelector(`.chat-bubble[data-client-id="${clientId}"]`);
+            if (!bubble) return;
+            const content = bubble.childNodes[0].textContent;
+            bubble.removeAttribute("onclick");
+            bubble.classList.remove("failed");
+            bubble.classList.add("sending");
+            const statusIcon = bubble.querySelector(".gc-msg-status");
+            if (statusIcon) {
+                statusIcon.className = "fa fa-clock gc-msg-status";
+                statusIcon.title = "Sending...";
+            }
+            await sendDmTextMessage(dmActiveTotId, content, clientId);
         }
 
         async function loadDmUnreadBadge() {
