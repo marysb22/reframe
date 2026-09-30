@@ -1359,12 +1359,24 @@ router.get(
         [supervisorId, supervisorId]
       ),
       db.query(
-        `SELECT COUNT(CASE WHEN status = 'present' THEN 1 END) AS present, COUNT(*) AS total
+        // 'partial' counts as attended -- the same rule computeProgressSummary
+        // and every other attendance-rate calculation in the app already
+        // uses ("Present / Partial = attended"). This query used to count
+        // 'present' only, silently under-counting the numerator whenever
+        // any trainee had a partially-attended session.
+        `SELECT COUNT(CASE WHEN status IN ('present', 'partial') THEN 1 END) AS present, COUNT(*) AS total
          FROM attendance WHERE supervisor_id = ?`,
         [supervisorId]
       ),
       db.query(
-        `SELECT COUNT(DISTINCT student_id) AS trainee_count FROM sessions WHERE supervisor_id = ? AND status != 'cancelled'`,
+        // "Trained" means actually attended at least one session, not
+        // merely having a session row scheduled -- a trainee with only a
+        // future 'scheduled' session (no attendance recorded yet, or
+        // recorded absent) hasn't been trained yet. This used to count
+        // COUNT(DISTINCT student_id) FROM sessions WHERE status !=
+        // 'cancelled', which included exactly that case.
+        `SELECT COUNT(DISTINCT student_id) AS trainee_count FROM attendance
+         WHERE supervisor_id = ? AND status IN ('present', 'partial')`,
         [supervisorId]
       ),
     ]);
@@ -1372,9 +1384,16 @@ router.get(
     const a = attendanceRes.rows[0];
     const t = traineeRes.rows[0];
     const { rows: sessionCountRows } = await db.query(
+      // "Conducted" is past tense -- a 'scheduled' (future) session hasn't
+      // happened yet, so it must not count here, only 'completed'. Same
+      // occasion-counts-once rule as the hours query above: an occasion
+      // counts once it has at least one completed attendee, mirroring
+      // that query's own EXISTS gate rather than introducing a different
+      // completion rule for the same underlying data.
       `SELECT
-         (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND status != 'cancelled' AND occasion_id IS NULL) +
-         (SELECT COUNT(*) FROM session_occasions WHERE supervisor_id = ?) AS session_count`,
+         (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND status = 'completed' AND occasion_id IS NULL) +
+         (SELECT COUNT(*) FROM session_occasions so WHERE so.supervisor_id = ?
+            AND EXISTS (SELECT 1 FROM sessions s3 WHERE s3.occasion_id = so.id AND s3.status = 'completed')) AS session_count`,
       [supervisorId, supervisorId]
     );
     t.session_count = sessionCountRows[0].session_count;
@@ -1384,6 +1403,68 @@ router.get(
       sessionsConducted: Number(t.session_count),
       traineesTrained: Number(t.trainee_count),
       traineeAttendanceRate: Number(a.total) > 0 ? Math.round((Number(a.present) / Number(a.total)) * 100) : null,
+    });
+  })
+);
+
+// GET /api/supervisor/me/caseload-summary -- the top KPI strip (Assigned
+// trainees / Training hours logged / Avg. attendance / Open assignments).
+// Replaces a frontend loop that fetched GET /students/:id once per trainee
+// (an 18-trainee caseload meant 18 sequential requests) and, worse,
+// averaged each trainee's own attendance PERCENTAGE across trainees --
+// mathematically different from, and misleading next to, the pooled
+// present/total the rest of the app means by "attendance rate"
+// (computeProgressSummary does present/total for one trainee; this does
+// the same present/total pooled across every trainee at once, not an
+// average of pre-rounded percentages). A trainee with 1/1 and another
+// with 1/10 average to 55% under the old method; the true pooled rate is
+// 2/11 = 18%.
+router.get(
+  "/me/caseload-summary",
+  asyncRoute(async (req, res, db) => {
+    const supervisorId = req.user.id;
+    const caseloadSubquery = "SELECT student_id FROM supervisor_students WHERE supervisor_id = ?";
+
+    const [hoursRes, attendanceRes, assignmentsRes] = await Promise.all([
+      // Same three-part per-trainee formula as computeHoursByType's
+      // studentId branch (legacy typed rows + attendance-derived session
+      // hours + manual adjustments), just summed across the whole caseload
+      // in one query instead of looped per trainee -- no group-session
+      // fan-out concern here (unlike the supervisor-delivered formula
+      // above), since this is deliberately "hours each trainee received",
+      // and a trainee's own row already counts their own attendance once.
+      db.query(
+        `SELECT
+           COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id IN (${caseloadSubquery})), 0) +
+           COALESCE((SELECT SUM(hours) FROM supervision_hours WHERE student_id IN (${caseloadSubquery})), 0) +
+           COALESCE((
+             SELECT SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60
+             FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
+             WHERE s.student_id IN (${caseloadSubquery}) AND s.status != 'cancelled'
+           ), 0) +
+           COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE student_id IN (${caseloadSubquery})), 0)
+         AS hours`,
+        [supervisorId, supervisorId, supervisorId, supervisorId]
+      ),
+      db.query(
+        `SELECT COUNT(CASE WHEN status IN ('present', 'partial') THEN 1 END) AS present, COUNT(*) AS total
+         FROM attendance WHERE student_id IN (${caseloadSubquery})`,
+        [supervisorId]
+      ),
+      db.query(
+        `SELECT COUNT(*) AS total, COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed
+         FROM assignments WHERE student_id IN (${caseloadSubquery})`,
+        [supervisorId]
+      ),
+    ]);
+
+    const attendance = attendanceRes.rows[0];
+    const assignments = assignmentsRes.rows[0];
+
+    res.json({
+      totalHours: Number(hoursRes.rows[0].hours),
+      attendanceRate: Number(attendance.total) > 0 ? Math.round((Number(attendance.present) / Number(attendance.total)) * 100) : null,
+      openAssignments: Number(assignments.total) - Number(assignments.completed),
     });
   })
 );
@@ -2786,17 +2867,28 @@ router.get(
   "/schedule",
   asyncRoute(async (req, res, db) => {
     const { rows } = await db.query(
+      // CURDATE() selected alongside the rows (not compared against Node's
+      // own new Date()) -- the WHERE clause and the today/upcoming split
+      // below must agree on the exact same "today", or a session lands on
+      // the wrong side of that boundary whenever the app server and DB
+      // server's clocks/timezones aren't in perfect lockstep (they weren't
+      // -- WHERE used MySQL's CURRENT_DATE while the split below used to
+      // compare against `new Date().toISOString()`, two independently
+      // evaluated "todays"). Also excludes 'cancelled' sessions, which the
+      // original query never did -- a cancelled session isn't an upcoming
+      // activity.
       `SELECT s.id, s.session_type, s.title, s.session_date AS date, s.session_time AS time,
-              s.duration_minutes, st.full_name AS student_name, uc.member_code AS student_code
+              s.duration_minutes, st.full_name AS student_name, uc.member_code AS student_code,
+              CURDATE() AS today
        FROM sessions s
        JOIN students st ON st.id = s.student_id
        JOIN user_credentials uc ON uc.id = s.student_id
-       WHERE s.supervisor_id = ? AND s.session_date >= CURRENT_DATE
+       WHERE s.supervisor_id = ? AND s.session_date >= CURDATE() AND s.status != 'cancelled'
        ORDER BY s.session_date ASC, (s.session_time IS NULL), s.session_time ASC`,
       [req.user.id]
     );
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = rows.length ? String(rows[0].today) : (await db.query("SELECT CURDATE() AS today")).rows[0].today;
     const today = [];
     const upcoming = [];
     for (const r of rows) {

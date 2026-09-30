@@ -423,7 +423,7 @@ router.get(
         (SELECT COUNT(*) FROM learning_materials lm JOIN supervisors sup ON sup.id = lm.supervisor_id
            WHERE sup.group_id = ? AND lm.material_type != 'book' AND lm.created_at >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)) AS materials_week,
         (SELECT COUNT(*) FROM attendance att JOIN supervisors sup ON sup.id = att.supervisor_id
-           WHERE sup.group_id = ? AND att.status = 'present') AS attendance_present,
+           WHERE sup.group_id = ? AND att.status IN ('present', 'partial')) AS attendance_present,
         (SELECT COUNT(*) FROM attendance att JOIN supervisors sup ON sup.id = att.supervisor_id
            WHERE sup.group_id = ?) AS attendance_total,
         (SELECT COUNT(*) FROM students WHERE group_id = ?) AS trainee_count,
@@ -570,7 +570,7 @@ router.get(
                       ELSE ROUND(100 * SUM(CASE WHEN a2.status = 'completed' THEN 1 ELSE 0 END) / COUNT(*), 1) END
                  FROM assignments a2 WHERE a2.supervisor_id = sup.id) AS completion_pct,
               (SELECT CASE WHEN COUNT(*) = 0 THEN NULL
-                      ELSE ROUND(100 * SUM(CASE WHEN att.status = 'present' THEN 1 ELSE 0 END) / COUNT(*), 1) END
+                      ELSE ROUND(100 * SUM(CASE WHEN att.status IN ('present', 'partial') THEN 1 ELSE 0 END) / COUNT(*), 1) END
                  FROM attendance att WHERE att.supervisor_id = sup.id) AS attendance_rate
        FROM supervisors sup
        JOIN user_credentials uc ON uc.id = sup.id
@@ -1044,7 +1044,7 @@ router.get(
                       ELSE ROUND(100 * SUM(CASE WHEN a2.status = 'completed' THEN 1 ELSE 0 END) / COUNT(*), 1) END
                  FROM assignments a2 WHERE a2.student_id = st.id) AS completion_pct,
               (SELECT CASE WHEN COUNT(*) = 0 THEN NULL
-                      ELSE ROUND(100 * SUM(CASE WHEN att.status = 'present' THEN 1 ELSE 0 END) / COUNT(*), 1) END
+                      ELSE ROUND(100 * SUM(CASE WHEN att.status IN ('present', 'partial') THEN 1 ELSE 0 END) / COUNT(*), 1) END
                  FROM attendance att WHERE att.student_id = st.id) AS attendance_rate,
               (SELECT MAX(al.created_at) FROM audit_logs al WHERE al.entity_id = st.id
                  AND al.entity_type IN (${ACTIVITY_ENTITY_TYPES_SQL})) AS last_activity_at,
@@ -1956,7 +1956,7 @@ async function computeNeedsAttentionItems(db, groupId) {
     // what a brand-new trainee with no records yet gets.
     const { rows: lowAttendance } = await db.query(
         `SELECT st.id, st.full_name,
-            SUM(CASE WHEN att.status = 'present' THEN 1 ELSE 0 END) AS present_count,
+            SUM(CASE WHEN att.status IN ('present', 'partial') THEN 1 ELSE 0 END) AS present_count,
             COUNT(*) AS total_count
      FROM attendance att
      JOIN students st ON st.id = att.student_id
@@ -2084,7 +2084,7 @@ router.get(
         (SELECT COUNT(*) FROM assignments a JOIN supervisors sup ON sup.id = a.supervisor_id
            WHERE sup.group_id = ? AND a.due_date BETWEEN ? AND ? AND a.status = 'completed') AS assignments_completed,
         (SELECT COUNT(*) FROM attendance att JOIN supervisors sup ON sup.id = att.supervisor_id
-           WHERE sup.group_id = ? AND att.attendance_date BETWEEN ? AND ? AND att.status = 'present') AS attendance_present,
+           WHERE sup.group_id = ? AND att.attendance_date BETWEEN ? AND ? AND att.status IN ('present', 'partial')) AS attendance_present,
         (SELECT COUNT(*) FROM attendance att JOIN supervisors sup ON sup.id = att.supervisor_id
            WHERE sup.group_id = ? AND att.attendance_date BETWEEN ? AND ?) AS attendance_total`,
             rangeParams
@@ -2109,7 +2109,7 @@ router.get(
               (SELECT COUNT(*) FROM sessions s WHERE s.supervisor_id = sup.id AND s.session_date BETWEEN ? AND ? AND s.status = 'completed') AS sessions_completed,
               (SELECT COUNT(*) FROM assignments a WHERE a.supervisor_id = sup.id AND a.due_date BETWEEN ? AND ?) AS assignments_total,
               (SELECT COUNT(*) FROM assignments a WHERE a.supervisor_id = sup.id AND a.due_date BETWEEN ? AND ? AND a.status = 'completed') AS assignments_completed,
-              (SELECT COUNT(CASE WHEN att.status = 'present' THEN 1 END) FROM attendance att WHERE att.supervisor_id = sup.id AND att.attendance_date BETWEEN ? AND ?) AS attendance_present,
+              (SELECT COUNT(CASE WHEN att.status IN ('present', 'partial') THEN 1 END) FROM attendance att WHERE att.supervisor_id = sup.id AND att.attendance_date BETWEEN ? AND ?) AS attendance_present,
               (SELECT COUNT(*) FROM attendance att WHERE att.supervisor_id = sup.id AND att.attendance_date BETWEEN ? AND ?) AS attendance_total
        FROM supervisors sup
        WHERE sup.group_id = ? AND sup.supervisor_type = 'in_training'
@@ -2237,7 +2237,7 @@ router.get(
         (SELECT COUNT(*) FROM students st JOIN user_credentials uc ON uc.id = st.id
            WHERE st.group_id = ? AND uc.status = 'active') AS active_trainees,
         (SELECT CASE WHEN COUNT(*) = 0 THEN NULL
-                ELSE ROUND(100 * SUM(CASE WHEN att.status = 'present' THEN 1 ELSE 0 END) / COUNT(*), 1) END
+                ELSE ROUND(100 * SUM(CASE WHEN att.status IN ('present', 'partial') THEN 1 ELSE 0 END) / COUNT(*), 1) END
            FROM attendance att JOIN supervisors sup ON sup.id = att.supervisor_id
            WHERE sup.group_id = ? AND att.attendance_date BETWEEN ? AND ?) AS attendance_rate,
         (SELECT COUNT(*) FROM assignments a JOIN supervisors sup ON sup.id = a.supervisor_id
@@ -2331,7 +2331,7 @@ router.get(
                       ELSE ROUND(100 * SUM(CASE WHEN a2.status = 'completed' THEN 1 ELSE 0 END) / COUNT(*), 1) END
                  FROM assignments a2 WHERE a2.student_id = st.id) AS completion_pct,
               (SELECT CASE WHEN COUNT(*) = 0 THEN NULL
-                      ELSE ROUND(100 * SUM(CASE WHEN att.status = 'present' THEN 1 ELSE 0 END) / COUNT(*), 1) END
+                      ELSE ROUND(100 * SUM(CASE WHEN att.status IN ('present', 'partial') THEN 1 ELSE 0 END) / COUNT(*), 1) END
                  FROM attendance att WHERE att.student_id = st.id) AS attendance_rate
        FROM students st WHERE st.group_id = ? ORDER BY st.full_name`, [groupId]
         );

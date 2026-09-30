@@ -6098,23 +6098,19 @@
         async function loadKpis() {
             document.getElementById("kpiStudents").textContent = allStudents.length;
 
-            let totalHours = 0,
-                totalRate = 0,
-                rateCount = 0,
-                openAssignments = 0;
-            for (const s of allStudents) {
-                const detail = await apiRequest(`/supervisor/students/${s.id}`);
-                if (!detail) continue;
-                totalHours += detail.progress.clinicalHours || 0;
-                if (detail.progress.attendanceRate != null) {
-                    totalRate += detail.progress.attendanceRate;
-                    rateCount++;
-                }
-                openAssignments += (detail.progress.assignmentsTotal - detail.progress.assignmentsCompleted);
-            }
-            document.getElementById("kpiHours").textContent = Math.round(totalHours * 10) / 10;
-            document.getElementById("kpiAttendance").textContent = rateCount ? Math.round(totalRate / rateCount) + "%" : "&mdash;";
-            document.getElementById("kpiAssignments").textContent = openAssignments;
+            // One pooled backend aggregate instead of one API call per
+            // trainee (was sequential -- 18 round trips for an 18-trainee
+            // caseload) -- see GET /supervisor/me/caseload-summary. That
+            // endpoint also fixed a real calculation bug this replaced:
+            // averaging each trainee's own attendance PERCENTAGE together
+            // is not the same number as the true pooled present/total rate
+            // (e.g. 1/1 and 1/10 average to 55%, but pooled is 2/11 = 18%),
+            // and didn't match how "attendance rate" is computed anywhere
+            // else in the app.
+            const summary = await apiRequest("/supervisor/me/caseload-summary");
+            document.getElementById("kpiHours").textContent = summary ? Math.round(summary.totalHours * 10) / 10 : "&mdash;";
+            document.getElementById("kpiAttendance").textContent = summary && summary.attendanceRate != null ? summary.attendanceRate + "%" : "&mdash;";
+            document.getElementById("kpiAssignments").textContent = summary ? summary.openAssignments : "&mdash;";
         }
 
         async function loadSchedule() {
