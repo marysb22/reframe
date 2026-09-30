@@ -1455,7 +1455,22 @@
             align-items: flex-start;
             gap: 12px;
         }
-        
+
+        /* The text block (title/meta/content) had no flex-grow, so it only
+           ever took its own content width and `justify-content:space-between`
+           pushed the trailing control (row-actions/select/pill) all the way
+           to the card's far edge -- leaving a large dead gap between them on
+           any card wider than its text, most visible with a short line of
+           right-aligned Arabic content. Letting it grow (with min-width:0 so
+           long unbroken text still wraps instead of overflowing) makes the
+           text fill the row up to the trailing control, which is also what
+           lets Arabic dir="auto" content align against the card's real right
+           edge instead of an arbitrary shrink-to-fit width. */
+        .record-item > div:first-child {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
         .record-item .rmeta {
             color: var(--faint);
             font-size: 11.5px;
