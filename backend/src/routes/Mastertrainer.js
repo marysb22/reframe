@@ -672,9 +672,27 @@ router.get(
         );
 
         const { rows: statRows } = await db.query(
+            // "Training activities"/"Supervision activities" used to be a
+            // raw COUNT(*) of `sessions` rows -- a Group Session fans out
+            // one row PER ATTENDEE (17 rows for one 17-trainee occasion)
+            // and a multi-day Session fans out one row per day, so this
+            // massively overcounted real activities. Same occasion/series
+            // de-duplication this query's own training_hours/
+            // supervision_hours below already use: a standalone session
+            // counts once, a single-day occasion counts once regardless of
+            // attendee count, a multi-day series counts once regardless of
+            // day count.
             `SELECT
-        (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND session_type = 'training') AS training_sessions,
-        (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND session_type = 'supervision') AS supervision_sessions,
+        (
+          (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND session_type = 'training' AND occasion_id IS NULL) +
+          (SELECT COUNT(*) FROM session_occasions so WHERE so.supervisor_id = ? AND so.session_type = 'training' AND so.series_id IS NULL) +
+          (SELECT COUNT(DISTINCT ss.id) FROM session_series ss WHERE ss.supervisor_id = ? AND ss.session_type = 'training')
+        ) AS training_sessions,
+        (
+          (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND session_type = 'supervision' AND occasion_id IS NULL) +
+          (SELECT COUNT(*) FROM session_occasions so WHERE so.supervisor_id = ? AND so.session_type = 'supervision' AND so.series_id IS NULL) +
+          (SELECT COUNT(DISTINCT ss.id) FROM session_series ss WHERE ss.supervisor_id = ? AND ss.session_type = 'supervision')
+        ) AS supervision_sessions,
         ((SELECT COALESCE(SUM(hours), 0) FROM training_hours WHERE supervisor_id = ?) +
          (SELECT COALESCE(SUM(hours), 0) FROM (
             SELECT CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
@@ -704,7 +722,7 @@ router.get(
         (SELECT COUNT(*) FROM evaluations WHERE supervisor_id = ?) AS evaluation_count,
         (SELECT COUNT(*) FROM meetings WHERE supervisor_id = ?) AS meeting_count,
         (SELECT COUNT(*) FROM learning_materials WHERE supervisor_id = ? AND material_type != 'book') AS material_count`,
-            Array(15).fill(totId)
+            Array(19).fill(totId)
         );
 
         // "Training received" -- hours this ToT received FROM the calling

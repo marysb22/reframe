@@ -581,11 +581,33 @@ async function computeProgressSummary(db, studentId) {
       [studentId]
     ),
     db.query(
+      // A multi-day Session gives this trainee one `sessions` row PER DAY
+      // they're part of (each day is its own session_occasions row, fanned
+      // out per attendee -- see migration 024/030), so counting raw
+      // `sessions` rows here counted every day of a 5-day Session as 5
+      // separate "Training activities" instead of 1 -- the same
+      // occasion/series distinction the ToT Dashboard's own
+      // "activities conducted" count already had to make (see
+      // supervisor.js's training-delivered route). Standalone sessions
+      // (occasion_id IS NULL) count one-for-one; a single-day occasion
+      // counts once via DISTINCT occasion_id; a multi-day series' several
+      // days all collapse into one DISTINCT series_id.
       `SELECT
-         COUNT(CASE WHEN session_type = 'training' THEN 1 END) AS training_sessions,
-         COUNT(CASE WHEN session_type = 'supervision' THEN 1 END) AS supervision_sessions
-       FROM sessions WHERE student_id = ?`,
-      [studentId]
+         (
+           (SELECT COUNT(*) FROM sessions s WHERE s.student_id = ? AND s.session_type = 'training' AND s.occasion_id IS NULL) +
+           (SELECT COUNT(DISTINCT s.occasion_id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id
+              WHERE s.student_id = ? AND s.session_type = 'training' AND so.series_id IS NULL) +
+           (SELECT COUNT(DISTINCT so.series_id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id
+              WHERE s.student_id = ? AND s.session_type = 'training' AND so.series_id IS NOT NULL)
+         ) AS training_sessions,
+         (
+           (SELECT COUNT(*) FROM sessions s WHERE s.student_id = ? AND s.session_type = 'supervision' AND s.occasion_id IS NULL) +
+           (SELECT COUNT(DISTINCT s.occasion_id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id
+              WHERE s.student_id = ? AND s.session_type = 'supervision' AND so.series_id IS NULL) +
+           (SELECT COUNT(DISTINCT so.series_id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id
+              WHERE s.student_id = ? AND s.session_type = 'supervision' AND so.series_id IS NOT NULL)
+         ) AS supervision_sessions`,
+      [studentId, studentId, studentId, studentId, studentId, studentId]
     ),
     db.query(
       `SELECT COUNT(*) AS total, COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed
