@@ -1409,11 +1409,28 @@ router.get(
       // counts once it has at least one completed attendee, mirroring
       // that query's own EXISTS gate rather than introducing a different
       // completion rule for the same underlying data.
+      //
+      // A multi-day Session (session_series) is made of several
+      // session_occasions rows internally -- one per day -- but it must
+      // still count as ONE activity conducted, exactly like the Training
+      // Activities page's own count (activitiesQuery.js's UNION_BASE,
+      // which counts a 'series' once and only counts 'occasion' rows with
+      // series_id IS NULL). This query used to count every
+      // session_occasions row for this supervisor with no series_id
+      // filter at all, so a single 5-day Session added 5 to this count
+      // instead of 1 -- a caseload of 4 standalone Group Sessions plus one
+      // 5-day Session showed "9 activities conducted" here against the
+      // Activities page's correct "5".
       `SELECT
          (SELECT COUNT(*) FROM sessions WHERE supervisor_id = ? AND status = 'completed' AND occasion_id IS NULL) +
-         (SELECT COUNT(*) FROM session_occasions so WHERE so.supervisor_id = ?
-            AND EXISTS (SELECT 1 FROM sessions s3 WHERE s3.occasion_id = so.id AND s3.status = 'completed')) AS session_count`,
-      [supervisorId, supervisorId]
+         (SELECT COUNT(*) FROM session_occasions so WHERE so.supervisor_id = ? AND so.series_id IS NULL
+            AND EXISTS (SELECT 1 FROM sessions s3 WHERE s3.occasion_id = so.id AND s3.status = 'completed')) +
+         (SELECT COUNT(DISTINCT ss.id) FROM session_series ss
+            JOIN session_occasions so2 ON so2.series_id = ss.id
+            WHERE ss.supervisor_id = ?
+            AND EXISTS (SELECT 1 FROM sessions s4 WHERE s4.occasion_id = so2.id AND s4.status = 'completed'))
+         AS session_count`,
+      [supervisorId, supervisorId, supervisorId]
     );
     t.session_count = sessionCountRows[0].session_count;
 
