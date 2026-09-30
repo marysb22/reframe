@@ -2913,6 +2913,27 @@ router.post(
   })
 );
 
+// PUT /api/supervisor/announcements/:announcementId  { title, content } --
+// edits an existing announcement in place (never creates a new one).
+// Ownership-scoped exactly like DELETE above: the WHERE clause itself is
+// the authorization check, not just the UI hiding the Edit button.
+router.put(
+  "/announcements/:announcementId",
+  asyncRoute(async (req, res, db) => {
+    const { title, content } = req.body || {};
+    if (!title || !String(title).trim() || !content || !String(content).trim()) {
+      return res.status(400).json({ error: "title and content are required" });
+    }
+    const { affectedRows } = await db.query(
+      "UPDATE announcements SET title = ?, content = ? WHERE id = ? AND supervisor_id = ?",
+      [title.trim(), content.trim(), req.params.announcementId, req.user.id]
+    );
+    if (!affectedRows) return res.status(404).json({ error: "Announcement not found" });
+    const { rows } = await db.query("SELECT * FROM announcements WHERE id = ?", [req.params.announcementId]);
+    res.json(toAnnouncement({ ...rows[0], supervisor_name: req.user.member_code }));
+  })
+);
+
 router.delete(
   "/announcements/:announcementId",
   asyncRoute(async (req, res, db) => {

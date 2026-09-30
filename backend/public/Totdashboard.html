@@ -4916,19 +4916,19 @@
         </div>
     </div>
 
-    <!-- NEW ANNOUNCEMENT MODAL -->
+    <!-- NEW / EDIT ANNOUNCEMENT MODAL (dual-purpose: annEditingId set = Edit) -->
     <div class="modal-overlay" id="announcementModal">
         <div class="modal-box">
             <button class="close-modal" onclick="closeModal('announcementModal')">&times;</button>
-            <h3>New announcement</h3>
+            <h3 id="announcementModalTitle">New announcement</h3>
             <form id="announcementForm">
                 <label>Title</label>
-                <input type="text" id="annTitle" required>
+                <input type="text" id="annTitle" dir="auto" required>
                 <label>Message</label>
-                <textarea id="annContent" required></textarea>
+                <textarea id="annContent" dir="auto" rows="6" required></textarea>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('announcementModal')">Cancel</button>
-                    <button type="submit" class="btn">Post to all trainees</button>
+                    <button type="submit" class="btn" id="announcementSubmitBtn">Post to all trainees</button>
                 </div>
             </form>
         </div>
@@ -7234,23 +7234,28 @@ async function deleteMaterial(id) {
   }
 }
 
+let announcementsCache = [];
+let annEditingId = null;
+
 async function loadAnnouncements() {
   const data = await apiRequest("/supervisor/announcements");
   const list = document.getElementById("announcementsList");
   if (!data) return;
-  if (!data.announcements.length) {
+  announcementsCache = data.announcements;
+  if (!announcementsCache.length) {
     list.innerHTML = '<li class="empty-state">No announcements posted yet.</li>';
     return;
   }
-  list.innerHTML = data.announcements
+  list.innerHTML = announcementsCache
     .map((a) => `
       <li class="record-item">
         <div>
-          <strong>${escapeHtml(a.title)}</strong>
+          <strong dir="auto">${escapeHtml(a.title)}</strong>
           <div class="rmeta">${new Date(a.createdAt).toLocaleString()}</div>
-          <div class="rcontent">${escapeHtml(a.content)}</div>
+          <div class="rcontent" dir="auto">${escapeHtml(a.content)}</div>
         </div>
         <div class="row-actions">
+          <button class="icon-btn" title="Edit" onclick="openEditAnnouncementModal(${a.id})"><i class="fa fa-pen"></i></button>
           <button class="icon-btn danger" title="Delete" onclick="confirmDeleteAnnouncement(${a.id})"><i class="fa fa-trash"></i></button>
         </div>
       </li>
@@ -7259,21 +7264,44 @@ async function loadAnnouncements() {
 }
 
 function openAnnouncementModal() {
+  annEditingId = null;
   document.getElementById("announcementForm").reset();
+  document.getElementById("announcementModalTitle").textContent = "New announcement";
+  document.getElementById("announcementSubmitBtn").textContent = "Post to all trainees";
+  openModal("announcementModal");
+}
+
+function openEditAnnouncementModal(id) {
+  const a = announcementsCache.find((x) => x.id === id);
+  if (!a) return;
+  annEditingId = id;
+  document.getElementById("annTitle").value = a.title;
+  document.getElementById("annContent").value = a.content;
+  document.getElementById("announcementModalTitle").textContent = "Edit announcement";
+  document.getElementById("announcementSubmitBtn").textContent = "Save changes";
   openModal("announcementModal");
 }
 
 document.getElementById("announcementForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const title = document.getElementById("annTitle").value;
-  const content = document.getElementById("annContent").value;
-  const result = await apiRequest("/supervisor/announcements", {
-    method: "POST",
+  const title = document.getElementById("annTitle").value.trim();
+  const content = document.getElementById("annContent").value.trim();
+  const submitBtn = document.getElementById("announcementSubmitBtn");
+  const originalLabel = submitBtn.textContent;
+  const isEdit = annEditingId != null;
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = isEdit ? "Saving..." : "Posting...";
+  const result = await apiRequest(isEdit ? `/supervisor/announcements/${annEditingId}` : "/supervisor/announcements", {
+    method: isEdit ? "PUT" : "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, content }),
   });
+  submitBtn.disabled = false;
+  submitBtn.textContent = originalLabel;
+
   if (result) {
-    showToast("Announcement posted", "success");
+    showToast(isEdit ? "Announcement updated" : "Announcement posted", "success");
     closeModal("announcementModal");
     loadAnnouncements();
   }
