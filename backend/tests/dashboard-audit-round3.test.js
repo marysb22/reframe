@@ -477,24 +477,19 @@ async function run() {
       }
     );
     await test(
-      "AFTER reassignment: ToT B's caseload-summary (student_id-scoped, CURRENT membership) NOW includes the trainee's pre-existing historical hours -- documented real behavior, not a corruption of the record itself",
+      "AFTER reassignment: ToT B's caseload-summary (now supervisor_id-scoped, delivery-based) does NOT pick up the trainee's pre-existing historical hours -- B never delivered that session, reassigning the trainee's caseload membership must not retroactively credit B with A's past work",
       async () => {
         const r = await request("GET", "/supervisor/me/caseload-summary", totBToken);
         assertEqual(r.status, 200, "status");
-        if (!(r.body.totalHours >= 10)) {
-          throw new Error(`expected ToT B's aggregate to now include the 10h historical session (student_id-scoped by design), got ${r.body.totalHours}`);
-        }
+        assertEqual(r.body.totalHours, 0, "ToT B delivered nothing yet, regardless of the newly-assigned trainee's history");
       }
     );
     await test(
-      "AFTER reassignment: ToT A's caseload-summary DROPS that same historical total (no longer in A's current caseload) -- confirms this KPI reflects CURRENT membership, not delivery history",
+      "AFTER reassignment: ToT A's caseload-summary is UNCHANGED -- A still actually delivered that session, so reassigning the trainee elsewhere must not erase A's own delivery record",
       async () => {
         const r = await request("GET", "/supervisor/me/caseload-summary", totAToken);
         assertEqual(r.status, 200, "status");
-        const droppedBy = beforeA.totalHours - r.body.totalHours;
-        if (!(droppedBy >= 9.9)) {
-          throw new Error(`expected A's aggregate to drop by ~10h, dropped by ${droppedBy}`);
-        }
+        assertEqual(r.body.totalHours, beforeA.totalHours, "unchanged -- this KPI now reflects who delivered the training, not who the trainee is currently assigned to");
       }
     );
     await test(

@@ -12,6 +12,7 @@ const {
   toMaterial,
   toAnnouncement,
   computeProgressSummary,
+  computeHoursByType,
   toArray,
   toPublicEvent,
   toEventDetail,
@@ -1461,27 +1462,23 @@ router.get(
     const supervisorId = req.user.id;
     const caseloadSubquery = "SELECT student_id FROM supervisor_students WHERE supervisor_id = ?";
 
-    const [hoursRes, attendanceRes, assignmentsRes] = await Promise.all([
-      // Same three-part per-trainee formula as computeHoursByType's
-      // studentId branch (legacy typed rows + attendance-derived session
-      // hours + manual adjustments), just summed across the whole caseload
-      // in one query instead of looped per trainee -- no group-session
-      // fan-out concern here (unlike the supervisor-delivered formula
-      // above), since this is deliberately "hours each trainee received",
-      // and a trainee's own row already counts their own attendance once.
-      db.query(
-        `SELECT
-           COALESCE((SELECT SUM(hours) FROM training_hours WHERE student_id IN (${caseloadSubquery})), 0) +
-           COALESCE((SELECT SUM(hours) FROM supervision_hours WHERE student_id IN (${caseloadSubquery})), 0) +
-           COALESCE((
-             SELECT SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60
-             FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-             WHERE s.student_id IN (${caseloadSubquery}) AND s.status != 'cancelled'
-           ), 0) +
-           COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE student_id IN (${caseloadSubquery})), 0)
-         AS hours`,
-        [supervisorId, supervisorId, supervisorId, supervisorId]
-      ),
+    const [hoursByType, attendanceRes, assignmentsRes] = await Promise.all([
+      // "Training hours logged" is the actual DURATION of training/
+      // supervision this ToT delivered -- a 5-hour session stays 5 hours
+      // whether 1 trainee attended or 17 did, and a 5-day Session's own
+      // days sum once each, never per attendee. This used to instead sum
+      // every currently-assigned trainee's own attendance-derived hours
+      // (present/partial minutes), which multiplies a single Group
+      // Session's duration by its attendee count -- a 5h session with 17
+      // trainees contributed 85 "hours" here, not 5, and a caseload of
+      // ~19 trainees across 5 real activities totalled 840 instead of the
+      // 55 those activities actually lasted. computeHoursByType's
+      // supervisorId branch is the exact occasion/series-deduplicated,
+      // per-delivery-not-per-attendee formula already used by "Training
+      // Delivery -- Total hours" below; reusing it here (rather than a
+      // third hand-written copy) is also what keeps the two from being
+      // able to drift apart again.
+      computeHoursByType(db, { supervisorId }),
       db.query(
         `SELECT COUNT(CASE WHEN status IN ('present', 'partial') THEN 1 END) AS present, COUNT(*) AS total
          FROM attendance WHERE student_id IN (${caseloadSubquery})`,
@@ -1496,9 +1493,10 @@ router.get(
 
     const attendance = attendanceRes.rows[0];
     const assignments = assignmentsRes.rows[0];
+    const totalHours = hoursByType.reduce((sum, h) => sum + h.hours, 0);
 
     res.json({
-      totalHours: Number(hoursRes.rows[0].hours),
+      totalHours,
       attendanceRate: Number(attendance.total) > 0 ? Math.round((Number(attendance.present) / Number(attendance.total)) * 100) : null,
       openAssignments: Number(assignments.total) - Number(assignments.completed),
     });

@@ -215,10 +215,10 @@ async function run() {
     const otherToken = tokenFor(fx.otherSupervisorId, "supervisor");
 
     console.log("\nTop KPI strip -- GET /supervisor/me/caseload-summary (pooled, not averaged)");
-    await test("training hours logged: 10.5h (7 + 1.5 + 0 + 2, no group-session fan-out)", async () => {
+    await test("training hours logged: 8.5h -- actual session DURATION delivered (6.5 standalone + 2h group session counted ONCE), not attendee-multiplied trainee-hours", async () => {
       const r = await request("GET", "/supervisor/me/caseload-summary", token);
       assertEqual(r.status, 200);
-      assertEqual(r.body.totalHours, 10.5);
+      assertEqual(r.body.totalHours, 8.5);
     });
     await test("avg attendance: true pooled rate 80% (4 present/partial of 5 records), not an average of per-trainee %", async () => {
       const r = await request("GET", "/supervisor/me/caseload-summary", token);
@@ -282,8 +282,8 @@ async function run() {
     await test("caseload-summary never includes another supervisor's trainee hours/attendance", async () => {
       const r = await request("GET", "/supervisor/me/caseload-summary", token);
       // The other supervisor's fixture session is 100h (6000 min) -- if it
-      // leaked in, totalHours would jump far past 10.5.
-      assertEqual(r.body.totalHours, 10.5);
+      // leaked in, totalHours would jump far past 8.5.
+      assertEqual(r.body.totalHours, 8.5);
     });
     await test("training-delivered never includes another supervisor's sessions", async () => {
       const r = await request("GET", "/supervisor/me/training-delivered", token);
