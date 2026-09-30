@@ -1544,7 +1544,11 @@ router.get(
         const { rows: dayRows } = await db.query(
             `SELECT so.id, so.session_date, so.session_time, so.duration_minutes,
               COUNT(s.id) AS trainee_count, COUNT(a.id) AS recorded_count,
-              COUNT(CASE WHEN a.status IN ('present', 'partial') THEN 1 END) AS present_count
+              COUNT(CASE WHEN a.status IN ('present', 'partial') THEN 1 END) AS present_count,
+              COUNT(CASE WHEN a.status = 'present' THEN 1 END) AS present_only_count,
+              COUNT(CASE WHEN a.status = 'partial' THEN 1 END) AS partial_count,
+              COUNT(CASE WHEN a.status = 'absent' THEN 1 END) AS absent_count,
+              COUNT(CASE WHEN a.status = 'excused' THEN 1 END) AS excused_count
        FROM session_occasions so
        LEFT JOIN sessions s ON s.occasion_id = so.id
        LEFT JOIN attendance a ON a.session_id = s.id
@@ -1564,15 +1568,26 @@ router.get(
 
         res.json({
             series: { id: sr.id, title: sr.title, sessionType: sr.session_type, sessionTypeLabel: sr.session_type_label, notes: sr.notes },
-            days: dayRows.map((r) => ({
-                occasionId: r.id,
-                date: r.session_date,
-                time: r.session_time,
-                durationMinutes: r.duration_minutes,
-                traineeCount: Number(r.trainee_count),
-                recordedCount: Number(r.recorded_count),
-                presentCount: Number(r.present_count),
-            })),
+            days: dayRows.map((r) => {
+                const traineeCount = Number(r.trainee_count);
+                const recordedCount = Number(r.recorded_count);
+                const presentCount = Number(r.present_count);
+                return {
+                    occasionId: r.id,
+                    date: r.session_date,
+                    time: r.session_time,
+                    durationMinutes: r.duration_minutes,
+                    traineeCount,
+                    recordedCount,
+                    presentCount,
+                    presentOnlyCount: Number(r.present_only_count),
+                    partialCount: Number(r.partial_count),
+                    absentCount: Number(r.absent_count),
+                    excusedCount: Number(r.excused_count),
+                    pendingCount: traineeCount - recordedCount,
+                    attendanceRate: traineeCount > 0 ? Math.round((presentCount / traineeCount) * 10000) / 100 : null,
+                };
+            }),
             roster: rosterRows.map((r) => ({ studentId: r.student_id, fullName: r.full_name })),
         });
     })

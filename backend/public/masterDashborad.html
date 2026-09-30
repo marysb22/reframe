@@ -6101,7 +6101,7 @@
           <td>${escapeHtml(o.sessionTypeLabel)}</td>
           <td>${new Date(o.date).toLocaleDateString()}${o.time ? " " + o.time.slice(0, 5) : ""}</td>
           <td>${(o.durationMinutes / 60).toFixed(2)}h</td>
-          <td>${o.presentCount}/${o.traineeCount} attended</td>
+          <td>${o.presentCount}/${o.traineeCount} attended &middot; ${(o.traineeCount ? (o.presentCount / o.traineeCount) * 100 : 0).toFixed(2)}%</td>
           <td class="row-actions">
             <button type="button" class="btn btn-secondary" style="width:auto;" onclick="openAttendanceModal('trainee', ${o.id})">Attendance</button>
             <button class="icon-btn" title="Edit" onclick="editGroupSessionOccasion(${o.id})"><i class="fa fa-pen"></i></button>
@@ -6121,7 +6121,7 @@
           <td>${escapeHtml(s.sessionTypeLabel)}</td>
           <td>${dateRange}</td>
           <td>${(s.totalMinutes / 60).toFixed(2)}h total</td>
-          <td>${s.presentCount}/${s.slotCount} attended</td>
+          <td>${s.presentCount}/${s.slotCount} attended &middot; ${(s.slotCount ? (s.presentCount / s.slotCount) * 100 : 0).toFixed(2)}%</td>
           <td class="row-actions" onclick="event.stopPropagation();">
             <button class="icon-btn" title="Edit" onclick="editGroupSessionSeries(${s.id})"><i class="fa fa-pen"></i></button>
             <button class="icon-btn danger" title="Delete" onclick="deleteGroupSessionSeries(${s.id})"><i class="fa fa-trash"></i></button>
@@ -6150,8 +6150,14 @@
         ${days
               .map(
                   (d) => `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;background:var(--surface-2);border-radius:8px;">
-            <span>${new Date(d.date).toLocaleDateString()}${d.time ? " " + d.time.slice(0, 5) : ""} &middot; ${(d.durationMinutes / 60).toFixed(2)}h &middot; ${d.presentCount}/${d.traineeCount} attended${d.recordedCount < d.traineeCount ? ` (${d.traineeCount - d.recordedCount} not yet recorded)` : ""}</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--surface-2);border-radius:8px;flex-wrap:wrap;">
+            <div>
+              <div><strong>${new Date(d.date).toLocaleDateString()}</strong>${d.time ? " " + d.time.slice(0, 5) : ""} &middot; ${(d.durationMinutes / 60).toFixed(2)}h &middot; ${d.traineeCount} expected</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+                Present: ${d.presentOnlyCount} &middot; Partial: ${d.partialCount} &middot; Absent: ${d.absentCount}${d.excusedCount ? ` &middot; Excused: ${d.excusedCount}` : ""}${d.pendingCount ? ` &middot; Pending: ${d.pendingCount}` : ""}
+                &middot; Attendance: <strong>${d.attendanceRate != null ? d.attendanceRate.toFixed(2) + "%" : "&mdash;"}</strong> (${d.presentCount}/${d.traineeCount})
+              </div>
+            </div>
             <button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="openAttendanceModal('trainee', ${d.occasionId})">Attendance</button>
           </div>`
               )

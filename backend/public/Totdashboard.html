@@ -7610,7 +7610,7 @@ function actAttendanceCell(a) {
     return `
       <div class="act-attendance-cell">
         <div class="act-progress-track"><div class="act-progress-fill ${fillClass}" style="width:${Math.round(pct * 100)}%;"></div></div>
-        <span>${a.presentCount}/${a.slotCount}</span>
+        <span>${a.presentCount}/${a.slotCount} &middot; ${(pct * 100).toFixed(2)}%</span>
       </div>`;
   }
   if (!a.attendanceStatus) return '<span style="color:var(--faint);">Not recorded</span>';
@@ -7755,7 +7755,13 @@ function actSeriesDetailHtml(a) {
 function actRosterHtml(a) {
   const roster = actRosterCache.get(a.id);
   if (!roster) return '<div style="padding:14px 0;color:var(--faint);font-size:12.5px;">Loading roster&hellip;</div>';
-  const recorded = roster.filter((r) => r.status).length;
+  const presentOnly = roster.filter((r) => r.status === "present").length;
+  const partial = roster.filter((r) => r.status === "partial").length;
+  const absent = roster.filter((r) => r.status === "absent").length;
+  const excused = roster.filter((r) => r.status === "excused").length;
+  const pending = roster.filter((r) => !r.status).length;
+  const attended = presentOnly + partial;
+  const rate = roster.length ? ((attended / roster.length) * 100).toFixed(2) : "0.00";
   return `
     <div class="act-detail-meta">${escapeHtml(a.typeLabel)} &middot; ${a.date ? new Date(a.date).toLocaleDateString() : ""}${a.time ? " " + a.time.slice(0, 5) : ""} &middot; ${actDurationLabel(a.durationMinutes)}</div>
     <div class="act-roster">
@@ -7770,7 +7776,7 @@ function actRosterHtml(a) {
         .join("")}
     </div>
     <div class="act-detail-footer">
-      <span style="font-size:12px;color:var(--muted);">Attendance: ${recorded} / ${roster.length}</span>
+      <span style="font-size:12px;color:var(--muted);">Present: ${presentOnly} &middot; Partial: ${partial} &middot; Absent: ${absent}${excused ? ` &middot; Excused: ${excused}` : ""}${pending ? ` &middot; Pending: ${pending}` : ""} &middot; Attendance: <strong>${rate}%</strong> (${attended}/${roster.length})</span>
       <button class="btn btn-sm" style="width:auto;" onclick="openAttendanceModal(${a.id})">Record Attendance</button>
     </div>`;
 }
@@ -8119,7 +8125,7 @@ function sessionSeriesRowHtml(s) {
       <td>${escapeHtml(s.sessionTypeLabel)}</td>
       <td>${dateRange}</td>
       <td>${(s.totalMinutes / 60).toFixed(2)}h total</td>
-      <td>${s.presentCount}/${s.slotCount} attended</td>
+      <td>${s.presentCount}/${s.slotCount} attended &middot; ${(s.slotCount ? (s.presentCount / s.slotCount) * 100 : 0).toFixed(2)}%</td>
       <td class="row-actions" onclick="event.stopPropagation();">
         <button class="icon-btn" title="Edit" onclick="editGroupSessionSeries(${s.id})"><i class="fa fa-pen"></i></button>
         <button class="icon-btn danger" title="Delete" onclick="deleteGroupSessionSeries(${s.id})"><i class="fa fa-trash"></i></button>
@@ -8149,8 +8155,14 @@ function gsSeriesDaysHtml(days) {
       ${days
         .map(
           (d) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;background:var(--surface-2);border-radius:8px;">
-          <span>${new Date(d.date).toLocaleDateString()}${d.time ? " " + d.time.slice(0, 5) : ""} &middot; ${(d.durationMinutes / 60).toFixed(2)}h &middot; ${d.presentCount}/${d.traineeCount} attended${d.recordedCount < d.traineeCount ? ` (${d.traineeCount - d.recordedCount} not yet recorded)` : ""}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--surface-2);border-radius:8px;flex-wrap:wrap;">
+          <div>
+            <div><strong>${new Date(d.date).toLocaleDateString()}</strong>${d.time ? " " + d.time.slice(0, 5) : ""} &middot; ${(d.durationMinutes / 60).toFixed(2)}h &middot; ${d.traineeCount} expected</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+              Present: ${d.presentOnlyCount} &middot; Partial: ${d.partialCount} &middot; Absent: ${d.absentCount}${d.excusedCount ? ` &middot; Excused: ${d.excusedCount}` : ""}${d.pendingCount ? ` &middot; Pending: ${d.pendingCount}` : ""}
+              &middot; Attendance: <strong>${d.attendanceRate != null ? d.attendanceRate.toFixed(2) + "%" : "&mdash;"}</strong> (${d.presentCount}/${d.traineeCount})
+            </div>
+          </div>
           <button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="openAttendanceModal(${d.occasionId})">Attendance</button>
         </div>`
         )

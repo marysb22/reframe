@@ -749,7 +749,11 @@ router.get(
     const { rows: dayRows } = await db.query(
       `SELECT so.id, so.session_date, so.session_time, so.duration_minutes,
               COUNT(s.id) AS trainee_count, COUNT(a.id) AS recorded_count,
-              COUNT(CASE WHEN a.status IN ('present', 'partial') THEN 1 END) AS present_count
+              COUNT(CASE WHEN a.status IN ('present', 'partial') THEN 1 END) AS present_count,
+              COUNT(CASE WHEN a.status = 'present' THEN 1 END) AS present_only_count,
+              COUNT(CASE WHEN a.status = 'partial' THEN 1 END) AS partial_count,
+              COUNT(CASE WHEN a.status = 'absent' THEN 1 END) AS absent_count,
+              COUNT(CASE WHEN a.status = 'excused' THEN 1 END) AS excused_count
        FROM session_occasions so
        LEFT JOIN sessions s ON s.occasion_id = so.id
        LEFT JOIN attendance a ON a.session_id = s.id
@@ -769,15 +773,30 @@ router.get(
 
     res.json({
       series: { id: sr.id, title: sr.title, sessionType: sr.session_type, sessionTypeLabel: sr.session_type_label, notes: sr.notes },
-      days: dayRows.map((r) => ({
-        occasionId: r.id,
-        date: r.session_date,
-        time: r.session_time,
-        durationMinutes: r.duration_minutes,
-        traineeCount: Number(r.trainee_count),
-        recordedCount: Number(r.recorded_count),
-        presentCount: Number(r.present_count),
-      })),
+      days: dayRows.map((r) => {
+        const traineeCount = Number(r.trainee_count);
+        const recordedCount = Number(r.recorded_count);
+        const presentCount = Number(r.present_count);
+        return {
+          occasionId: r.id,
+          date: r.session_date,
+          time: r.session_time,
+          durationMinutes: r.duration_minutes,
+          traineeCount,
+          recordedCount,
+          presentCount,
+          presentOnlyCount: Number(r.present_only_count),
+          partialCount: Number(r.partial_count),
+          absentCount: Number(r.absent_count),
+          excusedCount: Number(r.excused_count),
+          pendingCount: traineeCount - recordedCount,
+          // Total attended trainee-slots / total expected trainee-slots for
+          // this one day -- same pooled formula the multi-day aggregate
+          // uses across all days (see UNION_BASE in activitiesQuery.js),
+          // never an average of per-trainee percentages.
+          attendanceRate: traineeCount > 0 ? Math.round((presentCount / traineeCount) * 10000) / 100 : null,
+        };
+      }),
       roster: rosterRows.map((r) => ({ studentId: r.student_id, fullName: r.full_name })),
     });
   })
@@ -1720,7 +1739,13 @@ router.put(
     const assignment = assignmentRows[0];
 
     const { rows: submissionRows } = await db.query(
-      "SELECT id FROM assignment_submissions WHERE assignment_id = ? ORDER BY submitted_at DESC LIMIT 1",
+      // id DESC as a tiebreaker -- submitted_at is a DATETIME (second
+      // precision), so two submissions landing in the same second (e.g. a
+      // quick resubmit right after being returned) would otherwise leave
+      // "the latest one" ambiguous, and grade/return could silently act on
+      // the wrong row. Matches assignmentsQuery.js's own read-side query,
+      // which already had this tiebreaker.
+      "SELECT id FROM assignment_submissions WHERE assignment_id = ? ORDER BY submitted_at DESC, id DESC LIMIT 1",
       [assignmentId]
     );
     if (!submissionRows.length) return res.status(409).json({ error: "This trainee hasn't submitted anything yet" });
@@ -1773,7 +1798,13 @@ router.put(
     const assignment = assignmentRows[0];
 
     const { rows: submissionRows } = await db.query(
-      "SELECT id FROM assignment_submissions WHERE assignment_id = ? ORDER BY submitted_at DESC LIMIT 1",
+      // id DESC as a tiebreaker -- submitted_at is a DATETIME (second
+      // precision), so two submissions landing in the same second (e.g. a
+      // quick resubmit right after being returned) would otherwise leave
+      // "the latest one" ambiguous, and grade/return could silently act on
+      // the wrong row. Matches assignmentsQuery.js's own read-side query,
+      // which already had this tiebreaker.
+      "SELECT id FROM assignment_submissions WHERE assignment_id = ? ORDER BY submitted_at DESC, id DESC LIMIT 1",
       [assignmentId]
     );
     if (!submissionRows.length) return res.status(409).json({ error: "This trainee hasn't submitted anything yet" });
