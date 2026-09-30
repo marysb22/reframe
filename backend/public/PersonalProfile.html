@@ -264,7 +264,26 @@
             align-items: center;
             gap: 14px;
         }
-        
+
+        .live-clock {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            font-size: 13.5px;
+            color: var(--text);
+            white-space: nowrap;
+        }
+        .live-clock-zone {
+            font-size: 10.5px;
+            font-weight: 500;
+            color: var(--faint);
+        }
+        @media (max-width: 720px) {
+            .live-clock-zone { display: none; }
+        }
+
         .bell-btn {
             position: relative;
             width: 40px;
@@ -3378,6 +3397,10 @@
                     </div>
                 </div>
                 <div class="top-right">
+                    <div class="live-clock" id="liveClock" title="Your local time">
+                        <span id="liveClockTime">--:--</span>
+                        <span id="liveClockZone" class="live-clock-zone"></span>
+                    </div>
                     <div class="notif-wrap">
                         <button class="bell-btn" type="button" aria-label="Notifications" onclick="toggleNotifDropdown()">
                             <i class="fa fa-bell"></i>
@@ -4273,6 +4296,7 @@
             // delivery at all. Idempotent, so a later call from
             // loadGroupChats() is a safe no-op.
             connectGcSocket();
+            startLiveClock();
             loadNotificationPrefs();
             loadNotifUnreadCount();
             loadDmUnreadBadge();
@@ -5975,6 +5999,32 @@ let gcSocket = null;
 let gcUsingSocket = false;
 let gcPollTimer = null;
 let gcPendingAttachment = null;
+
+// Real-time local clock -- no IANA string is ever hardcoded here. Leaving
+// out both the locale and the timeZone option in toLocaleTimeString/
+// DateTimeFormat makes the JS engine resolve the viewer's own OS/browser
+// timezone automatically (DST included), so this same code shows the
+// correct wall-clock time for a viewer in Beirut, Paris, New York, or Los
+// Angeles without ever branching on where they are.
+let liveClockTimer = null;
+function startLiveClock() {
+    if (liveClockTimer) return;
+    const timeEl = document.getElementById("liveClockTime");
+    const zoneEl = document.getElementById("liveClockZone");
+    if (!timeEl) return;
+    let zone = "";
+    try {
+        zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    } catch {
+        zone = "";
+    }
+    if (zoneEl) zoneEl.textContent = zone;
+    const tick = () => {
+        timeEl.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    };
+    tick();
+    liveClockTimer = setInterval(tick, 1000);
+}
 
 function connectGcSocket() {
     if (gcSocket) return;

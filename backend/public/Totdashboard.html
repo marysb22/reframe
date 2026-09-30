@@ -300,7 +300,31 @@
             align-items: center;
             gap: 14px;
         }
-        
+
+        /* Real, live local time -- Intl/Date with no explicit locale or
+           timeZone option always resolves to the viewer's OWN browser/OS
+           timezone automatically (DST-aware, no IANA string hardcoded
+           anywhere), so a viewer in Beirut, Paris, or New York each see
+           their own correct wall-clock time from the exact same code. */
+        .live-clock {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            font-size: 13.5px;
+            color: var(--text);
+            white-space: nowrap;
+        }
+        .live-clock-zone {
+            font-size: 10.5px;
+            font-weight: 500;
+            color: var(--faint);
+        }
+        @media (max-width: 720px) {
+            .live-clock-zone { display: none; }
+        }
+
         .bell-btn {
             position: relative;
             width: 40px;
@@ -4056,6 +4080,10 @@
                     </div>
                 </div>
                 <div class="top-right">
+                    <div class="live-clock" id="liveClock" title="Your local time">
+                        <span id="liveClockTime">--:--</span>
+                        <span id="liveClockZone" class="live-clock-zone"></span>
+                    </div>
                     <div class="notif-wrap">
                         <button class="bell-btn" type="button" aria-label="Notifications" onclick="toggleNotifDropdown()">
                             <i class="fa fa-bell"></i>
@@ -5788,6 +5816,7 @@
             // idempotent (see its own guard), so calling it again later from
             // loadGroupChats() is a safe no-op.
             connectGcSocket();
+            startLiveClock();
             await loadHourTypesAndExtendRecordTypes();
             loadHourTypesSettings();
             await loadStudents();
@@ -8885,6 +8914,35 @@ let gcUsingSocket = false;
 let gcPollTimer = null;
 let gcPendingAttachment = null;
 
+// Real-time local clock -- no IANA string is ever hardcoded here. Leaving
+// out both the locale and the timeZone option in toLocaleTimeString/
+// DateTimeFormat makes the JS engine resolve the viewer's own OS/browser
+// timezone automatically (DST included), so this same code shows the
+// correct wall-clock time for a viewer in Beirut, Paris, New York, or Los
+// Angeles without ever branching on where they are. The zone name (e.g.
+// "Asia/Beirut") is shown alongside purely so the viewer -- and anyone
+// testing this -- can SEE which real zone was actually detected, not
+// assumed.
+let liveClockTimer = null;
+function startLiveClock() {
+  if (liveClockTimer) return;
+  const timeEl = document.getElementById("liveClockTime");
+  const zoneEl = document.getElementById("liveClockZone");
+  if (!timeEl) return;
+  let zone = "";
+  try {
+    zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  } catch {
+    zone = "";
+  }
+  if (zoneEl) zoneEl.textContent = zone;
+  const tick = () => {
+    timeEl.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  };
+  tick();
+  liveClockTimer = setInterval(tick, 1000);
+}
+
 function connectGcSocket() {
   if (gcSocket) return;
   gcSocket = io(window.API_BASE, { auth: { token } });
@@ -9943,28 +10001,64 @@ document.getElementById("eventForm")?.addEventListener("submit", async (e) => {
 let calViewYear, calViewMonth;
 let calItems = [];
 
-async function loadCalendar() {
-  const today = new Date();
-  calViewYear = today.getFullYear();
-  calViewMonth = today.getMonth();
+// YYYY-MM-DD for a given local calendar year/month(0-based)/day -- plain
+// string concatenation on purpose, not a Date->toISOString() round trip:
+// the viewed month/day are already the exact calendar values the user is
+// looking at (chosen by clicking Prev/Next), so there's nothing to convert
+// from any other timezone in the first place.
+function calDateStr(year, month, day) {
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
 
-  const schedule = await apiRequest("/supervisor/schedule");
+// Re-fetches for whichever month is currently being viewed -- previously
+// this only ran once (on first opening the Calendar section) using
+// GET /supervisor/schedule, a small "today & upcoming" teaser that only
+// ever returns session_date >= today AND caps "upcoming" at 10 items, so
+// every past date and anything past the 10th soonest activity was simply
+// never in `calItems` at all; Prev/Next then only re-rendered that same
+// stale, incomplete array instead of fetching the newly-viewed month. Now
+// backed by GET /supervisor/calendar-sessions (every occasion/standalone
+// session date in the exact range shown, with no upper-bound cap and no
+// "future only" restriction) plus calendar-events/meetings scoped to the
+// same range.
+async function loadCalendar(year, month) {
+  if (year == null || month == null) {
+    const today = new Date();
+    year = today.getFullYear();
+    month = today.getMonth();
+  }
+  calViewYear = year;
+  calViewMonth = month;
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const start = calDateStr(year, month, 1);
+  const end = calDateStr(year, month, daysInMonth);
+
+  const [sessions, events, meetings] = await Promise.all([
+    apiRequest(`/supervisor/calendar-sessions?start=${start}&end=${end}`),
+    apiRequest(`/supervisor/calendar-events?start=${start}&end=${end}`),
+    apiRequest("/supervisor/meetings"),
+  ]);
+
   calItems = [];
-  if (schedule) {
-    [...schedule.today, ...schedule.upcoming].forEach((i) => {
-      calItems.push({ date: i.date, title: i.title || hourTypeLabel(i.hourTypeCode) + " activity", type: i.recordType });
+  if (sessions && sessions.events) {
+    sessions.events.forEach((i) => {
+      calItems.push({
+        date: i.date,
+        title: i.title || `${hourTypeLabel(i.hourTypeCode)} activity`,
+        type: i.kind === "single" ? "training_session" : "group_session",
+      });
     });
   }
-  const meetings = await apiRequest("/supervisor/meetings");
-  if (meetings && meetings.meetings) {
-    meetings.meetings.forEach((m) => {
-      if (m.scheduledAt) calItems.push({ date: m.scheduledAt.slice(0, 10), title: m.title, type: "meeting" });
-    });
-  }
-
-  const events = await apiRequest("/supervisor/calendar-events");
   if (events && events.events) {
     events.events.forEach((ev) => calItems.push({ date: ev.event_date, title: ev.title, type: "custom" }));
+  }
+  if (meetings && meetings.meetings) {
+    meetings.meetings.forEach((m) => {
+      if (!m.scheduledAt) return;
+      const d = m.scheduledAt.slice(0, 10);
+      if (d >= start && d <= end) calItems.push({ date: d, title: m.title, type: "meeting" });
+    });
   }
 
   renderCalendar();
@@ -9990,7 +10084,7 @@ document.getElementById("addEventForm").addEventListener("submit", async (e) => 
   if (result) {
     showToast("Event added", "success");
     closeModal("addEventModal");
-    loadCalendar();
+    loadCalendar(calViewYear, calViewMonth);
   }
 });
 
@@ -10032,14 +10126,14 @@ function renderCalendar() {
 }
 
 document.getElementById("calPrev").addEventListener("click", () => {
-  calViewMonth--;
-  if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; }
-  renderCalendar();
+  let y = calViewYear, m = calViewMonth - 1;
+  if (m < 0) { m = 11; y--; }
+  loadCalendar(y, m);
 });
 document.getElementById("calNext").addEventListener("click", () => {
-  calViewMonth++;
-  if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; }
-  renderCalendar();
+  let y = calViewYear, m = calViewMonth + 1;
+  if (m > 11) { m = 0; y++; }
+  loadCalendar(y, m);
 });
 
 document.getElementById("passwordForm").addEventListener("submit", async (e) => {

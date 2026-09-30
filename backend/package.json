@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node tests/trainee-profile-audit.test.js && node tests/tot-console-audit.test.js && node tests/chat-performance-audit.test.js && node tests/dashboard-audit-round2.test.js && node tests/dashboard-audit-round3.test.js && node tests/announcement-edit.test.js && node tests/chat-realtime.test.js && node tests/activities-count-reconciliation.test.js && node tests/trainee-activity-count.test.js && node tests/training-hours-logged-fix.test.js"
+    "test": "node tests/trainee-profile-audit.test.js && node tests/tot-console-audit.test.js && node tests/chat-performance-audit.test.js && node tests/dashboard-audit-round2.test.js && node tests/dashboard-audit-round3.test.js && node tests/announcement-edit.test.js && node tests/chat-realtime.test.js && node tests/activities-count-reconciliation.test.js && node tests/trainee-activity-count.test.js && node tests/training-hours-logged-fix.test.js && node tests/calendar-sessions.test.js"
   },
   "keywords": [],
   "author": "",

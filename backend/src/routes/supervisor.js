@@ -2983,6 +2983,74 @@ router.delete(
   })
 );
 
+// GET /api/supervisor/calendar-sessions?start=YYYY-MM-DD&end=YYYY-MM-DD --
+// every training/supervision activity date in range, for the Calendar
+// widget. Deliberately NOT built from GET /schedule above: that route is a
+// small "today & upcoming" teaser (session_date >= CURDATE() only, and the
+// caller caps "upcoming" at 10 items) -- fine for its own purpose, but it
+// silently dropped every past date and anything past the 10th soonest
+// activity when reused as the Calendar's only data source, which is most
+// of why the Calendar looked nearly empty. One row per occasion (so a
+// multi-day Session's several days -- each its own session_occasions row
+// -- each appear on their own real date, not just the series' first day),
+// plus one row per standalone (non-Group-Session) session. Never built
+// from raw `sessions` rows directly for a Group Session occasion, which
+// would otherwise show the same occasion once per attendee.
+router.get(
+  "/calendar-sessions",
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+
+    const [occasionsRes, standaloneRes] = await Promise.all([
+      db.query(
+        `SELECT so.id, so.session_type, so.title, so.session_date AS date, so.session_time AS time,
+                so.duration_minutes, so.series_id,
+                (SELECT COUNT(*) FROM sessions s WHERE s.occasion_id = so.id) AS trainee_count
+         FROM session_occasions so
+         WHERE so.supervisor_id = ? AND so.session_date BETWEEN ? AND ?
+         ORDER BY so.session_date ASC, (so.session_time IS NULL), so.session_time ASC`,
+        [req.user.id, start, end]
+      ),
+      db.query(
+        `SELECT s.id, s.session_type, s.title, s.session_date AS date, s.session_time AS time,
+                s.duration_minutes, st.full_name AS student_name
+         FROM sessions s
+         JOIN students st ON st.id = s.student_id
+         WHERE s.supervisor_id = ? AND s.occasion_id IS NULL AND s.status != 'cancelled'
+           AND s.session_date BETWEEN ? AND ?
+         ORDER BY s.session_date ASC, (s.session_time IS NULL), s.session_time ASC`,
+        [req.user.id, start, end]
+      ),
+    ]);
+
+    const events = [
+      ...occasionsRes.rows.map((r) => ({
+        kind: r.series_id ? "series_day" : "occasion",
+        id: r.id,
+        date: r.date,
+        time: r.time,
+        title: r.title,
+        hourTypeCode: r.session_type,
+        durationMinutes: r.duration_minutes,
+        traineeCount: Number(r.trainee_count),
+      })),
+      ...standaloneRes.rows.map((r) => ({
+        kind: "single",
+        id: r.id,
+        date: r.date,
+        time: r.time,
+        title: r.title,
+        hourTypeCode: r.session_type,
+        durationMinutes: r.duration_minutes,
+        studentName: r.student_name,
+      })),
+    ];
+
+    res.json({ events });
+  })
+);
+
 // GET /api/supervisor/schedule
 router.get(
   "/schedule",
