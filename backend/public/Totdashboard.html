@@ -5778,6 +5778,16 @@
 
         document.addEventListener("DOMContentLoaded", async() => {
             await loadMe();
+            // Connect the live Chat socket immediately at app load, not only
+            // when the Group Chat tab happens to be opened -- Direct Messages
+            // (the default tab) previously had no real-time delivery AT ALL
+            // (no socket connection, and the polling fallback only ever
+            // started as a side effect of that same connection attempt), so
+            // a message sent between two people who never touched Group Chat
+            // required a manual refresh to ever appear. connectGcSocket() is
+            // idempotent (see its own guard), so calling it again later from
+            // loadGroupChats() is a safe no-op.
+            connectGcSocket();
             await loadHourTypesAndExtendRecordTypes();
             loadHourTypesSettings();
             await loadStudents();
@@ -8688,6 +8698,14 @@ function renderChatInboxList(filterText) {
 // ---- Direct Messages (1:1 chat, inline within the Chat section -- a
 // dedicated chat-only interface, never the trainee profile modal) ---------
 let dmActiveStudentId = null;
+// Only set when the open conversation is the Master Trainer one (backed by
+// chat_rooms/is_direct, not the old chats/messages table a real trainee
+// conversation uses) -- the live socket's "newMessage" event (Group Chats'
+// own event, reused for this same is_direct-room infrastructure) carries a
+// roomId, not a studentId, so recognizing "this event is for my
+// currently-open Master Trainer thread" needs the room id, not just
+// dmActiveStudentId. null whenever a real trainee conversation is open.
+let dmActiveRoomId = null;
 
 function markActiveInboxItem() {
   document.querySelectorAll("#chatInboxList .inbox-item").forEach((el) => {
@@ -8697,6 +8715,7 @@ function markActiveInboxItem() {
 
 async function openDirectThread(studentId) {
   dmActiveStudentId = studentId;
+  dmActiveRoomId = null;
   markActiveInboxItem();
 
   const student = isMyMasterTrainer(studentId) ? myMasterTrainer : allStudents.find((s) => Number(s.id) === Number(studentId));
@@ -8708,6 +8727,7 @@ async function openDirectThread(studentId) {
   thread.innerHTML = '<div class="empty-state">Loading messages...</div>';
   const data = await apiRequest(dmMessagesUrl(studentId, false));
   if (!data) return;
+  if (data.roomId) dmActiveRoomId = data.roomId;
   // The GET above already marked this conversation's incoming messages (and
   // their notifications) read server-side -- refresh the nav/tab badge and
   // this conversation's own per-row badge in the inbox list to match
@@ -8882,16 +8902,33 @@ function connectGcSocket() {
       appendGcMessage(payload.message);
       updateGcRoomPreview(payload.roomId, payload.message);
       markGcRoomRead(gcActiveRoomId).then(loadDmUnreadBadge);
+    } else if (payload.roomId === dmActiveRoomId) {
+      // The Master Trainer thread is currently open -- it's also
+      // chat_rooms-backed (is_direct), so it arrives as "newMessage" with a
+      // roomId, never "newDirectMessage" (that event is only for the old
+      // chats/messages table a real trainee conversation uses).
+      appendDmMessage(payload.message);
+      markGcRoomRead(dmActiveRoomId).then(loadDmUnreadBadge);
+      loadChatInbox();
+    } else if (myMasterTrainer && payload.message.senderId === myMasterTrainer.id) {
+      // A Master Trainer message arrived while some OTHER conversation (or
+      // no conversation) is open -- just refresh the inbox preview/badge,
+      // same as the "not open" branch below already does for a real
+      // trainee conversation.
+      loadDmUnreadBadge();
+      loadChatInbox();
     } else {
       updateGcRoomPreview(payload.roomId, payload.message, { incrementUnread: true });
       loadDmUnreadBadge();
     }
   });
-  // Direct Messages (1:1) share this same socket connection -- a distinct
-  // event name/channel (see chatSocket.js's dmChannel) so it can never be
-  // confused with a Group Chat room message. payload.message.senderId is
-  // the trainee who just sent it, which is exactly dmActiveStudentId when
-  // that conversation is the one currently open.
+  // Direct Messages (1:1 with a real trainee) share this same socket
+  // connection -- a distinct event name/channel (see chatSocket.js's
+  // dmChannel) so it can never be confused with a Group Chat room message.
+  // payload.message.senderId is the trainee who just sent it, which is
+  // exactly dmActiveStudentId when that conversation is the one currently
+  // open (the Master Trainer thread is handled above instead, via
+  // "newMessage"/dmActiveRoomId -- it never fires this event).
   gcSocket.on("newDirectMessage", (payload) => {
     loadDmUnreadBadge();
     loadChatInbox();
@@ -8904,12 +8941,19 @@ function connectGcSocket() {
   }, 4000);
 }
 
+// Fallback ONLY -- engages when the live socket never connects (e.g. a
+// host that doesn't proxy WebSocket upgrades). Covers Direct Messages too,
+// not just Group Chats: previously this only polled gcRoomList/gcThread,
+// so a Direct Message conversation had literally no update mechanism at
+// all once the socket path failed -- neither live nor polled.
 function startGcPolling() {
   if (gcPollTimer) return;
   gcUsingSocket = false;
   gcPollTimer = setInterval(() => {
     loadGcRoomList();
     if (gcActiveRoomId) loadGcThread(gcActiveRoomId);
+    loadChatInbox();
+    if (dmActiveStudentId) openDirectThread(dmActiveStudentId);
   }, 5000);
 }
 

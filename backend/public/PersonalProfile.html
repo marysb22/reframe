@@ -4267,6 +4267,12 @@
 
         document.addEventListener("DOMContentLoaded", async() => {
             await loadProfile();
+            // Connect the live Chat socket immediately at app load, not only
+            // when the Group Chats tab happens to be opened -- Direct
+            // Messages (the default tab) previously had no real-time
+            // delivery at all. Idempotent, so a later call from
+            // loadGroupChats() is a safe no-op.
+            connectGcSocket();
             loadNotificationPrefs();
             loadNotifUnreadCount();
             loadDmUnreadBadge();
@@ -5987,19 +5993,34 @@ function connectGcSocket() {
             appendGcMessage(payload.message);
             updateGcRoomPreview(payload.roomId, payload.message);
             markGcRoomRead(gcActiveRoomId).then(loadDmUnreadBadge);
+        } else if (activeContactKind === "trainee" && payload.roomId === activeRoomId) {
+            // The open conversation is a peer-trainee Direct Message --
+            // also chat_rooms-backed (is_direct), so it arrives here too,
+            // never as a distinct DM-only event.
+            appendDmMessage({ ...payload.message, isMine: false });
+            apiRequest(`/chat-rooms/${activeRoomId}/read`, { method: "POST" }).then(loadDmUnreadBadge);
+            loadChatInbox();
+        } else if (dmConversations.some((c) => c.contact.kind === "trainee" && c.roomId === payload.roomId)) {
+            // A peer-trainee DM arrived while some OTHER conversation (or
+            // none) is open -- refresh the inbox preview/badge only.
+            loadDmUnreadBadge();
+            loadChatInbox();
         } else {
             updateGcRoomPreview(payload.roomId, payload.message, { incrementUnread: true });
             loadDmUnreadBadge();
         }
     });
-    // Direct Messages (1:1) share this same socket connection -- a distinct
-    // event name/channel (see chatSocket.js's dmChannel) so it can never be
-    // confused with a Group Chat room message. payload.message.senderId is
-    // the supervisor who just sent it, which is exactly activeSupervisorId
-    // when that conversation is the one currently open.
+    // Direct Messages with a supervisor (1:1) share this same socket
+    // connection -- a distinct event name/channel (see chatSocket.js's
+    // dmChannel) so it can never be confused with a Group Chat room
+    // message. payload.message.senderId is the supervisor who just sent
+    // it, which is exactly activeSupervisorId when that conversation is
+    // the one currently open (a peer-trainee conversation is handled above
+    // instead, via "newMessage"/activeRoomId -- it never fires this event).
     gcSocket.on("newDirectMessage", (payload) => {
         loadDmUnreadBadge();
-        if (payload.message.senderId === activeSupervisorId) {
+        loadChatInbox();
+        if (activeContactKind === "supervisor" && payload.message.senderId === activeSupervisorId) {
             openThread(activeSupervisorId);
         }
     });
@@ -6008,12 +6029,19 @@ function connectGcSocket() {
     }, 4000);
 }
 
+// Fallback ONLY -- engages when the live socket never connects. Covers
+// Direct Messages too, not just Group Chats: previously this only polled
+// gcRoomList/gcThread, so a Direct Message conversation (supervisor or
+// peer trainee) had no update mechanism at all once the socket path
+// failed -- neither live nor polled.
 function startGcPolling() {
     if (gcPollTimer) return;
     gcUsingSocket = false;
     gcPollTimer = setInterval(() => {
         loadGcRoomList();
         if (gcActiveRoomId) loadGcThread(gcActiveRoomId);
+        loadChatInbox();
+        if (activeSupervisorId) openThread(activeSupervisorId, activeContactKind);
     }, 5000);
 }
 

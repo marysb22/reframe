@@ -1339,7 +1339,7 @@ router.post(
       // false from here -- toMessage() above computed it as true (relative
       // to the sender who just posted), which would be wrong to hand to
       // the recipient's UI as-is.
-      broadcastDirectMessage(req.app.get("io"), chatId, { ...message, isMine: false, senderId: req.user.id }).catch(() => {});
+      broadcastDirectMessage(req.app.get("io"), supervisorId, { ...message, isMine: false, senderId: req.user.id }).catch(() => {});
     } catch (notifyErr) {
       console.error("[profile] failed to notify supervisor of new message:", notifyErr);
     }

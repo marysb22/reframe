@@ -234,7 +234,7 @@ router.get(
             );
         }
 
-        res.json({ messages: rows.map((r) => toMessage(r, masterTrainerId)) });
+        res.json({ roomId, messages: rows.map((r) => toMessage(r, masterTrainerId)) });
     })
 );
 

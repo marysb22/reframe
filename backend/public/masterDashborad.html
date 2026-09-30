@@ -4812,6 +4812,13 @@
 
         document.addEventListener("DOMContentLoaded", async() => {
             await loadMe();
+            // Connect the live Chat socket immediately at app load, not only
+            // when the Group Chats tab happens to be opened -- Direct
+            // Messages with a ToT previously had no real-time delivery at
+            // all (see connectGcSocket's own definition below for the full
+            // root-cause note). Idempotent, so a later call from
+            // loadGroupChats() is a safe no-op.
+            connectGcSocket();
             await loadDashboardHours();
             await loadDashboardSummary();
             await loadSchedule();
@@ -7253,6 +7260,18 @@
                     appendGcMessage(payload.message);
                     updateGcRoomPreview(payload.roomId, payload.message);
                     markGcRoomRead(gcActiveRoomId).then(loadDmUnreadBadge);
+                } else if (payload.roomId === dmActiveRoomId) {
+                    // The Direct Message thread with a ToT is currently
+                    // open -- also chat_rooms-backed, so it arrives here
+                    // (never as a distinct DM-only event).
+                    appendDmMessage(payload.message);
+                    markGcRoomRead(dmActiveRoomId).then(loadDmUnreadBadge);
+                    loadChatInbox();
+                } else if (dmConversations.some((c) => Number(c.tot.id) === Number(payload.message.senderId))) {
+                    // A ToT DM arrived while some OTHER conversation (or
+                    // none) is open -- refresh the inbox preview/badge only.
+                    loadDmUnreadBadge();
+                    loadChatInbox();
                 } else {
                     updateGcRoomPreview(payload.roomId, payload.message, { incrementUnread: true });
                     loadDmUnreadBadge();
@@ -7263,12 +7282,19 @@
             }, 4000);
         }
 
+        // Fallback ONLY -- engages when the live socket never connects.
+        // Covers Direct Messages too, not just Group Chats: previously this
+        // only polled gcRoomList/gcThread, so a Direct Message conversation
+        // with a ToT had no update mechanism at all once the socket path
+        // failed -- neither live nor polled.
         function startGcPolling() {
             if (gcPollTimer) return;
             gcUsingSocket = false;
             gcPollTimer = setInterval(() => {
                 loadGcRoomList();
                 if (gcActiveRoomId) loadGcThread(gcActiveRoomId);
+                loadChatInbox();
+                if (dmActiveTotId) openDirectThread(dmActiveTotId);
             }, 5000);
         }
 
@@ -7630,6 +7656,13 @@
         // /supervisor/students/:id/messages) differ.
         let dmConversations = [];
         let dmActiveTotId = null;
+        // This Direct Message conversation is entirely chat_rooms-backed
+        // (is_direct=TRUE, no legacy chats/messages table on the Master
+        // Trainer side at all) -- its live updates arrive as "newMessage"
+        // (Group Chats' own event, same infrastructure) carrying a roomId,
+        // so recognizing "this event is for my currently-open ToT thread"
+        // needs the room id, not just dmActiveTotId.
+        let dmActiveRoomId = null;
 
         async function loadChatInbox() {
             const list = document.getElementById("chatInboxList");
@@ -7700,6 +7733,7 @@
 
         async function openDirectThread(totId) {
             dmActiveTotId = totId;
+            dmActiveRoomId = null;
             markActiveInboxItem();
 
             const tot = allTots.find((t) => Number(t.id) === Number(totId));
@@ -7711,6 +7745,7 @@
             thread.innerHTML = '<div class="empty-state">Loading messages...</div>';
             const data = await apiRequest(`/master-trainer/tots/${totId}/messages`);
             if (!data) return;
+            if (data.roomId) dmActiveRoomId = data.roomId;
             loadDmUnreadBadge();
             loadChatInbox();
             if (!data.messages.length) {

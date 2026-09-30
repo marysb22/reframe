@@ -2315,7 +2315,7 @@ router.get(
   "/messages/previews",
   asyncRoute(async (req, res, db) => {
     const { rows } = await db.query(
-      `SELECT c.student_id, c.target_supervisor_id, lm.content, lm.created_at
+      `SELECT c.student_id, lm.content, lm.created_at
        FROM chats c
        LEFT JOIN messages lm ON lm.id = (
          SELECT id FROM messages m2 WHERE m2.chat_id = c.id ORDER BY m2.created_at DESC, m2.id DESC LIMIT 1
@@ -2325,10 +2325,32 @@ router.get(
     );
     const previews = {};
     rows.forEach((r) => {
-      const contactId = r.student_id != null ? r.student_id : r.target_supervisor_id;
-      if (contactId == null) return;
-      previews[contactId] = r.created_at ? { content: r.content, createdAt: r.created_at } : null;
+      if (r.student_id == null) return;
+      previews[r.student_id] = r.created_at ? { content: r.content, createdAt: r.created_at } : null;
     });
+
+    // The Master Trainer conversation is a separate table entirely
+    // (chat_rooms/chat_room_messages, is_direct=TRUE) -- the old `chats`
+    // table above can never hold it, so it was never included here despite
+    // this route's own comment claiming it was. Merge it in the same shape.
+    const mt = await loadMyMasterTrainer(db, req.user.id);
+    if (mt) {
+      const { rows: mtRows } = await db.query(
+        `SELECT crm.content, crm.created_at
+         FROM chat_room_members me
+         JOIN chat_rooms r ON r.id = me.room_id AND r.is_direct = TRUE
+         JOIN chat_room_members other ON other.room_id = r.id AND other.user_id = ?
+         LEFT JOIN chat_room_messages crm ON crm.id = (
+           SELECT id FROM chat_room_messages WHERE room_id = r.id ORDER BY created_at DESC, id DESC LIMIT 1
+         )
+         WHERE me.user_id = ?`,
+        [mt.id, req.user.id]
+      );
+      if (mtRows.length) {
+        previews[mt.id] = mtRows[0].created_at ? { content: mtRows[0].content, createdAt: mtRows[0].created_at } : null;
+      }
+    }
+
     res.json({ previews });
   })
 );
@@ -2370,7 +2392,7 @@ router.post(
         relatedEntityType: "message",
         relatedEntityId: req.user.id,
       });
-      broadcastDirectMessage(req.app.get("io"), chatId, { ...message, isMine: false, senderId: req.user.id }).catch(() => {});
+      broadcastDirectMessage(req.app.get("io"), studentId, { ...message, isMine: false, senderId: req.user.id }).catch(() => {});
     } catch (notifyErr) {
       console.error("[supervisor] failed to notify trainee of new message:", notifyErr);
     }
@@ -2479,7 +2501,7 @@ router.get(
       );
     }
 
-    res.json({ messages: rows.map((r) => toMessage(r, req.user.id)) });
+    res.json({ roomId, messages: rows.map((r) => toMessage(r, req.user.id)) });
   })
 );
 
