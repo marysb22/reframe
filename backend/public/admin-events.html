@@ -285,9 +285,13 @@ tr:hover td{background:var(--surface-2);}
                 <span id="evImageStatus" style="font-size:11px;color:var(--muted);"></span>
               </div>
             </div>
-            <div>
+            <div style="grid-column:1/-1;">
               <label>Fee</label>
               <input type="text" id="evFee" placeholder="$150 or Free">
+            </div>
+            <div style="grid-column:1/-1;">
+              <label>Continuing Education Credits <span dir="rtl" style="font-weight:400;color:var(--faint);">(أرصدة التعليم المستمر)</span></label>
+              <input type="text" id="evCredits" dir="auto" placeholder="e.g. 10 CE Credits">
             </div>
             <div style="grid-column:1/-1;">
               <label>Registration link</label>
@@ -306,10 +310,10 @@ tr:hover td{background:var(--surface-2);}
           <label>Facilitator bio</label><input type="text" id="evFacilitatorBioEn">
 
           <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Arabic content (optional)</h4>
-          <label>العنوان</label><input type="text" id="evTitleAr">
-          <label>الصيغة</label><input type="text" id="evFormatAr">
-          <label>الميسّر</label><input type="text" id="evFacilitatorAr">
-          <label>نبذة</label><input type="text" id="evAboutAr">
+          <label dir="rtl" style="text-align:right;">العنوان</label><input type="text" id="evTitleAr" dir="rtl">
+          <label dir="rtl" style="text-align:right;">الصيغة</label><input type="text" id="evFormatAr" dir="rtl">
+          <label dir="rtl" style="text-align:right;">الميسّر</label><input type="text" id="evFacilitatorAr" dir="rtl">
+          <label dir="rtl" style="text-align:right;">نبذة</label><input type="text" id="evAboutAr" dir="rtl">
 
           <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;">
             <button type="button" class="btn btn-secondary" onclick="closeEventForm()">Cancel</button>
@@ -618,7 +622,7 @@ const EVENT_DRAFT_KEY = "eventFormDraft";
 // editor's own rows aren't draft-autosaved (a small, accepted gap: a lost
 // draft only needs the date(s) re-entered, everything else restores fine).
 const EVENT_FORM_FIELD_IDS = [
-  "evId", "evStatus", "evImage", "evFee", "evRegister",
+  "evId", "evStatus", "evImage", "evFee", "evCredits", "evRegister",
   "evTitleEn", "evFormatEn", "evFacilitatorEn", "evAboutEn",
   "evLearnEn", "evWhoEn", "evOutcomesEn", "evFacilitatorBioEn",
   "evTitleAr", "evFormatAr", "evFacilitatorAr", "evAboutAr",
@@ -693,6 +697,7 @@ async function editEvent(id) {
     document.getElementById("evImagePreviewWrap").style.display = "none";
   }
   document.getElementById("evFee").value = ev.fee || "";
+  document.getElementById("evCredits").value = ev.credits || "";
   document.getElementById("evRegister").value = ev.register || "";
 
   document.getElementById("evTitleEn").value = ev.english.title || "";
@@ -747,6 +752,7 @@ document.getElementById("eventForm").addEventListener("submit", async (e) => {
     status: document.getElementById("evStatus").value,
     image: document.getElementById("evImage").value,
     fee: document.getElementById("evFee").value,
+    credits: document.getElementById("evCredits").value,
     register: document.getElementById("evRegister").value,
     englishTitle: document.getElementById("evTitleEn").value,
     englishFormat: document.getElementById("evFormatEn").value,
