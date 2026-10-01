@@ -3525,10 +3525,13 @@
                         <div class="card-title-left"><i class="fa fa-user-graduate"></i>
                             <h2>Trainee Profiles</h2>
                         </div>
-                        <button class="btn" onclick="openGroupSessionModal()"><i class="fa fa-people-group"></i>Add Session</button>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn" onclick="openGroupSessionModal()"><i class="fa fa-people-group"></i>Add Session</button>
+                            <button class="btn btn-secondary" onclick="openGroupSessionModal(true)"><i class="fa fa-calendar-week"></i>Add Multi-Day Session</button>
+                        </div>
                     </div>
                     <p class="card-subtitle">Every trainee belonging to your Group, with the Trainer(s) in Training currently assigned to them. "Add Session" logs a training/supervision activity for your whole Group at once -- Attendance is then recorded separately, from the
-                        Group Sessions list below.</p>
+                        Group Sessions list below. "Add Multi-Day Session" opens the same form pre-set for several days.</p>
                     <div class="toolbar">
                         <input type="text" id="traineeSearch" placeholder="Search by name or ID...">
                         <select id="traineeTotFilter"><option value="">All ToTs</option></select>
@@ -5862,16 +5865,25 @@
             }));
         }
 
-        function openGroupSessionModal() {
+        // startMultiDay (from the "Add Multi-Day Session" button) pre-seeds a
+        // second day row and relabels the modal, so the user lands directly on
+        // a multi-day-ready form instead of having to notice "+ Add another
+        // day" themselves -- everything past this point (state, submit
+        // handler, API) is the exact same single groupSessionForm flow as a
+        // plain "Add Session"; whether it ends up creating a session_occasion
+        // or a session_series is still decided purely by how many day rows
+        // are present at submit time.
+        function openGroupSessionModal(startMultiDay) {
             const form = document.getElementById("groupSessionForm");
             form.reset();
-            document.getElementById("gsModalTitle").textContent = "Add Session";
+            document.getElementById("gsModalTitle").textContent = startMultiDay ? "Add Multi-Day Session" : "Add Session";
             document.getElementById("gsEditOccasionId").value = "";
             document.getElementById("gsEditSeriesId").value = "";
             renderGroupSessionTypeOptions(document.getElementById("gsType"));
             document.getElementById("gsDaysList").innerHTML = "";
             gsDayRowSeq = 0;
             addSessionDayRow();
+            if (startMultiDay) addSessionDayRow();
             openModal("groupSessionModal");
         }
 

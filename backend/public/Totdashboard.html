@@ -4235,10 +4235,11 @@
                         </div>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">
                             <button class="btn btn-secondary" onclick="openGroupSessionModal()"><i class="fa fa-people-group"></i>Add Session</button>
+                            <button class="btn btn-secondary" onclick="openGroupSessionModal(true)"><i class="fa fa-calendar-week"></i>Add Multi-Day Session</button>
                             <button class="btn btn-secondary" onclick="openSessionModal()"><i class="fa fa-plus"></i>Log Single Activity</button>
                         </div>
                     </div>
-                    <p class="card-subtitle">Every training/supervision activity across your whole caseload -- one row per real activity. Expand a Group Session to see who it covered; "Log Single Activity" logs one trainee at a time.</p>
+                    <p class="card-subtitle">Every training/supervision activity across your whole caseload -- one row per real activity. Expand a Group Session to see who it covered; "Log Single Activity" logs one trainee at a time. "Add Multi-Day Session" opens the same form pre-set for several days -- see the Multi-day Sessions list below.</p>
 
                     <div class="act-summary" id="actSummary">
                         <div class="act-summary-item"><span class="act-summary-value" id="actSumTotal">&mdash;</span><span class="act-summary-label">Total Activities</span></div>
@@ -8019,16 +8020,24 @@ function readSessionDayRows() {
   }));
 }
 
-function openGroupSessionModal() {
+// startMultiDay (from the "Add Multi-Day Session" button) pre-seeds a
+// second day row and relabels the modal, so the user lands directly on a
+// multi-day-ready form instead of having to notice "+ Add another day"
+// themselves -- everything past this point (state, submit handler, API)
+// is the exact same single groupSessionForm flow as a plain "Add Session";
+// whether it ends up creating a session_occasion or a session_series is
+// still decided purely by how many day rows are present at submit time.
+function openGroupSessionModal(startMultiDay) {
   const form = document.getElementById("groupSessionForm");
   form.reset();
-  document.getElementById("gsModalTitle").textContent = "Add Session";
+  document.getElementById("gsModalTitle").textContent = startMultiDay ? "Add Multi-Day Session" : "Add Session";
   document.getElementById("gsEditOccasionId").value = "";
   document.getElementById("gsEditSeriesId").value = "";
   renderSessionTypeOptions(document.getElementById("gsType"), false);
   document.getElementById("gsDaysList").innerHTML = "";
   gsDayRowSeq = 0;
   addSessionDayRow();
+  if (startMultiDay) addSessionDayRow();
   openModal("groupSessionModal");
 }
 
