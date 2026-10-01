@@ -4239,7 +4239,7 @@
                             <button class="btn btn-secondary" onclick="openSessionModal()"><i class="fa fa-plus"></i>Log Single Activity</button>
                         </div>
                     </div>
-                    <p class="card-subtitle">Every training/supervision activity across your whole caseload -- one row per real activity. Expand a Group Session to see who it covered; "Log Single Activity" logs one trainee at a time. "Add Multi-Day Session" opens the same form pre-set for several days -- see the Multi-day Sessions list below.</p>
+                    <p class="card-subtitle">Every training/supervision activity across your whole caseload -- one row per real activity, including a whole multi-day Session as a single expandable row. Expand a Group Session or multi-day Session to see who it covered; "Log Single Activity" logs one trainee at a time; "Add Multi-Day Session" opens the same form pre-set for several days.</p>
 
                     <div class="act-summary" id="actSummary">
                         <div class="act-summary-item"><span class="act-summary-value" id="actSumTotal">&mdash;</span><span class="act-summary-label">Total Activities</span></div>
@@ -4297,39 +4297,6 @@
                     </div>
 
                     <div class="act-pagination" id="actPagination"></div>
-                </section>
-
-                <!-- Multi-day Sessions (session_series, migration 030) -- a
-                     Session spanning several dates, e.g. 5 days x 5h = 25h.
-                     Kept as its own compact list rather than folded into the
-                     Training Activities table above, since a variable-length
-                     day list doesn't fit that table's flat per-row search/
-                     sort/paginate model. Single-day Sessions keep living in
-                     Training Activities, unchanged. -->
-                <section class="system-card">
-                    <div class="card-title">
-                        <div class="card-title-left"><i class="fa fa-calendar-week"></i>
-                            <h2>Multi-day Sessions</h2>
-                        </div>
-                    </div>
-                    <p class="card-subtitle">A Session spanning several dates (e.g. 5 days x 5h = 25h), each day with its own Attendance. Use "Add Session" above and add more than one day.</p>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Type</th>
-                                <th>Dates</th>
-                                <th>Total hours</th>
-                                <th>Attendance</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sessionSeriesBody">
-                            <tr class="loading-row">
-                                <td colspan="6">Loading&hellip;</td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </section>
             </section>
 
@@ -6097,7 +6064,6 @@
                 // section), so it loads eagerly right alongside the roster.
                 loadActivities(),
                 loadActivitiesSummary(),
-                loadSessionSeriesList(),
             ]);
         }
 
@@ -8150,7 +8116,6 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
     closeModal("groupSessionModal");
     loadActivities();
     loadActivitiesSummary();
-    loadSessionSeriesList();
     loadSchedule();
     loadTrainingHoursSummary();
   }
@@ -8168,78 +8133,13 @@ async function deleteGroupSessionOccasion(occasionId) {
   });
 }
 
-// ---- Multi-day Sessions (session_series) -- see the HTML comment above
-// #sessionSeriesBody for why this is its own small list rather than folded
-// into Training Activities. Each day still uses the exact same per-day
-// Attendance modal as a single-day Session, unchanged.
+// ---- Multi-day Sessions (session_series) -- a whole multi-day Session
+// renders as ONE expandable row inside the Training Activities table above
+// (kind === "series", see renderActivities/actSeriesDetailHtml) -- there is
+// no separate standalone list. gsSeriesDayRosterCache/gsSeriesDaysHtml below
+// back that row's own expand panel (populated lazily in toggleActivityExpand).
 
-let gsSeriesList = [];
-let gsExpandedSeriesId = null;
 const gsSeriesDayRosterCache = new Map();
-
-async function loadSessionSeriesList() {
-  const data = await apiRequest("/supervisor/session-series");
-  if (!data) return;
-  gsSeriesList = data.series;
-  gsSeriesDayRosterCache.clear();
-  renderSessionSeriesList();
-  // If a series was expanded, its day list was just cleared above and
-  // would otherwise sit stuck on "Loading days..." -- re-fetch it so the
-  // still-expanded row shows current per-day recorded counts.
-  if (gsExpandedSeriesId != null) {
-    const seriesId = gsExpandedSeriesId;
-    const detail = await apiRequest(`/supervisor/session-series/${seriesId}`);
-    if (detail) {
-      gsSeriesDayRosterCache.set(seriesId, detail.days);
-      const el = document.getElementById(`gs-series-detail-${seriesId}`);
-      if (el) el.innerHTML = gsSeriesDaysHtml(detail.days);
-    }
-  }
-}
-
-function renderSessionSeriesList() {
-  const tbody = document.getElementById("sessionSeriesBody");
-  if (!gsSeriesList.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No multi-day Sessions yet.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = gsSeriesList.map(sessionSeriesRowHtml).join("");
-}
-
-function sessionSeriesRowHtml(s) {
-  const expanded = gsExpandedSeriesId === s.id;
-  const dateRange = s.startDate === s.endDate
-    ? new Date(s.startDate).toLocaleDateString()
-    : `${new Date(s.startDate).toLocaleDateString()} – ${new Date(s.endDate).toLocaleDateString()}`;
-  const mainRow = `
-    <tr class="gs-series-row" onclick="toggleSessionSeriesExpand(${s.id})" style="cursor:pointer;">
-      <td><i class="fa fa-chevron-${expanded ? "down" : "right"}" style="width:12px;color:var(--faint);margin-right:6px;"></i>${escapeHtml(s.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(${s.dayCount}-day Session)</span></td>
-      <td>${escapeHtml(s.sessionTypeLabel)}</td>
-      <td>${dateRange}</td>
-      <td>${(s.totalMinutes / 60).toFixed(2)}h total</td>
-      <td>${s.presentCount}/${s.slotCount} attended &middot; ${(s.slotCount ? (s.presentCount / s.slotCount) * 100 : 0).toFixed(2)}%</td>
-      <td class="row-actions" onclick="event.stopPropagation();">
-        <button class="icon-btn" title="Edit" onclick="editGroupSessionSeries(${s.id})"><i class="fa fa-pen"></i></button>
-        <button class="icon-btn danger" title="Delete" onclick="deleteGroupSessionSeries(${s.id})"><i class="fa fa-trash"></i></button>
-      </td>
-    </tr>`;
-  const detailRow = expanded
-    ? `<tr><td colspan="6" id="gs-series-detail-${s.id}">${gsSeriesDayRosterCache.has(s.id) ? gsSeriesDaysHtml(gsSeriesDayRosterCache.get(s.id)) : "Loading days…"}</td></tr>`
-    : "";
-  return mainRow + detailRow;
-}
-
-async function toggleSessionSeriesExpand(seriesId) {
-  gsExpandedSeriesId = gsExpandedSeriesId === seriesId ? null : seriesId;
-  renderSessionSeriesList();
-  if (gsExpandedSeriesId !== seriesId) return;
-  if (!gsSeriesDayRosterCache.has(seriesId)) {
-    const data = await apiRequest(`/supervisor/session-series/${seriesId}`);
-    if (data) gsSeriesDayRosterCache.set(seriesId, data.days);
-  }
-  const el = document.getElementById(`gs-series-detail-${seriesId}`);
-  if (el && gsSeriesDayRosterCache.has(seriesId)) el.innerHTML = gsSeriesDaysHtml(gsSeriesDayRosterCache.get(seriesId));
-}
 
 function gsSeriesDaysHtml(days) {
   return `
@@ -8267,7 +8167,8 @@ async function deleteGroupSessionSeries(seriesId) {
     const result = await apiRequest(`/supervisor/session-series/${seriesId}`, { method: "DELETE" });
     if (result) {
       showToast("Session deleted", "success");
-      loadSessionSeriesList();
+      loadActivities();
+      loadActivitiesSummary();
       loadTrainingHoursSummary();
     }
   });
@@ -8410,15 +8311,11 @@ async function saveAttendance() {
       loadActivities();
       loadActivitiesSummary();
       loadTrainingHoursSummary();
-      // Refreshes the multi-day Sessions list too, in case the attended
-      // day belongs to an expanded series (loadSessionSeriesList re-fetches
-      // its day list so the recorded count shown there stays current).
-      loadSessionSeriesList();
-      // loadSessionSeriesList() unconditionally clears gsSeriesDayRosterCache
-      // (shared with the Training Activities feed's own series expand panel,
-      // see actSeriesDetailHtml) but only repopulates it for the *separate*
-      // Multi-day Sessions table's own expanded row -- refresh this feed's
-      // expanded series row too, or it's left stuck on "Loading days...".
+      // loadActivities() re-renders the whole feed from fresh data, but a
+      // currently-expanded multi-day Session row's own day list lives in
+      // gsSeriesDayRosterCache (see actSeriesDetailHtml), which a fresh
+      // fetch doesn't touch -- refresh it explicitly so the recorded count
+      // shown there stays current instead of sitting stale.
       if (actExpandedId && actExpandedId.startsWith("series:")) {
         const seriesId = Number(actExpandedId.split(":")[1]);
         apiRequest(`/supervisor/session-series/${seriesId}`).then((data) => {
