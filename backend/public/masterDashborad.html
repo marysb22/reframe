@@ -3676,7 +3676,7 @@
                     <h3>New meeting</h3>
                     <form id="addMeetingForm">
                         <label>Title</label>
-                        <input type="text" id="amTitle" required>
+                        <input type="text" id="amTitle" dir="auto" required>
                         <label>Share with</label>
                         <select id="amTargetType" onchange="onAddMeetingTargetChange()">
                             <option value="group">Whole Group</option>
@@ -3856,9 +3856,9 @@
                             <select id="ammTotSelect"></select>
                         </div>
                         <label>Title</label>
-                        <input type="text" id="ammTitle" required>
+                        <input type="text" id="ammTitle" dir="auto" required>
                         <label>Description (optional)</label>
-                        <textarea id="ammDescription"></textarea>
+                        <textarea id="ammDescription" dir="auto"></textarea>
                         <label>Type</label>
                         <select id="ammType" onchange="toggleAmmTypeFields()">
 <option value="document">Document (PDF / Word / PowerPoint)</option>
@@ -3998,7 +3998,7 @@
                                     <div class="empty-state">Select a conversation to start chatting.</div>
                                 </div>
                                 <div class="gc-composer" id="dmComposer" style="display:none;">
-
+                                    <textarea id="dmInput" dir="auto" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDirectMessage();}"></textarea>
                                     <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendDirectMessage()"><i class="fa fa-paper-plane"></i></button>
                                 </div>
                             </div>
@@ -4038,7 +4038,7 @@
                                 <div class="gc-composer">
                                     <input type="file" id="gcAttachmentInput" style="display:none;" onchange="onGcAttachmentSelected(this)">
                                     <button type="button" class="icon-btn" title="Attach a file" onclick="document.getElementById('gcAttachmentInput').click()"><i class="fa fa-paperclip"></i></button>
-
+                                    <textarea id="gcInput" dir="auto" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGcMessage();}"></textarea>
                                     <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendGcMessage()"><i class="fa fa-paper-plane"></i></button>
                                 </div>
                             </div>
@@ -4355,7 +4355,7 @@
                 <input type="hidden" id="gsEditOccasionId" value="">
                 <input type="hidden" id="gsEditSeriesId" value="">
                 <div class="record-form-grid">
-                    <div><label>Session Title</label><input type="text" id="gsTitle" required></div>
+                    <div><label>Session Title</label><input type="text" id="gsTitle" dir="auto" required></div>
                     <div><label>Session Type</label><select id="gsType" required></select></div>
                     <div><label>Attachment <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="file" id="gsAttachment" accept=".pdf,.doc,.docx,image/*"></div>
                 </div>
@@ -4370,7 +4370,7 @@
                 <button type="button" class="btn btn-secondary" style="width:auto;margin-bottom:14px;" onclick="addSessionDayRow()"><i class="fa fa-plus"></i> Add another day</button>
 
                 <label>Notes <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
-                <textarea id="gsNotes"></textarea>
+                <textarea id="gsNotes" dir="auto"></textarea>
 
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('groupSessionModal')">Cancel</button>
@@ -5229,9 +5229,9 @@
                 c.innerHTML = currentTot.recentRecords.length ? `
           <ul class="record-list">${currentTot.recentRecords.map((r) => `
             <li class="record-item"><div>
-              ${r.title ? `<strong>${escapeHtml(r.title)}</strong>` : `<strong>${escapeHtml((r.recordType || "").replace(/_/g, " "))}</strong>`}
+              ${r.title ? `<strong dir="auto">${escapeHtml(r.title)}</strong>` : `<strong>${escapeHtml((r.recordType || "").replace(/_/g, " "))}</strong>`}
               <div class="rmeta">${r.date || ""} ${r.time || ""} &middot; logged by ${escapeHtml(r.supervisorName || "")}</div>
-              ${r.content ? `<div class="rcontent">${escapeHtml(r.content)}</div>` : ""}
+              ${r.content ? `<div class="rcontent" dir="auto">${escapeHtml(r.content)}</div>` : ""}
             </div>${r.status ? `<span class="pill ${r.status}">${escapeHtml(r.status)}</span>` : ""}</li>`).join("")}</ul>`
                     : '<p class="empty-state">No records yet.</p>';
                 return;
@@ -5240,7 +5240,7 @@
                 c.innerHTML = currentTot.documents.length ? `
           <ul class="doc-list">${currentTot.documents.map((d) => `
             <li class="doc-item"><div>
-              <div class="mrow-title">${escapeHtml(d.originalName || d.original_name)}</div>
+              <div class="mrow-title" dir="auto">${escapeHtml(d.originalName || d.original_name)}</div>
               <div class="mrow-actions" style="margin-top:4px;">
                 <button type="button" class="mrow-btn primary" onclick="openTotDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
                 <a class="mrow-btn" href="${withDownloadMode(`${UPLOADS}/documents/${d.filename}${TOKEN_Q}`)}" target="_blank" rel="noopener" download="${escapeHtml(d.originalName || d.original_name || "")}"><i class="fa fa-download"></i> Download</a>
@@ -5337,9 +5337,9 @@
           ${sessions.length ? sessions.map((s) => `
             <li class="record-item">
               <div>
-                <strong>${escapeHtml(s.title || "Training activity")}</strong>
+                <strong dir="auto">${escapeHtml(s.title || "Training activity")}</strong>
                 <div class="rmeta">${escapeHtml(s.session_date)} ${s.session_time ? escapeHtml(s.session_time) : ""} &middot; ${s.duration_minutes} min &middot; <span class="pill ${s.attendance_status || ""}">${escapeHtml(s.attendance_status || "—")}</span> ${s.status === "cancelled" ? '<span class="pill absent">cancelled</span>' : ""}</div>
-                ${s.notes ? `<div class="rcontent">${escapeHtml(s.notes)}</div>` : ""}
+                ${s.notes ? `<div class="rcontent" dir="auto">${escapeHtml(s.notes)}</div>` : ""}
               </div>
               <div class="row-actions">
                 ${s.status !== "cancelled" ? `<button class="icon-btn danger" title="Cancel activity" onclick="cancelTotSession(${s.id})"><i class="fa fa-ban"></i></button>` : ""}
@@ -5353,7 +5353,7 @@
             <li class="record-item"><div>
               <strong>${Number(a.hours) > 0 ? "+" : ""}${a.hours}h &mdash; ${escapeHtml(a.reason)}</strong>
               <div class="rmeta">${escapeHtml((a.created_at || "").slice(0, 10))} &middot; added by ${escapeHtml(a.added_by_name || "—")}</div>
-              ${a.notes ? `<div class="rcontent">${escapeHtml(a.notes)}</div>` : ""}
+              ${a.notes ? `<div class="rcontent" dir="auto">${escapeHtml(a.notes)}</div>` : ""}
             </div></li>`).join("") : '<li class="empty-state">No manual adjustments yet.</li>'}
         </ul>
       `;
@@ -5549,7 +5549,7 @@
               <td>${s.time || "--:--"}</td>
               <td>${escapeHtml(s.trainerName)}</td>
               <td>${escapeHtml(s.studentName)}</td>
-              <td>${escapeHtml(s.title || "&mdash;")}</td>
+              <td dir="auto">${escapeHtml(s.title || "&mdash;")}</td>
               <td>${s.durationMinutes ? s.durationMinutes + " min" : "&mdash;"}</td>
               <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td>
             </tr>`).join("")
@@ -5574,16 +5574,16 @@
                 : '<tr><td colspan="3" class="empty-state">No trainees in your Group.</td></tr>';
 
             const materialsList = d.materials.length
-                ? `<ul class="doc-list">${d.materials.map((m) => `<li class="doc-item"><div><strong>${escapeHtml(m.title)}</strong> <span style="color:var(--muted);font-size:11.5px;">(${escapeHtml(m.materialType)}) &middot; ${escapeHtml(m.trainerName)} &middot; ${new Date(m.createdAt).toLocaleDateString()}</span></div></li>`).join("")}</ul>`
+                ? `<ul class="doc-list">${d.materials.map((m) => `<li class="doc-item"><div><strong dir="auto">${escapeHtml(m.title)}</strong> <span style="color:var(--muted);font-size:11.5px;">(${escapeHtml(m.materialType)}) &middot; ${escapeHtml(m.trainerName)} &middot; ${new Date(m.createdAt).toLocaleDateString()}</span></div></li>`).join("")}</ul>`
                 : '<p class="empty-state">No materials added this week.</p>';
 
             const milestonesList = d.milestonesAchieved.length
-                ? `<ul class="doc-list">${d.milestonesAchieved.map((m) => `<li class="doc-item"><div><strong>${escapeHtml(m.studentName)}</strong> &mdash; ${escapeHtml(m.milestoneName)} <span style="color:var(--muted);font-size:11.5px;">(${new Date(m.completedAt).toLocaleDateString()})</span></div></li>`).join("")}</ul>`
+                ? `<ul class="doc-list">${d.milestonesAchieved.map((m) => `<li class="doc-item"><div><strong dir="auto">${escapeHtml(m.studentName)}</strong> &mdash; <span dir="auto">${escapeHtml(m.milestoneName)}</span> <span style="color:var(--muted);font-size:11.5px;">(${new Date(m.completedAt).toLocaleDateString()})</span></div></li>`).join("")}</ul>`
                 : '<p class="empty-state">No milestones achieved this week.</p>';
 
             const recommendationsList = d.recommendations.length
                 ? `<div class="record-list">${d.recommendations.map((r) => `
-            <div class="record-item"><div><strong>${escapeHtml(r.entityName)}</strong><div class="rcontent">${escapeHtml(r.detail)}</div></div>
+            <div class="record-item"><div><strong dir="auto">${escapeHtml(r.entityName)}</strong><div class="rcontent" dir="auto">${escapeHtml(r.detail)}</div></div>
               <span class="pill ${r.severity === "high" ? "absent" : "pending"}">${escapeHtml(r.severity)}</span></div>`).join("")}</div>`
                 : '<p class="empty-state">Nothing needs follow-up right now.</p>';
             // Recommendations are always computed from today's state, not
@@ -6128,7 +6128,7 @@
         function sessionOccasionRowHtml(o) {
             return `
         <tr>
-          <td>${escapeHtml(o.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(Single-Day Session)</span></td>
+          <td dir="auto">${escapeHtml(o.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(Single-Day Session)</span></td>
           <td>${escapeHtml(o.sessionTypeLabel)}</td>
           <td>${new Date(o.date).toLocaleDateString()}${o.time ? " " + o.time.slice(0, 5) : ""}</td>
           <td>${(o.durationMinutes / 60).toFixed(2)}h</td>
@@ -6148,7 +6148,7 @@
                 : `${new Date(s.startDate).toLocaleDateString()} – ${new Date(s.endDate).toLocaleDateString()}`;
             const mainRow = `
         <tr class="gs-series-row" onclick="toggleSessionSeriesExpand(${s.id})" style="cursor:pointer;">
-          <td><i class="fa fa-chevron-${expanded ? "down" : "right"}" style="width:12px;color:var(--faint);margin-right:6px;"></i>${escapeHtml(s.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(${s.dayCount}-day Session)</span></td>
+          <td dir="auto"><i class="fa fa-chevron-${expanded ? "down" : "right"}" style="width:12px;color:var(--faint);margin-right:6px;"></i>${escapeHtml(s.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(${s.dayCount}-day Session)</span></td>
           <td>${escapeHtml(s.sessionTypeLabel)}</td>
           <td>${dateRange}</td>
           <td>${(s.totalMinutes / 60).toFixed(2)}h total</td>
@@ -6209,7 +6209,7 @@
                 .map(
                     (o) => `
         <tr>
-          <td>${escapeHtml(o.title || "Untitled")}</td>
+          <td dir="auto">${escapeHtml(o.title || "Untitled")}</td>
           <td>${new Date(o.date).toLocaleDateString()}${o.time ? " " + o.time.slice(0, 5) : ""}</td>
           <td>${(o.durationMinutes / 60).toFixed(2)}h</td>
           <td>${o.recordedCount}/${o.attendeeCount} recorded</td>
@@ -6396,9 +6396,9 @@
                 c.innerHTML = currentTrainee.records.length ? `
           <ul class="record-list">${currentTrainee.records.map((r) => `
             <li class="record-item"><div>
-              ${r.title ? `<strong>${escapeHtml(r.title)}</strong>` : `<strong>${escapeHtml((r.recordType || "").replace(/_/g, " "))}</strong>`}
+              ${r.title ? `<strong dir="auto">${escapeHtml(r.title)}</strong>` : `<strong>${escapeHtml((r.recordType || "").replace(/_/g, " "))}</strong>`}
               <div class="rmeta">${r.date || ""} &middot; logged by ${escapeHtml(r.supervisorName || "")}</div>
-              ${r.content ? `<div class="rcontent">${escapeHtml(r.content)}</div>` : ""}
+              ${r.content ? `<div class="rcontent" dir="auto">${escapeHtml(r.content)}</div>` : ""}
             </div>${r.status ? `<span class="pill ${r.status}">${escapeHtml(r.status)}</span>` : ""}</li>`).join("")}</ul>`
                     : '<p class="empty-state">No records yet.</p>';
                 return;
@@ -6420,7 +6420,7 @@
                 c.innerHTML = currentTrainee.documents.length ? `
           <ul class="doc-list">${currentTrainee.documents.map((d) => `
             <li class="doc-item"><div>
-              <div class="mrow-title">${escapeHtml(d.originalName || d.original_name)}</div>
+              <div class="mrow-title" dir="auto">${escapeHtml(d.originalName || d.original_name)}</div>
               <div class="mrow-actions" style="margin-top:4px;">
                 <button type="button" class="mrow-btn primary" onclick="openTraineeDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
                 <a class="mrow-btn" href="${withDownloadMode(`${UPLOADS}/documents/${d.filename}${TOKEN_Q}`)}" target="_blank" rel="noopener" download="${escapeHtml(d.originalName || d.original_name || "")}"><i class="fa fa-download"></i> Download</a>
@@ -6850,7 +6850,7 @@
     <div class="material-row">
       <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
       <div class="mrow-body">
-        <div class="mrow-title">${escapeHtml(m.title)}</div>
+        <div class="mrow-title" dir="auto">${escapeHtml(m.title)}</div>
         <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; Shared by ${escapeHtml(m.supervisorName || "")}${dateStr ? " &middot; " + dateStr : ""}${sharedText}</div>
       </div>
       <div class="mrow-actions">
@@ -7152,7 +7152,7 @@
                     : "";
                 return `
         <li class="doc-item"><div>
-          <div class="mrow-title">${escapeHtml(d.originalName)}</div>
+          <div class="mrow-title" dir="auto">${escapeHtml(d.originalName)}</div>
           <div class="rmeta">${studentPrefix}Uploaded by ${escapeHtml(d.uploadedByName)}${roleText}${sharedText}${approvalText}</div>
           <div class="mrow-actions" style="margin-top:4px;">
             <button type="button" class="mrow-btn primary" onclick="openGroupDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
@@ -7568,7 +7568,7 @@
           ${!mine ? `<div class="gc-avatar ${grouped ? "spacer" : ""}">${avatarInnerHtml({ photo: m.senderPhoto, full_name: m.senderName })}</div>` : ""}
           <div class="gc-msg-col">
             ${!grouped && !mine ? `<div class="gc-sender-name">${escapeHtml(m.senderName)}</div>` : ""}
-            <div class="chat-bubble ${mine ? "mine" : "theirs"} ${m.status || ""}">${bodyHtml}<span class="gc-msg-time">${time}${statusHtml}</span></div>
+            <div class="chat-bubble ${mine ? "mine" : "theirs"} ${m.status || ""}" dir="auto">${bodyHtml}<span class="gc-msg-time">${time}${statusHtml}</span></div>
           </div>
         </div>
       `;
@@ -7813,7 +7813,7 @@
                 : m.status === "failed"
                 ? `<i class="fa fa-triangle-exclamation gc-msg-status failed" title="Failed to send -- tap to retry"></i>`
                 : "";
-            return `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"} ${m.status || ""}"${m.clientId ? ` data-client-id="${m.clientId}"` : ""}${m.status === "failed" ? ` onclick="retryDmMessage('${m.clientId}')"` : ""}>${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}${statusHtml}</div></div>`;
+            return `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"} ${m.status || ""}" dir="auto"${m.clientId ? ` data-client-id="${m.clientId}"` : ""}${m.status === "failed" ? ` onclick="retryDmMessage('${m.clientId}')"` : ""}>${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}${statusHtml}</div></div>`;
         }
 
         function appendDmMessage(m) {
@@ -8126,7 +8126,7 @@
             }
             body.innerHTML = filtered.map((a) => `
         <tr>
-          <td><strong>${escapeHtml(a.title)}</strong></td>
+          <td><strong dir="auto">${escapeHtml(a.title)}</strong></td>
           <td>${escapeHtml(a.studentName)}</td>
           <td>${escapeHtml(a.trainerName)}</td>
           <td>${a.dueDate ? String(a.dueDate).slice(0, 10) : "&mdash;"}</td>
@@ -8166,7 +8166,7 @@
           <div>
             <strong>${escapeHtml(ATTENTION_LABELS[item.ruleId] || item.ruleId)}</strong>
             <div class="rmeta">${escapeHtml(item.entityName || "")}</div>
-            <div class="rcontent">${escapeHtml(item.detail)}</div>
+            <div class="rcontent" dir="auto">${escapeHtml(item.detail)}</div>
           </div>
           <span class="pill ${item.severity === "high" ? "absent" : "pending"}">${escapeHtml(item.severity)}</span>
         </div>`).join("")}</div>`;
@@ -8629,7 +8629,7 @@
                 const dateStr = `${calViewYear}-${String(calViewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const dayItems = calItems.filter((it) => it.date === dateStr);
                 cell.innerHTML = `<div class="cal-daynum">${day}</div>` +
-                    dayItems.slice(0, 3).map((it) => `<div class="cal-event ${it.type === "meeting" ? "meeting" : ""}">${escapeHtml(it.title || "")}</div>`).join("");
+                    dayItems.slice(0, 3).map((it) => `<div class="cal-event ${it.type === "meeting" ? "meeting" : ""}" dir="auto">${escapeHtml(it.title || "")}</div>`).join("");
                 body.appendChild(cell);
             }
         }

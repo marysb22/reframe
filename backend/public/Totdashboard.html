@@ -4501,8 +4501,8 @@
                         </div>
                         <button type="button" class="mp-icon-btn" onclick="toggleMpFullscreen()" title="Fullscreen"><i class="fa fa-expand"></i></button>
                     </div>
-                    <h3 id="matPreviewTitle">&mdash;</h3>
-                    <div class="material-preview-meta" id="matPreviewMeta"></div>
+                    <h3 id="matPreviewTitle" dir="auto">&mdash;</h3>
+                    <div class="material-preview-meta" id="matPreviewMeta" dir="auto"></div>
                     <div class="material-preview-body" id="matPreviewBody"></div>
                 </div>
             </div>
@@ -4621,7 +4621,7 @@
                                     <div class="empty-state">Select a conversation to start chatting.</div>
                                 </div>
                                 <div class="gc-composer" id="dmComposer" style="display:none;">
-                                    <textarea id="dmInput" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDirectMessage();}"></textarea>
+                                    <textarea id="dmInput" dir="auto" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDirectMessage();}"></textarea>
                                     <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendDirectMessage()"><i class="fa fa-paper-plane"></i></button>
                                 </div>
                             </div>
@@ -4661,7 +4661,7 @@
                                 <div class="gc-composer">
                                     <input type="file" id="gcAttachmentInput" style="display:none;" onchange="onGcAttachmentSelected(this)">
                                     <button type="button" class="icon-btn" title="Attach a file" onclick="document.getElementById('gcAttachmentInput').click()"><i class="fa fa-paperclip"></i></button>
-                                    <textarea id="gcInput" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGcMessage();}"></textarea>
+                                    <textarea id="gcInput" dir="auto" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGcMessage();}"></textarea>
                                     <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendGcMessage()"><i class="fa fa-paper-plane"></i></button>
                                 </div>
                             </div>
@@ -4913,13 +4913,13 @@
             <h3>Add Event</h3>
             <form id="addEventForm">
                 <label>Title</label>
-                <input type="text" id="evTitle" required>
+                <input type="text" id="evTitle" dir="auto" required>
                 <label>Date</label>
                 <input type="date" id="evDate" required>
                 <label>Time <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
                 <input type="time" id="evTime">
                 <label>Description <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
-                <textarea id="evDescription"></textarea>
+                <textarea id="evDescription" dir="auto"></textarea>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('addEventModal')">Cancel</button>
                     <button type="submit" class="btn">Save</button>
@@ -4935,9 +4935,9 @@
             <h3>Share a learning material</h3>
             <form id="materialForm">
                 <label>Title</label>
-                <input type="text" id="matTitle" required>
+                <input type="text" id="matTitle" dir="auto" required>
                 <label>Description (optional)</label>
-                <textarea id="matDescription"></textarea>
+                <textarea id="matDescription" dir="auto"></textarea>
                 <label>Type</label>
                 <select id="matType" onchange="toggleMaterialTypeFields()">
 <option value="document">Document (PDF / Word / PowerPoint)</option>
@@ -4991,7 +4991,7 @@
                     <div id="asgStudentSingleName" style="padding:10px 0;color:var(--muted);"></div>
                 </div>
                 <label>Title</label>
-                <input type="text" id="asgTitle" required>
+                <input type="text" id="asgTitle" dir="auto" required>
                 <label>Due date</label>
                 <input type="date" id="asgDeadline">
                 <div id="asgStatusWrap" style="display:none;">
@@ -5003,7 +5003,7 @@
 </select>
                 </div>
                 <label>Description / instructions</label>
-                <textarea id="asgContent"></textarea>
+                <textarea id="asgContent" dir="auto"></textarea>
                 <div id="asgCreateOnlyFields">
                     <label>Attachment</label> <span style="font-weight:400;color:var(--faint);">(PDF, Word, or image -- optional)</span>
                     <input type="file" id="asgAttachment" accept=".pdf,.doc,.docx,image/*">
@@ -5085,7 +5085,7 @@
                 <input type="hidden" id="gsEditOccasionId" value="">
                 <input type="hidden" id="gsEditSeriesId" value="">
                 <div class="record-form-grid">
-                    <div><label>Session Title</label><input type="text" id="gsTitle" required></div>
+                    <div><label>Session Title</label><input type="text" id="gsTitle" dir="auto" required></div>
                     <div><label>Session Type</label><select id="gsType" required></select></div>
                     <div><label>Attachment <span style="font-weight:400;color:var(--faint);">(optional)</span></label><input type="file" id="gsAttachment" accept=".pdf,.doc,.docx,image/*"></div>
                 </div>
@@ -5095,7 +5095,7 @@
                 <button type="button" class="btn btn-secondary" style="width:auto;margin-bottom:14px;" onclick="addSessionDayRow()"><i class="fa fa-plus"></i> Add another day</button>
 
                 <label>Notes <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
-                <textarea id="gsNotes"></textarea>
+                <textarea id="gsNotes" dir="auto"></textarea>
 
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('groupSessionModal')">Cancel</button>
@@ -6209,7 +6209,7 @@
                 .map((i) => `
       <li class="sched-item">
         <div class="sched-time">${i.time || "--:--"}<small>${i.isToday ? "Today" : i.date}</small></div>
-        <div class="sinfo"><strong>${escapeHtml(i.title || hourTypeLabel(i.hourTypeCode) + " activity")}</strong><span>${escapeHtml(i.studentName)} &middot; ${escapeHtml(i.studentCode)}</span></div>
+        <div class="sinfo"><strong dir="auto">${escapeHtml(i.title || hourTypeLabel(i.hourTypeCode) + " activity")}</strong><span>${escapeHtml(i.studentName)} &middot; ${escapeHtml(i.studentCode)}</span></div>
         <span class="sched-badge ${i.recordType}">${hourTypeLabel(i.hourTypeCode)}</span>
       </li>
     `)
@@ -6468,7 +6468,7 @@
       <option value="excused" ${value === "excused" ? "selected" : ""}>Excused</option>
     </select></div>${partialHoursFieldHtml(value === "partial")}`;
   }
-  if (field === "content") return `<div class="full"><label>Notes</label><textarea id="rf_content">${escapeHtml(value)}</textarea></div>`;
+  if (field === "content") return `<div class="full"><label>Notes</label><textarea id="rf_content" dir="auto">${escapeHtml(value)}</textarea></div>`;
   return "";
 }
 
@@ -6563,7 +6563,7 @@ async function renderHourAdjustmentPanel(container, hourType) {
           <div>
             <strong>${Number(a.hours) > 0 ? "+" : ""}${a.hours}h &mdash; ${escapeHtml(a.reason)}</strong>
             <div class="rmeta">${escapeHtml((a.created_at || "").slice(0, 10))} &middot; added by ${escapeHtml(a.added_by_name || "—")}</div>
-            ${a.notes ? `<div class="rcontent">${escapeHtml(a.notes)}</div>` : ""}
+            ${a.notes ? `<div class="rcontent" dir="auto">${escapeHtml(a.notes)}</div>` : ""}
           </div>
         </li>`).join("") : '<li class="empty-state">No manual adjustments yet.</li>'}
     </ul>
@@ -6612,9 +6612,9 @@ function recordItemHtml(type, r) {
   return `
     <li class="record-item">
       <div>
-        ${r.title ? `<strong>${escapeHtml(r.title)}</strong>` : ""}
+        ${r.title ? `<strong dir="auto">${escapeHtml(r.title)}</strong>` : ""}
         <div class="rmeta">${bits.join(" &middot; ")} &middot; logged by ${escapeHtml(r.supervisorName)}</div>
-        ${r.content ? `<div class="rcontent">${escapeHtml(r.content)}</div>` : ""}
+        ${r.content ? `<div class="rcontent" dir="auto">${escapeHtml(r.content)}</div>` : ""}
         ${type === "note" ? noteMemoHtml(r) : ""}
       </div>
       <div class="row-actions">
@@ -6777,7 +6777,7 @@ function renderDocumentsPanel(container) {
       ${docs.length ? docs.map((d) => `
         <li class="doc-item">
           <div>
-            <div class="mrow-title">${escapeHtml(d.originalName)}</div>
+            <div class="mrow-title" dir="auto">${escapeHtml(d.originalName)}</div>
             <div class="rmeta">uploaded by ${escapeHtml(d.uploadedByName)}${d.isGroupShared ? " &middot; shared with the whole group" : ""}</div>
             <div class="mrow-actions" style="margin-top:4px;">
               <button type="button" class="mrow-btn primary" onclick="openStudentDocumentPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
@@ -6960,7 +6960,7 @@ function materialRowHtml(m) {
     <div class="material-row">
       <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
       <div class="mrow-body">
-        <div class="mrow-title">${escapeHtml(m.title)}</div>
+        <div class="mrow-title" dir="auto">${escapeHtml(m.title)}</div>
         <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))}${dateStr ? " &middot; " + dateStr : ""}${sharedText}</div>
       </div>
       <div class="mrow-actions">
@@ -7449,7 +7449,7 @@ function renderAssignments() {
       const canReview = a.submission != null;
       return `
       <tr>
-        <td><strong>${escapeHtml(a.title || "Untitled")}</strong></td>
+        <td><strong dir="auto">${escapeHtml(a.title || "Untitled")}</strong></td>
         <td>${escapeHtml(a.studentName)}</td>
         <td>${a.createdAt ? escapeHtml(String(a.createdAt).slice(0, 10)) : "&mdash;"}</td>
         <td>${a.dueDate ? escapeHtml(String(a.dueDate).slice(0, 10)) : "&mdash;"}</td>
@@ -7575,7 +7575,7 @@ function openGradeModal(id) {
   if (!a || !a.submission) return;
   document.getElementById("gradeAssignmentId").value = a.id;
   document.getElementById("gradeAssignmentInfo").innerHTML = `
-    <strong>${escapeHtml(a.title)}</strong>
+    <strong dir="auto">${escapeHtml(a.title)}</strong>
     <div style="color:var(--muted);font-size:12.5px;margin-top:2px;">${escapeHtml(a.studentName)} &middot; due ${a.dueDate ? escapeHtml(String(a.dueDate).slice(0, 10)) : "no date"}</div>
   `;
   const s = a.submission;
@@ -7592,7 +7592,7 @@ function openGradeModal(id) {
             <div>
               <a href="${UPLOADS}/submissions/${p.filename}${TOKEN_Q}" target="_blank" rel="noopener"><i class="fa fa-file-arrow-down"></i> ${escapeHtml(p.originalName)}</a>
               <div class="rmeta">Submitted ${new Date(p.submittedAt).toLocaleString()}</div>
-              ${p.notes ? `<div class="rcontent">${escapeHtml(p.notes)}</div>` : ""}
+              ${p.notes ? `<div class="rcontent" dir="auto">${escapeHtml(p.notes)}</div>` : ""}
               ${p.status === "graded" ? `<div class="rmeta">Graded: ${p.score != null ? p.score : "&mdash;"}${a.maxScore ? ` / ${a.maxScore}` : ""}${p.feedback ? ` &middot; ${escapeHtml(p.feedback)}` : ""}</div>` : ""}
             </div>
             <span class="pill ${p.status === "graded" ? "completed" : "scheduled"}">${escapeHtml(ASSIGNMENT_STATUS_LABEL[p.status] || p.status)}</span>
@@ -7604,7 +7604,7 @@ function openGradeModal(id) {
       <div>
         <a href="${UPLOADS}/submissions/${s.filename}${TOKEN_Q}" target="_blank" rel="noopener"><i class="fa fa-file-arrow-down"></i> ${escapeHtml(s.originalName)}</a>
         <div class="rmeta">Submitted ${new Date(s.submittedAt).toLocaleString()}</div>
-        ${s.notes ? `<div class="rcontent">${escapeHtml(s.notes)}</div>` : ""}
+        ${s.notes ? `<div class="rcontent" dir="auto">${escapeHtml(s.notes)}</div>` : ""}
       </div>
       <span class="pill ${s.status === "graded" ? "completed" : "scheduled"}">${escapeHtml(ASSIGNMENT_STATUS_LABEL[s.status] || s.status)}</span>
     </div>
@@ -7807,7 +7807,7 @@ function renderActivities() {
           <div class="act-title-cell">
             ${isGroup ? `<span class="act-chevron"><i class="fa fa-chevron-right"></i></span>` : `<span class="act-chevron"></span>`}
             <div class="act-title-text">
-              <strong>${escapeHtml(a.title || "Untitled")}</strong>
+              <strong dir="auto">${escapeHtml(a.title || "Untitled")}</strong>
               ${kindBadge}
             </div>
           </div>
@@ -8777,7 +8777,7 @@ function dmMessageHtml(m) {
     : m.status === "failed"
     ? `<i class="fa fa-triangle-exclamation gc-msg-status failed" title="Failed to send -- tap to retry"></i>`
     : "";
-  return `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"} ${m.status || ""}"${m.clientId ? ` data-client-id="${m.clientId}"` : ""}${m.status === "failed" ? ` onclick="retryDmMessage('${m.clientId}')"` : ""}>${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}${statusHtml}</div></div>`;
+  return `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"} ${m.status || ""}" dir="auto"${m.clientId ? ` data-client-id="${m.clientId}"` : ""}${m.status === "failed" ? ` onclick="retryDmMessage('${m.clientId}')"` : ""}>${escapeHtml(m.content)}<div class="meta">${escapeHtml(m.senderName)} &middot; ${new Date(m.createdAt).toLocaleString()}${statusHtml}</div></div>`;
 }
 
 function appendDmMessage(m) {
@@ -9257,7 +9257,7 @@ function gcMessageHtml(m) {
       ${!mine ? `<div class="gc-avatar ${grouped ? "spacer" : ""}">${avatarInnerHtml({ photo: m.senderPhoto, full_name: m.senderName })}</div>` : ""}
       <div class="gc-msg-col">
         ${!grouped && !mine ? `<div class="gc-sender-name">${escapeHtml(m.senderName)}</div>` : ""}
-        <div class="chat-bubble ${mine ? "mine" : "theirs"} ${m.status || ""}">${bodyHtml}<span class="gc-msg-time">${time}${statusHtml}</span></div>
+        <div class="chat-bubble ${mine ? "mine" : "theirs"} ${m.status || ""}" dir="auto">${bodyHtml}<span class="gc-msg-time">${time}${statusHtml}</span></div>
       </div>
     </div>
   `;
@@ -9578,7 +9578,7 @@ async function loadAllDocuments() {
       return `
       <li class="doc-item">
         <div>
-          <div class="mrow-title">${escapeHtml(d.originalName)}</div>
+          <div class="mrow-title" dir="auto">${escapeHtml(d.originalName)}</div>
           <div class="rmeta">${studentPrefix}Shared by ${escapeHtml(d.uploadedByName)}${roleText}${sharedText}${approvalText}</div>
           <div class="mrow-actions" style="margin-top:4px;">
             <button type="button" class="mrow-btn primary" onclick="openAllDocumentsPreview(${d.id})"><i class="fa fa-eye"></i> Open</button>
@@ -10119,7 +10119,7 @@ function renderCalendar() {
     const dayItems = calItems.filter((it) => it.date === dateStr);
 
     cell.innerHTML = `<div class="cal-daynum">${day}</div>` +
-      dayItems.slice(0, 3).map((it) => `<div class="cal-event ${it.type === "meeting" ? "meeting" : ""}">${escapeHtml(it.title || "")}</div>`).join("");
+      dayItems.slice(0, 3).map((it) => `<div class="cal-event ${it.type === "meeting" ? "meeting" : ""}" dir="auto">${escapeHtml(it.title || "")}</div>`).join("");
 
     body.appendChild(cell);
   }

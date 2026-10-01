@@ -1956,28 +1956,28 @@
                     </div>
                     <form id="addBookForm">
                         <label style="margin-top:0;">Book title *</label>
-                        <input type="text" id="bookTitle" required>
+                        <input type="text" id="bookTitle" dir="auto" required>
                         <label>Author *</label>
-                        <input type="text" id="bookAuthor" required>
+                        <input type="text" id="bookAuthor" dir="auto" required>
                         <label>Type *</label>
                         <select id="bookResourceType" required>
           <option value="">Select a type...</option>
         </select>
                         <label>Category / Topic</label>
-                        <input type="text" id="bookCategory">
+                        <input type="text" id="bookCategory" dir="auto">
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                             <div><label>Publication year</label><input type="number" id="bookPublicationYear" min="1000" placeholder="e.g. 2008"></div>
-                            <div><label>Publisher</label><input type="text" id="bookPublisher" placeholder="Publishing house, e.g. Gallimard"></div>
+                            <div><label>Publisher</label><input type="text" id="bookPublisher" dir="auto" placeholder="Publishing house, e.g. Gallimard"></div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                            <div><label>Publication location</label><input type="text" id="bookPublicationLocation" placeholder="City, e.g. Paris, France"></div>
+                            <div><label>Publication location</label><input type="text" id="bookPublicationLocation" dir="auto" placeholder="City, e.g. Paris, France"></div>
                             <div><label>Country</label><select id="bookCountry"><option value="">Select a country...</option></select></div>
                         </div>
                         <label>DOI (Digital Object Identifier)</label>
                         <input type="text" id="bookDoi" placeholder="e.g. 10.1000/xyz123 -- optional, leave blank if this resource has none">
 
                         <label>Description</label>
-                        <textarea id="bookDescription"></textarea>
+                        <textarea id="bookDescription" dir="auto"></textarea>
                         <div id="bookFileFields">
                             <label>Cover image</label>
                             <div class="book-upload-box" id="bookCoverBox">
@@ -2025,7 +2025,7 @@
             <div class="reader-overlay" id="readerOverlay">
                 <div class="reader-header">
                     <div class="reader-header-info">
-                        <h3 id="readerTitle">&mdash;</h3>
+                        <h3 id="readerTitle" dir="auto">&mdash;</h3>
                         <p id="readerMeta"></p>
                     </div>
                     <div class="reader-header-actions">
@@ -2537,10 +2537,10 @@
                             <label>Facilitator bio</label><input type="text" id="evFacilitatorBioEn">
 
                             <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Arabic content (optional)</h4>
-                            <label>العنوان</label><input type="text" id="evTitleAr">
-                            <label>الصيغة</label><input type="text" id="evFormatAr">
-                            <label>الميسّر</label><input type="text" id="evFacilitatorAr">
-                            <label>نبذة</label><input type="text" id="evAboutAr">
+                            <label>العنوان</label><input type="text" id="evTitleAr" dir="rtl">
+                            <label>الصيغة</label><input type="text" id="evFormatAr" dir="rtl">
+                            <label>الميسّر</label><input type="text" id="evFacilitatorAr" dir="rtl">
+                            <label>نبذة</label><input type="text" id="evAboutAr" dir="rtl">
 
                             <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;">
                                 <button type="button" class="btn btn-secondary" onclick="closeEventForm()">Cancel</button>
@@ -4316,7 +4316,7 @@ function renderTrainerCard(t, emptyLabel) {
         ${t.phone ? `<div><i class="fa fa-phone"></i> ${escapeHtml(t.phone)}</div>` : ""}
         ${t.specialization ? `<div><i class="fa fa-briefcase-medical"></i> ${escapeHtml(t.specialization)}</div>` : ""}
         <div><i class="fa fa-clock"></i> ${Number(t.hours || 0).toFixed(1)} hours logged with this trainee</div>
-        ${t.bio ? `<div style="margin-top:6px;">${escapeHtml(t.bio)}</div>` : ""}
+        ${t.bio ? `<div style="margin-top:6px;" dir="auto">${escapeHtml(t.bio)}</div>` : ""}
       </div>
     </div>
   `;
@@ -4417,7 +4417,7 @@ function renderStudentProfile(data) {
         return `
         <tr>
           <td><span class="pill trainee">${escapeHtml(r.recordType.replace(/_/g, " "))}</span></td>
-          <td>${r.title ? escapeHtml(r.title) : "&mdash;"}</td>
+          <td dir="auto">${r.title ? escapeHtml(r.title) : "&mdash;"}</td>
           <td>${r.date ? new Date(r.date).toLocaleDateString() : "&mdash;"}</td>
           <td>${bits.length ? escapeHtml(bits.join(", ")) : "&mdash;"}</td>
           <td>${r.supervisorName ? escapeHtml(r.supervisorName) : "&mdash;"}</td>
@@ -4452,7 +4452,7 @@ function renderStudentProfile(data) {
         <td>${formatMoney(t.amount)}</td>
         <td>${t.method ? escapeHtml(t.method) : "&mdash;"}</td>
         <td>${t.addedByName ? escapeHtml(t.addedByName) : "&mdash;"}</td>
-        <td>${t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
+        <td dir="auto">${t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
       </tr>`
       )
       .join("");
@@ -4884,7 +4884,7 @@ function renderYearSummaryAndHistory() {
         <td><span class="pill ${pillClassForTransactionType(t.transactionType)}">${escapeHtml(t.transactionType)}</span></td>
         <td>${t.method ? escapeHtml(t.method) : "&mdash;"}</td>
         <td>${escapeHtml(t.addedByName)}</td>
-        <td>${t.invoiceId ? "Invoice #" + t.invoiceId : t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
+        <td dir="auto">${t.invoiceId ? "Invoice #" + t.invoiceId : t.notes ? escapeHtml(t.notes) : "&mdash;"}</td>
       </tr>`
       )
       .join("");
@@ -5010,7 +5010,7 @@ function renderEvents() {
     .map(
       (e) => `
     <tr>
-      <td><strong>${e.english.title ? escapeHtml(e.english.title) : "<em>Untitled event</em>"}</strong></td>
+      <td><strong dir="auto">${e.english.title ? escapeHtml(e.english.title) : "<em>Untitled event</em>"}</strong></td>
       <td>${new Date(e.date).toLocaleString()}</td>
       <td><span class="pill ${e.status === "upcoming" ? "active" : "pending"}">${escapeHtml(e.status)}</span></td>
       <td>
@@ -5489,13 +5489,13 @@ function openBookDetails(id) {
         ${b.coverImage ? `<img src="${UPLOADS}/materials/${b.coverImage}${TOKEN_Q}" alt="">` : `<i class="fa fa-book"></i>`}
       </div>
       <div class="book-details-info">
-        <h3>${escapeHtml(b.title)}</h3>
-        ${b.author ? `<div class="book-details-author">${escapeHtml(b.author)}</div>` : ""}
+        <h3 dir="auto">${escapeHtml(b.title)}</h3>
+        ${b.author ? `<div class="book-details-author" dir="auto">${escapeHtml(b.author)}</div>` : ""}
         <div class="book-details-tags">
           ${typeLabel ? `<span class="type-pill">${escapeHtml(typeLabel)}</span>` : ""}
           ${b.category ? `<span class="type-pill">${escapeHtml(b.category)}</span>` : ""}
         </div>
-        ${b.description ? `<p class="book-details-desc">${escapeHtml(b.description)}</p>` : ""}
+        ${b.description ? `<p class="book-details-desc" dir="auto">${escapeHtml(b.description)}</p>` : ""}
         <dl class="book-details-meta">
           ${b.publisher ? `<dt>Publisher</dt><dd>${escapeHtml(b.publisher)}</dd>` : ""}
           ${b.publicationLocation ? `<dt>Publication location</dt><dd>${escapeHtml(b.publicationLocation)}</dd>` : ""}

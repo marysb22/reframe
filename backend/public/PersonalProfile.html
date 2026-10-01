@@ -3712,8 +3712,8 @@
                         </div>
                         <button type="button" class="mp-icon-btn" onclick="toggleMpFullscreen()" title="Fullscreen"><i class="fa fa-expand"></i></button>
                     </div>
-                    <h3 id="matPreviewTitle">&mdash;</h3>
-                    <div class="material-preview-meta" id="matPreviewMeta"></div>
+                    <h3 id="matPreviewTitle" dir="auto">&mdash;</h3>
+                    <div class="material-preview-meta" id="matPreviewMeta" dir="auto"></div>
                     <div class="material-preview-body" id="matPreviewBody"></div>
                 </div>
             </div>
@@ -3876,7 +3876,7 @@
                                     <div class="empty-state">Select a conversation to start chatting.</div>
                                 </div>
                                 <div class="gc-composer" id="dmComposer" style="display:none;">
-                                    <textarea id="dmInput" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+                                    <textarea id="dmInput" dir="auto" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
                                     <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendMessage()"><i class="fa fa-paper-plane"></i></button>
                                 </div>
                             </div>
@@ -3903,7 +3903,7 @@
                                 <div class="gc-composer">
                                     <input type="file" id="gcAttachmentInput" style="display:none;" onchange="onGcAttachmentSelected(this)">
                                     <button type="button" class="icon-btn" title="Attach a file" onclick="document.getElementById('gcAttachmentInput').click()"><i class="fa fa-paperclip"></i></button>
-                                    <textarea id="gcInput" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGcMessage();}"></textarea>
+                                    <textarea id="gcInput" dir="auto" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGcMessage();}"></textarea>
                                     <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendGcMessage()"><i class="fa fa-paper-plane"></i></button>
                                 </div>
                             </div>
@@ -5154,7 +5154,7 @@ function materialRowHtml(m) {
     <div class="material-row">
       <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
       <div class="mrow-body">
-        <div class="mrow-title">${escapeHtml(m.title)}</div>
+        <div class="mrow-title" dir="auto">${escapeHtml(m.title)}</div>
         <div class="mrow-meta">${escapeHtml(capitalize(m.materialType))} &middot; ${documentShareLabel(m)} &middot; ${sharedByText}${approvalText ? " &middot; " + approvalText : ""}${dateStr ? " &middot; " + dateStr : ""} &middot; Access: Read &amp; Download</div>
       </div>
       <div class="mrow-actions">
@@ -5408,7 +5408,7 @@ function renderAssignments() {
       <div class="assignment-card" style="cursor:pointer;" onclick="openAssignmentDetail(${a.id})">
         <div class="atop">
           <div>
-            <h4>${escapeHtml(a.title || "Untitled assignment")}</h4>
+            <h4 dir="auto">${escapeHtml(a.title || "Untitled assignment")}</h4>
             <div class="adeadline">Due ${a.dueDate ? escapeHtml(String(a.dueDate).slice(0, 10)) : "no deadline"} &middot; assigned by ${escapeHtml(a.trainerName)} ${contentBits.length ? "&middot; " + contentBits.join(" ") : ""}</div>
           </div>
           <span class="pill ${ASSIGNMENT_STATUS_PILL[displayStatus] || "pending"}">${escapeHtml((ASSIGNMENT_STATUS_LABEL[displayStatus] || displayStatus))}</span>
@@ -5639,9 +5639,9 @@ function renderSessions() {
         if (r.status) bits.push(`<span class="pill ${r.status}">${escapeHtml(r.status)}</span>`);
       }
       return `<li class="record-item">
-        <strong>${recordLabel(r)}${r.title ? " \u00b7 " + escapeHtml(r.title) : ""}</strong>
+        <strong dir="auto">${recordLabel(r)}${r.title ? " \u00b7 " + escapeHtml(r.title) : ""}</strong>
         <div class="rmeta">${bits.join(" \u00b7 ")} \u00b7 logged by ${escapeHtml(r.supervisorName)}</div>
-        ${r.content ? `<div class="rcontent">${escapeHtml(r.content)}</div>` : ""}
+        ${r.content ? `<div class="rcontent" dir="auto">${escapeHtml(r.content)}</div>` : ""}
       </li>`;
     })
     .join("");
@@ -5821,7 +5821,7 @@ function dmMessageHtml(m) {
     : m.status === "failed"
     ? `<i class="fa fa-triangle-exclamation gc-msg-status failed" title="Failed to send -- tap to retry"></i>`
     : "";
-  return `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"} ${m.status || ""}"${m.clientId ? ` data-client-id="${m.clientId}"` : ""}${m.status === "failed" ? ` onclick="retryDmMessage('${m.clientId}')"` : ""}>${escapeHtml(m.content || "")}<div class="meta">${escapeHtml(m.senderName)} · ${new Date(m.createdAt).toLocaleString()}${statusHtml}</div></div>`;
+  return `<div class="chat-bubble ${m.isMine ? "mine" : "theirs"} ${m.status || ""}" dir="auto"${m.clientId ? ` data-client-id="${m.clientId}"` : ""}${m.status === "failed" ? ` onclick="retryDmMessage('${m.clientId}')"` : ""}>${escapeHtml(m.content || "")}<div class="meta">${escapeHtml(m.senderName)} · ${new Date(m.createdAt).toLocaleString()}${statusHtml}</div></div>`;
 }
 
 function appendDmMessage(m) {
@@ -6318,7 +6318,7 @@ function gcMessageHtml(m) {
       ${!mine ? `<div class="gc-avatar ${grouped ? "spacer" : ""}">${avatarInnerHtml({ photo: m.senderPhoto, full_name: m.senderName })}</div>` : ""}
       <div class="gc-msg-col">
         ${!grouped && !mine ? `<div class="gc-sender-name">${escapeHtml(m.senderName)}</div>` : ""}
-        <div class="chat-bubble ${mine ? "mine" : "theirs"} ${m.status || ""}">${bodyHtml}<span class="gc-msg-time">${time}${statusHtml}</span></div>
+        <div class="chat-bubble ${mine ? "mine" : "theirs"} ${m.status || ""}" dir="auto">${bodyHtml}<span class="gc-msg-time">${time}${statusHtml}</span></div>
       </div>
     </div>
   `;
@@ -6608,9 +6608,9 @@ async function loadAnnouncements() {
   if (!data.announcements.length) { list.innerHTML = '<li class="empty-state">No announcements yet.</li>'; return; }
   list.innerHTML = data.announcements
     .map((a) => `<li class="record-item">
-      <strong>${escapeHtml(a.title)}</strong>
+      <strong dir="auto">${escapeHtml(a.title)}</strong>
       <div class="rmeta">Sent by: ${escapeHtml(a.supervisorName)} \u00b7 ${new Date(a.createdAt).toLocaleString()}</div>
-      <div class="rcontent">${escapeHtml(a.content)}</div>
+      <div class="rcontent" dir="auto">${escapeHtml(a.content)}</div>
     </li>`)
     .join("");
 }
@@ -6888,7 +6888,7 @@ function renderCalendar() {
     const dayItems = calItems.filter((it) => it.date === dateStr);
 
     cell.innerHTML = `<div class="cal-daynum">${day}</div>` +
-      dayItems.slice(0, 3).map((it) => `<div class="cal-event ${it.type === "meeting" ? "meeting" : ""}">${escapeHtml(it.title || "")}</div>`).join("");
+      dayItems.slice(0, 3).map((it) => `<div class="cal-event ${it.type === "meeting" ? "meeting" : ""}" dir="auto">${escapeHtml(it.title || "")}</div>`).join("");
 
     body.appendChild(cell);
   }
