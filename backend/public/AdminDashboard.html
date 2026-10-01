@@ -2524,8 +2524,8 @@
                                     <input type="text" id="evFee" placeholder="$150 or Free">
                                 </div>
                                 <div style="grid-column:1/-1;">
-                                    <label>Continuing Education Credits <span dir="rtl" style="font-weight:400;color:var(--faint);">(أرصدة التعليم المستمر)</span></label>
-                                    <input type="text" id="evCredits" dir="auto" placeholder="e.g. 10 CE Credits">
+                                    <label>Continuing Education Credits</label>
+                                    <input type="text" id="evCreditsEn" placeholder="e.g. 10 CE Credits">
                                 </div>
                                 <div style="grid-column:1/-1;">
                                     <label>Registration link</label>
@@ -2548,6 +2548,7 @@
                             <label dir="rtl" style="text-align:right;">الصيغة</label><input type="text" id="evFormatAr" dir="rtl">
                             <label dir="rtl" style="text-align:right;">الميسّر</label><input type="text" id="evFacilitatorAr" dir="rtl">
                             <label dir="rtl" style="text-align:right;">نبذة</label><input type="text" id="evAboutAr" dir="rtl">
+                            <label dir="rtl" style="text-align:right;">أرصدة التعليم المستمر</label><input type="text" id="evCreditsAr" dir="rtl">
 
                             <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;">
                                 <button type="button" class="btn btn-secondary" onclick="closeEventForm()">Cancel</button>
@@ -5131,10 +5132,10 @@ const EVENT_DRAFT_KEY = "eventFormDraft";
 // editor's own rows aren't draft-autosaved (a small, accepted gap: a lost
 // draft only needs the date(s) re-entered, everything else restores fine).
 const EVENT_FORM_FIELD_IDS = [
-  "evId", "evStatus", "evImage", "evFee", "evCredits", "evRegister",
+  "evId", "evStatus", "evImage", "evFee", "evCreditsEn", "evRegister",
   "evTitleEn", "evFormatEn", "evFacilitatorEn", "evAboutEn",
   "evLearnEn", "evWhoEn", "evOutcomesEn", "evFacilitatorBioEn",
-  "evTitleAr", "evFormatAr", "evFacilitatorAr", "evAboutAr",
+  "evTitleAr", "evFormatAr", "evFacilitatorAr", "evAboutAr", "evCreditsAr",
 ];
 
 function saveEventDraft() {
@@ -5206,7 +5207,6 @@ async function editEvent(id) {
     document.getElementById("evImagePreviewWrap").style.display = "none";
   }
   document.getElementById("evFee").value = ev.fee || "";
-  document.getElementById("evCredits").value = ev.credits || "";
   document.getElementById("evRegister").value = ev.register || "";
 
   document.getElementById("evTitleEn").value = ev.english.title || "";
@@ -5217,11 +5217,13 @@ async function editEvent(id) {
   document.getElementById("evWhoEn").value = arrayToLines(ev.english.who);
   document.getElementById("evOutcomesEn").value = arrayToLines(ev.english.outcomes);
   document.getElementById("evFacilitatorBioEn").value = ev.english.facilitatorBio || "";
+  document.getElementById("evCreditsEn").value = ev.english.credits || "";
 
   document.getElementById("evTitleAr").value = ev.arabic.title || "";
   document.getElementById("evFormatAr").value = ev.arabic.format || "";
   document.getElementById("evFacilitatorAr").value = ev.arabic.facilitator || "";
   document.getElementById("evAboutAr").value = ev.arabic.about || "";
+  document.getElementById("evCreditsAr").value = ev.arabic.credits || "";
 
   document.getElementById("eventFormWrap").style.display = "block";
   document.getElementById("eventFormWrap").scrollIntoView({ behavior: "smooth" });
@@ -5261,7 +5263,6 @@ document.getElementById("eventForm").addEventListener("submit", async (e) => {
     status: document.getElementById("evStatus").value,
     image: document.getElementById("evImage").value,
     fee: document.getElementById("evFee").value,
-    credits: document.getElementById("evCredits").value,
     register: document.getElementById("evRegister").value,
     englishTitle: document.getElementById("evTitleEn").value,
     englishFormat: document.getElementById("evFormatEn").value,
@@ -5271,10 +5272,12 @@ document.getElementById("eventForm").addEventListener("submit", async (e) => {
     englishWho: linesToArray(document.getElementById("evWhoEn").value),
     englishOutcomes: linesToArray(document.getElementById("evOutcomesEn").value),
     englishFacilitatorBio: document.getElementById("evFacilitatorBioEn").value,
+    englishCredits: document.getElementById("evCreditsEn").value,
     arabicTitle: document.getElementById("evTitleAr").value,
     arabicFormat: document.getElementById("evFormatAr").value,
     arabicFacilitator: document.getElementById("evFacilitatorAr").value,
     arabicAbout: document.getElementById("evAboutAr").value,
+    arabicCredits: document.getElementById("evCreditsAr").value,
   };
 
   const url = editingEventId ? `/admin/events/${editingEventId}` : "/admin/events";

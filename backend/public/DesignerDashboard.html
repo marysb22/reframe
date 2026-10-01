@@ -290,6 +290,10 @@ tr:hover td{background:var(--surface-2);}
               <input type="text" id="evFee" placeholder="$150 or Free">
             </div>
             <div style="grid-column:1/-1;">
+              <label>Continuing Education Credits</label>
+              <input type="text" id="evCreditsEn" placeholder="e.g. 10 CE Credits">
+            </div>
+            <div style="grid-column:1/-1;">
               <label>Registration link</label>
               <input type="text" id="evRegister" placeholder="https://... or # if not ready yet">
             </div>
@@ -306,14 +310,15 @@ tr:hover td{background:var(--surface-2);}
           <label>Facilitator bio</label><input type="text" id="evFacilitatorBioEn">
 
           <h4 style="margin:18px 0 8px;font-size:13px;color:var(--muted);">Arabic content (optional)</h4>
-          <label>العنوان</label><input type="text" id="evTitleAr">
-          <label>الصيغة</label><input type="text" id="evFormatAr">
-          <label>الميسّر</label><input type="text" id="evFacilitatorAr">
-          <label>نبذة</label><input type="text" id="evAboutAr">
-          <label>ماذا ستتعلم (سطر لكل نقطة)</label><textarea id="evLearnAr" style="height:70px;"></textarea>
-          <label>من ينبغي أن يحضر (سطر لكل نقطة)</label><textarea id="evWhoAr" style="height:70px;"></textarea>
-          <label>النتائج / المخرجات (سطر لكل نقطة)</label><textarea id="evOutcomesAr" style="height:70px;"></textarea>
-          <label>نبذة عن الميسّر</label><input type="text" id="evFacilitatorBioAr">
+          <label dir="rtl" style="text-align:right;">العنوان</label><input type="text" id="evTitleAr" dir="rtl">
+          <label dir="rtl" style="text-align:right;">الصيغة</label><input type="text" id="evFormatAr" dir="rtl">
+          <label dir="rtl" style="text-align:right;">الميسّر</label><input type="text" id="evFacilitatorAr" dir="rtl">
+          <label dir="rtl" style="text-align:right;">نبذة</label><input type="text" id="evAboutAr" dir="rtl">
+          <label dir="rtl" style="text-align:right;">ماذا ستتعلم (سطر لكل نقطة)</label><textarea id="evLearnAr" dir="rtl" style="height:70px;"></textarea>
+          <label dir="rtl" style="text-align:right;">من ينبغي أن يحضر (سطر لكل نقطة)</label><textarea id="evWhoAr" dir="rtl" style="height:70px;"></textarea>
+          <label dir="rtl" style="text-align:right;">النتائج / المخرجات (سطر لكل نقطة)</label><textarea id="evOutcomesAr" dir="rtl" style="height:70px;"></textarea>
+          <label dir="rtl" style="text-align:right;">نبذة عن الميسّر</label><input type="text" id="evFacilitatorBioAr" dir="rtl">
+          <label dir="rtl" style="text-align:right;">أرصدة التعليم المستمر</label><input type="text" id="evCreditsAr" dir="rtl">
 
           <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;">
             <button type="button" class="btn btn-secondary" onclick="closeEventForm()">Cancel</button>
@@ -704,11 +709,11 @@ const EVENT_DRAFT_KEY = "designerEventFormDraft";
 // editor's own rows aren't draft-autosaved (a small, accepted gap: a lost
 // draft only needs the date(s) re-entered, everything else restores fine).
 const EVENT_FORM_FIELD_IDS = [
-  "evId", "evStatus", "evImage", "evFee", "evRegister",
+  "evId", "evStatus", "evImage", "evFee", "evCreditsEn", "evRegister",
   "evTitleEn", "evFormatEn", "evFacilitatorEn", "evAboutEn",
   "evLearnEn", "evWhoEn", "evOutcomesEn", "evFacilitatorBioEn",
   "evTitleAr", "evFormatAr", "evFacilitatorAr", "evAboutAr",
-  "evLearnAr", "evWhoAr", "evOutcomesAr", "evFacilitatorBioAr",
+  "evLearnAr", "evWhoAr", "evOutcomesAr", "evFacilitatorBioAr", "evCreditsAr",
 ];
 
 function saveEventDraft() {
@@ -791,6 +796,7 @@ async function editEvent(id) {
   document.getElementById("evWhoEn").value = arrayToLines(ev.english.who);
   document.getElementById("evOutcomesEn").value = arrayToLines(ev.english.outcomes);
   document.getElementById("evFacilitatorBioEn").value = ev.english.facilitatorBio || "";
+  document.getElementById("evCreditsEn").value = ev.english.credits || "";
 
   document.getElementById("evTitleAr").value = ev.arabic.title || "";
   document.getElementById("evFormatAr").value = ev.arabic.format || "";
@@ -800,6 +806,7 @@ async function editEvent(id) {
   document.getElementById("evWhoAr").value = arrayToLines(ev.arabic.who);
   document.getElementById("evOutcomesAr").value = arrayToLines(ev.arabic.outcomes);
   document.getElementById("evFacilitatorBioAr").value = ev.arabic.facilitatorBio || "";
+  document.getElementById("evCreditsAr").value = ev.arabic.credits || "";
 
   document.getElementById("eventFormHeading").textContent = "Edit event";
   showSection("events-create");
@@ -848,6 +855,7 @@ document.getElementById("eventForm").addEventListener("submit", async (e) => {
     englishWho: linesToArray(document.getElementById("evWhoEn").value),
     englishOutcomes: linesToArray(document.getElementById("evOutcomesEn").value),
     englishFacilitatorBio: document.getElementById("evFacilitatorBioEn").value,
+    englishCredits: document.getElementById("evCreditsEn").value,
     arabicTitle: document.getElementById("evTitleAr").value,
     arabicFormat: document.getElementById("evFormatAr").value,
     arabicFacilitator: document.getElementById("evFacilitatorAr").value,
@@ -856,6 +864,7 @@ document.getElementById("eventForm").addEventListener("submit", async (e) => {
     arabicWho: linesToArray(document.getElementById("evWhoAr").value),
     arabicOutcomes: linesToArray(document.getElementById("evOutcomesAr").value),
     arabicFacilitatorBio: document.getElementById("evFacilitatorBioAr").value,
+    arabicCredits: document.getElementById("evCreditsAr").value,
   };
 
   const url = editingEventId ? `/designer/events/${editingEventId}` : "/designer/events";

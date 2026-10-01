@@ -165,7 +165,6 @@ function toPublicEvent(row) {
     image: row.image,
     status: row.status,
     fee: row.fee,
-    credits: row.credits,
     register: row.register_url,
     english: {
       title: row.title_en,
@@ -176,6 +175,7 @@ function toPublicEvent(row) {
       who: row.who_en || [],
       outcomes: row.outcomes_en || [],
       facilitatorBio: row.facilitator_bio_en,
+      credits: row.credits_en,
     },
     arabic: {
       title: row.title_ar,
@@ -186,6 +186,7 @@ function toPublicEvent(row) {
       who: row.who_ar || [],
       outcomes: row.outcomes_ar || [],
       facilitatorBio: row.facilitator_bio_ar,
+      credits: row.credits_ar,
     },
   };
 }

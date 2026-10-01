@@ -1883,18 +1883,17 @@ router.post(
 
     const insert = await db.query(
       `INSERT INTO events (
-        created_by, event_date, image, status, fee, credits, register_url, slug,
+        created_by, event_date, image, status, fee, register_url, slug,
         show_speakers, show_agenda, show_sponsors, show_gallery, show_registration,
-        title_en, format_en, facilitator_en, about_en, learn_en, who_en, outcomes_en, facilitator_bio_en,
-        title_ar, format_ar, facilitator_ar, about_ar, learn_ar, who_ar, outcomes_ar, facilitator_bio_ar
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        title_en, format_en, facilitator_en, about_en, learn_en, who_en, outcomes_en, facilitator_bio_en, credits_en,
+        title_ar, format_ar, facilitator_ar, about_ar, learn_ar, who_ar, outcomes_ar, facilitator_bio_ar, credits_ar
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         req.user.id,
         b.date,
         b.image || null,
         ["upcoming", "concluded"].includes(b.status) ? b.status : "upcoming",
         b.fee || null,
-        b.credits || null,
         b.register || null,
         slug,
         !!b.showSpeakers,
@@ -1910,6 +1909,7 @@ router.post(
         JSON.stringify(toArray(b.englishWho)),
         JSON.stringify(toArray(b.englishOutcomes)),
         b.englishFacilitatorBio || null,
+        b.englishCredits || null,
         b.arabicTitle || null,
         b.arabicFormat || null,
         b.arabicFacilitator || null,
@@ -1918,6 +1918,7 @@ router.post(
         JSON.stringify(toArray(b.arabicWho)),
         JSON.stringify(toArray(b.arabicOutcomes)),
         b.arabicFacilitatorBio || null,
+        b.arabicCredits || null,
       ]
     );
 
@@ -1942,12 +1943,12 @@ router.put(
     const b = req.body || {};
     await db.query(
       `UPDATE events SET
-        event_date = ?, image = ?, status = ?, fee = ?, credits = ?, register_url = ?, slug = ?,
+        event_date = ?, image = ?, status = ?, fee = ?, register_url = ?, slug = ?,
         show_speakers = ?, show_agenda = ?, show_sponsors = ?, show_gallery = ?, show_registration = ?,
         title_en = ?, format_en = ?, facilitator_en = ?, about_en = ?,
-        learn_en = ?, who_en = ?, outcomes_en = ?, facilitator_bio_en = ?,
+        learn_en = ?, who_en = ?, outcomes_en = ?, facilitator_bio_en = ?, credits_en = ?,
         title_ar = ?, format_ar = ?, facilitator_ar = ?, about_ar = ?,
-        learn_ar = ?, who_ar = ?, outcomes_ar = ?, facilitator_bio_ar = ?,
+        learn_ar = ?, who_ar = ?, outcomes_ar = ?, facilitator_bio_ar = ?, credits_ar = ?,
         updated_at = NOW()
        WHERE id = ?`,
       [
@@ -1955,7 +1956,6 @@ router.put(
         b.image ?? existing.image,
         ["upcoming", "concluded"].includes(b.status) ? b.status : existing.status,
         b.fee ?? existing.fee,
-        b.credits ?? existing.credits,
         b.register ?? existing.register_url,
         b.slug ?? existing.slug,
         b.showSpeakers ?? existing.show_speakers,
@@ -1973,6 +1973,7 @@ router.put(
           ? JSON.stringify(toArray(b.englishOutcomes))
           : JSON.stringify(existing.outcomes_en),
         b.englishFacilitatorBio ?? existing.facilitator_bio_en,
+        b.englishCredits ?? existing.credits_en,
         b.arabicTitle ?? existing.title_ar,
         b.arabicFormat ?? existing.format_ar,
         b.arabicFacilitator ?? existing.facilitator_ar,
@@ -1983,6 +1984,7 @@ router.put(
           ? JSON.stringify(toArray(b.arabicOutcomes))
           : JSON.stringify(existing.outcomes_ar),
         b.arabicFacilitatorBio ?? existing.facilitator_bio_ar,
+        b.arabicCredits ?? existing.credits_ar,
         id,
       ]
     );

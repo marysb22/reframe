@@ -985,6 +985,7 @@
           who: safeArray(primary.who).length ? primary.who : safeArray(fallback.who),
           outcomes: safeArray(primary.outcomes).length ? primary.outcomes : safeArray(fallback.outcomes),
           facilitatorBio: primary.facilitatorBio || fallback.facilitatorBio || "",
+          credits: primary.credits || fallback.credits || "",
         };
       }
 
@@ -1075,7 +1076,7 @@
         fillList(modalOutcomes, content.outcomes);
         setTextOrHide(modalFacilitatorBio, content.facilitatorBio || "");
         setTextOrHide(modalFee, event.fee ? `${c.fee}: ${event.fee}` : "");
-        setTextOrHide(modalCredits, event.credits ? `${c.credits}: ${event.credits}` : "");
+        setTextOrHide(modalCredits, content.credits ? `${c.credits}: ${content.credits}` : "");
 
         toggleSection(modalLearnSection, safeArray(content.learn).length > 0);
         toggleSection(modalWhoSection, safeArray(content.who).length > 0);
