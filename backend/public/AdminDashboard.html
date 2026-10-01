@@ -2334,6 +2334,9 @@
                             <div class="kpi-card"><label>Training hours</label>
                                 <h2 id="spA_hours" style="font-size:18px;">&mdash;</h2>
                             </div>
+                            <div class="kpi-card"><label>Supervision hours</label>
+                                <h2 id="spA_supHours" style="font-size:18px;">&mdash;</h2>
+                            </div>
                             <div class="kpi-card"><label>Attendance</label>
                                 <h2 id="spA_attendance" style="font-size:18px;">&mdash;</h2>
                             </div>
@@ -4399,7 +4402,8 @@ function renderStudentProfile(data) {
   }
 
   const prog = data.progress;
-  document.getElementById("spA_hours").textContent = prog.clinicalHours ?? "—";
+  document.getElementById("spA_hours").textContent = prog.trainingHours ?? "—";
+  document.getElementById("spA_supHours").textContent = prog.supervisionHours ?? "—";
   document.getElementById("spA_attendance").textContent = prog.attendanceRate != null ? prog.attendanceRate + "%" : "—";
   document.getElementById("spA_assignments").textContent = `${prog.assignmentsCompleted ?? 0}/${prog.assignmentsTotal ?? 0}`;
   document.getElementById("spA_eval").textContent = prog.averageEvaluationScore ?? "—";

@@ -6268,7 +6268,8 @@
 
         function renderProgress(p) {
             const cells = [
-                ["Training hours", p.clinicalHours],
+                ["Training hours", p.trainingHours],
+                ["Supervision hours", p.supervisionHours],
                 ["Attendance", p.attendanceRate != null ? p.attendanceRate + "%" : "&mdash;"],
                 ["Training activities", p.trainingSessions],
                 ["Supervision activities", p.supervisionSessions],
