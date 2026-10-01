@@ -617,6 +617,7 @@
         </section>
 
         <p id="modalFee"></p>
+        <p id="modalCredits"></p>
 
         <div class="modal-buttons">
           <a href="#" class="view-btn" id="modalRegister">Register Now</a>
@@ -922,6 +923,7 @@
       const modalOutcomes = document.getElementById("modalOutcomes");
       const modalFacilitatorBio = document.getElementById("modalFacilitatorBio");
       const modalFee = document.getElementById("modalFee");
+      const modalCredits = document.getElementById("modalCredits");
       const modalRegister = document.getElementById("modalRegister");
       const modalBack = document.getElementById("modalBack");
 
@@ -950,11 +952,13 @@
           learn: "What You'll Learn", who: "Who Should Attend?", outcomes: "Workshop Outcomes",
           facilitatorBio: "Facilitator Bio", register: "Register Now", back: "Back to All Events",
           viewDetails: "View Details", format: "Format", facilitator: "Facilitator", fee: "Workshop Fee",
+          credits: "Continuing Education Credits",
         },
         ar: {
           learn: "ماذا ستتعلّم", who: "من ينبغي أن يحضر؟", outcomes: "نتائج الورشة",
           facilitatorBio: "نبذة عن الميسّر", register: "سجّل الآن", back: "العودة إلى جميع الفعاليات",
           viewDetails: "عرض التفاصيل", format: "الصيغة", facilitator: "الميسّر", fee: "رسوم الورشة",
+          credits: "أرصدة التعليم المستمر",
         },
       };
 
@@ -1071,6 +1075,7 @@
         fillList(modalOutcomes, content.outcomes);
         setTextOrHide(modalFacilitatorBio, content.facilitatorBio || "");
         setTextOrHide(modalFee, event.fee ? `${c.fee}: ${event.fee}` : "");
+        setTextOrHide(modalCredits, event.credits ? `${c.credits}: ${event.credits}` : "");
 
         toggleSection(modalLearnSection, safeArray(content.learn).length > 0);
         toggleSection(modalWhoSection, safeArray(content.who).length > 0);

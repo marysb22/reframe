@@ -165,6 +165,7 @@ function toPublicEvent(row) {
     image: row.image,
     status: row.status,
     fee: row.fee,
+    credits: row.credits,
     register: row.register_url,
     english: {
       title: row.title_en,
