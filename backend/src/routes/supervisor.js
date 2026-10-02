@@ -1493,7 +1493,11 @@ router.get(
 
     const attendance = attendanceRes.rows[0];
     const assignments = assignmentsRes.rows[0];
-    const totalHours = hoursByType.reduce((sum, h) => sum + h.hours, 0);
+    // The 'training' entry IS the grand total across every hour type now
+    // (see computeHoursByType) -- summing the whole array on top of that
+    // double- (or triple-, quadruple-...) counts every non-training entry,
+    // since each of those is also already folded into 'training'.
+    const totalHours = hoursByType.find((h) => h.code === "training")?.hours || 0;
 
     res.json({
       totalHours,
