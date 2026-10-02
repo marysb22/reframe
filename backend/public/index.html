@@ -745,17 +745,38 @@
             border-radius: 6px;
             transition: all 0.25s ease;
             position: relative;
+            overflow: hidden;
         }
-        
+
         .cal-day-cell:hover {
             background: #4D9794;
             color: white;
         }
-        
+
         .cal-day-cell:hover .event-badge {
             filter: brightness(1.1);
         }
-        
+
+        /* Same uploaded event photo the Events Calendar shows, used here as
+           a background/thumbnail -- same technique as events.html's own
+           calendar day cells, just sized for this smaller widget. The
+           number and badge get their own stacking context so they stay
+           readable on top of the photo. */
+        .cal-day-cell.has-event-image img {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: 0; border-radius: 6px;
+        }
+        .cal-day-cell.has-event-image::after {
+            content: ""; position: absolute; inset: 0; border-radius: 6px;
+            background: linear-gradient(to top, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.1));
+            z-index: 1;
+        }
+        .cal-day-cell.has-event-image .cal-day-num,
+        .cal-day-cell.has-event-image .event-badge {
+            position: relative;
+            z-index: 2;
+        }
+
         .event-badge {
             display: inline-block;
             font-size: 0.6rem;
@@ -1870,6 +1891,16 @@
                 return `events.html?event=${encodeURIComponent(event.slug)}`;
             }
 
+            // Mirrors events.html's own resolveImagePath exactly: an
+            // uploaded event photo is stored as "/uploads/..." and needs
+            // the backend's own origin prefixed (this static page and the
+            // API aren't always the same origin); a manually-set path like
+            // "photos/event1.jpg" is left as-is.
+            function resolveImagePath(path) {
+                if (!path) return "";
+                return path.startsWith("/uploads/") ? (window.API_BASE || "") + path : path;
+            }
+
             function formatEventDate(dateString) {
                 const d = normalizeEventDate(dateString);
                 if (!d) return "";
@@ -1956,6 +1987,20 @@
 
                     if (dayEvents.length > 0) {
                         cell.classList.add("event-date");
+
+                        // Same uploaded photo events.html's own calendar
+                        // already shows for this event (mainEvent.image,
+                        // same field, same /uploads/ path resolution) --
+                        // no separate upload, no duplicated image data.
+                        const mainEvent = dayEvents[0];
+                        if (mainEvent.image) {
+                            cell.classList.add("has-event-image");
+                            const img = document.createElement("img");
+                            img.src = resolveImagePath(mainEvent.image);
+                            img.alt = eventTitle(mainEvent) || "";
+                            cell.insertBefore(img, cell.firstChild);
+                        }
+
                         const badge = document.createElement("span");
                         badge.className = "event-badge";
                         badge.textContent = dayEvents.length > 1 ? `Event +${dayEvents.length - 1}` : "Event";
