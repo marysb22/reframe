@@ -362,21 +362,41 @@
 
         <h2 style="margin-bottom:20px; color:#0F172A; text-align:center;" data-translate="register_title">Register for Training</h2>
 
-        <form name="ipt-registration" method="POST" data-netlify="true">
-          <input type="hidden" name="form-name" value="ipt-registration">
+        <form id="eventRegistrationForm" novalidate>
+          <!-- Honeypot: hidden from real users, left blank by them; a filled value flags a bot. -->
+          <div style="position:absolute; left:-9999px; top:-9999px;" aria-hidden="true">
+            <label for="regWebsite">Website</label>
+            <input type="text" id="regWebsite" name="website" tabindex="-1" autocomplete="off">
+          </div>
+
           <div style="margin-bottom:14px;">
-            <label style="font-weight:600; display:block; margin-bottom:5px;" data-translate="register_name_label">Full Name</label>
-            <input type="text" name="name" required style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
+            <label style="font-weight:600; display:block; margin-bottom:5px;" data-translate="register_name_label">First Name</label>
+            <input type="text" id="regFirstName" name="firstName" required maxlength="100" style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="font-weight:600; display:block; margin-bottom:5px;" data-translate="register_lastname_label">Last Name</label>
+            <input type="text" id="regLastName" name="lastName" required maxlength="100" style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
           </div>
           <div style="margin-bottom:14px;">
             <label style="font-weight:600; display:block; margin-bottom:5px;" data-translate="register_email_label">Email</label>
-            <input type="email" name="email" required style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
+            <input type="email" id="regEmail" name="email" required maxlength="190" style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="font-weight:600; display:block; margin-bottom:5px;" data-translate="register_phone_label">Phone Number</label>
+            <input type="tel" id="regPhone" name="phone" required maxlength="40" style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="font-weight:600; display:block; margin-bottom:5px;" data-translate="register_location_label">Location</label>
+            <input type="text" id="regLocation" name="location" required maxlength="150" style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
           </div>
           <div style="margin-bottom:20px;">
-            <label style="font-weight:600; display:block; margin-bottom:5px;" data-translate="register_profession_label">Profession / Title</label>
-            <input type="text" name="profession" required style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px;">
+            <label style="font-weight:600; display:block; margin-bottom:5px;" data-translate="register_event_label">Program / Event</label>
+            <input type="text" id="regEvent" name="eventTitle" readonly style="width:100%; padding:10px; border:1px solid #CBD5E1; border-radius:8px; background:#F1F5F9; color:#334155;">
           </div>
-          <button type="submit" style="width:100%; background:#4D9794; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:600; cursor:pointer;" data-translate="register_submit">
+
+          <p id="registerStatus" style="display:none; margin-bottom:14px; padding:10px 12px; border-radius:8px; font-size:0.9rem;"></p>
+
+          <button type="submit" id="registerSubmitBtn" style="width:100%; background:#4D9794; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:600; cursor:pointer;" data-translate="register_submit">
             Submit Registration
           </button>
         </form>
@@ -705,16 +725,39 @@
     }
   </script>
 
-  <!-- Registration modal open/close -->
+  <!-- Registration modal: open/close + submit -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       const modalRegister = document.getElementById("modalRegister");
       const registerModal = document.getElementById("registerModal");
       const closeRegister = document.getElementById("closeRegister");
+      const form = document.getElementById("eventRegistrationForm");
+      const statusEl = document.getElementById("registerStatus");
+      const submitBtn = document.getElementById("registerSubmitBtn");
+      const eventField = document.getElementById("regEvent");
+
+      function showStatus(message, isError) {
+        if (!statusEl) return;
+        statusEl.textContent = message;
+        statusEl.style.display = "block";
+        statusEl.style.background = isError ? "#FEE2E2" : "#DCFCE7";
+        statusEl.style.color = isError ? "#991B1B" : "#166534";
+      }
+
+      function hideStatus() {
+        if (!statusEl) return;
+        statusEl.style.display = "none";
+        statusEl.textContent = "";
+      }
 
       if (modalRegister && registerModal) {
         modalRegister.addEventListener("click", (e) => {
           e.preventDefault();
+          hideStatus();
+          if (form) form.reset();
+          if (eventField) {
+            eventField.value = (window.currentRegistrationEvent && window.currentRegistrationEvent.title) || "";
+          }
           registerModal.style.display = "block";
         });
       }
@@ -726,6 +769,62 @@
       if (registerModal) {
         window.addEventListener("click", (e) => {
           if (e.target === registerModal) registerModal.style.display = "none";
+        });
+      }
+
+      if (form) {
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const eventInfo = window.currentRegistrationEvent;
+          const firstName = document.getElementById("regFirstName").value.trim();
+          const lastName = document.getElementById("regLastName").value.trim();
+          const email = document.getElementById("regEmail").value.trim();
+          const phone = document.getElementById("regPhone").value.trim();
+          const location = document.getElementById("regLocation").value.trim();
+          const website = document.getElementById("regWebsite").value; // honeypot
+
+          if (!eventInfo || !eventInfo.id) {
+            showStatus(t("register_error_message", "Something went wrong. Please try again later."), true);
+            return;
+          }
+          if (!firstName || !lastName || !email || !phone || !location) {
+            showStatus(t("register_required_error", "Please fill in all required fields."), true);
+            return;
+          }
+          const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailPattern.test(email)) {
+            showStatus(t("register_invalid_email_error", "Please enter a valid email address."), true);
+            return;
+          }
+
+          if (submitBtn) submitBtn.disabled = true;
+          hideStatus();
+
+          try {
+            const res = await fetch(`${BACKEND_ORIGIN}/api/events/${eventInfo.id}/register`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ firstName, lastName, email, phone, location, website }),
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (res.ok && data.success) {
+              showStatus(t("register_success_message", "Registration submitted successfully. We will contact you shortly."), false);
+              form.reset();
+              setTimeout(() => {
+                registerModal.style.display = "none";
+                hideStatus();
+              }, 2500);
+            } else {
+              showStatus(t("register_error_message", "Something went wrong. Please try again later."), true);
+            }
+          } catch (error) {
+            console.error("Event registration submit failed", error);
+            showStatus(t("register_error_message", "Something went wrong. Please try again later."), true);
+          } finally {
+            if (submitBtn) submitBtn.disabled = false;
+          }
         });
       }
     });
@@ -1083,15 +1182,11 @@
         toggleSection(modalOutcomesSection, safeArray(content.outcomes).length > 0);
         toggleSection(modalFacilitatorBioSection, !!content.facilitatorBio);
 
-        modalRegister.onclick = (e) => {
-          e.preventDefault();
-          const link = (event.register || "#").trim();
-          if (!link || link === "#") {
-            if (registerModal) registerModal.style.display = "block";
-          } else {
-            window.open(link, "_blank");
-          }
-        };
+        // Registration always happens on Reframe's own form -- never redirect
+        // to an external Google Form. Keep the selected event available (a
+        // separate <script> block owns the register modal's open/close and
+        // submit handling, and doesn't share this block's lexical scope).
+        window.currentRegistrationEvent = { id: event.id, title: content.title || "" };
 
         modal.style.display = "block";
         document.body.style.overflow = "hidden";

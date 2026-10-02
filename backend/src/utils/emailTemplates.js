@@ -160,6 +160,38 @@ const TEMPLATES = {
 
     return { subject: "Your Password Reset Code", text, html };
   },
+
+  // Also bespoke, not wrap() -- this isn't a notice to an existing app user
+  // about their account, it's an internal alert to Reframe staff about a
+  // new public website submission, so there's no "log in to view" footer
+  // and no recipientName. All five fields are public-form input from an
+  // anonymous visitor, so every one of them goes through field()/escapeHtml
+  // before reaching the HTML body.
+  eventRegistration({ eventTitle, firstName, lastName, email, phone, location }) {
+    const fullName = `${firstName} ${lastName}`.trim();
+    const text = [
+      "A new event registration was submitted on the website.",
+      "",
+      `Event: ${eventTitle}`,
+      `Name: ${fullName}`,
+      `Email: ${email}`,
+      `Phone: ${phone}`,
+      `Location: ${location}`,
+    ].join("\n");
+
+    const html = `
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#16211F;line-height:1.6;max-width:480px;">
+        <p style="margin:0 0 12px;">A new event registration was submitted on the website.</p>
+        <p style="margin:0 0 6px;">${field("Event", eventTitle)}</p>
+        <p style="margin:0 0 6px;">${field("Name", fullName)}</p>
+        <p style="margin:0 0 6px;">${field("Email", email)}</p>
+        <p style="margin:0 0 6px;">${field("Phone", phone)}</p>
+        <p style="margin:0 0 6px;">${field("Location", location)}</p>
+      </div>
+    `.trim();
+
+    return { subject: `New Event Registration: ${eventTitle}`, text, html };
+  },
 };
 
 /** Returns { subject, text, html } for a known template name, or null if unknown (never throws -- an unrecognized template must not break the caller). */

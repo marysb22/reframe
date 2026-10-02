@@ -447,10 +447,18 @@ const translations = {
     // ===== register =====
     "register_btn": "Create Account",
     "register_email_label": "Email",
-    "register_name_label": "Full Name",
+    "register_error_message": "Something went wrong. Please try again later.",
+    "register_event_label": "Program / Event",
+    "register_invalid_email_error": "Please enter a valid email address.",
+    "register_lastname_label": "Last Name",
+    "register_location_label": "Location",
+    "register_name_label": "First Name",
     "register_note": "All submissions will be securely stored and viewable in Reframe's dashboard.",
+    "register_phone_label": "Phone Number",
     "register_profession_label": "Profession / Title",
+    "register_required_error": "Please fill in all required fields.",
     "register_submit": "Submit Registration",
+    "register_success_message": "Registration submitted successfully. We will contact you shortly.",
     "register_title": "Register for Training",
 
     // ===== remember =====
@@ -908,10 +916,18 @@ const translations = {
     // ===== register =====
     "register_btn": "إنشاء حساب",
     "register_email_label": "البريد الإلكتروني",
-    "register_name_label": "الاسم الكامل",
+    "register_error_message": "حدث خطأ ما. يرجى المحاولة مرة أخرى لاحقاً.",
+    "register_event_label": "البرنامج / الفعالية",
+    "register_invalid_email_error": "يرجى إدخال بريد إلكتروني صحيح.",
+    "register_lastname_label": "اسم العائلة",
+    "register_location_label": "الموقع",
+    "register_name_label": "الاسم الأول",
     "register_note": "سيتم تخزين جميع الطلبات بشكل آمن وستكون قابلة للعرض في لوحة تحكم ريفريم.",
+    "register_phone_label": "رقم الهاتف",
     "register_profession_label": "المهنة / المسمى الوظيفي",
+    "register_required_error": "يرجى تعبئة جميع الحقول المطلوبة.",
     "register_submit": "إرسال التسجيل",
+    "register_success_message": "تم إرسال التسجيل بنجاح. سنتواصل معك قريباً.",
     "register_title": "التسجيل للتدريب",
 
     // ===== remember =====
