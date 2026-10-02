@@ -2485,6 +2485,19 @@ html[lang="ar"] .footer-section a:hover {
     color: #ffffff;
 }
 
+/* The name itself isn't covered by data-translate (only the label before
+   it is) -- show the Arabic name only in Arabic mode and the English name
+   only in English/LTR mode, instead of both at once. */
+.footer-credit .credit-name-ar {
+    display: none;
+}
+[dir="rtl"] .footer-credit .credit-name-en {
+    display: none;
+}
+[dir="rtl"] .footer-credit .credit-name-ar {
+    display: inline;
+}
+
 [dir="rtl"] .footer-content {
     text-align: right;
 }
