@@ -187,7 +187,16 @@ async function buildActivitiesSummary(db, supervisorId) {
          COUNT(*) AS total_activities,
          SUM(CASE WHEN type_code = 'training' THEN 1 ELSE 0 END) AS training_activities,
          SUM(CASE WHEN recorded_count < slot_count THEN 1 ELSE 0 END) AS pending_attendance,
-         (SELECT COUNT(DISTINCT student_id) FROM sessions WHERE supervisor_id = ?) AS trainees_covered
+         -- Bounded to the supervisor's CURRENT caseload (supervisor_students),
+         -- not every student_id that has ever appeared in a session row under
+         -- this supervisor_id. Without the join, a trainee who was later
+         -- reassigned/removed keeps permanently inflating this count forever
+         -- -- confirmed live: it stayed unchanged after removing a trainee
+         -- from the caseload, even though the Trainee Profiles list (which
+         -- IS caseload-bound) no longer shows them at all.
+         (SELECT COUNT(DISTINCT s.student_id) FROM sessions s
+            JOIN supervisor_students ss ON ss.supervisor_id = s.supervisor_id AND ss.student_id = s.student_id
+          WHERE s.supervisor_id = ?) AS trainees_covered
        FROM (${UNION_BASE}) combined`,
       [supervisorId, supervisorId, supervisorId, supervisorId]
     ),
