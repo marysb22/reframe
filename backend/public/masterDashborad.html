@@ -311,51 +311,22 @@
         }
 
         .live-clock {
-            position: relative;
             display: flex;
             align-items: baseline;
-            gap: 8px;
+            gap: 6px;
             font-variant-numeric: tabular-nums;
-            font-weight: 700;
-            font-size: 14px;
-            letter-spacing: 0.3px;
-            color: #ffffff;
+            font-weight: 600;
+            font-size: 13.5px;
+            color: var(--text);
             white-space: nowrap;
-            padding: 9px 14px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #0f3d3a, #1E8E3E 45%, #4D9794 85%);
-            box-shadow: 0 4px 16px rgba(30, 142, 62, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-        }
-        .live-clock-icon {
-            align-self: center;
-            font-size: 12.5px;
-            color: #ffffff;
-            opacity: 0.85;
-        }
-        .live-clock-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            align-self: center;
-            background: #6ee7b7;
-            animation: liveClockPulse 2s ease-out infinite;
-        }
-        @keyframes liveClockPulse {
-            0% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.55); }
-            70% { box-shadow: 0 0 0 6px rgba(110, 231, 183, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0); }
         }
         .live-clock-zone {
             font-size: 10.5px;
-            font-weight: 600;
-            letter-spacing: 0.2px;
-            color: rgba(255, 255, 255, 0.78);
+            font-weight: 500;
+            color: var(--faint);
         }
         @media (max-width: 720px) {
             .live-clock-zone { display: none; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .live-clock-dot { animation: none; }
         }
 
         .bell-btn {
@@ -3298,10 +3269,8 @@
                 </div>
                 <div class="top-right">
                     <div class="live-clock" id="liveClock" title="Your local time">
-                        <i class="fa fa-clock live-clock-icon"></i>
                         <span id="liveClockTime">--:--</span>
                         <span id="liveClockZone" class="live-clock-zone"></span>
-                        <span class="live-clock-dot" aria-hidden="true"></span>
                     </div>
                     <div class="notif-wrap">
                         <button class="bell-btn" type="button" aria-label="Notifications" onclick="toggleNotifDropdown()">
