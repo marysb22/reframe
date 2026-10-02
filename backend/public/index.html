@@ -1826,8 +1826,27 @@
                 return isNaN(d.getTime()) ? null : d;
             }
 
-            // Same rule events.html's own calendar uses: a concluded event
-            // no longer counts as "on" the calendar.
+            // An event only counts as "finished" once its LAST scheduled
+            // calendar day has fully ended -- not the instant its (first)
+            // start date/time passes. Mirrors events.html's own helper of
+            // the same name exactly, so both calendars -- and the Home
+            // page's event-card list below -- agree on what "finished"
+            // means. An event that's currently happening ("ongoing") stays
+            // visible for its full run; only a genuinely-over event drops
+            // off the Home page (the Events/Training page itself is never
+            // touched by this -- it keeps every event regardless).
+            function isEventFinished(event) {
+                const dates = Array.isArray(event.dates) && event.dates.length ? event.dates : [event.date];
+                const parsed = dates.map(normalizeEventDate).filter(Boolean);
+                if (!parsed.length) return false;
+                const finalDate = new Date(Math.max(...parsed.map((d) => d.getTime())));
+                const endOfFinalDay = new Date(finalDate.getFullYear(), finalDate.getMonth(), finalDate.getDate(), 23, 59, 59, 999);
+                return Date.now() > endOfFinalDay.getTime();
+            }
+
+            // Same rule events.html's own calendar uses: a concluded event,
+            // or one that has genuinely finished, no longer counts as "on"
+            // the calendar.
             function getEventsForDate(year, month, day) {
                 return homeEvents.filter((event) => {
                     const eventDate = normalizeEventDate(event.date);
@@ -1836,7 +1855,8 @@
                         eventDate.getFullYear() === year &&
                         eventDate.getMonth() === month &&
                         eventDate.getDate() === day &&
-                        event.status !== "concluded"
+                        event.status !== "concluded" &&
+                        !isEventFinished(event)
                     );
                 });
             }
@@ -1866,7 +1886,7 @@
                 const monthEvents = homeEvents
                     .filter((event) => {
                         const d = normalizeEventDate(event.date);
-                        return d && d.getFullYear() === year && d.getMonth() === month && event.status !== "concluded";
+                        return d && d.getFullYear() === year && d.getMonth() === month && event.status !== "concluded" && !isEventFinished(event);
                     })
                     .sort((a, b) => normalizeEventDate(a.date) - normalizeEventDate(b.date))
                     .slice(0, 5);

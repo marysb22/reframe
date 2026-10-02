@@ -897,6 +897,21 @@
         const d = new Date(dateString);
         return isNaN(d.getTime()) ? null : d;
       }
+      // An event only counts as "finished" once its LAST scheduled calendar
+      // day has fully ended -- not the instant its (first) start date/time
+      // passes. A single-day event is "finished" at the end of its one day;
+      // a multi-day event (event.dates, see routes/public.js) is "finished"
+      // at the end of its last day. This keeps an event that's currently
+      // happening ("ongoing") on the calendar for its full run, only
+      // dropping its day-marker/image once it's genuinely over.
+      function isEventFinished(event) {
+        const dates = Array.isArray(event.dates) && event.dates.length ? event.dates : [event.date];
+        const parsed = dates.map(normalizeEventDate).filter(Boolean);
+        if (!parsed.length) return false;
+        const finalDate = new Date(Math.max(...parsed.map((d) => d.getTime())));
+        const endOfFinalDay = new Date(finalDate.getFullYear(), finalDate.getMonth(), finalDate.getDate(), 23, 59, 59, 999);
+        return Date.now() > endOfFinalDay.getTime();
+      }
       // An event with more than one occurrence date (event.dates, see
       // routes/public.js's GET /events) must light up on EVERY one of its
       // dates, not just its single primary event.date -- otherwise a
@@ -909,7 +924,7 @@
           return !!d && d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
         };
         return cmsEvents.filter((event) => {
-          if (event.status === "concluded") return false;
+          if (event.status === "concluded" || isEventFinished(event)) return false;
           if (Array.isArray(event.dates) && event.dates.length) {
             return event.dates.some(matchesDay);
           }
