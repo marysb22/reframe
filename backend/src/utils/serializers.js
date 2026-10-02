@@ -558,11 +558,23 @@ async function computeHoursByType(db, { studentId, supervisorId } = {}) {
   derivedRes.rows.forEach((r) => add(r.code, r.hours));
   adjRes.rows.forEach((r) => add(r.code, r.hours));
 
+  // Explicit product decision: "Training Hours" (the 'training' code) is the
+  // one headline number shown everywhere (ToT activities summary, the top
+  // KPI strip, a Trainee's own dashboard), and must reflect ALL hours
+  // logged under ANY hour type -- Supervision, Application, a future
+  // custom type like "Group Session", all of it -- not just hours whose
+  // session_type literally equals 'training'. A session logged under a
+  // newly-added type was otherwise invisible from this number entirely.
+  // Every other type's own entry below is untouched (still its own
+  // category total) for whatever reports break hours down by type --
+  // only the 'training' entry's total is widened to the grand total.
+  const grandTotal = [...totals.values()].reduce((sum, h) => sum + h, 0);
+
   return typesRes.rows.map((t) => ({
     code: t.code,
     label: t.label,
     isPrimary: !!t.is_primary,
-    hours: totals.get(t.code) || 0,
+    hours: t.code === "training" ? grandTotal : totals.get(t.code) || 0,
   }));
 }
 
@@ -629,8 +641,11 @@ async function computeProgressSummary(db, studentId) {
   const trainingHours = hoursByType.find((h) => h.code === "training")?.hours || 0;
   const supervisionHours = hoursByType.find((h) => h.code === "supervision")?.hours || 0;
 
+  // trainingHours (the 'training' entry) is itself the grand total across
+  // every hour type now (see computeHoursByType) -- it already includes
+  // supervisionHours, so adding it again here would double-count it.
   return {
-    clinicalHours: trainingHours + supervisionHours,
+    clinicalHours: trainingHours,
     trainingHours,
     supervisionHours,
     hoursByType,
