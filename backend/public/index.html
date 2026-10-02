@@ -691,7 +691,7 @@
         
         .calendar-days {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
+            grid-template-columns: repeat(7, minmax(0, 1fr));
             gap: 5px;
             margin-bottom: 10px;
         }
@@ -706,7 +706,7 @@
         
         .calendar-dates {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
+            grid-template-columns: repeat(7, minmax(0, 1fr));
             gap: 5px;
             margin-bottom: 20px;
         }
@@ -746,11 +746,20 @@
             transition: all 0.25s ease;
             position: relative;
             overflow: hidden;
+            min-width: 0;
+            box-sizing: border-box;
         }
 
         .cal-day-cell:hover {
             background: #4D9794;
             color: white;
+        }
+
+        /* Font-size lives here (not just inline on the "today" circle) so
+           the circle's em-based width/height in renderCalendar() scale
+           down together with everything else at narrower breakpoints. */
+        .cal-day-num {
+            font-size: 0.95rem;
         }
 
         .cal-day-cell:hover .event-badge {
@@ -1053,9 +1062,114 @@
             }
             .calendar-widget {
                 order: 2;
+                padding: 18px;
             }
             .lab-half {
                 order: 1;
+            }
+            .calendar-header {
+                gap: 10px;
+            }
+            .calendar-month-label {
+                min-width: 0;
+                font-size: 1.3rem;
+            }
+        }
+
+        /* Phones (large down to the smallest realistically-tested sizes --
+           414/390/375/360/320px). Only the Home/Index calendar widget is
+           touched here; the Events/Training calendar (events.html) has its
+           own separate styles and is unaffected. */
+        @media (max-width: 480px) {
+            .calendar-widget {
+                padding: 14px;
+                border-radius: 10px;
+            }
+            .calendar-header {
+                gap: 6px;
+                padding: 8px;
+                margin-bottom: 16px;
+            }
+            .calendar-header button {
+                width: 28px;
+                height: 28px;
+                flex-shrink: 0;
+            }
+            .calendar-month-label {
+                font-size: 1.05rem;
+                letter-spacing: 0.2px;
+            }
+            .calendar-days,
+            .calendar-dates {
+                gap: 3px;
+            }
+            .calendar-days span {
+                padding: 4px 2px;
+                font-size: 0.7rem;
+            }
+            .cal-day-cell {
+                padding: 5px 2px 4px;
+                gap: 2px;
+                min-height: 44px;
+            }
+            .cal-day-num {
+                font-size: 0.78rem;
+            }
+            .event-badge {
+                font-size: 0.5rem;
+                padding: 2px 5px;
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .upcoming-event-item {
+                padding: 8px 10px;
+                gap: 8px;
+            }
+            .upcoming-event-title {
+                font-size: 0.82rem;
+            }
+            .upcoming-event-date {
+                font-size: 0.72rem;
+            }
+            .view-event-btn {
+                padding: 6px 10px;
+                font-size: 0.72rem;
+            }
+        }
+
+        /* Smallest phones (320-375px). Same approach, just tighter --
+           the calendar must still fit 7 columns with zero horizontal
+           scroll and stay tappable. */
+        @media (max-width: 360px) {
+            .calendar-widget {
+                padding: 10px;
+            }
+            .calendar-header {
+                gap: 4px;
+                padding: 6px;
+            }
+            .calendar-header button {
+                width: 26px;
+                height: 26px;
+            }
+            .calendar-month-label {
+                font-size: 0.92rem;
+            }
+            .calendar-days,
+            .calendar-dates {
+                gap: 2px;
+            }
+            .cal-day-cell {
+                padding: 4px 1px 3px;
+                min-height: 40px;
+            }
+            .cal-day-num {
+                font-size: 0.7rem;
+            }
+            .event-badge {
+                font-size: 0.46rem;
+                padding: 2px 4px;
             }
         }
         /* ========== Timeline Section ========== */
