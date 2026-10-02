@@ -681,12 +681,38 @@
             gap: 60px;
             align-items: start;
         }
-        
+
+        /* .lab-column and .calendar-half (not .calendar-widget) are the
+           ACTUAL direct children of the grid above -- they had no rules of
+           their own anywhere, so their default min-width: auto let their
+           content's min-content size force both columns (they share one
+           track at the single-column mobile breakpoint) wider than the
+           screen. This is the real fix for the calendar losing its 7th
+           column/overflowing on phones; min-width: 0 on .calendar-widget
+           alone (its grandchild) couldn't reach up past this. */
+        .lab-column,
+        .calendar-half {
+            min-width: 0;
+        }
+
         .calendar-widget {
             background: #f8f9fa;
             border-radius: 12px;
             padding: 25px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            /* A grid item's default min-width is "auto" (= its content's
+               min-content width), not 0 -- so even with every descendant
+               grid properly set to minmax(0, 1fr), this box itself could
+               still refuse to shrink below that and push the single-column
+               mobile layout wider than the screen (the whole reason the
+               7-day grid lost a column on real phones despite the fix
+               below). min-width: 0 here is what actually lets it shrink to
+               fit; width/max-width: 100% keep it from growing past its
+               track either. */
+            min-width: 0;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
         }
         
         .calendar-days {
@@ -793,7 +819,7 @@
             line-height: 1;
             padding: 3px 7px;
             border-radius: 999px;
-            background: #1E8E3E;
+            background: #2e5f5d;
             color: #fff;
             letter-spacing: 0.2px;
             white-space: nowrap;
@@ -908,6 +934,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            min-width: 0;
         }
         
         .lab-announcement {
@@ -1067,37 +1094,24 @@
             .lab-half {
                 order: 1;
             }
-            .calendar-header {
-                gap: 10px;
-            }
-            .calendar-month-label {
-                min-width: 0;
-                font-size: 1.3rem;
-            }
         }
 
         /* Phones (large down to the smallest realistically-tested sizes --
            414/390/375/360/320px). Only the Home/Index calendar widget is
            touched here; the Events/Training calendar (events.html) has its
-           own separate styles and is unaffected. */
+           own separate styles and is unaffected.
+
+           .calendar-header / .calendar-header button / .calendar-month-label
+           overrides live further down, right after their own base rules
+           (around .calendar-month-label's definition) -- not here. CSS
+           resolves same-specificity ties by source order, and this page's
+           base rules for those three happen to sit much later in the
+           file than this block, so an override placed here would silently
+           lose to the base rule despite the media query matching. */
         @media (max-width: 480px) {
             .calendar-widget {
                 padding: 14px;
                 border-radius: 10px;
-            }
-            .calendar-header {
-                gap: 6px;
-                padding: 8px;
-                margin-bottom: 16px;
-            }
-            .calendar-header button {
-                width: 28px;
-                height: 28px;
-                flex-shrink: 0;
-            }
-            .calendar-month-label {
-                font-size: 1.05rem;
-                letter-spacing: 0.2px;
             }
             .calendar-days,
             .calendar-dates {
@@ -1144,17 +1158,6 @@
         @media (max-width: 360px) {
             .calendar-widget {
                 padding: 10px;
-            }
-            .calendar-header {
-                gap: 4px;
-                padding: 6px;
-            }
-            .calendar-header button {
-                width: 26px;
-                height: 26px;
-            }
-            .calendar-month-label {
-                font-size: 0.92rem;
             }
             .calendar-days,
             .calendar-dates {
@@ -1710,8 +1713,9 @@
             margin-bottom: 25px;
             border-radius: 8px;
             padding: 10px;
+            min-width: 0;
         }
-        
+
         .calendar-header button {
             background: rgba(255, 255, 255, 0.15);
             border: none;
@@ -1724,6 +1728,7 @@
             align-items: center;
             justify-content: center;
             transition: background 0.25s ease;
+            flex-shrink: 0;
         }
         
         .calendar-header button:hover {
@@ -1737,6 +1742,48 @@
             letter-spacing: 0.5px;
             min-width: 180px;
             text-align: center;
+        }
+
+        /* Placed here (immediately after the base rules above, not earlier
+           in the file with the rest of the Home/Index calendar's mobile
+           tweaks) so these overrides actually win the cascade -- same
+           specificity as the base rules, later source order wins. */
+        @media (max-width: 768px) {
+            .calendar-header {
+                gap: 10px;
+            }
+            .calendar-month-label {
+                min-width: 0;
+                font-size: 1.3rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .calendar-header {
+                gap: 6px;
+                padding: 8px;
+                margin-bottom: 16px;
+            }
+            .calendar-header button {
+                width: 28px;
+                height: 28px;
+            }
+            .calendar-month-label {
+                font-size: 1.05rem;
+                letter-spacing: 0.2px;
+            }
+        }
+        @media (max-width: 360px) {
+            .calendar-header {
+                gap: 4px;
+                padding: 6px;
+            }
+            .calendar-header button {
+                width: 26px;
+                height: 26px;
+            }
+            .calendar-month-label {
+                font-size: 0.92rem;
+            }
         }
         /* ===== RTL & icon direction handling ===== */
         
