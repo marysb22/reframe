@@ -1295,7 +1295,17 @@ router.post(
         [codeResult.code, passwordHash]
       );
       const traineeId = cred.insertId;
-      await db.query("INSERT INTO students (id, full_name, group_id) VALUES (?, ?, ?)", [traineeId, fullName, groupId]);
+      // Cohort is optional at creation (same free-text/auto-create
+      // behavior as editing it later via PUT /admin/users/:id) -- without
+      // this, a Trainee's cohort could only ever be set as a separate
+      // follow-up edit, which in practice meant it was never set at all.
+      const cohortId = await resolveCohortId(db, body.cohort);
+      await db.query("INSERT INTO students (id, full_name, group_id, cohort_id) VALUES (?, ?, ?, ?)", [
+        traineeId,
+        fullName,
+        groupId,
+        cohortId,
+      ]);
       await db.query("INSERT INTO settings (user_id) VALUES (?)", [traineeId]);
       await db.query("INSERT INTO privacy_preferences (user_id) VALUES (?)", [traineeId]);
       await db.query("INSERT INTO payments (student_id, total_fee_cents) VALUES (?, 0)", [traineeId]);

@@ -2766,6 +2766,11 @@
                     <div><label>ID (optional)</label><input type="text" id="atrId" placeholder="Auto-generate"></div>
                     <div><label>Temp password</label><input type="text" id="atrPassword" value="password123"></div>
                 </div>
+                <div>
+                    <label>Cohort (optional)</label>
+                    <input type="text" id="atrCohort" placeholder="e.g. 2026A">
+                    <div class="field-hint">Free text -- a cohort name that doesn't exist yet is created automatically. Can also be set later from Edit.</div>
+                </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeAddTraineeModal()">Cancel</button>
                     <button type="submit" class="btn">Create &amp; add to group</button>
@@ -3515,7 +3520,7 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
 // action, and the Add-Trainer modal opened from a Group's detail view --
 // wrapping POST /admin/trainers and PATCH /admin/trainers/:id/group.
 
-async function createTrainer({ fullName, role, groupId, memberCode, tempPassword }) {
+async function createTrainer({ fullName, role, groupId, memberCode, tempPassword, cohort }) {
   return apiRequest("/admin/trainers", {
     method: "POST",
     body: JSON.stringify({
@@ -3523,6 +3528,7 @@ async function createTrainer({ fullName, role, groupId, memberCode, tempPassword
       groupId: groupId || undefined,
       memberCode: memberCode || undefined,
       tempPassword: tempPassword || undefined,
+      cohort: cohort || undefined,
     }),
   });
 }
@@ -3758,8 +3764,9 @@ document.getElementById("addTraineeCreateForm").addEventListener("submit", async
   const fullName = document.getElementById("atrName").value.trim();
   const memberCode = document.getElementById("atrId").value.trim();
   const tempPassword = document.getElementById("atrPassword").value.trim();
+  const cohort = document.getElementById("atrCohort").value.trim();
 
-  const result = await createTrainer({ fullName, role: "trainee", groupId: addTraineeGroupId, memberCode, tempPassword });
+  const result = await createTrainer({ fullName, role: "trainee", groupId: addTraineeGroupId, memberCode, tempPassword, cohort });
   if (!result) return;
 
   showSuccessNotification("Trainee Added", `ID ${result.memberCode}, temp password ${result.tempPassword}. The trainee has been added to the group successfully.`, 6000);
