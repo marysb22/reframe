@@ -869,7 +869,7 @@
             font-size: 0.78rem;
             font-weight: 700;
             color: #fff;
-            background: var(--secondary-color, #4D9794);
+            background: #1e3f5a;
             padding: 7px 14px;
             border-radius: 999px;
             text-decoration: none;
@@ -917,15 +917,20 @@
             gap: 6px;
         }
         
+        /* Overrides styles/main.css's sitewide .view-all-btn (which uses
+           the site's teal --primary-blue) -- scoped to this one button on
+           the Home page's calendar/events section only, per request. */
         .view-all-btn {
             align-self: flex-end;
             font-size: 0.85rem;
             font-weight: 600;
             color: #fff;
+            background: #1e3f5a;
             text-decoration: none;
         }
-        
+
         .view-all-btn:hover {
+            background: #15304a;
             text-decoration: underline;
         }
         /* Lab Announcement */
