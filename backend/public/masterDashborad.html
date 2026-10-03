@@ -3088,7 +3088,68 @@
             grid-template-columns: 1fr 1fr;
             gap: 16px;
         }
-        
+
+        /* Mirrors Totdashboard.html's Settings page exactly (the single
+           design reference) -- min-width:0 overrides a grid item's default
+           min-width:auto, which otherwise refuses to shrink a track below
+           its content's natural width. The Hour types card's <table> is
+           wide enough on its own to blow the whole grid past the viewport
+           at phone widths without this, forcing every card in the row out
+           past the screen edge with it. With this, that table's own
+           overflow-x:auto mobile rule can actually take effect as a
+           contained horizontal scroll instead. */
+        .settings-grid>.system-card {
+            margin-bottom: 0;
+            min-width: 0;
+        }
+
+        /* The Hour types table's "Active" column markup already used
+           class="switch"/"switch-track" (same JS as Totdashboard.html,
+           copied verbatim) but this file never had the matching CSS --
+           without it the browser falls back to a bare native checkbox
+           instead of the styled teal toggle. */
+        .switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .switch-track {
+            position: absolute;
+            inset: 0;
+            background: #d9dfdd;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        .switch-track::before {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            left: 3px;
+            top: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: .2s;
+        }
+
+        .switch input:checked+.switch-track {
+            background: var(--primary);
+        }
+
+        .switch input:checked+.switch-track::before {
+            transform: translateX(18px);
+        }
+
         @media(max-width:1200px) {
             .kpi-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -3097,8 +3158,12 @@
                 grid-template-columns: 1fr;
             }
         }
-        
-        @media(max-width:900px) {
+
+        /* Same 1100px breakpoint as Totdashboard.html's Settings page, not
+           a plain 900px-viewport one -- the sidebar's fixed 264px comes out
+           of the viewport width first, so the real content width this grid
+           has to work with is less than the viewport alone suggests. */
+        @media(max-width:1100px) {
             .settings-grid {
                 grid-template-columns: 1fr;
             }
