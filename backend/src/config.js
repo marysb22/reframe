@@ -44,4 +44,9 @@ module.exports = {
   // platform's own request-size limit ever needs to match a different
   // number (that outer limit, if any, lives outside this repo).
   materialUploadMaxMb: Number(process.env.MATERIAL_UPLOAD_MAX_MB) || 2048,
+  // Optional, same graceful-degrade philosophy as utils/mailer.js's SMTP_*
+  // vars -- if unset, routes/ai.js's /chat route just returns a clear 503
+  // instead of the whole app failing to start. Never log this value or
+  // send it to any public/*.html file -- it's a paid external API key.
+  deepseekApiKey: process.env.DEEPSEEK_API_KEY || null,
 };

@@ -4601,6 +4601,7 @@
                     <div class="chat-mode-tabs">
                         <button type="button" class="chat-mode-tab active" id="chatModeDirectTab" onclick="switchChatMode('direct')">Direct Messages<span class="unread-dot" id="dmTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
                         <button type="button" class="chat-mode-tab" id="chatModeGroupTab" onclick="switchChatMode('group')">Group Chats<span class="unread-dot" id="groupTabUnreadBadge" style="display:none;margin-left:6px;"></span></button>
+                        <button type="button" class="chat-mode-tab" id="chatModeAiTab" onclick="switchChatMode('ai')">AI Assistant</button>
                     </div>
 
                     <div id="directChatPanel">
@@ -4666,6 +4667,21 @@
                                     <button type="button" class="icon-btn" title="Attach a file" onclick="document.getElementById('gcAttachmentInput').click()"><i class="fa fa-paperclip"></i></button>
                                     <textarea id="gcInput" dir="auto" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGcMessage();}"></textarea>
                                     <button type="button" class="icon-btn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendGcMessage()"><i class="fa fa-paper-plane"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="aiChatPanel" style="display:none;">
+                        <p class="card-subtitle">Ask a question or request a translation (English, French, Arabic) -- powered by DeepSeek. This is a private assistant, separate from your other chats.</p>
+                        <div class="gc-layout" style="grid-template-columns:1fr;max-width:720px;margin:0 auto;">
+                            <div class="gc-thread-panel">
+                                <div class="chat-thread gc-thread-body" id="aiThread">
+                                    <div class="empty-state">Loading...</div>
+                                </div>
+                                <div class="gc-composer">
+                                    <textarea id="aiInput" dir="auto" placeholder="Ask the AI Assistant, or ask for a translation..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAiMessage();}"></textarea>
+                                    <button type="button" class="icon-btn" id="aiSendBtn" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="sendAiMessage()"><i class="fa fa-paper-plane"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -8972,12 +8988,84 @@ let groupChatsLoaded = false;
 function switchChatMode(mode) {
   document.getElementById("chatModeDirectTab").classList.toggle("active", mode === "direct");
   document.getElementById("chatModeGroupTab").classList.toggle("active", mode === "group");
+  document.getElementById("chatModeAiTab").classList.toggle("active", mode === "ai");
   document.getElementById("directChatPanel").style.display = mode === "direct" ? "block" : "none";
   document.getElementById("groupChatPanel").style.display = mode === "group" ? "block" : "none";
+  document.getElementById("aiChatPanel").style.display = mode === "ai" ? "block" : "none";
   if (mode === "group" && !groupChatsLoaded) {
     groupChatsLoaded = true;
     loadGroupChats();
   }
+  if (mode === "ai" && !aiChatLoaded) {
+    aiChatLoaded = true;
+    loadAiThread();
+  }
+}
+
+// AI Assistant -- a single private DeepSeek-backed thread per user,
+// entirely separate from Direct Messages/Group Chats (see backend/src/
+// routes/ai.js). Reuses the same .chat-bubble/.gc-composer markup as the
+// rest of Chat so it looks consistent, but has no socket/realtime piece --
+// it's a plain request/response, not a live multi-party conversation.
+let aiChatLoaded = false;
+let aiSendInFlight = false;
+
+async function loadAiThread() {
+  const thread = document.getElementById("aiThread");
+  thread.innerHTML = '<div class="empty-state">Loading...</div>';
+  const data = await apiRequest("/ai/conversation");
+  if (!data) return;
+  if (!data.messages.length) {
+    thread.innerHTML = '<div class="empty-state">Ask me anything, or ask for a translation (English, French, Arabic).</div>';
+    return;
+  }
+  thread.innerHTML = data.messages.map(aiMessageHtml).join("");
+  thread.scrollTop = thread.scrollHeight;
+}
+
+function aiMessageHtml(m) {
+  const mine = m.role === "user";
+  const label = mine ? "You" : "AI Assistant";
+  return `<div class="chat-bubble ${mine ? "mine" : "theirs"} ${m.status || ""}" dir="auto">${escapeHtml(m.content)}<div class="meta">${label} &middot; ${new Date(m.createdAt).toLocaleString()}</div></div>`;
+}
+
+function appendAiMessage(m) {
+  const thread = document.getElementById("aiThread");
+  if (thread.querySelector(".empty-state")) thread.innerHTML = "";
+  thread.insertAdjacentHTML("beforeend", aiMessageHtml(m));
+  thread.scrollTop = thread.scrollHeight;
+}
+
+async function sendAiMessage() {
+  if (aiSendInFlight) return;
+  const input = document.getElementById("aiInput");
+  const content = input.value.trim();
+  if (!content) return;
+
+  appendAiMessage({ role: "user", content, createdAt: new Date().toISOString() });
+  input.value = "";
+
+  const sendBtn = document.getElementById("aiSendBtn");
+  aiSendInFlight = true;
+  sendBtn.disabled = true;
+  const thinkingId = "ai-thinking-" + Date.now();
+  document.getElementById("aiThread").insertAdjacentHTML(
+    "beforeend",
+    `<div class="chat-bubble theirs" id="${thinkingId}" dir="auto"><i class="fa fa-ellipsis"></i></div>`
+  );
+  document.getElementById("aiThread").scrollTop = document.getElementById("aiThread").scrollHeight;
+
+  const result = await apiRequest("/ai/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: content }),
+  });
+
+  const thinkingEl = document.getElementById(thinkingId);
+  if (thinkingEl) thinkingEl.remove();
+  if (result) appendAiMessage(result);
+  sendBtn.disabled = false;
+  aiSendInFlight = false;
 }
 
 async function loadGroupChats() {

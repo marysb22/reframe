@@ -86,6 +86,7 @@ app.use("/api/library", require("./routes/library"));
 app.use("/api/master-trainer", require("./routes/Mastertrainer"));
 app.use("/api/designer", require("./routes/designer"));
 app.use("/api/chat-rooms", require("./routes/chatRooms"));
+app.use("/api/ai", require("./routes/ai"));
 app.use("/api", require("./routes/public"));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
