@@ -5123,7 +5123,7 @@
                 <div class="record-form-grid">
                     <div><label>Session Title</label><input type="text" id="gsTitle" dir="auto" required></div>
                     <div><label>Session Type</label><select id="gsType" required></select></div>
-                    <div><label>Hours Provided By <span style="font-weight:400;color:var(--faint);">(whose delivered hours this counts toward)</span></label><select id="gsProvidedBy" required></select></div>
+                    <div><label title="Whose delivered hours this session counts toward">Hours Provided By</label><select id="gsProvidedBy" required></select></div>
                     <div><label>Attachment <span style="font-weight:400;color:var(--faint);">(optional)</span></label><input type="file" id="gsAttachment" accept=".pdf,.doc,.docx,image/*"></div>
                 </div>
 
@@ -8117,18 +8117,21 @@ async function renderProvidedByOptions(selectEl, selectedId) {
     .join("");
 }
 
-function openGroupSessionModal(startMultiDay) {
+async function openGroupSessionModal(startMultiDay) {
   const form = document.getElementById("groupSessionForm");
   form.reset();
   document.getElementById("gsModalTitle").textContent = startMultiDay ? "Add Multi-Day Session" : "Add Session";
   document.getElementById("gsEditOccasionId").value = "";
   document.getElementById("gsEditSeriesId").value = "";
   renderSessionTypeOptions(document.getElementById("gsType"), false);
-  renderProvidedByOptions(document.getElementById("gsProvidedBy"));
   document.getElementById("gsDaysList").innerHTML = "";
   gsDayRowSeq = 0;
   addSessionDayRow();
   if (startMultiDay) addSessionDayRow();
+  // Opened AFTER the roster resolves -- see masterDashborad.html's
+  // identical fix for why (the dropdown was visibly empty for however
+  // long the fetch took, since the modal itself opened instantly).
+  await renderProvidedByOptions(document.getElementById("gsProvidedBy"));
   openModal("groupSessionModal");
 }
 
