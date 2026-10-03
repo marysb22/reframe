@@ -820,6 +820,14 @@ router.get(
             bio: tot.bio,
             specialization: tot.specialization,
             status: tot.status,
+            // Same Training Information fields Admin's CV detail view shows
+            // (loadGroupTot already computes these via withTrainingInfo for
+            // every other MT-facing ToT view -- just not surfaced here yet).
+            trainingStartDate: tot.trainingStartDate,
+            trainingDurationYears: tot.trainingDurationYears,
+            trainingEndDate: tot.trainingEndDate,
+            trainingStatus: tot.trainingStatus,
+            trainingYear: tot.trainingYear,
         });
     })
 );

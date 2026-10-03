@@ -1663,7 +1663,12 @@
             background: var(--info-bg);
             color: var(--info);
         }
-        
+
+        .pill.tot {
+            background: #efe7fb;
+            color: #6a3fb0;
+        }
+
         .row-actions {
             display: flex;
             gap: 7px;
@@ -2858,51 +2863,189 @@
             transition: width .25s ease;
         }
         
+        /* Team CVs (read-only) -- copied verbatim from AdminDashboard.html's
+           own CV card-grid + detail view, the single design reference, so
+           a ToT's read-only profile here looks exactly like Admin's CV
+           section instead of the old flat always-expanded card it used to
+           be. Only difference from Admin's: no edit mode (this stays
+           strictly read-only, per "Read-only professional profiles"). */
+        .cv-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+            margin-top: 18px;
+        }
+
+        .cv-card {
+            background: var(--surface);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .cv-card-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cv-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--success-bg);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .cv-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .cv-card-name {
+            font-weight: 700;
+            font-size: 14.5px;
+            margin: 0;
+        }
+
+        .cv-card-id {
+            font-size: 11.5px;
+            color: var(--faint);
+        }
+
+        .cv-card-meta {
+            font-size: 12.5px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .cv-card-meta i {
+            width: 16px;
+            text-align: center;
+            color: var(--faint);
+        }
+
+        .cv-card .btn {
+            margin-top: auto;
+        }
+
+        .cv-header {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+
+        .cv-avatar-lg {
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            background: var(--success-bg);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 24px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .cv-avatar-lg img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .cv-header h2 {
+            margin: 0 0 4px;
+            font-size: 19px;
+        }
+
+        .cv-header-meta {
+            font-size: 12.5px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
         .cv-section {
             border-top: 1px solid var(--border-soft);
-            padding-top: 14px;
-            margin-top: 14px;
+            padding-top: 16px;
+            margin-top: 16px;
         }
-        
+
         .cv-section:first-of-type {
             border-top: none;
             padding-top: 0;
             margin-top: 0;
         }
-        
+
         .cv-section h4 {
-            margin: 0 0 10px;
-            font-size: 12px;
+            margin: 0 0 12px;
+            font-size: 12.5px;
             text-transform: uppercase;
             letter-spacing: .04em;
             color: var(--muted);
         }
-        
-        .cv-section p {
-            margin: 0;
-            font-size: 13px;
-            line-height: 1.6;
+
+        .cv-field-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .cv-field label {
+            margin: 0 0 4px;
+            font-size: 11.5px;
+        }
+
+        .cv-field-value {
+            font-size: 13.5px;
+            color: var(--text);
+        }
+
+        .cv-body-text {
+            font-size: 13.5px;
+            line-height: 1.7;
+            color: var(--text);
             white-space: pre-wrap;
         }
-        
-        .cv-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 6px 0;
-            font-size: 13px;
-            border-bottom: 1px solid var(--border-soft);
+
+        @media(max-width:900px) {
+            .cv-field-grid {
+                grid-template-columns: 1fr;
+            }
         }
-        
-        .cv-row:last-child {
-            border-bottom: none;
+
+        @media(max-width:700px) {
+            .cv-grid {
+                grid-template-columns: 1fr 1fr;
+            }
         }
-        
-        .cv-row label {
-            color: var(--muted);
-            font-weight: 600;
+
+        @media(max-width:480px) {
+            .cv-grid {
+                grid-template-columns: 1fr;
+            }
+            .cv-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
-        
+
         .material-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -4371,17 +4514,18 @@
             <!-- TEAM CVs (read-only)                                           -->
             <!-- ============================================================= -->
             <section class="dash-section" id="section-cvs" data-title="Team CVs" data-eyebrow="Insights">
-                <section class="system-card">
+                <section class="system-card" id="teamCvListWrap">
                     <div class="card-title">
                         <div class="card-title-left"><i class="fa fa-id-card-clip"></i>
                             <h2>Trainers in Training</h2>
                         </div>
                     </div>
                     <p class="card-subtitle">Read-only professional profiles. Only sections with actual information are shown.</p>
-                    <div class="material-grid" id="teamCvGrid">
+                    <div class="cv-grid" id="teamCvGrid">
                         <div class="empty-state">Loading...</div>
                     </div>
                 </section>
+                <section class="system-card" id="teamCvDetailWrap" style="display:none;"></section>
             </section>
 
             <!-- ============================================================= -->
@@ -5757,6 +5901,13 @@
 
         // ---- Team CVs (read-only) -------------------------------------------
 
+        // Accepts either naming convention -- allTots (grid cards) uses
+        // full_name, /tots/:id/cv (the detail view) uses fullName.
+        function cvAvatarHtml(t) {
+            const photoSrc = t.photo ? `${UPLOADS}/photos/${t.photo}${TOKEN_Q}` : "";
+            return photoSrc ? `<img src="${photoSrc}" alt="">` : escapeHtml(initials(t.full_name || t.fullName));
+        }
+
         function renderTeamCvs() {
             const grid = document.getElementById("teamCvGrid");
             if (!allTots.length) {
@@ -5764,13 +5915,82 @@
                 return;
             }
             grid.innerHTML = allTots.map((t) => `
-        <div class="material-card">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-            <div class="avatar-circle">${escapeHtml(initials(t.full_name))}</div>
-            <div><h4 style="margin:0;">${escapeHtml(t.full_name)}</h4><p style="margin:2px 0 0;">${escapeHtml(t.member_code)}</p></div>
+        <div class="cv-card">
+          <div class="cv-card-top">
+            <div class="cv-avatar">${cvAvatarHtml(t)}</div>
+            <div style="min-width:0;">
+              <p class="cv-card-name">${escapeHtml(t.full_name)}</p>
+              <span class="cv-card-id">${escapeHtml(t.member_code)}</span>
+            </div>
           </div>
-          ${renderCvCard(t)}
+          <div><span class="pill tot">Trainer (ToT)</span> <span class="pill ${t.status}">${escapeHtml(t.status)}</span></div>
+          <div class="cv-card-meta">
+            ${t.email ? `<div><i class="fa fa-envelope"></i> ${escapeHtml(t.email)}</div>` : ""}
+            ${t.phone ? `<div><i class="fa fa-phone"></i> ${escapeHtml(t.phone)}</div>` : ""}
+          </div>
+          <button class="btn btn-sm" onclick="openTotCvDetail(${t.id})"><i class="fa fa-address-card"></i> View CV</button>
         </div>`).join("");
+        }
+
+        // A single read-only field, only rendered if it has a value -- same
+        // "don't show empty CV sections" rule as Admin's cvFieldRow, just
+        // without its edit-mode branch (this view never edits).
+        function cvFieldRow(label, value, opts) {
+            if (!value) return "";
+            const o = opts || {};
+            const display = o.multiline
+                ? `<div class="cv-body-text">${escapeHtml(value)}</div>`
+                : `<div class="cv-field-value">${escapeHtml(value)}</div>`;
+            return `<div class="cv-field"><label>${escapeHtml(label)}</label>${display}</div>`;
+        }
+
+        async function openTotCvDetail(totId) {
+            const data = await apiRequest(`/master-trainer/tots/${totId}/cv`);
+            if (!data) return;
+            document.getElementById("teamCvListWrap").style.display = "none";
+            const detailWrap = document.getElementById("teamCvDetailWrap");
+            detailWrap.style.display = "block";
+            detailWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+
+            const personalFields = [
+                cvFieldRow("Email", data.email),
+                cvFieldRow("Phone", data.phone),
+            ].join("");
+            const summarySection = data.bio
+                ? `<div class="cv-section"><h4>Professional Summary</h4>${cvFieldRow("Summary", data.bio, { multiline: true })}</div>` : "";
+            const specializationField = cvFieldRow("Specialization", data.specialization);
+            const specializationSection = specializationField
+                ? `<div class="cv-section"><h4>Specialization</h4><div class="cv-field-grid">${specializationField}</div></div>` : "";
+            const trainingComputedFields = data.trainingStartDate
+                ? `<div class="cv-field"><label>Duration</label><div class="cv-field-value">${data.trainingDurationYears ? data.trainingDurationYears + " Years" : "&mdash;"}</div></div>
+           <div class="cv-field"><label>Expected End Date</label><div class="cv-field-value">${formatTrainingDate(data.trainingEndDate)}</div></div>
+           <div class="cv-field"><label>Training Status</label><div class="cv-field-value">${formatTrainingStatus(data.trainingStatus, data.trainingYear)}</div></div>` : "";
+            const trainingSection = `<div class="cv-section"><h4>Training Information</h4><div class="cv-field-grid">
+          <div class="cv-field"><label>Start Date</label><div class="cv-field-value">${formatTrainingDate(data.trainingStartDate)}</div></div>
+          ${trainingComputedFields}
+        </div></div>`;
+
+            detailWrap.innerHTML = `
+        <button class="btn btn-secondary btn-sm no-print" onclick="closeTotCvDetail()"><i class="fa fa-arrow-left"></i> Back to list</button>
+        <div class="cv-header" style="margin-top:14px;">
+          <div class="cv-avatar-lg">${cvAvatarHtml(data)}</div>
+          <div>
+            <h2>${escapeHtml(data.fullName)}</h2>
+            <span class="pill tot">Trainer (ToT)</span>
+            <span class="pill ${data.status}">${escapeHtml(data.status)}</span>
+            <p class="cv-header-meta">${escapeHtml(data.memberCode)}</p>
+          </div>
+        </div>
+        <div class="cv-section"><h4>Personal Information</h4><div class="cv-field-grid">${personalFields || '<p class="empty-state">No contact info added.</p>'}</div></div>
+        ${summarySection}
+        ${specializationSection}
+        ${trainingSection}
+      `;
+        }
+
+        function closeTotCvDetail() {
+            document.getElementById("teamCvDetailWrap").style.display = "none";
+            document.getElementById("teamCvListWrap").style.display = "block";
         }
 
         // ---- Trainees -----------------------------------------------------
