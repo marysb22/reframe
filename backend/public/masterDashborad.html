@@ -3933,14 +3933,10 @@
                         <label>Title</label>
                         <input type="text" id="amTitle" dir="auto" required>
                         <label>Share with</label>
-                        <select id="amTargetType" onchange="onAddMeetingTargetChange()">
+                        <select id="amTargetType">
                             <option value="group">Whole Group</option>
-                            <option value="tot">One Trainer (ToT)</option>
+                            <option value="all-tots">All Trainers (ToTs)</option>
                         </select>
-                        <div id="amTotWrap" style="display:none;">
-                            <label>Trainer (ToT)</label>
-                            <select id="amTotSelect"></select>
-                        </div>
                         <label>Platform</label>
                         <select id="amPlatform">
                             <option value="zoom">Zoom</option>
@@ -4102,14 +4098,10 @@
                     <h3>Share a learning material</h3>
                     <form id="addMtMaterialForm">
                         <label>Share with</label>
-                        <select id="ammTargetType" onchange="onAddMtMaterialTargetChange()">
+                        <select id="ammTargetType">
                             <option value="group">Whole Group</option>
-                            <option value="tot">One Trainer (ToT)</option>
+                            <option value="all-tots">All Trainers (ToTs)</option>
                         </select>
-                        <div id="ammTotWrap" style="display:none;">
-                            <label>Trainer (ToT)</label>
-                            <select id="ammTotSelect"></select>
-                        </div>
                         <label>Title</label>
                         <input type="text" id="ammTitle" dir="auto" required>
                         <label>Description (optional)</label>
@@ -4180,14 +4172,10 @@
                     <h3>Add a Document</h3>
                     <form id="addMtDocumentForm">
                         <label>Share with</label>
-                        <select id="admtTargetType" onchange="onAddMtDocumentTargetChange()">
+                        <select id="admtTargetType">
                             <option value="group">Whole Group</option>
-                            <option value="tot">One Trainer (ToT)</option>
+                            <option value="all-tots">All Trainers (ToTs)</option>
                         </select>
-                        <div id="admtTotWrap" style="display:none;">
-                            <label>Trainer (ToT)</label>
-                            <select id="admtTotSelect"></select>
-                        </div>
                         <label>File (PDF, Word, or image)</label>
                         <input type="file" id="admtFileInput" accept=".pdf,.doc,.docx,image/*" required>
                         <div class="modal-actions">
@@ -6876,15 +6864,7 @@
             await ensureTotsLoaded();
             const form = document.getElementById("addMeetingForm");
             form.reset();
-            document.getElementById("amTotSelect").innerHTML = allTots
-                .map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`)
-                .join("");
-            onAddMeetingTargetChange();
             openModal("addMeetingModal");
-        }
-
-        function onAddMeetingTargetChange() {
-            document.getElementById("amTotWrap").style.display = document.getElementById("amTargetType").value === "tot" ? "block" : "none";
         }
 
         document.getElementById("addMeetingForm").addEventListener("submit", async (e) => {
@@ -6895,26 +6875,41 @@
             submitBtn.textContent = "Saving…";
 
             const targetType = document.getElementById("amTargetType").value;
-            const payload = {
+            const basePayload = {
                 title: document.getElementById("amTitle").value,
                 platform: document.getElementById("amPlatform").value,
                 meetingUrl: document.getElementById("amUrl").value,
                 scheduledAt: document.getElementById("amWhen").value || null,
                 durationMinutes: document.getElementById("amDuration").value || null,
             };
-            if (targetType === "tot") {
-                payload.targetSupervisorId = Number(document.getElementById("amTotSelect").value);
-            } else {
-                payload.shareWithGroup = true;
-            }
 
             try {
-                const result = await apiRequest("/supervisor/meetings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-                if (result) {
+                // "All Trainers (ToTs)" has no single-record representation
+                // server-side (meetings.target_supervisor_id is one id) --
+                // same existing single-ToT share, just fired once per ToT in
+                // the Group, reusing the exact same authorized endpoint.
+                let ok;
+                if (targetType === "all-tots") {
+                    if (!allTots.length) { showToast("No Trainers (ToTs) in your Group yet", "error"); return; }
+                    const results = await Promise.all(
+                        allTots.map((t) =>
+                            apiRequest("/supervisor/meetings", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ ...basePayload, targetSupervisorId: t.id }),
+                            })
+                        )
+                    );
+                    ok = results.every(Boolean);
+                } else {
+                    const result = await apiRequest("/supervisor/meetings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ...basePayload, shareWithGroup: true }),
+                    });
+                    ok = !!result;
+                }
+                if (ok) {
                     showSuccessNotification("Meeting Scheduled", "The meeting has been scheduled successfully.");
                     closeModal("addMeetingModal");
                     loadAllMeetings();
@@ -6980,23 +6975,13 @@
             return MATERIAL_TYPE_GROUPS[m.materialType] || "other";
         }
 
-        // ---- Add Material (Master Trainer -- Group or one specific ToT) --
-        let ammIdempotencyKey = null;
+        // ---- Add Material (Master Trainer -- Group or all ToTs) --
         async function openAddMtMaterialModal() {
             await ensureTotsLoaded();
             const form = document.getElementById("addMtMaterialForm");
             form.reset();
-            document.getElementById("ammTotSelect").innerHTML = allTots
-                .map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`)
-                .join("");
-            onAddMtMaterialTargetChange();
             toggleAmmTypeFields();
-            ammIdempotencyKey = generateIdempotencyKey();
             openModal("addMtMaterialModal");
-        }
-
-        function onAddMtMaterialTargetChange() {
-            document.getElementById("ammTotWrap").style.display = document.getElementById("ammTargetType").value === "tot" ? "block" : "none";
         }
 
         function toggleAmmTypeFields() {
@@ -7030,50 +7015,85 @@
             const description = document.getElementById("ammDescription").value;
             const materialType = document.getElementById("ammType").value;
             const targetType = document.getElementById("ammTargetType").value;
-            const idempotencyKey = ammIdempotencyKey || generateIdempotencyKey();
+            const isAllTots = targetType === "all-tots";
 
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalLabel = submitBtn.textContent;
             submitBtn.disabled = true;
 
-            let result;
+            if (isAllTots && !allTots.length) {
+                showToast("No Trainers (ToTs) in your Group yet", "error");
+                submitBtn.disabled = false;
+                return;
+            }
+            // "All Trainers (ToTs)" has no single-record representation
+            // server-side (learning_materials.shared_with_supervisor_id is
+            // one id) -- same existing single-ToT share, just fired once
+            // per ToT, reusing the exact same authorized endpoint. Each
+            // repeat needs its OWN idempotency key -- reusing one across
+            // Trainers would make every request after the first just
+            // return the first ToT's own material back, not create a new
+            // share for anyone else.
+            const targets = isAllTots ? allTots.map((t) => t.id) : [null];
+
+            let ok = true;
             try {
                 if (materialType === "link") {
                     const externalUrl = document.getElementById("ammUrl").value;
                     if (!externalUrl) { showToast("Enter a URL", "error"); return; }
-                    submitBtn.textContent = "Sharing…";
-                    const payload = { title, description, materialType, externalUrl, idempotencyKey };
-                    if (targetType === "tot") payload.targetSupervisorId = Number(document.getElementById("ammTotSelect").value);
-                    else payload.shareWithGroup = true;
-                    result = await apiRequest("/supervisor/materials", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload),
-                    });
-                    if (!result) return;
+                    // Sequential, not Promise.all -- POST /supervisor/materials
+                    // holds a per-caller "upload already in progress" guard
+                    // (materialsUploadGuard) meant to stop a double-submit,
+                    // which would reject every request after the first if
+                    // these fired concurrently (confirmed live: only the
+                    // first Trainer actually got a row). Same reason the
+                    // file-upload branch below was already sequential.
+                    let doneCount = 0;
+                    for (const totId of targets) {
+                        submitBtn.textContent = targets.length > 1 ? `Sharing… (${doneCount + 1}/${targets.length})` : "Sharing…";
+                        const payload = { title, description, materialType, externalUrl, idempotencyKey: generateIdempotencyKey() };
+                        if (totId) payload.targetSupervisorId = totId;
+                        else payload.shareWithGroup = true;
+                        const result = await apiRequest("/supervisor/materials", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload),
+                        });
+                        if (!result) ok = false;
+                        doneCount++;
+                    }
                 } else {
                     const file = document.getElementById("ammFile").files[0];
                     if (!file) { showToast("Choose a file", "error"); return; }
-                    const form = new FormData();
-                    form.append("title", title);
-                    form.append("description", description);
-                    form.append("materialType", materialType);
-                    form.append("idempotencyKey", idempotencyKey);
-                    if (targetType === "tot") form.append("targetSupervisorId", document.getElementById("ammTotSelect").value);
-                    else form.append("shareWithGroup", "true");
-                    form.append("file", file);
-                    submitBtn.textContent = "Uploading… 0%";
-                    try {
-                        result = await uploadMtMaterialWithProgress(form, (pct) => {
-                            submitBtn.textContent = `Uploading… ${pct}%`;
-                        });
-                    } catch (err) {
-                        showToast(err.message, "error");
-                        return;
+                    let doneCount = 0;
+                    for (const totId of targets) {
+                        const form = new FormData();
+                        form.append("title", title);
+                        form.append("description", description);
+                        form.append("materialType", materialType);
+                        form.append("idempotencyKey", generateIdempotencyKey());
+                        if (totId) form.append("targetSupervisorId", totId);
+                        else form.append("shareWithGroup", "true");
+                        form.append("file", file);
+                        submitBtn.textContent = targets.length > 1
+                            ? `Uploading… (${doneCount + 1}/${targets.length})`
+                            : "Uploading… 0%";
+                        try {
+                            const result = await uploadMtMaterialWithProgress(form, (pct) => {
+                                submitBtn.textContent = targets.length > 1
+                                    ? `Uploading… (${doneCount + 1}/${targets.length})`
+                                    : `Uploading… ${pct}%`;
+                            });
+                            if (!result) ok = false;
+                        } catch (err) {
+                            showToast(err.message, "error");
+                            ok = false;
+                        }
+                        doneCount++;
                     }
                 }
 
-                if (result) {
+                if (ok) {
                     showSuccessNotification("Material Shared", "The material has been shared successfully.");
                     closeModal("addMtMaterialModal");
                     loadAllMaterials();
@@ -7416,22 +7436,12 @@
 
         let allDocumentsRaw = [];
 
-        // ---- Add Document (Master Trainer -- Group or one specific ToT) --
-        let admtIdempotencyKey = null;
+        // ---- Add Document (Master Trainer -- Group or all ToTs) --
         async function openAddMtDocumentModal() {
             await ensureTotsLoaded();
             const form = document.getElementById("addMtDocumentForm");
             form.reset();
-            document.getElementById("admtTotSelect").innerHTML = allTots
-                .map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`)
-                .join("");
-            onAddMtDocumentTargetChange();
-            admtIdempotencyKey = generateIdempotencyKey();
             openModal("addMtDocumentModal");
-        }
-
-        function onAddMtDocumentTargetChange() {
-            document.getElementById("admtTotWrap").style.display = document.getElementById("admtTargetType").value === "tot" ? "block" : "none";
         }
 
         document.getElementById("addMtDocumentForm").addEventListener("submit", async (e) => {
@@ -7439,26 +7449,38 @@
             const file = document.getElementById("admtFileInput").files[0];
             if (!file) return showToast("Choose a file", "error");
 
+            const targetType = document.getElementById("admtTargetType").value;
+            const isAllTots = targetType === "all-tots";
+            if (isAllTots && !allTots.length) return showToast("No Trainers (ToTs) in your Group yet", "error");
+            const targets = isAllTots ? allTots.map((t) => t.id) : [null];
+
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalLabel = submitBtn.textContent;
             submitBtn.disabled = true;
-            submitBtn.textContent = "Uploading…";
-
-            const form = new FormData();
-            form.append("document", file);
-            form.append("idempotencyKey", admtIdempotencyKey || generateIdempotencyKey());
-            if (document.getElementById("admtTargetType").value === "tot") {
-                form.append("targetSupervisorId", document.getElementById("admtTotSelect").value);
-            }
 
             try {
-                const response = await fetch(`${API}/supervisor/documents`, {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${token}` },
-                    body: form,
-                });
-                const body = await response.json().catch(() => null);
-                if (!response.ok) throw new Error((body && body.error) || "Upload failed");
+                // "All Trainers (ToTs)" has no single-record representation
+                // server-side (documents.shared_with_supervisor_id is one
+                // id) -- same existing single-ToT share, just fired once
+                // per ToT, reusing the exact same authorized endpoint. Each
+                // repeat needs its OWN idempotency key, same reasoning as
+                // the Materials modal right above.
+                let doneCount = 0;
+                for (const totId of targets) {
+                    submitBtn.textContent = targets.length > 1 ? `Uploading… (${doneCount + 1}/${targets.length})` : "Uploading…";
+                    const form = new FormData();
+                    form.append("document", file);
+                    form.append("idempotencyKey", generateIdempotencyKey());
+                    if (totId) form.append("targetSupervisorId", totId);
+                    const response = await fetch(`${API}/supervisor/documents`, {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: form,
+                    });
+                    const body = await response.json().catch(() => null);
+                    if (!response.ok) throw new Error((body && body.error) || "Upload failed");
+                    doneCount++;
+                }
                 closeModal("addMtDocumentModal");
                 showToast("Document uploaded", "success");
                 loadAllDocuments();
