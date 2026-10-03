@@ -753,6 +753,7 @@
             flex-direction: column;
             gap: 8px;
             min-height: 0;
+            min-width: 0;
         }
         
         .chat-search-box {
@@ -3127,6 +3128,14 @@
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 14px;
+            }
+            /* .top-right (clock + bell + avatar/name + Log out) never wrapped
+               or shrank -- on a narrow phone its fixed-width children simply
+               overflowed the viewport horizontally instead of reflowing,
+               confirmed live at 320/375px (scrollWidth > clientWidth). */
+            .top-right {
+                flex-wrap: wrap;
+                max-width: 100%;
             }
             /* .topbar switching to a column above means .top-right (and the
                bell inside it) is no longer flush against the right edge --
