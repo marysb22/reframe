@@ -4210,6 +4210,23 @@
                     </div>
                 </section>
 
+                <!-- "Hours Provided By" breakdown (migration 035) -- every
+                     trainee-facing hour delivered across this whole Group,
+                     attributed to whoever actually PROVIDED it, not merely
+                     who created the session row. Same endpoint and markup
+                     as the Master Trainer's own dashboard. -->
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-stopwatch"></i>
+                            <h2>Training Hours by Provider</h2>
+                        </div>
+                    </div>
+                    <p class="card-subtitle">Who actually delivered the training, across your whole Group -- a session logged on someone else's behalf still counts toward the person who provided it.</p>
+                    <div id="providerBreakdownList">
+                        <div class="empty-state">Loading...</div>
+                    </div>
+                </section>
+
                 <section class="widget-row">
                     <div class="widget">
                         <div class="widget-title">
@@ -5106,6 +5123,7 @@
                 <div class="record-form-grid">
                     <div><label>Session Title</label><input type="text" id="gsTitle" dir="auto" required></div>
                     <div><label>Session Type</label><select id="gsType" required></select></div>
+                    <div><label>Hours Provided By <span style="font-weight:400;color:var(--faint);">(whose delivered hours this counts toward)</span></label><select id="gsProvidedBy" required></select></div>
                     <div><label>Attachment <span style="font-weight:400;color:var(--faint);">(optional)</span></label><input type="file" id="gsAttachment" accept=".pdf,.doc,.docx,image/*"></div>
                 </div>
 
@@ -6110,12 +6128,40 @@
             await Promise.all([
                 loadKpis(),
                 loadTrainingHoursSummary(),
+                loadProviderBreakdown(),
                 // "Training Activities" now lives inside this same Trainee
                 // Profiles section (no longer its own lazily-loaded nav
                 // section), so it loads eagerly right alongside the roster.
                 loadActivities(),
                 loadActivitiesSummary(),
             ]);
+        }
+
+        // "Hours Provided By" breakdown (migration 035) -- identical markup
+        // and endpoint to masterDashborad.html's own copy, so a ToT sees
+        // exactly the same Group-wide numbers her Master Trainer does. Also
+        // warms the gsProvidedByRoster cache the Add/Edit Session modal uses.
+        async function loadProviderBreakdown() {
+            const wrap = document.getElementById("providerBreakdownList");
+            const data = await apiRequest("/supervisor/me/group-training-breakdown");
+            if (!data) return;
+            gsProvidedByRoster = data.breakdown;
+            if (!data.breakdown.length) {
+                wrap.innerHTML = '<div class="empty-state">No Group members yet.</div>';
+                return;
+            }
+            wrap.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          ${data.breakdown.map((p) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 2px;border-bottom:1px solid var(--border-soft);">
+              <span dir="auto">${escapeHtml(p.role)} &mdash; ${escapeHtml(p.name)}</span>
+              <strong>${(Math.round(p.hours * 100) / 100)}h</strong>
+            </div>`).join("")}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 2px 2px;font-weight:700;">
+            <span>Total</span>
+            <span>${(Math.round(data.totalHours * 100) / 100)}h</span>
+          </div>
+        </div>`;
         }
 
         // "Received" (from my Master Trainer) and "delivered" (to my
@@ -8045,6 +8091,32 @@ function readSessionDayRows() {
 // is the exact same single groupSessionForm flow as a plain "Add Session";
 // whether it ends up creating a session_occasion or a session_series is
 // still decided purely by how many day rows are present at submit time.
+// "Hours Provided By" (migration 035) -- options are this Group's own
+// supervisor roster (Master Trainer + every ToT), reusing
+// GET /supervisor/me/group-training-breakdown (same endpoint
+// masterDashborad.html's Add/Edit Session modal uses) rather than a second
+// roster endpoint. Cached for the session's lifetime.
+let gsProvidedByRoster = null;
+function getMyUserId() {
+  return Number((JSON.parse(localStorage.getItem("user") || localStorage.getItem("reframe_user") || "{}")).id);
+}
+async function loadProvidedByRoster() {
+  if (gsProvidedByRoster) return gsProvidedByRoster;
+  const data = await apiRequest("/supervisor/me/group-training-breakdown");
+  gsProvidedByRoster = (data && data.breakdown) || [];
+  return gsProvidedByRoster;
+}
+async function renderProvidedByOptions(selectEl, selectedId) {
+  const roster = await loadProvidedByRoster();
+  const effectiveSelectedId = selectedId != null ? Number(selectedId) : getMyUserId();
+  selectEl.innerHTML = roster
+    .map(
+      (p) =>
+        `<option value="${p.supervisorId}" ${Number(p.supervisorId) === effectiveSelectedId ? "selected" : ""}>${escapeHtml(p.role)} — ${escapeHtml(p.name)}</option>`
+    )
+    .join("");
+}
+
 function openGroupSessionModal(startMultiDay) {
   const form = document.getElementById("groupSessionForm");
   form.reset();
@@ -8052,6 +8124,7 @@ function openGroupSessionModal(startMultiDay) {
   document.getElementById("gsEditOccasionId").value = "";
   document.getElementById("gsEditSeriesId").value = "";
   renderSessionTypeOptions(document.getElementById("gsType"), false);
+  renderProvidedByOptions(document.getElementById("gsProvidedBy"));
   document.getElementById("gsDaysList").innerHTML = "";
   gsDayRowSeq = 0;
   addSessionDayRow();
@@ -8072,6 +8145,7 @@ async function editGroupSessionOccasion(occasionId) {
   document.getElementById("gsTitle").value = o.title || "";
   document.getElementById("gsType").value = gsSessionTypeToRawType(o.sessionType);
   document.getElementById("gsNotes").value = o.notes || "";
+  await renderProvidedByOptions(document.getElementById("gsProvidedBy"), o.providedBy && o.providedBy.id);
   document.getElementById("gsDaysList").innerHTML = "";
   gsDayRowSeq = 0;
   addSessionDayRow({ date: o.date, time: o.time, durationMinutes: o.durationMinutes });
@@ -8091,6 +8165,7 @@ async function editGroupSessionSeries(seriesId) {
   document.getElementById("gsTitle").value = data.series.title || "";
   document.getElementById("gsType").value = gsSessionTypeToRawType(data.series.sessionType);
   document.getElementById("gsNotes").value = data.series.notes || "";
+  await renderProvidedByOptions(document.getElementById("gsProvidedBy"), data.series.providedBy && data.series.providedBy.id);
   document.getElementById("gsDaysList").innerHTML = "";
   gsDayRowSeq = 0;
   data.days.forEach((d) => addSessionDayRow(d));
@@ -8103,6 +8178,7 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
   const sessionType = gsRawTypeToSessionType(document.getElementById("gsType").value);
   const title = document.getElementById("gsTitle").value;
   const notes = document.getElementById("gsNotes").value || undefined;
+  const providedBySupervisorId = Number(document.getElementById("gsProvidedBy").value) || undefined;
   const days = readSessionDayRows();
   const editOccasionId = document.getElementById("gsEditOccasionId").value;
   const editSeriesId = document.getElementById("gsEditSeriesId").value;
@@ -8113,14 +8189,14 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
     result = await apiRequest(`/supervisor/session-series/${editSeriesId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionType, title, notes, days }),
+      body: JSON.stringify({ sessionType, title, notes, days, providedBySupervisorId }),
     });
   } else if (editOccasionId) {
     const d = days[0];
     result = await apiRequest(`/supervisor/session-occasions/${editOccasionId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionType, title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes }),
+      body: JSON.stringify({ sessionType, title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes, providedBySupervisorId }),
     });
   } else if (days.length > 1) {
     if (attachmentFile) {
@@ -8128,6 +8204,7 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
       form.append("sessionType", sessionType);
       form.append("title", title);
       if (notes) form.append("notes", notes);
+      if (providedBySupervisorId) form.append("providedBySupervisorId", providedBySupervisorId);
       form.append("days", JSON.stringify(days));
       form.append("attachment", attachmentFile);
       result = await apiRequest("/supervisor/session-occasions", { method: "POST", body: form });
@@ -8135,12 +8212,12 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
       result = await apiRequest("/supervisor/session-occasions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionType, title, notes, days }),
+        body: JSON.stringify({ sessionType, title, notes, days, providedBySupervisorId }),
       });
     }
   } else {
     const d = days[0];
-    const payload = { sessionType, title, date: d.date, time: d.time, durationMinutes: d.durationMinutes, notes };
+    const payload = { sessionType, title, date: d.date, time: d.time, durationMinutes: d.durationMinutes, notes, providedBySupervisorId };
     if (attachmentFile) {
       const form = new FormData();
       Object.entries(payload).forEach(([k, v]) => {

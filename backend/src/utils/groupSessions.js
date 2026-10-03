@@ -27,6 +27,7 @@ const ATTENDANCE_STATUSES = ["present", "absent", "excused", "partial"];
  * @param {string} [params.attachmentFilename]
  * @param {string} [params.attachmentOriginalName]
  * @param {Array<number>} params.studentIds - already validated against the caller's own caseload/Group
+ * @param {number} [params.providedBySupervisorId] - whose delivered hours this counts toward (migration 035) -- already validated by the caller against the same Group's supervisor roster; defaults to supervisorId (the creator) when omitted, same as before this field existed.
  * @returns {Promise<{error:string}|{occasionId:number, created:Array<{studentId:number, sessionId:number}>, isFuture:boolean, sessionTypeLabel:string}>}
  */
 async function createSessionOccasion(db, params) {
@@ -42,6 +43,7 @@ async function createSessionOccasion(db, params) {
     attachmentOriginalName,
     studentIds,
     seriesId = null, // set only when this occasion is one day of a multi-day Session (see createMultiDaySession below); NULL keeps this identical to a single-day Session, unchanged from before migration 030.
+    providedBySupervisorId = supervisorId,
   } = params;
 
   if (!date) return { error: "date is required" };
@@ -73,10 +75,11 @@ async function createSessionOccasion(db, params) {
   if (dupeRows.length) return { error: "This looks like a duplicate of a session just logged. Refresh and check the list before retrying." };
 
   const occasionInsert = await db.query(
-    `INSERT INTO session_occasions (supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes, attachment_filename, attachment_original_name, series_id)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO session_occasions (supervisor_id, provided_by_supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes, attachment_filename, attachment_original_name, series_id)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
     [
       supervisorId,
+      providedBySupervisorId,
       sessionType,
       title || null,
       date,
@@ -98,11 +101,12 @@ async function createSessionOccasion(db, params) {
     seen.add(studentId);
 
     const sessionInsert = await db.query(
-      `INSERT INTO sessions (student_id, supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes, status, occasion_id, attachment_filename, attachment_original_name)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO sessions (student_id, supervisor_id, provided_by_supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes, status, occasion_id, attachment_filename, attachment_original_name)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         studentId,
         supervisorId,
+        providedBySupervisorId,
         sessionType,
         title || null,
         date,
@@ -231,6 +235,7 @@ async function createMultiDaySession(db, params) {
     attachmentFilename,
     attachmentOriginalName,
     studentIds,
+    providedBySupervisorId = supervisorId,
   } = params;
 
   if (!Array.isArray(days) || !days.length) {
@@ -253,8 +258,8 @@ async function createMultiDaySession(db, params) {
   if (!htRows.length) return { error: "That session type does not exist or is inactive" };
 
   const seriesInsert = await db.query(
-    `INSERT INTO session_series (supervisor_id, session_type, title, notes) VALUES (?,?,?,?)`,
-    [supervisorId, sessionType, title || null, notes || null]
+    `INSERT INTO session_series (supervisor_id, provided_by_supervisor_id, session_type, title, notes) VALUES (?,?,?,?,?)`,
+    [supervisorId, providedBySupervisorId, sessionType, title || null, notes || null]
   );
   const seriesId = seriesInsert.insertId;
 
@@ -275,6 +280,7 @@ async function createMultiDaySession(db, params) {
       attachmentOriginalName: i === 0 ? attachmentOriginalName : null,
       studentIds,
       seriesId,
+      providedBySupervisorId,
     });
     if (result.error) {
       // Roll back the days already created in this same submission so a
@@ -312,8 +318,8 @@ async function createMultiDaySession(db, params) {
  * a local `sessionType` variable, it just never made it into the PUT
  * body for a single-occasion edit.
  */
-async function updateSessionOccasion(db, { occasionId, supervisorId, date, time, durationMinutes, title, notes, sessionType }) {
-  const { rows } = await db.query("SELECT id, supervisor_id, session_type FROM session_occasions WHERE id = ?", [occasionId]);
+async function updateSessionOccasion(db, { occasionId, supervisorId, date, time, durationMinutes, title, notes, sessionType, providedBySupervisorId }) {
+  const { rows } = await db.query("SELECT id, supervisor_id, session_type, provided_by_supervisor_id FROM session_occasions WHERE id = ?", [occasionId]);
   if (!rows.length || Number(rows[0].supervisor_id) !== Number(supervisorId)) {
     return { error: "Session occasion not found" };
   }
@@ -329,6 +335,13 @@ async function updateSessionOccasion(db, { occasionId, supervisorId, date, time,
     effectiveType = sessionType;
   }
 
+  // providedBySupervisorId is optional on this call too, same reasoning as
+  // sessionType above -- the caller (routes/supervisor.js, Mastertrainer.js)
+  // has already validated an incoming value against the Group's supervisor
+  // roster before this ever runs; omitted (undefined/null) keeps whatever
+  // this occasion already had, never silently resets it to the creator.
+  const effectiveProvidedBy = providedBySupervisorId != null ? Number(providedBySupervisorId) : rows[0].provided_by_supervisor_id;
+
   // COALESCE(?, title/notes), not a direct SET -- title/notes are optional
   // on this call (e.g. a caller only changing sessionType/date, like
   // updateSessionSeries's per-day sessionType-only reconciliation). A
@@ -338,18 +351,18 @@ async function updateSessionOccasion(db, { occasionId, supervisorId, date, time,
   // value (including an explicit "" to intentionally clear it, which is
   // not NULL and so still applies).
   await db.query(
-    `UPDATE session_occasions SET session_date = ?, session_time = ?, duration_minutes = ?, title = COALESCE(?, title), notes = COALESCE(?, notes), session_type = ?, updated_at = NOW()
+    `UPDATE session_occasions SET session_date = ?, session_time = ?, duration_minutes = ?, title = COALESCE(?, title), notes = COALESCE(?, notes), session_type = ?, provided_by_supervisor_id = ?, updated_at = NOW()
      WHERE id = ?`,
-    [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, occasionId]
+    [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, effectiveProvidedBy, occasionId]
   );
   // Every attendee's own sessions row under this occasion must carry the
-  // same date/duration/title/type -- that row, not the occasion row, is
-  // what the hours formula and each trainee's own activity list actually
-  // read.
+  // same date/duration/title/type/provider -- that row, not the occasion
+  // row, is what the hours formula and each trainee's own activity list
+  // actually read.
   await db.query(
-    `UPDATE sessions SET session_date = ?, session_time = ?, duration_minutes = ?, title = COALESCE(?, title), notes = COALESCE(?, notes), session_type = ?, updated_at = NOW()
+    `UPDATE sessions SET session_date = ?, session_time = ?, duration_minutes = ?, title = COALESCE(?, title), notes = COALESCE(?, notes), session_type = ?, provided_by_supervisor_id = ?, updated_at = NOW()
      WHERE occasion_id = ?`,
-    [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, occasionId]
+    [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, effectiveProvidedBy, occasionId]
   );
 
   return { updated: true };
@@ -393,8 +406,8 @@ async function deleteSessionOccasion(db, { occasionId, supervisorId }) {
  * per-day functions a single-day Session uses, so none of this
  * duplicates the hours/attendance logic.
  */
-async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, title, notes, days, studentIds }) {
-  const { rows: seriesRows } = await db.query("SELECT id, supervisor_id FROM session_series WHERE id = ?", [
+async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, title, notes, days, studentIds, providedBySupervisorId }) {
+  const { rows: seriesRows } = await db.query("SELECT id, supervisor_id, provided_by_supervisor_id FROM session_series WHERE id = ?", [
     seriesId,
   ]);
   if (!seriesRows.length || Number(seriesRows[0].supervisor_id) !== Number(supervisorId)) {
@@ -408,9 +421,14 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
     return { error: "Each day of the same Session must have a different date" };
   }
 
+  // Same "resolved once, applied to the series row and every day" shape as
+  // effectiveType below -- omitted (undefined/null) keeps the series' (and
+  // therefore every day's) current provider rather than resetting it.
+  const effectiveProvidedBy = providedBySupervisorId != null ? Number(providedBySupervisorId) : seriesRows[0].provided_by_supervisor_id;
+
   await db.query(
-    `UPDATE session_series SET session_type = COALESCE(?, session_type), title = ?, notes = ?, updated_at = NOW() WHERE id = ?`,
-    [sessionType || null, title || null, notes || null, seriesId]
+    `UPDATE session_series SET session_type = COALESCE(?, session_type), title = ?, notes = ?, provided_by_supervisor_id = ?, updated_at = NOW() WHERE id = ?`,
+    [sessionType || null, title || null, notes || null, effectiveProvidedBy, seriesId]
   );
 
   // Resolved once, up front, so every day -- existing or brand-new -- gets
@@ -436,6 +454,7 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
         title: title,
         notes: notes,
         sessionType: effectiveType,
+        providedBySupervisorId: effectiveProvidedBy,
       });
       if (result.error) return { error: `Day ${day.date}: ${result.error}` };
       keptIds.add(Number(day.occasionId));
@@ -450,6 +469,7 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
         notes,
         studentIds,
         seriesId,
+        providedBySupervisorId: effectiveProvidedBy,
       });
       if (result.error) return { error: `Day ${day.date}: ${result.error}` };
       keptIds.add(result.occasionId);

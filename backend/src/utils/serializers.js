@@ -507,6 +507,16 @@ async function computeHoursByType(db, { studentId, supervisorId } = {}) {
           params: [id],
         }
       : {
+          // Attributed by WHO PROVIDED the hours (migration 035), not who
+          // created the row -- COALESCE falls back to supervisor_id (the
+          // creator) for any row with no explicit provider, which is every
+          // row that existed before this migration (backfilled identically)
+          // and the default for every new row where the creator didn't pick
+          // someone else. This is the one place "hours I delivered" is
+          // computed from, so a ToT logging a session on her Master
+          // Trainer's behalf correctly stops counting toward the ToT's own
+          // delivered-hours total and starts counting toward the Master
+          // Trainer's.
           sql: `SELECT code, SUM(hours) AS hours FROM (
                   -- Standalone (non-Group-Session) sessions: one row per real
                   -- session, unchanged from before.
@@ -516,7 +526,7 @@ async function computeHoursByType(db, { studentId, supervisorId } = {}) {
                               ELSE 0 END / 60 AS hours
                   FROM sessions s
                   JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-                  WHERE s.supervisor_id = ? AND s.status != 'cancelled' AND s.occasion_id IS NULL
+                  WHERE COALESCE(s.provided_by_supervisor_id, s.supervisor_id) = ? AND s.status != 'cancelled' AND s.occasion_id IS NULL
 
                   UNION ALL
 
@@ -524,7 +534,7 @@ async function computeHoursByType(db, { studentId, supervisorId } = {}) {
                   -- exactly once, never once per attendee.
                   SELECT so.session_type AS code, so.duration_minutes / 60 AS hours
                   FROM session_occasions so
-                  WHERE so.supervisor_id = ?
+                  WHERE COALESCE(so.provided_by_supervisor_id, so.supervisor_id) = ?
                     AND EXISTS (
                       SELECT 1 FROM sessions s2
                       JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')

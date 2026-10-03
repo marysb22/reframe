@@ -3586,6 +3586,23 @@
                     </div>
                 </section>
 
+                <!-- "Hours Provided By" breakdown (migration 035) -- every
+                     trainee-facing hour delivered across this Group,
+                     attributed to whoever actually PROVIDED it (Master
+                     Trainer or a specific ToT), not merely who created the
+                     session row. See GET /supervisor/me/group-training-breakdown. -->
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-stopwatch"></i>
+                            <h2>Training Hours by Provider</h2>
+                        </div>
+                    </div>
+                    <p class="card-subtitle">Who actually delivered the training, across your whole Group -- a session logged on someone else's behalf still counts toward the person who provided it.</p>
+                    <div id="providerBreakdownList">
+                        <div class="empty-state">Loading...</div>
+                    </div>
+                </section>
+
                 <h3 class="section-subheading"><i class="fa fa-chart-line"></i> Training performance</h3>
                 <section class="kpi-grid" id="kpiPerformanceGrid">
                     <div class="kpi-card">
@@ -4603,6 +4620,7 @@
                 <div class="record-form-grid">
                     <div><label>Session Title</label><input type="text" id="gsTitle" dir="auto" required></div>
                     <div><label>Session Type</label><select id="gsType" required></select></div>
+                    <div><label>Hours Provided By <span style="font-weight:400;color:var(--muted);">(whose delivered hours this counts toward)</span></label><select id="gsProvidedBy" required></select></div>
                     <div><label>Attachment <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="file" id="gsAttachment" accept=".pdf,.doc,.docx,image/*"></div>
                 </div>
 
@@ -5018,6 +5036,35 @@
             renderTots();
         }
 
+        // "Hours Provided By" breakdown (migration 035) -- one row per
+        // Group member (herself + every ToT) plus a bold total, matching
+        // GET /supervisor/me/group-training-breakdown exactly. Also warms
+        // the gsProvidedByRoster cache the Add/Edit Session modal uses, so
+        // opening that modal right after the dashboard loads doesn't need
+        // its own round trip.
+        async function loadProviderBreakdown() {
+            const wrap = document.getElementById("providerBreakdownList");
+            const data = await apiRequest("/supervisor/me/group-training-breakdown");
+            if (!data) return;
+            gsProvidedByRoster = data.breakdown;
+            if (!data.breakdown.length) {
+                wrap.innerHTML = '<div class="empty-state">No Group members yet.</div>';
+                return;
+            }
+            wrap.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          ${data.breakdown.map((p) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 2px;border-bottom:1px solid var(--border-soft);">
+              <span dir="auto">${escapeHtml(p.role)} &mdash; ${escapeHtml(p.name)}</span>
+              <strong>${(Math.round(p.hours * 100) / 100)}h</strong>
+            </div>`).join("")}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 2px 2px;font-weight:700;">
+            <span>Total</span>
+            <span>${(Math.round(data.totalHours * 100) / 100)}h</span>
+          </div>
+        </div>`;
+        }
+
         async function loadSchedule() {
             const data = await apiRequest("/master-trainer/schedule");
             const list = document.getElementById("scheduleList");
@@ -5090,6 +5137,7 @@
             connectGcSocket();
             startLiveClock();
             await loadDashboardHours();
+            loadProviderBreakdown();
             await loadDashboardSummary();
             await loadSchedule();
             await loadActivity();
@@ -6139,6 +6187,35 @@
                 .join("");
         }
 
+        // "Hours Provided By" (migration 035) -- the dropdown's options are
+        // this Group's own supervisor roster (Master Trainer + every ToT),
+        // reusing GET /supervisor/me/group-training-breakdown (role-level
+        // auth, so this Master Trainer account can call it same as a ToT
+        // can) rather than a second roster endpoint -- that response's
+        // {supervisorId, name, role} shape is exactly what a roster needs.
+        // Cached for the session's lifetime -- the Group's own supervisor
+        // membership doesn't change while this modal is open.
+        let gsProvidedByRoster = null;
+        function getMyUserId() {
+            return Number((JSON.parse(localStorage.getItem("user") || localStorage.getItem("reframe_user") || "{}")).id);
+        }
+        async function loadProvidedByRoster() {
+            if (gsProvidedByRoster) return gsProvidedByRoster;
+            const data = await apiRequest("/supervisor/me/group-training-breakdown");
+            gsProvidedByRoster = (data && data.breakdown) || [];
+            return gsProvidedByRoster;
+        }
+        async function renderProvidedByOptions(selectEl, selectedId) {
+            const roster = await loadProvidedByRoster();
+            const effectiveSelectedId = selectedId != null ? Number(selectedId) : getMyUserId();
+            selectEl.innerHTML = roster
+                .map(
+                    (p) =>
+                        `<option value="${p.supervisorId}" ${Number(p.supervisorId) === effectiveSelectedId ? "selected" : ""}>${escapeHtml(p.role)} — ${escapeHtml(p.name)}</option>`
+                )
+                .join("");
+        }
+
         // One row per day -- addSessionDayRow(day) with no argument adds a
         // blank row (Add Session / "+ Add another day"); passed an existing
         // day it pre-fills for editing. The remove button only shows once
@@ -6199,6 +6276,7 @@
             document.getElementById("gsEditOccasionId").value = "";
             document.getElementById("gsEditSeriesId").value = "";
             renderGroupSessionTypeOptions(document.getElementById("gsType"));
+            renderProvidedByOptions(document.getElementById("gsProvidedBy"));
             document.getElementById("gsDaysList").innerHTML = "";
             gsDayRowSeq = 0;
             addSessionDayRow();
@@ -6220,6 +6298,7 @@
             document.getElementById("gsTitle").value = o.title || "";
             document.getElementById("gsType").value = o.sessionType;
             document.getElementById("gsNotes").value = o.notes || "";
+            await renderProvidedByOptions(document.getElementById("gsProvidedBy"), o.providedBy && o.providedBy.id);
             document.getElementById("gsDaysList").innerHTML = "";
             gsDayRowSeq = 0;
             addSessionDayRow({ date: o.date, time: o.time, durationMinutes: o.durationMinutes });
@@ -6240,6 +6319,7 @@
             document.getElementById("gsTitle").value = data.series.title || "";
             document.getElementById("gsType").value = data.series.sessionType;
             document.getElementById("gsNotes").value = data.series.notes || "";
+            await renderProvidedByOptions(document.getElementById("gsProvidedBy"), data.series.providedBy && data.series.providedBy.id);
             document.getElementById("gsDaysList").innerHTML = "";
             gsDayRowSeq = 0;
             data.days.forEach((d) => addSessionDayRow(d));
@@ -6252,6 +6332,7 @@
             const sessionType = document.getElementById("gsType").value;
             const title = document.getElementById("gsTitle").value;
             const notes = document.getElementById("gsNotes").value || undefined;
+            const providedBySupervisorId = Number(document.getElementById("gsProvidedBy").value) || undefined;
             const days = readSessionDayRows();
             const editOccasionId = document.getElementById("gsEditOccasionId").value;
             const editSeriesId = document.getElementById("gsEditSeriesId").value;
@@ -6265,22 +6346,23 @@
                 result = await apiRequest(`/master-trainer/group-session-series/${editSeriesId}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ sessionType, title, notes, days }),
+                    body: JSON.stringify({ sessionType, title, notes, days, providedBySupervisorId }),
                 });
             } else if (editOccasionId) {
                 const d = days[0];
                 result = await apiRequest(`/master-trainer/group-sessions/${editOccasionId}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ sessionType, title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes }),
+                    body: JSON.stringify({ sessionType, title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes, providedBySupervisorId }),
                 });
             } else if (days.length > 1) {
-                const payload = { sessionType, title, notes, days };
+                const payload = { sessionType, title, notes, days, providedBySupervisorId };
                 if (attachmentFile) {
                     const form = new FormData();
                     form.append("sessionType", sessionType);
                     form.append("title", title);
                     if (notes) form.append("notes", notes);
+                    if (providedBySupervisorId) form.append("providedBySupervisorId", providedBySupervisorId);
                     form.append("days", JSON.stringify(days));
                     form.append("attachment", attachmentFile);
                     result = await apiRequest("/master-trainer/group-sessions", { method: "POST", body: form });
@@ -6293,7 +6375,7 @@
                 }
             } else {
                 const d = days[0];
-                const payload = { sessionType, title, date: d.date, time: d.time, durationMinutes: d.durationMinutes, notes };
+                const payload = { sessionType, title, date: d.date, time: d.time, durationMinutes: d.durationMinutes, notes, providedBySupervisorId };
                 if (attachmentFile) {
                     const form = new FormData();
                     Object.entries(payload).forEach(([k, v]) => {
@@ -6459,7 +6541,7 @@
         function sessionOccasionRowHtml(o) {
             return `
         <tr>
-          <td dir="auto">${escapeHtml(o.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(Single-Day Session)</span></td>
+          <td dir="auto">${escapeHtml(o.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(Single-Day Session)</span>${o.providedByName ? `<div style="color:var(--faint);font-size:11px;font-weight:400;">Hours provided by: ${escapeHtml(o.providedByName)}</div>` : ""}</td>
           <td>${escapeHtml(o.sessionTypeLabel)}</td>
           <td>${new Date(o.date).toLocaleDateString()}${o.time ? " " + o.time.slice(0, 5) : ""}</td>
           <td>${(o.durationMinutes / 60).toFixed(2)}h</td>
@@ -6479,7 +6561,7 @@
                 : `${new Date(s.startDate).toLocaleDateString()} – ${new Date(s.endDate).toLocaleDateString()}`;
             const mainRow = `
         <tr class="gs-series-row" onclick="toggleSessionSeriesExpand(${s.id})" style="cursor:pointer;">
-          <td dir="auto"><i class="fa fa-chevron-${expanded ? "down" : "right"}" style="width:12px;color:var(--faint);margin-right:6px;"></i>${escapeHtml(s.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(${s.dayCount}-day Session)</span></td>
+          <td dir="auto"><i class="fa fa-chevron-${expanded ? "down" : "right"}" style="width:12px;color:var(--faint);margin-right:6px;"></i>${escapeHtml(s.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(${s.dayCount}-day Session)</span>${s.providedByName ? `<div style="color:var(--faint);font-size:11px;font-weight:400;">Hours provided by: ${escapeHtml(s.providedByName)}</div>` : ""}</td>
           <td>${escapeHtml(s.sessionTypeLabel)}</td>
           <td>${dateRange}</td>
           <td>${(s.totalMinutes / 60).toFixed(2)}h total</td>

@@ -19,7 +19,13 @@ const ATTENDANCE_STATUSES = ["present", "absent", "excused", "partial"];
  * @returns {Promise<{error:string}|{occasionId:number, created:Array<{totId:number, sessionId:number}>, isFuture:boolean}>}
  */
 async function createTotSessionOccasion(db, params) {
-  const { masterTrainerId, title, date, time, durationMinutes, notes, totIds } = params;
+  // providedBySupervisorId (migration 035) defaults to the creating Master
+  // Trainer -- under this system's current design she's the only account
+  // that can ever create one of these at all (requireMasterTrainer-gated),
+  // so there's no other eligible provider to select yet. Carried through
+  // for schema/UI symmetry with the trainee-facing sessions and so Session
+  // Details can show Created By/Hours Provided By consistently everywhere.
+  const { masterTrainerId, title, date, time, durationMinutes, notes, totIds, providedBySupervisorId = masterTrainerId } = params;
 
   if (!date) return { error: "date is required" };
   if (!Number.isFinite(Number(durationMinutes)) || Number(durationMinutes) < 0) {
@@ -41,9 +47,9 @@ async function createTotSessionOccasion(db, params) {
   if (dupeRows.length) return { error: "This looks like a duplicate of a session just logged. Refresh and check the list before retrying." };
 
   const occasionInsert = await db.query(
-    `INSERT INTO tot_session_occasions (master_trainer_id, title, session_date, session_time, duration_minutes, notes)
-     VALUES (?,?,?,?,?,?)`,
-    [masterTrainerId, title || null, date, time || null, Number(durationMinutes), notes || null]
+    `INSERT INTO tot_session_occasions (master_trainer_id, provided_by_supervisor_id, title, session_date, session_time, duration_minutes, notes)
+     VALUES (?,?,?,?,?,?,?)`,
+    [masterTrainerId, providedBySupervisorId, title || null, date, time || null, Number(durationMinutes), notes || null]
   );
   const occasionId = occasionInsert.insertId;
 
@@ -55,9 +61,9 @@ async function createTotSessionOccasion(db, params) {
     seen.add(totId);
 
     const sessionInsert = await db.query(
-      `INSERT INTO tot_training_sessions (tot_id, master_trainer_id, title, session_date, session_time, duration_minutes, notes, status, occasion_id)
-       VALUES (?,?,?,?,?,?,?,?,?)`,
-      [totId, masterTrainerId, title || null, date, time || null, Number(durationMinutes), notes || null, isFuture ? "scheduled" : "completed", occasionId]
+      `INSERT INTO tot_training_sessions (tot_id, master_trainer_id, provided_by_supervisor_id, title, session_date, session_time, duration_minutes, notes, status, occasion_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [totId, masterTrainerId, providedBySupervisorId, title || null, date, time || null, Number(durationMinutes), notes || null, isFuture ? "scheduled" : "completed", occasionId]
     );
     created.push({ totId, sessionId: sessionInsert.insertId });
   }
