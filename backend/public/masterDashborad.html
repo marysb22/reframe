@@ -5085,7 +5085,7 @@
             } else {
                 wrap.innerHTML = data.tots.map((t) => `
         <div class="mt-tot-card" onclick="openTot(${t.id})">
-          <div class="avatar-circle">${escapeHtml(initials(t.full_name))}</div>
+          <div class="avatar-circle">${t.photo ? `<img src="${UPLOADS}/photos/${t.photo}${TOKEN_Q}" alt="">` : escapeHtml(initials(t.full_name))}</div>
           <div style="flex:1;min-width:0;">
             <strong>${escapeHtml(t.full_name)}</strong>
             <div class="mt-tot-stats">
@@ -5112,7 +5112,7 @@
             }
             traineesWrap.innerHTML = traineeData.trainees.map((s) => `
         <div class="mt-tot-card" onclick="openTrainee(${s.id})">
-          <div class="avatar-circle">${escapeHtml(initials(s.full_name))}</div>
+          <div class="avatar-circle">${s.photo ? `<img src="${UPLOADS}/photos/${s.photo}${TOKEN_Q}" alt="">` : escapeHtml(initials(s.full_name))}</div>
           <div style="flex:1;min-width:0;">
             <strong>${escapeHtml(s.full_name)}</strong>
             <div class="mt-tot-stats">

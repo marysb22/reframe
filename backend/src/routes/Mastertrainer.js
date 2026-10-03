@@ -1075,7 +1075,7 @@ router.get(
         if (!groupId) return noGroupResponse(res, { trainees: [] });
 
         const { rows } = await db.query(
-            `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.current_year, st.lifecycle_status, c.name AS cohort_name,
+            `SELECT uc.id, uc.member_code, uc.status, st.full_name, st.photo, st.current_year, st.lifecycle_status, c.name AS cohort_name,
               COALESCE(
                 (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', sup.id, 'fullName', sup.full_name))
                  FROM supervisor_students ss
