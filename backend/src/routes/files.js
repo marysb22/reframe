@@ -21,6 +21,19 @@ const { pool } = require("../db");
 
 const router = express.Router();
 
+// Allowlist of extensions this app actually intends to render inline in a
+// browser, and that cannot themselves carry executable active content
+// (no HTML/XHTML/SHTML/SVG/XML/JS) -- see the Content-Disposition logic
+// below for why this is an allowlist, not a blocklist. Mirrors exactly the
+// real formats utils/fileTypeCheck.js's CATEGORY_CHECKS can actually
+// confirm by content signature (pdf/image/office/media), so a file this
+// allowlist lets render inline is also a file that upload-time validation
+// genuinely verified the content of.
+const INLINE_SAFE_EXTENSIONS = new Set([
+  ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp",
+  ".mp4", ".mov", ".mp3", ".wav",
+]);
+
 async function authenticateForFile(req, res, next) {
   const header = req.headers.authorization || "";
   const headerToken = header.startsWith("Bearer ") ? header.slice(7) : null;
@@ -300,6 +313,13 @@ router.get("/preview/:token", async (req, res) => {
     return res.status(403).json({ error: "This preview link is invalid" });
   }
 
+  // Same MIME-sniffing defense as the main download route below -- this
+  // route has no extension allowlist of its own (its token is only ever
+  // minted for whatever subfolder/filename the main authorizer already
+  // approved), so it relies on this plus that authorization check rather
+  // than its own Content-Disposition logic; Google's renderer fetches the
+  // raw bytes server-to-server, not a browser tab navigating here.
+  res.set("X-Content-Type-Options", "nosniff");
   const filePath = path.join(config.uploadsDir, payload.subfolder, payload.filename);
   res.sendFile(filePath, (err) => {
     if (err && !res.headersSent) res.status(404).json({ error: "File not found" });
@@ -332,14 +352,41 @@ router.get("/:subfolder/:filename", authenticateForFile, async (req, res) => {
   // user's private file to a different user who happens to guess the URL.
   res.set("Cache-Control", "private, max-age=86400");
 
+  // Tells the browser to trust the Content-Type header above its own
+  // content-sniffing -- without this, some browsers will inspect a
+  // response's actual bytes and render it as HTML regardless of what
+  // Content-Type says, which is a second way the same exploit (an upload
+  // whose real content doesn't match its claimed type) could execute even
+  // with correct upload-time validation and a correct header. Belt-and-
+  // suspenders: this protects every file this route ever serves, not just
+  // the ones a validator happened to check.
+  res.set("X-Content-Type-Options", "nosniff");
+
   // Open vs Download used to be a purely client-side distinction (whether
   // the <a> had a `download` attribute) on an otherwise identical request --
   // the server never sent a Content-Disposition at all, leaving "does this
   // render inline" up to whatever a given browser/OS defaults to for a
   // header that's simply absent. `?mode=download` makes the intent explicit
   // and protocol-level instead: same authorization, same file, only the
-  // disposition differs.
-  res.set("Content-Disposition", req.query.mode === "download" ? `attachment; filename="${filename}"` : `inline; filename="${filename}"`);
+  // disposition differs for a format this app actually intends to render
+  // inline.
+  //
+  // INLINE_SAFE_EXTENSIONS is an allowlist, not a blocklist -- only a
+  // format this app genuinely intends to render inline, and that cannot
+  // itself carry executable active content (no HTML/SVG/XML/script),
+  // is ever served as `inline`. Anything else -- including a format this
+  // allowlist simply doesn't know about yet -- is forced to `attachment`
+  // regardless of `?mode=`, so an upload-time validation gap (past or
+  // future, in this route or anywhere else writing into an upload folder)
+  // degrades to "the browser downloads an unexpected file" rather than
+  // "the browser executes attacker-controlled script in this app's own
+  // origin" -- the actual Stored XSS this closes (found in a full
+  // production audit of the Library feature, which serves files from this
+  // same route).
+  const ext = path.extname(filename).toLowerCase();
+  const requestedInline = req.query.mode !== "download";
+  const disposition = requestedInline && INLINE_SAFE_EXTENSIONS.has(ext) ? "inline" : "attachment";
+  res.set("Content-Disposition", `${disposition}; filename="${filename}"`);
 
   const filePath = path.join(config.uploadsDir, subfolder, filename);
   res.sendFile(filePath, (err) => {

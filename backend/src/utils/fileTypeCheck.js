@@ -24,6 +24,16 @@ const SIGNATURES = {
   riff: [[0x52, 0x49, 0x46, 0x46]],
   zip: [[0x50, 0x4b, 0x03, 0x04], [0x50, 0x4b, 0x05, 0x06], [0x50, 0x4b, 0x07, 0x08]], // also covers docx/xlsx/pptx (OOXML is a zip container)
   oleLegacyOffice: [[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]], // legacy .doc/.xls/.ppt
+  // MP4 and QuickTime (.mov) are both the ISO Base Media container -- a
+  // 4-byte box-size field (which varies per file, so not itself matchable)
+  // immediately followed by the 4-byte ASCII box type "ftyp" at a fixed
+  // offset of 4. Virtually every real-world MP4/MOV file (camera, phone,
+  // screen recorder, re-encoded) starts with an ftyp box.
+  isoBaseMedia: [[0x66, 0x74, 0x79, 0x70]], // "ftyp", checked at offset 4
+  // MP3 has no single reliable magic byte the way the formats above do
+  // (noted below) -- an ID3v2 tag ("ID3", when present) is the one actual
+  // fixed signature real MP3 files carry.
+  id3: [[0x49, 0x44, 0x33]], // "ID3"
 };
 
 // Signatures that must NEVER be accepted regardless of what the upload
@@ -62,11 +72,28 @@ const CATEGORY_CHECKS = {
   // rather than trying to fully parse which specific Office format it is.
   office: (buf) => matchesAny(buf, SIGNATURES.zip) || matchesAny(buf, SIGNATURES.oleLegacyOffice),
   zip: (buf) => matchesAny(buf, SIGNATURES.zip),
-  // Audio/video containers vary too much to fingerprint reliably from a
-  // short prefix (MP3 in particular often has no fixed header at all) --
-  // for these, the dangerous-signature block below is the real defense;
-  // this check only rejects the obviously-wrong case of an empty file.
-  media: (buf) => buf.length > 16,
+  // Real content-signature checks for every audio/video format this app
+  // actually allows (video/mp4, video/quicktime, audio/mpeg, audio/wav --
+  // see utils/uploads.js's ALLOWED_MATERIAL_TYPES), replacing a previous
+  // "buf.length > 16" placeholder that accepted literally any non-empty,
+  // non-dangerous-signature file -- including plain HTML, which is how an
+  // HTML file spoofed as video/mp4 was accepted as a Library book file and
+  // served back as executable Stored XSS (found in a full production
+  // audit, fixed here). This is a real allowlist, not a blocklist: a file
+  // must match one of these genuine signatures to pass, not merely avoid
+  // DANGEROUS_SIGNATURES below.
+  //
+  // MP3 has no single universal magic byte -- a raw MPEG audio frame (no
+  // ID3 tag) starts with an 11-bit frame sync (0xFF followed by a byte
+  // whose top 3 bits are all set), which is checked here too since real
+  // MP3 encoders commonly omit ID3 entirely. This is still a genuine
+  // content check -- plain text/HTML/script content can never happen to
+  // start with either pattern -- not a length-only placeholder.
+  media: (buf) =>
+    (matchesAny(buf, SIGNATURES.isoBaseMedia, 4)) || // MP4 / QuickTime (.mov)
+    (matchesAny(buf, SIGNATURES.riff) && matchesSignature(buf, [0x57, 0x41, 0x56, 0x45], 8)) || // RIFF....WAVE
+    matchesAny(buf, SIGNATURES.id3) || // MP3 with an ID3v2 tag
+    (buf.length >= 2 && buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0), // raw MPEG audio frame sync (ID3-less MP3)
 };
 
 /**
