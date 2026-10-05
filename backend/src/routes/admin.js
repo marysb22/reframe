@@ -1748,11 +1748,29 @@ async function getTrainersAndHours(db, studentId, studentFullName) {
   // attendance-derived session hours + audited manual adjustments), just
   // grouped per supervisor instead of summed for the whole trainee, so
   // this card never disagrees with the trainee's own total shown elsewhere.
+  //
+  // The session-derived branch groups by COALESCE(s.provided_by_supervisor_id,
+  // s.supervisor_id) -- migration 035 -- not raw s.supervisor_id. This card
+  // means "who delivered this trainee's supervision hours", the same
+  // business meaning as every other provider-attributed view in the app
+  // (the Master Trainer/ToT dashboards, /me/group-training-breakdown); it
+  // had been left on creator-attribution when that feature shipped, so a
+  // session logged by one supervisor on another's behalf showed here under
+  // the wrong name -- found during a full production audit of the
+  // provider-attribution feature, confirmed via a live repro (MT creates/
+  // ToT B provides, 2h supervision) before this fix.
+  //
+  // The other two branches are untouched on purpose: supervision_hours and
+  // trainee_hour_adjustments are manual ledger entries with no creator/
+  // provider distinction at all -- whoever logs one of those IS the
+  // provider by definition, there is no separate "on behalf of" concept
+  // for a manual entry the way there is for a session row.
   const { rows: hoursRows } = await db.query(
     `SELECT supervisor_id, COALESCE(SUM(hours), 0) AS hours FROM (
        SELECT supervisor_id, hours FROM supervision_hours WHERE student_id = ?
        UNION ALL
-       SELECT s.supervisor_id, CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours FROM sessions s
+       SELECT COALESCE(s.provided_by_supervisor_id, s.supervisor_id) AS supervisor_id,
+              CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours FROM sessions s
          JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
          WHERE s.student_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled'
        UNION ALL
