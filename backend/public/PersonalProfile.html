@@ -2962,7 +2962,26 @@
             background: var(--warning-bg);
             color: var(--warning);
         }
-        
+
+        .cal-event.material {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .cal-event.assignment {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .cal-event.note {
+            background: var(--border-soft);
+            color: var(--muted);
+        }
+
+        .cal-event {
+            cursor: pointer;
+        }
+
         @media(max-width:700px) {
             .cal-cell {
                 min-height: 56px;
@@ -6872,28 +6891,96 @@ function renderSelectedYearPayments() {
 let calViewYear, calViewMonth;
 let calItems = [];
 
-async function loadCalendar() {
-  const today = new Date();
-  calViewYear = today.getFullYear();
-  calViewMonth = today.getMonth();
+// Sessions/meetings keep using the existing full (unbounded) fetch below --
+// already correct and already includes every multi-day Group Session day
+// (each is its own real `sessions` row for this trainee) -- only Materials/
+// Documents/Assignments/Notes are new, and those four are fetched per the
+// viewed month like every other dashboard's Calendar, so Prev/Next must now
+// actually re-fetch (previously safe to skip, since records/meetings were
+// unbounded; no longer true once a month-scoped fetch is in the mix).
+async function loadCalendar(year, month) {
+  if (year == null || month == null) {
+    const today = new Date();
+    year = today.getFullYear();
+    month = today.getMonth();
+  }
+  calViewYear = year;
+  calViewMonth = month;
 
-  const data = allRecords.length ? { records: allRecords } : await apiRequest("/profile/records");
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+
+  const [recordsData, meetings, materials, documents, assignments, notes] = await Promise.all([
+    allRecords.length ? Promise.resolve({ records: allRecords }) : apiRequest("/profile/records"),
+    apiRequest("/profile/meetings"),
+    apiRequest(`/profile/materials-calendar?start=${start}&end=${end}`),
+    apiRequest(`/profile/documents-calendar?start=${start}&end=${end}`),
+    apiRequest(`/profile/assignments-calendar?start=${start}&end=${end}`),
+    apiRequest(`/profile/calendar-events?start=${start}&end=${end}`),
+  ]);
+
   calItems = [];
-  if (data) {
-    allRecords = data.records;
+  if (recordsData) {
+    allRecords = recordsData.records;
     allRecords
       .filter((r) => r.recordType === "training_session" || r.recordType === "supervision_session")
-      .forEach((r) => { if (r.date) calItems.push({ date: r.date, title: r.title || recordLabel(r), type: r.recordType }); });
+      .forEach((r) => { if (r.date) calItems.push({ id: r.id, date: r.date, title: r.title || recordLabel(r), type: r.recordType }); });
   }
-
-  const meetings = await apiRequest("/profile/meetings");
   if (meetings && meetings.meetings) {
     meetings.meetings.forEach((m) => {
-      if (m.scheduledAt) calItems.push({ date: m.scheduledAt.slice(0, 10), title: m.title, type: "meeting" });
+      if (m.scheduledAt) calItems.push({ id: m.id, date: m.scheduledAt.slice(0, 10), title: m.title, type: "meeting" });
     });
   }
+  if (materials && materials.items) materials.items.forEach((it) => calItems.push(it));
+  if (documents && documents.items) documents.items.forEach((it) => calItems.push(it));
+  if (assignments && assignments.items) assignments.items.forEach((it) => calItems.push(it));
+  if (notes && notes.events) notes.events.forEach((ev) => calItems.push({ id: ev.id, date: ev.date, title: ev.title, type: "note" }));
 
   renderCalendar();
+}
+
+function calItemIcon(type) {
+  return {
+    training_session: "fa-chalkboard-user",
+    supervision_session: "fa-user-doctor",
+    material: "fa-book-open",
+    document: "fa-folder-open",
+    assignment: "fa-list-check",
+    meeting: "fa-video",
+    note: "fa-note-sticky",
+  }[type] || "fa-circle";
+}
+
+// Read-only Calendar (Trainees never create/edit activities or notes) --
+// clicking an item opens its existing detail view where one exists; where
+// none exists yet on this dashboard (plain Sessions, Meetings), a toast is
+// the honest fallback rather than a dead link.
+async function openCalendarItem(item) {
+  if (!item) return;
+  if (item.type === "material") {
+    showSection("materials");
+    if (!loadedSections.has("materials")) { loadedSections.add("materials"); if (SECTION_LOADERS.materials) await SECTION_LOADERS.materials(); }
+    openMaterialPreview(item.id);
+    return;
+  }
+  if (item.type === "document") {
+    showSection("materials");
+    if (!loadedSections.has("materials")) { loadedSections.add("materials"); if (SECTION_LOADERS.materials) await SECTION_LOADERS.materials(); }
+    openDocumentPreview(item.id);
+    return;
+  }
+  if (item.type === "assignment") {
+    showSection("assignments");
+    if (!loadedSections.has("assignments")) { loadedSections.add("assignments"); if (SECTION_LOADERS.assignments) await SECTION_LOADERS.assignments(); }
+    openAssignmentDetail(item.id);
+    return;
+  }
+  if (item.type === "note") {
+    showToast(item.title || "Note", "info");
+    return;
+  }
+  showSection(item.type === "meeting" ? "meetings" : "sessions");
 }
 
 function renderCalendar() {
@@ -6925,21 +7012,25 @@ function renderCalendar() {
     const dayItems = calItems.filter((it) => it.date === dateStr);
 
     cell.innerHTML = `<div class="cal-daynum">${day}</div>` +
-      dayItems.slice(0, 3).map((it) => `<div class="cal-event ${it.type === "meeting" ? "meeting" : ""}" dir="auto">${escapeHtml(it.title || "")}</div>`).join("");
+      dayItems.slice(0, 3).map((it) => {
+        const cls = it.type === "meeting" ? "meeting" : it.type === "material" ? "material" : it.type === "assignment" ? "assignment" : it.type === "note" ? "note" : "";
+        const realIdx = calItems.indexOf(it);
+        return `<div class="cal-event ${cls}" dir="auto" title="${escapeHtml(it.title || "")}" onclick="openCalendarItem(calItems[${realIdx}])"><i class="fa ${calItemIcon(it.type)}"></i> ${escapeHtml(it.title || "")}</div>`;
+      }).join("");
 
     body.appendChild(cell);
   }
 }
 
 document.getElementById("calPrev").addEventListener("click", () => {
-  calViewMonth--;
-  if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; }
-  renderCalendar();
+  let y = calViewYear, m = calViewMonth - 1;
+  if (m < 0) { m = 11; y--; }
+  loadCalendar(y, m);
 });
 document.getElementById("calNext").addEventListener("click", () => {
-  calViewMonth++;
-  if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; }
-  renderCalendar();
+  let y = calViewYear, m = calViewMonth + 1;
+  if (m > 11) { m = 0; y++; }
+  loadCalendar(y, m);
 });
 
 // ---- Settings: password + notifications ---------------------------------

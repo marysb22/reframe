@@ -17,6 +17,7 @@ const {
 const { hashPassword, verifyPassword } = require("../utils/authUtils");
 const { photoUpload, cvUpload, submissionUpload, documentUpload } = require("../utils/uploads");
 const { checkFileContent, detectImageExtension } = require("../utils/fileTypeCheck");
+const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, getNotesInRange } = require("../utils/calendarQuery");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { createUploadGuard } = require("../utils/uploadGuard");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
@@ -1503,5 +1504,69 @@ router.get(
     });
   })
 );
+
+// ---- Calendar (Trainee, read-only) -----------------------------------
+// A trainee's own view of the same unified Calendar every other role has
+// -- sessions, materials, documents, assignments scoped to their own id;
+// notes (calendar_events) scoped to anything targeted at them directly or
+// at their whole caseload (see getNotesInRange's own comment). Explicitly
+// NO create/edit/delete here at all -- requireStudent still 403s a direct
+// API attempt with a real, intentional authorization response rather than
+// a bare 404, satisfying "a Trainee attempting the API directly must
+// receive the correct authorization error" instead of just omitting the
+// route and hoping a 404 reads as "forbidden" by coincidence.
+router.get(
+  "/calendar-sessions",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    const items = await getSessionsInRange(db, { kind: "student", id: req.user.id }, start, end);
+    res.json({ events: items.map((i) => ({ id: i.id, date: i.date, time: i.time, title: i.title })) });
+  })
+);
+router.get(
+  "/materials-calendar",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    res.json({ items: await getMaterialsInRange(db, { kind: "student", id: req.user.id }, start, end) });
+  })
+);
+router.get(
+  "/documents-calendar",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    res.json({ items: await getDocumentsInRange(db, { kind: "student", id: req.user.id }, start, end) });
+  })
+);
+router.get(
+  "/assignments-calendar",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    res.json({ items: await getAssignmentsInRange(db, { kind: "student", id: req.user.id }, start, end) });
+  })
+);
+router.get(
+  "/calendar-events",
+  requireStudent,
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    const items = await getNotesInRange(db, { kind: "student", id: req.user.id }, start, end);
+    res.json({ events: items });
+  })
+);
+function traineeCannotWriteNotes(req, res) {
+  return res.status(403).json({ error: "Trainees cannot create, edit, or delete calendar notes" });
+}
+router.post("/calendar-events", requireStudent, traineeCannotWriteNotes);
+router.put("/calendar-events/:id", requireStudent, traineeCannotWriteNotes);
+router.delete("/calendar-events/:id", requireStudent, traineeCannotWriteNotes);
 
 module.exports = router;

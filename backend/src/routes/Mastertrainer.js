@@ -7,6 +7,7 @@ const { toRecord, toDocument, toMaterial, toMessage, computeTrainingProgress, co
 const { broadcastMessage } = require("../realtime/chatSocket");
 const { resolveWeekRange, getCurrentWeekRange, listRecentWeeks, shiftDate } = require("../utils/weekPeriod");
 const { buildTotHoursBreakdownQuery, TRAINEE_ACTIVITY_ENTITY_TYPES } = require("../utils/recordsQuery");
+const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange } = require("../utils/calendarQuery");
 const { TRAINING_DURATION_YEARS, calculateTrainingProgress } = require("../utils/trainingTimeline");
 const { sessionAttachmentUpload } = require("../utils/uploads");
 const { checkFileContent } = require("../utils/fileTypeCheck");
@@ -2757,6 +2758,67 @@ router.get(
             week.total = Number(rows[0].total);
         }
         res.json({ weeks });
+    })
+);
+
+// GET /api/master-trainer/calendar-sessions?start=&end= — every training/
+// supervision activity date across the WHOLE Group (every ToT's sessions
+// plus the Master Trainer's own), the group-wide equivalent of
+// supervisor.js's ToT-scoped version -- this Master Trainer's calendar
+// previously had no session data at all (confirmed before adding this --
+// only calendar-events/meetings were ever wired in).
+router.get(
+    "/calendar-sessions",
+    asyncRoute(async (req, res, db) => {
+        const { start, end } = req.query;
+        if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+        const { groupId } = req.masterTrainer;
+        if (!groupId) return res.json({ events: [] });
+        const items = await getSessionsInRange(db, { kind: "group", groupId }, start, end);
+        res.json({
+            events: items.map((i) => ({
+                id: i.id,
+                date: i.date,
+                time: i.time,
+                title: i.title,
+                kind: i.kind,
+                seriesId: i.seriesId,
+                isOwn: Number(i.supervisorId) === Number(req.masterTrainer.id),
+            })),
+        });
+    })
+);
+router.get(
+    "/materials-calendar",
+    asyncRoute(async (req, res, db) => {
+        const { start, end } = req.query;
+        if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+        const { groupId } = req.masterTrainer;
+        if (!groupId) return res.json({ items: [] });
+        const items = await getMaterialsInRange(db, { kind: "group", groupId }, start, end);
+        res.json({ items });
+    })
+);
+router.get(
+    "/documents-calendar",
+    asyncRoute(async (req, res, db) => {
+        const { start, end } = req.query;
+        if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+        const { groupId } = req.masterTrainer;
+        if (!groupId) return res.json({ items: [] });
+        const items = await getDocumentsInRange(db, { kind: "group", groupId }, start, end);
+        res.json({ items });
+    })
+);
+router.get(
+    "/assignments-calendar",
+    asyncRoute(async (req, res, db) => {
+        const { start, end } = req.query;
+        if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+        const { groupId } = req.masterTrainer;
+        if (!groupId) return res.json({ items: [] });
+        const items = await getAssignmentsInRange(db, { kind: "group", groupId }, start, end);
+        res.json({ items });
     })
 );
 

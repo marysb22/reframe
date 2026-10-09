@@ -3225,7 +3225,26 @@
             background: var(--warning-bg);
             color: var(--warning);
         }
-        
+
+        .cal-event.material {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .cal-event.assignment {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .cal-event.note {
+            background: var(--border-soft);
+            color: var(--muted);
+        }
+
+        .cal-event {
+            cursor: pointer;
+        }
+
         .settings-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -3911,7 +3930,7 @@
                         <div class="card-title-left"><i class="fa fa-calendar"></i>
                             <h2>Calendar</h2>
                         </div>
-
+                        <button class="btn" onclick="openAddEventModal()"><i class="fa fa-plus"></i> Add Notes</button>
                     </div>
                     <div class="cal-topbar">
                         <h3 class="cal-title" id="calTitle">&mdash;</h3>
@@ -3924,6 +3943,28 @@
                     <div class="cal-grid" id="calBody" style="margin-top:1px;"></div>
                 </section>
             </section>
+
+            <div class="modal-overlay" id="addEventModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeModal('addEventModal')">&times;</button>
+                    <h3 id="addEventModalTitle">Add Notes</h3>
+                    <form id="addEventForm">
+                        <label>Title</label>
+                        <input type="text" id="evTitle" dir="auto" required>
+                        <label>Date</label>
+                        <input type="date" id="evDate" required>
+                        <label>Time <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
+                        <input type="time" id="evTime">
+                        <label>Description <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
+                        <textarea id="evDescription" dir="auto"></textarea>
+                        <div class="modal-actions">
+                            <button type="button" id="evDeleteBtn" class="btn btn-secondary" style="display:none;color:var(--danger);border-color:var(--danger);" onclick="confirmDeleteCalendarNote(editingNoteId)">Delete</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeModal('addEventModal')">Cancel</button>
+                            <button type="submit" class="btn">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             <!-- ============================================================= -->
             <!-- MEETINGS (group-wide, read-only)                               -->
@@ -9006,54 +9047,203 @@
         let calViewYear, calViewMonth;
         let calItems = [];
 
-        async function loadCalendar() {
-            const today = new Date();
-            calViewYear = today.getFullYear();
-            calViewMonth = today.getMonth();
+        // YYYY-MM-DD for the viewed calendar year/month(0-based)/day -- see
+        // the identical helper's comment on the Trainer dashboard: these are
+        // already the exact calendar values being viewed, nothing to convert
+        // from another timezone.
+        function calDateStr(year, month, day) {
+            return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
 
-            const schedule = await apiRequest("/master-trainer/schedule");
-            calItems = [];
-            if (schedule) {
-                [...schedule.today, ...schedule.upcoming].forEach((i) => {
-                    calItems.push({ date: i.date, title: i.title, type: i.recordType });
-                });
+        // Group-wide: every ToT's sessions/materials/documents/assignments
+        // plus the Master Trainer's own, for the whole month in view.
+        // Previously this used /master-trainer/schedule (a small "today &
+        // upcoming" teaser, same category of bug as the Trainer dashboard's
+        // old GET /schedule-based calendar) and never re-fetched on
+        // Prev/Next at all -- Prev/Next just re-rendered the same stale
+        // "today" data for every month ever viewed. Now fetches the exact
+        // viewed month's range every time.
+        async function loadCalendar(year, month) {
+            if (year == null || month == null) {
+                const today = new Date();
+                year = today.getFullYear();
+                month = today.getMonth();
             }
-            const meetings = await apiRequest("/master-trainer/meetings");
+            calViewYear = year;
+            calViewMonth = month;
+
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const start = calDateStr(year, month, 1);
+            const end = calDateStr(year, month, daysInMonth);
+
+            const [sessions, events, meetings, materials, documents, assignments] = await Promise.all([
+                apiRequest(`/master-trainer/calendar-sessions?start=${start}&end=${end}`),
+                apiRequest(`/master-trainer/calendar-events?start=${start}&end=${end}`),
+                apiRequest("/master-trainer/meetings"),
+                apiRequest(`/master-trainer/materials-calendar?start=${start}&end=${end}`),
+                apiRequest(`/master-trainer/documents-calendar?start=${start}&end=${end}`),
+                apiRequest(`/master-trainer/assignments-calendar?start=${start}&end=${end}`),
+            ]);
+
+            calItems = [];
+            if (sessions && sessions.events) {
+                sessions.events.forEach((i) =>
+                    calItems.push({
+                        id: i.id,
+                        date: i.date,
+                        title: i.title,
+                        type: "session",
+                        kind: i.kind,
+                        seriesId: i.seriesId,
+                        isOwn: i.isOwn,
+                    })
+                );
+            }
+            if (events && events.events) {
+                events.events.forEach((ev) =>
+                    calItems.push({
+                        id: ev.id,
+                        date: ev.event_date,
+                        title: ev.title,
+                        description: ev.description,
+                        type: "note",
+                        ownerId: ev.owner_id,
+                        ownerName: ev.trainer_name,
+                        canEdit: Number(ev.owner_id) === myUserId,
+                    })
+                );
+            }
             if (meetings && meetings.meetings) {
                 meetings.meetings.forEach((m) => {
-                    if (m.scheduled_at) calItems.push({ date: String(m.scheduled_at).slice(0, 10), title: m.title, type: "meeting" });
+                    if (!m.scheduled_at) return;
+                    const d = String(m.scheduled_at).slice(0, 10);
+                    if (d >= start && d <= end) calItems.push({ id: m.id, date: d, title: m.title, type: "meeting" });
                 });
             }
-            const events = await apiRequest("/master-trainer/calendar-events");
-            if (events && events.events) {
-                events.events.forEach((ev) => calItems.push({ date: ev.event_date, title: ev.title, type: "custom" }));
+            if (materials && materials.items) {
+                materials.items.forEach((it) => calItems.push({ id: it.id, date: it.date, title: it.title, type: "material" }));
             }
+            if (documents && documents.items) {
+                documents.items.forEach((it) => calItems.push({ id: it.id, date: it.date, title: it.title, type: "document" }));
+            }
+            if (assignments && assignments.items) {
+                assignments.items.forEach((it) => calItems.push({ id: it.id, date: it.date, title: it.title, type: "assignment" }));
+            }
+
             renderCalendar();
         }
 
+        let editingNoteId = null;
+
         function openAddEventModal() {
+            editingNoteId = null;
             document.getElementById("addEventForm").reset();
+            document.getElementById("addEventModalTitle").textContent = "Add Notes";
+            const deleteBtn = document.getElementById("evDeleteBtn");
+            if (deleteBtn) deleteBtn.style.display = "none";
+            openModal("addEventModal");
+        }
+
+        function openEditNoteModal(item) {
+            if (!item.canEdit) return;
+            editingNoteId = item.id;
+            document.getElementById("addEventForm").reset();
+            document.getElementById("addEventModalTitle").textContent = "Edit Note";
+            document.getElementById("evTitle").value = item.title || "";
+            document.getElementById("evDate").value = item.date || "";
+            document.getElementById("evDescription").value = item.description || "";
+            const deleteBtn = document.getElementById("evDeleteBtn");
+            if (deleteBtn) deleteBtn.style.display = "";
             openModal("addEventModal");
         }
 
         document.getElementById("addEventForm")?.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const result = await apiRequest("/master-trainer/calendar-events", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    title: document.getElementById("evTitle").value.trim(),
-                    date: document.getElementById("evDate").value,
-                    time: document.getElementById("evTime").value || undefined,
-                    description: document.getElementById("evDescription").value.trim() || undefined,
-                }),
-            });
+            const payload = {
+                title: document.getElementById("evTitle").value.trim(),
+                date: document.getElementById("evDate").value,
+                time: document.getElementById("evTime").value || undefined,
+                description: document.getElementById("evDescription").value.trim() || undefined,
+            };
+            const result = editingNoteId
+                ? await apiRequest(`/master-trainer/calendar-events/${editingNoteId}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                  })
+                : await apiRequest("/master-trainer/calendar-events", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                  });
             if (result) {
-                showToast("Event added", "success");
+                showToast(editingNoteId ? "Note updated" : "Note added", "success");
                 closeModal("addEventModal");
-                loadCalendar();
+                loadCalendar(calViewYear, calViewMonth);
             }
         });
+
+        function confirmDeleteCalendarNote(id) {
+            openConfirm("Delete this note?", "This can't be undone.", () => deleteCalendarNote(id));
+        }
+
+        async function deleteCalendarNote(id) {
+            const result = await apiRequest(`/master-trainer/calendar-events/${id}`, { method: "DELETE" });
+            if (result) {
+                showToast("Note deleted", "success");
+                closeModal("addEventModal");
+                loadCalendar(calViewYear, calViewMonth);
+            }
+        }
+
+        function calItemIcon(item) {
+            if (item.type === "session") return item.kind === "occasion" || item.kind === "series_day" ? "fa-people-group" : "fa-chalkboard-user";
+            return { material: "fa-book-open", document: "fa-folder-open", assignment: "fa-list-check", meeting: "fa-video", note: "fa-note-sticky" }[item.type] || "fa-circle";
+        }
+
+        // Navigates a clicked Calendar item to its real, existing resource.
+        // editGroupSessionOccasion/Series fetch by id directly from the API
+        // (not from any pre-loaded/paginated list), so no section-data
+        // preload is needed before calling them -- unlike the Trainer
+        // dashboard's own Activities table.
+        async function openCalendarItem(item) {
+            if (!item) return;
+
+            if (item.type === "note") {
+                if (item.canEdit) openEditNoteModal(item);
+                else showToast(item.ownerName ? `Note by ${item.ownerName}: ${item.title}` : item.title, "info");
+                return;
+            }
+
+            if (item.type === "session") {
+                showSection("trainees");
+                if (item.kind === "occasion" && item.isOwn) {
+                    editGroupSessionOccasion(item.id);
+                } else if (item.kind === "series_day" && item.isOwn) {
+                    editGroupSessionSeries(item.seriesId);
+                } else {
+                    // A ToT's own individually-logged session, or a standalone
+                    // single session -- this dashboard only monitors those
+                    // (cross-Group read-only table); no detail/edit view exists
+                    // for them here.
+                    showToast(`${item.title || "Session"} — open from Trainee Profiles / the TOTs section for full details`, "info");
+                }
+                return;
+            }
+
+            const sectionFor = { material: "materials", document: "documents", assignment: "assignments", meeting: "meetings" };
+            const name = sectionFor[item.type];
+            if (!name) return;
+            if (!loadedSections.has(name)) {
+                loadedSections.add(name);
+                if (SECTION_LOADERS[name]) await SECTION_LOADERS[name]();
+            }
+            showSection(name);
+            if (item.type === "material") openMaterialPreview(item.id);
+            else if (item.type === "document") openGroupDocumentPreview(item.id);
+            else if (item.type === "assignment") showToast(`${item.title} — assignments are graded by the Trainer; this view is read-only`, "info");
+            else if (item.type === "meeting") showToast(`${item.title} — open from Meetings for details`, "info");
+        }
 
         function renderCalendar() {
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -9080,16 +9270,23 @@
                 const dateStr = `${calViewYear}-${String(calViewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const dayItems = calItems.filter((it) => it.date === dateStr);
                 cell.innerHTML = `<div class="cal-daynum">${day}</div>` +
-                    dayItems.slice(0, 3).map((it) => `<div class="cal-event ${it.type === "meeting" ? "meeting" : ""}" dir="auto">${escapeHtml(it.title || "")}</div>`).join("");
+                    dayItems.slice(0, 3).map((it, idx) => {
+                        const realIdx = calItems.indexOf(it);
+                        return `<div class="cal-event ${it.type !== "session" ? it.type : ""}" dir="auto" title="${escapeHtml(it.title || "")}${it.ownerName ? " — " + escapeHtml(it.ownerName) : ""}" onclick="openCalendarItem(calItems[${realIdx}])"><i class="fa ${calItemIcon(it)}"></i> ${escapeHtml(it.title || "")}</div>`;
+                    }).join("");
                 body.appendChild(cell);
             }
         }
 
         document.getElementById("calPrev").addEventListener("click", () => {
-            calViewMonth--; if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; } renderCalendar();
+            let y = calViewYear, m = calViewMonth - 1;
+            if (m < 0) { m = 11; y--; }
+            loadCalendar(y, m);
         });
         document.getElementById("calNext").addEventListener("click", () => {
-            calViewMonth++; if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; } renderCalendar();
+            let y = calViewYear, m = calViewMonth + 1;
+            if (m > 11) { m = 0; y++; }
+            loadCalendar(y, m);
         });
 
         // ---- Settings: profile + password (reuses existing generic routes) --

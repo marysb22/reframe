@@ -24,6 +24,10 @@
             --success-bg: #E4F5EA;
             --danger: #B3372E;
             --danger-bg: #FBEAE8;
+            --warning: #B5730F;
+            --warning-bg: #FCF0DC;
+            --info: #2563a8;
+            --info-bg: #e8f1fb;
             --radius-lg: 22px;
             --radius-md: 14px;
             --shadow-card: 0 1px 2px rgba(15, 27, 30, .04), 0 8px 24px rgba(15, 27, 30, .06);
@@ -1529,6 +1533,126 @@
         .modal-actions .btn {
             margin-top: 0;
         }
+
+        /* ===== Calendar ===== */
+
+        .cal-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .cal-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .cal-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .cal-arrow {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            color: var(--muted);
+        }
+
+        .cal-arrow:hover {
+            background: var(--surface-2);
+        }
+
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 1px;
+            background: var(--border-soft);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .cal-headcell {
+            background: var(--surface-2);
+            padding: 8px 6px;
+            text-align: center;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--faint);
+            text-transform: uppercase;
+        }
+
+        .cal-cell {
+            background: var(--surface);
+            min-height: 84px;
+            padding: 6px;
+            font-size: 11px;
+            position: relative;
+        }
+
+        .cal-cell.empty {
+            background: var(--surface-2);
+        }
+
+        .cal-cell.today {
+            box-shadow: inset 0 0 0 2px var(--primary-light);
+        }
+
+        .cal-daynum {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+        }
+
+        .cal-event {
+            margin-top: 4px;
+            font-size: 10px;
+            background: var(--info-bg);
+            color: var(--info);
+            padding: 2px 5px;
+            border-radius: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .cal-event.meeting {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .cal-event.material {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .cal-event.assignment {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .cal-event.note {
+            background: var(--border-soft);
+            color: var(--muted);
+        }
+
+        @media(max-width:700px) {
+            .cal-cell {
+                min-height: 56px;
+                font-size: 10px;
+            }
+        }
         /* ===== CVs ===== */
         
         .pill.master-trainer {
@@ -1871,6 +1995,7 @@
                 <ul>
                     <li><a data-section="dashboard" class="active" href="#dashboard"><i class="fa fa-gauge"></i>Dashboard</a></li>
                     <li><a data-section="library" href="#library"><i class="fa fa-building-columns"></i>Library</a></li>
+                    <li><a data-section="calendar" href="#calendar"><i class="fa fa-calendar"></i>Calendar</a></li>
                 </ul>
 
                 <div class="nav-label">Groups</div>
@@ -2102,6 +2227,51 @@
                     </div>
                 </div>
                 <div class="reader-body" id="readerBody"></div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- CALENDAR                                                       -->
+            <!-- ============================================================= -->
+            <section class="dash-section" id="section-calendar" data-title="Calendar" data-eyebrow="Oversight">
+                <div class="system-card">
+                    <div class="library-header">
+                        <div class="library-header-text">
+                            <h2 style="margin:0;"><i class="fa fa-calendar"></i> Calendar</h2>
+                        </div>
+                        <button class="btn" onclick="openAddEventModal()"><i class="fa fa-plus"></i> Add Notes</button>
+                    </div>
+                    <div class="cal-topbar">
+                        <h3 class="cal-title" id="calTitle">&mdash;</h3>
+                        <div class="cal-nav">
+                            <button class="cal-arrow" id="calPrev"><i class="fa fa-chevron-left"></i></button>
+                            <button class="cal-arrow" id="calNext"><i class="fa fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="cal-grid" id="calHeader"></div>
+                    <div class="cal-grid" id="calBody" style="margin-top:1px;"></div>
+                </div>
+            </section>
+
+            <div class="modal-overlay" id="addEventModal">
+                <div class="modal-box">
+                    <button class="close-modal" onclick="closeAddEventModal()">&times;</button>
+                    <h3 id="addEventModalTitle">Add Notes</h3>
+                    <form id="addEventForm">
+                        <label>Title</label>
+                        <input type="text" id="evTitle" dir="auto" required>
+                        <label>Date</label>
+                        <input type="date" id="evDate" required>
+                        <label>Time <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
+                        <input type="time" id="evTime">
+                        <label>Description <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
+                        <textarea id="evDescription" dir="auto"></textarea>
+                        <div class="modal-actions">
+                            <button type="button" id="evDeleteBtn" class="btn btn-secondary" style="display:none;color:var(--danger);border-color:var(--danger);" onclick="confirmDeleteCalendarNote(editingNoteId)">Delete</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeAddEventModal()">Cancel</button>
+                            <button type="submit" class="btn">Save</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <!-- ============================================================= -->
@@ -3007,7 +3177,8 @@
 
         // ---- Section switching -------------------------------------------------
 
-        const SECTION_IDS = ["dashboard", "library", "groupCreate", "groups", "trainerCreate", "trainers", "studentProfiles", "cvs", "events", "payments", "settings"];
+        const SECTION_IDS = ["dashboard", "library", "calendar", "groupCreate", "groups", "trainerCreate", "trainers", "studentProfiles", "cvs", "events", "payments", "settings"];
+        let calendarInited = false;
 
         function showSection(name) {
             if (!SECTION_IDS.includes(name)) name = "dashboard";
@@ -3029,6 +3200,11 @@
 
             if (window.location.hash.slice(1) !== name) {
                 history.replaceState(null, "", "#" + name);
+            }
+
+            if (name === "calendar" && !calendarInited) {
+                calendarInited = true;
+                loadCalendar();
             }
 
             closeMobileSidebar();
@@ -3064,6 +3240,214 @@
             sidebarEl.classList.remove("mobile-open");
             sidebarBackdrop.classList.remove("show");
         }
+
+        // ---- Calendar (system-wide oversight: every Session/Material/
+        // Document/Assignment/Meeting/Note across the whole system, read-
+        // only except for Admin's own Notes) --------------------------------
+
+        let calViewYear, calViewMonth;
+        let calItems = [];
+
+        function calDateStr(year, month, day) {
+            return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
+
+        async function loadCalendar(year, month) {
+            if (year == null || month == null) {
+                const today = new Date();
+                year = today.getFullYear();
+                month = today.getMonth();
+            }
+            calViewYear = year;
+            calViewMonth = month;
+
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const start = calDateStr(year, month, 1);
+            const end = calDateStr(year, month, daysInMonth);
+
+            const [sessions, events, meetings, materials, documents, assignments] = await Promise.all([
+                apiRequest(`/admin/calendar-sessions?start=${start}&end=${end}`),
+                apiRequest(`/admin/calendar-events?start=${start}&end=${end}`),
+                apiRequest(`/admin/meetings-calendar?start=${start}&end=${end}`),
+                apiRequest(`/admin/materials-calendar?start=${start}&end=${end}`),
+                apiRequest(`/admin/documents-calendar?start=${start}&end=${end}`),
+                apiRequest(`/admin/assignments-calendar?start=${start}&end=${end}`),
+            ]);
+
+            calItems = [];
+            if (sessions && sessions.events) {
+                sessions.events.forEach((i) => calItems.push({ id: i.id, date: i.date, title: i.title, type: "session" }));
+            }
+            if (events && events.events) {
+                events.events.forEach((ev) =>
+                    calItems.push({
+                        id: ev.id,
+                        date: ev.event_date,
+                        title: ev.title,
+                        description: ev.description,
+                        type: "note",
+                        ownerName: ev.owner_name,
+                        canEdit: !!ev.canEdit,
+                    })
+                );
+            }
+            if (meetings && meetings.items) {
+                meetings.items.forEach((it) => calItems.push({ id: it.id, date: it.date, title: it.title, type: "meeting" }));
+            }
+            if (materials && materials.items) {
+                materials.items.forEach((it) => calItems.push(it));
+            }
+            if (documents && documents.items) {
+                documents.items.forEach((it) => calItems.push(it));
+            }
+            if (assignments && assignments.items) {
+                assignments.items.forEach((it) => calItems.push(it));
+            }
+
+            renderCalendar();
+        }
+
+        let editingNoteId = null;
+
+        function openAddEventModal() {
+            editingNoteId = null;
+            document.getElementById("addEventForm").reset();
+            document.getElementById("addEventModalTitle").textContent = "Add Notes";
+            document.getElementById("evDeleteBtn").style.display = "none";
+            document.getElementById("addEventModal").classList.add("show");
+        }
+
+        function closeAddEventModal() {
+            document.getElementById("addEventModal").classList.remove("show");
+        }
+
+        function openEditNoteModal(item) {
+            if (!item.canEdit) return;
+            editingNoteId = item.id;
+            document.getElementById("addEventForm").reset();
+            document.getElementById("addEventModalTitle").textContent = "Edit Note";
+            document.getElementById("evTitle").value = item.title || "";
+            document.getElementById("evDate").value = item.date || "";
+            document.getElementById("evDescription").value = item.description || "";
+            document.getElementById("evDeleteBtn").style.display = "";
+            document.getElementById("addEventModal").classList.add("show");
+        }
+
+        document.getElementById("addEventForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const payload = {
+                title: document.getElementById("evTitle").value.trim(),
+                date: document.getElementById("evDate").value,
+                time: document.getElementById("evTime").value || undefined,
+                description: document.getElementById("evDescription").value.trim() || undefined,
+            };
+            const result = editingNoteId
+                ? await apiRequest(`/admin/calendar-events/${editingNoteId}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                  })
+                : await apiRequest("/admin/calendar-events", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                  });
+            if (result) {
+                showToast(editingNoteId ? "Note updated" : "Note added", "success");
+                closeAddEventModal();
+                loadCalendar(calViewYear, calViewMonth);
+            }
+        });
+
+        function confirmDeleteCalendarNote(id) {
+            openConfirm("Delete this note?", "This can't be undone.", () => deleteCalendarNote(id));
+        }
+
+        async function deleteCalendarNote(id) {
+            const result = await apiRequest(`/admin/calendar-events/${id}`, { method: "DELETE" });
+            if (result) {
+                showToast("Note deleted", "success");
+                closeAddEventModal();
+                loadCalendar(calViewYear, calViewMonth);
+            }
+        }
+
+        function calItemIcon(type) {
+            return {
+                session: "fa-chalkboard-user",
+                material: "fa-book-open",
+                document: "fa-folder-open",
+                assignment: "fa-list-check",
+                meeting: "fa-video",
+                note: "fa-note-sticky",
+            }[type] || "fa-circle";
+        }
+
+        // Admin's console has no dedicated Session/Material/Assignment/
+        // Meeting detail view anywhere in this dashboard (confirmed: Admin
+        // manages accounts/groups/library/payments/events, not day-to-day
+        // training activity) -- this is oversight visibility, not a
+        // navigation target that doesn't exist. A Note is the one type
+        // Admin actually owns/edits here.
+        function openCalendarItem(item) {
+            if (!item) return;
+            if (item.type === "note") {
+                if (item.canEdit) openEditNoteModal(item);
+                else showToast(item.ownerName ? `Note by ${item.ownerName}: ${item.title}` : item.title, "info");
+                return;
+            }
+            showToast(item.title || "Untitled", "info");
+        }
+
+        function renderCalendar() {
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+            document.getElementById("calTitle").textContent = `${monthNames[calViewMonth]} ${calViewYear}`;
+            document.getElementById("calHeader").innerHTML = dayNames.map((d) => `<div class="cal-headcell">${d}</div>`).join("");
+
+            const body = document.getElementById("calBody");
+            body.innerHTML = "";
+
+            const firstDay = new Date(calViewYear, calViewMonth, 1).getDay();
+            const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+            const today = new Date();
+
+            for (let i = 0; i < firstDay; i++) {
+                const cell = document.createElement("div");
+                cell.className = "cal-cell empty";
+                body.appendChild(cell);
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const cell = document.createElement("div");
+                const isToday = day === today.getDate() && calViewMonth === today.getMonth() && calViewYear === today.getFullYear();
+                cell.className = "cal-cell" + (isToday ? " today" : "");
+
+                const dateStr = calDateStr(calViewYear, calViewMonth, day);
+                const dayItems = calItems.filter((it) => it.date === dateStr);
+
+                cell.innerHTML = `<div class="cal-daynum">${day}</div>` +
+                    dayItems.slice(0, 3).map((it) => {
+                        const cls = it.type === "meeting" ? "meeting" : it.type === "material" ? "material" : it.type === "assignment" ? "assignment" : it.type === "note" ? "note" : "";
+                        const realIdx = calItems.indexOf(it);
+                        return `<div class="cal-event ${cls}" dir="auto" title="${escapeHtml(it.title || "")}${it.ownerName ? " — " + escapeHtml(it.ownerName) : ""}" onclick="openCalendarItem(calItems[${realIdx}])"><i class="fa ${calItemIcon(it.type)}"></i> ${escapeHtml(it.title || "")}</div>`;
+                    }).join("");
+
+                body.appendChild(cell);
+            }
+        }
+
+        document.getElementById("calPrev").addEventListener("click", () => {
+            let y = calViewYear, m = calViewMonth - 1;
+            if (m < 0) { m = 11; y--; }
+            loadCalendar(y, m);
+        });
+        document.getElementById("calNext").addEventListener("click", () => {
+            let y = calViewYear, m = calViewMonth + 1;
+            if (m > 11) { m = 0; y++; }
+            loadCalendar(y, m);
+        });
 
         // ---- Confirmation dialog -------------------------------------------
 

@@ -22,6 +22,7 @@ const { createUploadGuard, hashFile } = require("../utils/uploadGuard");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
+const { getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange } = require("../utils/calendarQuery");
 const {
   buildRecordsQuery,
   RECORD_TYPE_TABLES,
@@ -3516,6 +3517,42 @@ router.delete(
       [req.user.id, req.params.id, JSON.stringify(existingRows[0])]
     );
     res.json({ success: true });
+  })
+);
+
+// ---- Calendar: materials/documents/assignments, for the unified Calendar
+// widget -- same "whole month, caller's own scope" shape as /calendar-
+// sessions above, one endpoint per activity type rather than one combined
+// endpoint, matching how /meetings is already fetched separately and
+// merged into calItems client-side. Materials/documents use their
+// `created_at` (the only date either actually has -- see
+// utils/calendarQuery.js's own note); assignments use their real
+// `due_date`. -----------------------------------------------------------
+router.get(
+  "/materials-calendar",
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    const items = await getMaterialsInRange(db, { kind: "supervisor", id: req.user.id }, start, end);
+    res.json({ items });
+  })
+);
+router.get(
+  "/documents-calendar",
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    const items = await getDocumentsInRange(db, { kind: "supervisor", id: req.user.id }, start, end);
+    res.json({ items });
+  })
+);
+router.get(
+  "/assignments-calendar",
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    const items = await getAssignmentsInRange(db, { kind: "supervisor", id: req.user.id }, start, end);
+    res.json({ items });
   })
 );
 

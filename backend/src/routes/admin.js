@@ -23,6 +23,7 @@ const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
+const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, getMeetingsInRange } = require("../utils/calendarQuery");
 
 const router = express.Router();
 
@@ -2503,30 +2504,84 @@ router.put(
 // Admin still has read access like every other role, via the shared
 // GET /api/profile/hour-types in profile.js.
 
-// ---- Calendar events (Admin's own) ----------------------------------------
-// Mirrors supervisor.js's ToT calendar-events CRUD (owner_id = req.user.id).
-// Admin has no Group scoping, so a targeted studentId is accepted as-is
-// (Admin already has unrestricted trainee visibility elsewhere in this file).
+// ---- Calendar events (system-wide read, Admin-owned write) ----------------
+// Create/edit/delete mirror supervisor.js's ToT calendar-events CRUD
+// (owner_id = req.user.id -- Admin can still only edit/delete her own
+// notes, same ownership rule every other role already has). The READ side
+// is system-wide (every note from every owner, not just Admin's own) --
+// widened for the unified Calendar feature, consistent with how a Master
+// Trainer's own GET already sees her whole Group's notes rather than just
+// her own; Admin's oversight role already has unrestricted visibility into
+// everything else in this file, so this isn't a new exposure.
 
 // GET /api/admin/calendar-events?start=&end=
 router.get(
   "/calendar-events",
   asyncRoute(async (req, res, db) => {
     const { start, end } = req.query;
-    const params = [req.user.id];
+    const params = [];
     let dateFilter = "";
     if (start && end) {
       params.push(start, end);
-      dateFilter = "AND ce.event_date BETWEEN ? AND ?";
+      dateFilter = "WHERE ce.event_date BETWEEN ? AND ?";
     }
     const { rows } = await db.query(
-      `SELECT ce.*, st.full_name AS student_name FROM calendar_events ce
+      `SELECT ce.*, st.full_name AS student_name,
+              COALESCE(adm.full_name, sup.full_name) AS owner_name
+       FROM calendar_events ce
        LEFT JOIN students st ON st.id = ce.student_id
-       WHERE ce.owner_id = ? ${dateFilter}
+       LEFT JOIN admin_users adm ON adm.id = ce.owner_id
+       LEFT JOIN supervisors sup ON sup.id = ce.owner_id
+       ${dateFilter}
        ORDER BY ce.event_date ASC, (ce.event_time IS NULL), ce.event_time ASC`,
       params
     );
-    res.json({ events: rows });
+    res.json({ events: rows.map((r) => ({ ...r, canEdit: Number(r.owner_id) === Number(req.user.id) })) });
+  })
+);
+
+// GET /api/admin/calendar-sessions, /materials-calendar, /documents-calendar,
+// /assignments-calendar -- system-wide (no Group/caseload restriction at
+// all), the same "whole month" shape every other role's calendar uses.
+router.get(
+  "/calendar-sessions",
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    const items = await getSessionsInRange(db, { kind: "system" }, start, end);
+    res.json({ events: items.map((i) => ({ id: i.id, date: i.date, time: i.time, title: i.title })) });
+  })
+);
+router.get(
+  "/materials-calendar",
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    res.json({ items: await getMaterialsInRange(db, { kind: "system" }, start, end) });
+  })
+);
+router.get(
+  "/documents-calendar",
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    res.json({ items: await getDocumentsInRange(db, { kind: "system" }, start, end) });
+  })
+);
+router.get(
+  "/assignments-calendar",
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    res.json({ items: await getAssignmentsInRange(db, { kind: "system" }, start, end) });
+  })
+);
+router.get(
+  "/meetings-calendar",
+  asyncRoute(async (req, res, db) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
+    res.json({ items: await getMeetingsInRange(db, { kind: "system" }, start, end) });
   })
 );
 

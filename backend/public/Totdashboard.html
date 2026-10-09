@@ -3118,7 +3118,26 @@
             background: var(--warning-bg);
             color: var(--warning);
         }
-        
+
+        .cal-event.material {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .cal-event.assignment {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .cal-event.note {
+            background: var(--border-soft);
+            color: var(--muted);
+        }
+
+        .cal-event {
+            cursor: pointer;
+        }
+
         @media(max-width:700px) {
             .cal-cell {
                 min-height: 56px;
@@ -4361,7 +4380,7 @@
                         <div class="card-title-left"><i class="fa fa-calendar"></i>
                             <h2>Calendar</h2>
                         </div>
-
+                        <button class="btn" onclick="openAddEventModal()"><i class="fa fa-plus"></i> Add Notes</button>
                     </div>
                     <div class="cal-topbar">
                         <h3 class="cal-title" id="calTitle">&mdash;</h3>
@@ -4946,7 +4965,7 @@
     <div class="modal-overlay" id="addEventModal">
         <div class="modal-box">
             <button class="close-modal" onclick="closeModal('addEventModal')">&times;</button>
-            <h3>Add Event</h3>
+            <h3 id="addEventModalTitle">Add Notes</h3>
             <form id="addEventForm">
                 <label>Title</label>
                 <input type="text" id="evTitle" dir="auto" required>
@@ -4957,6 +4976,7 @@
                 <label>Description <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
                 <textarea id="evDescription" dir="auto"></textarea>
                 <div class="modal-actions">
+                    <button type="button" id="evDeleteBtn" class="btn btn-danger" style="display:none;" onclick="confirmDeleteCalendarNote(editingNoteId)">Delete</button>
                     <button type="button" class="btn btn-secondary" onclick="closeModal('addEventModal')">Cancel</button>
                     <button type="submit" class="btn">Save</button>
                 </div>
@@ -10144,16 +10164,20 @@ async function loadCalendar(year, month) {
   const start = calDateStr(year, month, 1);
   const end = calDateStr(year, month, daysInMonth);
 
-  const [sessions, events, meetings] = await Promise.all([
+  const [sessions, events, meetings, materials, documents, assignments] = await Promise.all([
     apiRequest(`/supervisor/calendar-sessions?start=${start}&end=${end}`),
     apiRequest(`/supervisor/calendar-events?start=${start}&end=${end}`),
     apiRequest("/supervisor/meetings"),
+    apiRequest(`/supervisor/materials-calendar?start=${start}&end=${end}`),
+    apiRequest(`/supervisor/documents-calendar?start=${start}&end=${end}`),
+    apiRequest(`/supervisor/assignments-calendar?start=${start}&end=${end}`),
   ]);
 
   calItems = [];
   if (sessions && sessions.events) {
     sessions.events.forEach((i) => {
       calItems.push({
+        id: i.id,
         date: i.date,
         title: i.title || `${hourTypeLabel(i.hourTypeCode)} activity`,
         type: i.kind === "single" ? "training_session" : "group_session",
@@ -10161,42 +10185,91 @@ async function loadCalendar(year, month) {
     });
   }
   if (events && events.events) {
-    events.events.forEach((ev) => calItems.push({ date: ev.event_date, title: ev.title, type: "custom" }));
+    events.events.forEach((ev) =>
+      calItems.push({ id: ev.id, date: ev.date, title: ev.title, description: ev.description, type: "note" })
+    );
   }
   if (meetings && meetings.meetings) {
     meetings.meetings.forEach((m) => {
       if (!m.scheduledAt) return;
       const d = m.scheduledAt.slice(0, 10);
-      if (d >= start && d <= end) calItems.push({ date: d, title: m.title, type: "meeting" });
+      if (d >= start && d <= end) calItems.push({ id: m.id, date: d, title: m.title, type: "meeting" });
     });
+  }
+  if (materials && materials.items) {
+    materials.items.forEach((it) => calItems.push({ id: it.id, date: it.date, title: it.title, type: "material" }));
+  }
+  if (documents && documents.items) {
+    documents.items.forEach((it) => calItems.push({ id: it.id, date: it.date, title: it.title, type: "document" }));
+  }
+  if (assignments && assignments.items) {
+    assignments.items.forEach((it) => calItems.push({ id: it.id, date: it.date, title: it.title, type: "assignment" }));
   }
 
   renderCalendar();
 }
 
+let editingNoteId = null;
+
 function openAddEventModal() {
+  editingNoteId = null;
   document.getElementById("addEventForm").reset();
+  document.getElementById("addEventModalTitle").textContent = "Add Notes";
+  const deleteBtn = document.getElementById("evDeleteBtn");
+  if (deleteBtn) deleteBtn.style.display = "none";
+  openModal("addEventModal");
+}
+
+function openEditNoteModal(item) {
+  editingNoteId = item.id;
+  document.getElementById("addEventForm").reset();
+  document.getElementById("addEventModalTitle").textContent = "Edit Note";
+  document.getElementById("evTitle").value = item.title || "";
+  document.getElementById("evDate").value = item.date || "";
+  document.getElementById("evDescription").value = item.description || "";
+  const deleteBtn = document.getElementById("evDeleteBtn");
+  if (deleteBtn) deleteBtn.style.display = "";
   openModal("addEventModal");
 }
 
 document.getElementById("addEventForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const result = await apiRequest("/supervisor/calendar-events", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title: document.getElementById("evTitle").value.trim(),
-      date: document.getElementById("evDate").value,
-      time: document.getElementById("evTime").value || undefined,
-      description: document.getElementById("evDescription").value.trim() || undefined,
-    }),
-  });
+  const payload = {
+    title: document.getElementById("evTitle").value.trim(),
+    date: document.getElementById("evDate").value,
+    time: document.getElementById("evTime").value || undefined,
+    description: document.getElementById("evDescription").value.trim() || undefined,
+  };
+  const result = editingNoteId
+    ? await apiRequest(`/supervisor/calendar-events/${editingNoteId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+    : await apiRequest("/supervisor/calendar-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
   if (result) {
-    showToast("Event added", "success");
+    showToast(editingNoteId ? "Note updated" : "Note added", "success");
     closeModal("addEventModal");
     loadCalendar(calViewYear, calViewMonth);
   }
 });
+
+function confirmDeleteCalendarNote(id) {
+  openConfirm("Delete this note?", "This can't be undone.", () => deleteCalendarNote(id));
+}
+
+async function deleteCalendarNote(id) {
+  const result = await apiRequest(`/supervisor/calendar-events/${id}`, { method: "DELETE" });
+  if (result) {
+    showToast("Note deleted", "success");
+    closeModal("addEventModal");
+    loadCalendar(calViewYear, calViewMonth);
+  }
+}
 
 function renderCalendar() {
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -10229,10 +10302,70 @@ function renderCalendar() {
     const dayItems = calItems.filter((it) => it.date === dateStr);
 
     cell.innerHTML = `<div class="cal-daynum">${day}</div>` +
-      dayItems.slice(0, 3).map((it) => `<div class="cal-event ${it.type === "meeting" ? "meeting" : ""}" dir="auto">${escapeHtml(it.title || "")}</div>`).join("");
+      dayItems.slice(0, 3).map((it) => {
+        const cls = it.type === "meeting" ? "meeting" : it.type === "material" ? "material" : it.type === "assignment" ? "assignment" : it.type === "note" ? "note" : "";
+        const realIdx = calItems.indexOf(it);
+        return `<div class="cal-event ${cls}" dir="auto" title="${escapeHtml(it.title || "")}" onclick="openCalendarItem(calItems[${realIdx}])"><i class="fa ${calItemIcon(it.type)}"></i> ${escapeHtml(it.title || "")}</div>`;
+      }).join("");
 
     body.appendChild(cell);
   }
+}
+
+function calItemIcon(type) {
+  return {
+    training_session: "fa-chalkboard-user",
+    group_session: "fa-people-group",
+    material: "fa-book-open",
+    document: "fa-folder-open",
+    assignment: "fa-list-check",
+    meeting: "fa-video",
+    note: "fa-note-sticky",
+  }[type] || "fa-circle";
+}
+
+// Navigates a clicked Calendar item to its real, existing resource --
+// never a separate "calendar record" view. Sessions are the one type that
+// needs a date-filtered reload first: Activities is paginated/date-filtered
+// by default, so a calendar click on an older/future month's session
+// wouldn't otherwise be on the currently-loaded page.
+async function openCalendarItem(item) {
+  if (!item) return;
+
+  if (item.type === "note") {
+    openEditNoteModal(item);
+    return;
+  }
+
+  if (item.type === "training_session" || item.type === "group_session") {
+    document.getElementById("actDateFilter").value = "custom";
+    document.getElementById("actDateFrom").value = item.date;
+    document.getElementById("actDateTo").value = item.date;
+    actState.page = 1;
+    showSection("students");
+    await loadActivities();
+    const activity = allActivities.find((a) => a.id === item.id);
+    if (!activity) {
+      showToast("Could not locate that activity", "error");
+      return;
+    }
+    if (activity.kind === "single") editSession(activity.id);
+    else toggleActivityExpand(`${activity.kind}:${activity.id}`);
+    return;
+  }
+
+  const sectionFor = { material: "materials", document: "documents", assignment: "assignments", meeting: "meetings" };
+  const name = sectionFor[item.type];
+  if (!name) return;
+  if (!loadedSections.has(name)) {
+    loadedSections.add(name);
+    if (SECTION_LOADERS[name]) await SECTION_LOADERS[name]();
+  }
+  showSection(name);
+  if (item.type === "material") openMaterialPreview(item.id);
+  else if (item.type === "document") openAllDocumentsPreview(item.id);
+  else if (item.type === "assignment") editAssignment(item.id);
+  else if (item.type === "meeting") editMeeting(item.id);
 }
 
 document.getElementById("calPrev").addEventListener("click", () => {
