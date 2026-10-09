@@ -8,6 +8,7 @@ const { broadcastMessage } = require("../realtime/chatSocket");
 const { resolveWeekRange, getCurrentWeekRange, listRecentWeeks, shiftDate } = require("../utils/weekPeriod");
 const { buildTotHoursBreakdownQuery, TRAINEE_ACTIVITY_ENTITY_TYPES } = require("../utils/recordsQuery");
 const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, notifyCalendarNoteRecipients } = require("../utils/calendarQuery");
+const { noticeRequiredForRole, hasAcceptedCurrentVersion } = require("../utils/trainingMaterialsNotice");
 const { TRAINING_DURATION_YEARS, calculateTrainingProgress } = require("../utils/trainingTimeline");
 const { sessionAttachmentUpload } = require("../utils/uploads");
 const { checkFileContent } = require("../utils/fileTypeCheck");
@@ -387,6 +388,11 @@ router.get(
        WHERE uc.id = ?`, [req.user.id]
         );
         const self = selfRows[0];
+        // Same gate as /api/profile/me (the generic endpoint ToT/Trainee
+        // dashboards call) -- this file has its own separate /me instead of
+        // reusing that one, so the check has to be repeated here rather
+        // than inherited automatically.
+        self.needsTrainingMaterialsNotice = noticeRequiredForRole(req.user.role) ? !(await hasAcceptedCurrentVersion(db, req.user.id)) : false;
 
         if (!groupId) {
             return res.json({ profile: self, groupLabel: "No Group assigned", totCount: 0, traineeCount: 0 });

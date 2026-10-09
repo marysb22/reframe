@@ -18,6 +18,7 @@ const path = require("path");
 const jwt = require("jsonwebtoken");
 const config = require("../config");
 const { pool } = require("../db");
+const { noticeRequiredForRole, hasAcceptedCurrentVersion } = require("../utils/trainingMaterialsNotice");
 
 const router = express.Router();
 
@@ -184,6 +185,13 @@ const AUTHORIZERS = Object.assign(Object.create(null), {
     // the Library route's own "one shared list" rule.
     if (materialType === "book" || adminId) return true;
     if (user.role === "admin") return true;
+    // Defense in depth for the Training Materials Usage & Distribution
+    // Notice: the dashboard modal already blocks normal use, but this is
+    // the one place that actually hands out a real training material's
+    // bytes -- a direct API/URL request bypassing the frontend modal must
+    // still be refused server-side, same spirit as every other ownership
+    // check in this function.
+    if (noticeRequiredForRole(user.role) && !(await hasAcceptedCurrentVersion(pool, user.id))) return false;
     if (user.role === "supervisor") return Number(user.id) === supervisorId;
     if (user.role === "trainee") {
       // NULL student_id = shared with the whole caseload, not one specific

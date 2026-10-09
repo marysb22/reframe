@@ -26,6 +26,13 @@ const { broadcastDirectMessage } = require("../realtime/chatSocket");
 const { resolveWeekRange, listRecentWeeks } = require("../utils/weekPeriod");
 const { ASSIGNMENT_WITH_SUBMISSION_SELECT, assignmentRowToApi, attachSubmissionHistories } = require("../utils/assignmentsQuery");
 const { DOCUMENT_SELECT } = require("../utils/documentsQuery");
+const {
+  NOTICE,
+  BANNER,
+  noticeRequiredForRole,
+  hasAcceptedCurrentVersion,
+  recordAcceptance,
+} = require("../utils/trainingMaterialsNotice");
 
 const router = express.Router();
 
@@ -135,7 +142,62 @@ router.get(
       await attachTraineeHealthInfo(db, profile, req.user.id);
     }
 
+    // Every dashboard (Admin/MT/ToT/Trainee/Designer) already calls this
+    // endpoint once on load -- the same hook point must_change_password
+    // already uses to force a redirect before the dashboard is usable, so
+    // this is where the Training Materials Notice gate is decided too.
+    // Server-computed on every call (never cached/trusted from the
+    // frontend): covers an existing pre-feature account, a new signup, an
+    // account reactivated after being suspended, and a version bump,
+    // identically, with no separate code path for any of them.
+    profile.needsTrainingMaterialsNotice = noticeRequiredForRole(req.user.role)
+      ? !(await hasAcceptedCurrentVersion(db, req.user.id))
+      : false;
+
     res.json(profile);
+  })
+);
+
+// ---- Training Materials Usage & Distribution Notice -----------------------
+// Works for any authenticated role (same "generic, not four role-specific
+// copies" reasoning as GET/PUT /me above) -- Admin/Designer simply never
+// call POST .../accept because their own dashboards never show the modal
+// that would call it; nothing here needs to reject them specially.
+
+// GET /api/profile/training-materials-notice -- the exact bilingual text +
+// current version, for both the one-time modal and the permanent
+// dashboard's read-only "Read Usage Notice" reopen (same content, no
+// drift, and no second acceptance record created by a GET).
+router.get(
+  "/training-materials-notice",
+  asyncRoute(async (req, res) => {
+    res.json(NOTICE);
+  })
+);
+
+// GET /api/profile/training-materials-notice/banner -- the shorter
+// permanent-dashboard-banner copy, kept as a separate endpoint from the
+// full notice above so the frontend never has to duplicate either text.
+router.get(
+  "/training-materials-notice/banner",
+  asyncRoute(async (req, res) => {
+    res.json(BANNER);
+  })
+);
+
+// POST /api/profile/training-materials-notice/accept -- records
+// acceptance for the CALLER (req.user.id from the verified JWT, never a
+// client-supplied id) against the server's own CURRENT_VERSION constant
+// (never a client-supplied version string) with a server-generated
+// timestamp (DEFAULT CURRENT_TIMESTAMP) -- nothing about who/what/when is
+// ever trusted from the request body. A duplicate submit (double-click,
+// retry) is a silent no-op, not an error, via the table's UNIQUE
+// constraint + recordAcceptance()'s own ER_DUP_ENTRY handling.
+router.post(
+  "/training-materials-notice/accept",
+  asyncRoute(async (req, res, db) => {
+    await recordAcceptance(db, req.user.id, { ipAddress: req.ip, userAgent: req.headers["user-agent"] });
+    res.json({ accepted: true, version: NOTICE.version });
   })
 );
 

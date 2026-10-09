@@ -1742,7 +1742,125 @@
         .modal-box.wide {
             max-width: 900px;
         }
-        
+
+        .modal-box.notice-modal {
+            max-width: 760px;
+            padding: 32px;
+        }
+        .notice-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .notice-modal-icon {
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            border-radius: 50%;
+            background: var(--danger-bg);
+            color: var(--danger);
+            display: grid;
+            place-items: center;
+            font-size: 20px;
+        }
+        .notice-modal-header h3 {
+            margin: 0 !important;
+            font-size: 18px;
+        }
+        .notice-title-sep {
+            color: var(--faint);
+            font-weight: 400;
+        }
+        .notice-modal-body {
+            max-height: 50vh;
+            overflow-y: auto;
+            margin-bottom: 22px;
+            padding-right: 4px;
+        }
+        .notice-lang-block {
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md);
+            padding: 16px 18px;
+            margin-bottom: 14px;
+            background: var(--surface-2);
+        }
+        .notice-lang-block:last-child {
+            margin-bottom: 0;
+        }
+        .notice-lang-block h4 {
+            margin: 0 0 8px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--faint);
+            font-weight: 700;
+        }
+        .notice-lang-block p {
+            margin: 0 0 10px;
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text);
+        }
+        .notice-lang-block p:last-child {
+            margin-bottom: 0;
+        }
+        .notice-lang-block[dir="rtl"] {
+            text-align: right;
+        }
+        @media (max-width: 600px) {
+            .modal-box.notice-modal {
+                padding: 20px;
+            }
+            .notice-modal-body {
+                max-height: 45vh;
+            }
+        }
+        .notice-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            background: var(--danger-bg);
+            border: 1px solid var(--danger);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            margin-bottom: 18px;
+        }
+        .notice-banner i {
+            color: var(--danger);
+            font-size: 16px;
+            margin-top: 2px;
+        }
+        .notice-banner-text {
+            font-size: 12.5px;
+            color: var(--text);
+            line-height: 1.55;
+        }
+        .notice-banner-text strong {
+            display: block;
+            color: var(--danger);
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+        .notice-banner-ar {
+            display: block;
+            margin-top: 8px;
+            direction: rtl;
+            text-align: right;
+        }
+        .notice-banner-link {
+            background: none;
+            border: none;
+            color: var(--danger);
+            font-weight: 700;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 12.5px;
+            padding: 0;
+            margin-top: 8px;
+            display: inline-block;
+        }
+
         .modal-box h3 {
             margin: 0 0 18px;
             font-size: 18px;
@@ -3578,6 +3696,19 @@
             <!-- ============================================================= -->
             <section class="dash-section active-section" id="section-dashboard" data-title="Good to see you" data-eyebrow="Master Trainer console">
 
+                <div class="notice-banner">
+                    <i class="fa fa-triangle-exclamation"></i>
+                    <div class="notice-banner-text">
+                        <strong>Training Materials: Restricted Use</strong>
+                        Training materials are for registered students during the training period only. Copying, sharing, or distributing them outside the training framework is prohibited without prior authorization.
+                        <span class="notice-banner-ar">
+                            <strong>مواد التدريب: استخدام مقيّد</strong>
+                            مواد التدريب مخصصة للطلاب المسجلين خلال فترة التدريب فقط. يُمنع نسخها أو مشاركتها أو توزيعها خارج إطار التدريب دون إذن مسبق.
+                        </span>
+                        <button type="button" class="notice-banner-link" onclick="openTrainingNoticeReadOnly()">Read Usage Notice / اقرأ إشعار الاستخدام</button>
+                    </div>
+                </div>
+
                 <section class="kpi-grid">
                     <div class="kpi-card">
                         <div class="kpi-top">
@@ -4183,6 +4314,42 @@
                             <button type="submit" class="btn">Share</button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- TRAINING MATERIALS USAGE & DISTRIBUTION NOTICE -- one-time
+                 required acceptance (no close/cancel control by design; see
+                 acceptTrainingMaterialsNotice()) reused read-only via the
+                 permanent dashboard banner's "Read Usage Notice" link. -->
+            <div class="modal-overlay" id="trainingNoticeModal" role="dialog" aria-modal="true" aria-labelledby="trainingNoticeModalTitleEn">
+                <div class="modal-box notice-modal">
+                    <button type="button" class="close-modal" id="trainingNoticeCloseX" style="display:none;" onclick="closeModal('trainingNoticeModal')">&times;</button>
+                    <div class="notice-modal-header">
+                        <div class="notice-modal-icon"><i class="fa fa-shield-halved"></i></div>
+                        <h3>
+                            <span id="trainingNoticeModalTitleEn">&nbsp;</span>
+                            <span class="notice-title-sep"> / </span>
+                            <span id="trainingNoticeModalTitleAr" dir="rtl">&nbsp;</span>
+                        </h3>
+                    </div>
+                    <div class="notice-modal-body">
+                        <div class="notice-lang-block" dir="ltr" lang="en">
+                            <h4>English</h4>
+                            <div id="trainingNoticeModalBodyEn"></div>
+                        </div>
+                        <div class="notice-lang-block" dir="rtl" lang="ar">
+                            <h4>العربية</h4>
+                            <div id="trainingNoticeModalBodyAr"></div>
+                        </div>
+                    </div>
+                    <div class="modal-actions" id="trainingNoticeAcceptSection" style="justify-content:center;">
+                        <button type="button" class="btn" id="trainingNoticeAcceptBtn" onclick="acceptTrainingMaterialsNotice()">
+                            <i class="fa fa-check"></i>&nbsp; I Agree &amp; Continue / أوافق وأتابع
+                        </button>
+                    </div>
+                    <div class="modal-actions" id="trainingNoticeCloseSection" style="display:none;justify-content:center;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('trainingNoticeModal')">Close / إغلاق</button>
+                    </div>
                 </div>
             </div>
 
@@ -5040,6 +5207,7 @@
             if (!me) return;
             const p = me.profile;
             currentProfile = p;
+            maybeShowTrainingMaterialsNotice(p.needsTrainingMaterialsNotice);
             document.getElementById("mtName").textContent = p.full_name;
             document.getElementById("mtInitials").textContent = initials(p.full_name);
             if (p.photo) {
@@ -5057,6 +5225,67 @@
             document.getElementById("kpiTots").textContent = nc(me.totCount, 0);
             document.getElementById("kpiTrainees").textContent = nc(me.traineeCount, 0);
         }
+
+        // ---- Training Materials Usage & Distribution Notice -------------------
+
+        let trainingNoticeData = null;
+
+        async function fetchTrainingNoticeText() {
+            if (!trainingNoticeData) trainingNoticeData = await apiRequest("/profile/training-materials-notice");
+            return trainingNoticeData;
+        }
+
+        function renderTrainingNoticeModalContent(notice) {
+            document.getElementById("trainingNoticeModalTitleEn").textContent = notice.en.title;
+            document.getElementById("trainingNoticeModalTitleAr").textContent = notice.ar.title;
+            document.getElementById("trainingNoticeModalBodyEn").innerHTML = notice.en.body
+                .split("\n\n").map((p) => `<p>${escapeHtml(p)}</p>`).join("");
+            document.getElementById("trainingNoticeModalBodyAr").innerHTML = notice.ar.body
+                .split("\n\n").map((p) => `<p>${escapeHtml(p)}</p>`).join("");
+        }
+
+        async function maybeShowTrainingMaterialsNotice(needsIt) {
+            if (!needsIt) return;
+            const notice = await fetchTrainingNoticeText();
+            if (!notice) return;
+            renderTrainingNoticeModalContent(notice);
+            document.getElementById("trainingNoticeCloseX").style.display = "none";
+            document.getElementById("trainingNoticeAcceptSection").style.display = "flex";
+            document.getElementById("trainingNoticeCloseSection").style.display = "none";
+            openModal("trainingNoticeModal");
+            document.getElementById("trainingNoticeAcceptBtn").focus();
+        }
+
+        async function acceptTrainingMaterialsNotice() {
+            const btn = document.getElementById("trainingNoticeAcceptBtn");
+            btn.disabled = true;
+            const result = await apiRequest("/profile/training-materials-notice/accept", { method: "POST" });
+            if (result) {
+                if (currentProfile) currentProfile.needsTrainingMaterialsNotice = false;
+                closeModal("trainingNoticeModal");
+            } else {
+                btn.disabled = false;
+            }
+        }
+
+        async function openTrainingNoticeReadOnly() {
+            const notice = await fetchTrainingNoticeText();
+            if (!notice) return;
+            renderTrainingNoticeModalContent(notice);
+            document.getElementById("trainingNoticeCloseX").style.display = "";
+            document.getElementById("trainingNoticeAcceptSection").style.display = "none";
+            document.getElementById("trainingNoticeCloseSection").style.display = "flex";
+            openModal("trainingNoticeModal");
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key !== "Tab") return;
+            const modal = document.getElementById("trainingNoticeModal");
+            if (!modal.classList.contains("open")) return;
+            if (document.getElementById("trainingNoticeAcceptSection").style.display === "none") return;
+            e.preventDefault();
+            document.getElementById("trainingNoticeAcceptBtn").focus();
+        });
 
         async function loadDashboardHours() {
             // Sums across every ToT's aggregated stats -- computed server-side
