@@ -312,6 +312,51 @@ async function run() {
     assert(!r2.body.items.some((i) => i.id === fx.assignmentId), "assignment leaked onto its created_at date instead of due_date");
   });
 
+  console.log("\nNote creation notifies the trainee(s) who'd actually see it (in-app + email attempt)\n");
+
+  await test("A Note targeted at one trainee creates exactly one in-app notification for her", async () => {
+    const r = await request("POST", "/supervisor/calendar-events", totToken, {
+      title: "ZZTCALNOTE Targeted Notify",
+      date: noteDate,
+      studentId: fx.studentId,
+    });
+    assert(r.status === 201, `expected 201, got ${r.status}`);
+    fx.noteIds.push(r.body.id);
+    await new Promise((resolve) => setTimeout(resolve, 300)); // notification insert happens before the response, but give the pool a beat
+    const { rows } = await pool.query(
+      "SELECT notification_type, title, related_entity_type, related_entity_id FROM notifications WHERE recipient_id = ? AND related_entity_id = ? AND related_entity_type = 'calendar_event'",
+      [fx.studentId, r.body.id]
+    );
+    assertEqual(rows.length, 1, "expected exactly one notification row for the targeted trainee");
+    assertEqual(rows[0].notification_type, "document", "calendar note notifications reuse the 'document' type/preference");
+    assert(rows[0].title.includes("ZZTCALNOTE Targeted Notify"), "notification title should reference the note's title");
+  });
+
+  await test("A broad Note (no studentId) from a ToT notifies her whole caseload", async () => {
+    const r = await request("POST", "/supervisor/calendar-events", totToken, { title: "ZZTCALNOTE Broad Notify", date: noteDate });
+    assert(r.status === 201, `expected 201, got ${r.status}`);
+    fx.noteIds.push(r.body.id);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const { rows } = await pool.query(
+      "SELECT recipient_id FROM notifications WHERE related_entity_id = ? AND related_entity_type = 'calendar_event'",
+      [r.body.id]
+    );
+    assertEqual(rows.length, 1, "this ToT has exactly one trainee in her caseload");
+    assertEqual(rows[0].recipient_id, fx.studentId, "the one caseload trainee should be notified");
+  });
+
+  await test("A broad Note (no studentId) from Admin notifies nobody -- matches getNotesInRange's own visibility rule", async () => {
+    const r = await request("POST", "/admin/calendar-events", adminToken, { title: "ZZTCALNOTE Admin Broad", date: noteDate });
+    assert(r.status === 201, `expected 201, got ${r.status}`);
+    fx.noteIds.push(r.body.id);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const { rows } = await pool.query(
+      "SELECT recipient_id FROM notifications WHERE related_entity_id = ? AND related_entity_type = 'calendar_event'",
+      [r.body.id]
+    );
+    assertEqual(rows.length, 0, "an Admin's untargeted note has no trainee recipient (Admin is never a supervisor_students row)");
+  });
+
   console.log("\nTearing down ZZTCALNOTE fixtures...");
   await teardown();
   const { rows: leftover } = await pool.query("SELECT COUNT(*) AS c FROM user_credentials WHERE member_code LIKE 'ZZTCALNOTE%'");

@@ -4587,6 +4587,8 @@
                 showSection("assignments");
                 await loadAssignments();
                 openAssignmentDetail(Number(relatedEntityId));
+            } else if (relatedEntityType === "calendar_event") {
+                showSection("calendar");
             } else if (relatedEntityType === "message" && relatedEntityId) {
                 // Marking "chat" as already-loaded before showSection() stops
                 // its own lazy loader from also calling loadChat() with no

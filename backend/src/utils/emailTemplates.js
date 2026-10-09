@@ -82,6 +82,17 @@ const TEMPLATES = {
     return { subject: "New Training Material Added", text, html };
   },
 
+  newCalendarNote({ recipientName, noteTitle, trainerName, noteDate }) {
+    const { text, html } = wrap(recipientName, [
+      "A new note has been added to your Calendar.",
+      "",
+      field("Note", noteTitle),
+      field("Added by", trainerName),
+      field("Date", formatDate(noteDate)),
+    ]);
+    return { subject: "New Calendar Note", text, html };
+  },
+
   newAnnouncement({ recipientName, announcementTitle, announcementContent, trainerName }) {
     const lines = [
       "A new announcement has been posted to your training account.",

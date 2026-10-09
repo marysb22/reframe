@@ -1,3 +1,5 @@
+const { createNotification, getUserContactInfo } = require("./notifications");
+
 // Shared "activities in a date range, for the Calendar" queries -- one
 // implementation reused by all four roles (ToT/ Master Trainer/ Admin/
 // Trainee), each calling in with a different `scope`, rather than four
@@ -180,4 +182,62 @@ async function getNotesInRange(db, scope, start, end) {
   return rows.map((r) => ({ type: "note", id: r.id, date: String(r.date), title: r.title }));
 }
 
-module.exports = { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, getMeetingsInRange, getNotesInRange };
+/**
+ * Notifies (in-app + email, same as notifyMaterialRecipients in
+ * supervisor.js) whichever trainee(s) would actually SEE this Note on
+ * their own Calendar -- recipient resolution deliberately mirrors
+ * getNotesInRange's student-scope WHERE clause above exactly, so "who
+ * gets notified" never drifts from "who can see it":
+ *   - studentId set -> that one trainee.
+ *   - studentId null, owner is a supervisor (ToT or Master Trainer) ->
+ *     every trainee assigned to that supervisor (their whole caseload --
+ *     matches getNotesInRange's `ce.owner_id IN (SELECT supervisor_id
+ *     FROM supervisor_students ...)` check).
+ *   - studentId null, owner is Admin -> no trainee could see this note
+ *     via getNotesInRange's own rule either (Admin never appears in
+ *     supervisor_students), so there is nothing to notify -- not a bug,
+ *     just nobody to tell.
+ * Called from inside each POST /calendar-events handler (supervisor.js,
+ * Mastertrainer.js, admin.js), with `db` = the request's own transactional
+ * client, awaited before the handler returns -- same convention every
+ * other createNotification call site in this app already uses.
+ */
+async function notifyCalendarNoteRecipients(db, ownerId, studentId, title, noteId, eventDate) {
+  let recipientIds;
+  if (studentId) {
+    recipientIds = [Number(studentId)];
+  } else {
+    const { rows } = await db.query("SELECT student_id FROM supervisor_students WHERE supervisor_id = ?", [ownerId]);
+    recipientIds = rows.map((r) => r.student_id);
+  }
+  if (!recipientIds.length) return;
+
+  const owner = await getUserContactInfo(db, ownerId);
+  const trainerName = (owner && owner.fullName) || "Your trainer";
+  const results = await Promise.allSettled(
+    recipientIds.map((recipientId) =>
+      createNotification(db, {
+        recipientId,
+        type: "document",
+        title: `New Calendar note: ${title}`,
+        relatedEntityType: "calendar_event",
+        relatedEntityId: noteId,
+        email: { template: "newCalendarNote", data: { noteTitle: title, trainerName, noteDate: eventDate } },
+      })
+    )
+  );
+  const failed = results.filter((r) => r.status === "rejected");
+  if (failed.length) {
+    console.error(`notifyCalendarNoteRecipients: ${failed.length}/${recipientIds.length} notifications failed for note ${noteId}`, failed.map((f) => f.reason));
+  }
+}
+
+module.exports = {
+  getSessionsInRange,
+  getMaterialsInRange,
+  getDocumentsInRange,
+  getAssignmentsInRange,
+  getMeetingsInRange,
+  getNotesInRange,
+  notifyCalendarNoteRecipients,
+};

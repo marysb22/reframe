@@ -7,7 +7,7 @@ const { toRecord, toDocument, toMaterial, toMessage, computeTrainingProgress, co
 const { broadcastMessage } = require("../realtime/chatSocket");
 const { resolveWeekRange, getCurrentWeekRange, listRecentWeeks, shiftDate } = require("../utils/weekPeriod");
 const { buildTotHoursBreakdownQuery, TRAINEE_ACTIVITY_ENTITY_TYPES } = require("../utils/recordsQuery");
-const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange } = require("../utils/calendarQuery");
+const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, notifyCalendarNoteRecipients } = require("../utils/calendarQuery");
 const { TRAINING_DURATION_YEARS, calculateTrainingProgress } = require("../utils/trainingTimeline");
 const { sessionAttachmentUpload } = require("../utils/uploads");
 const { checkFileContent } = require("../utils/fileTypeCheck");
@@ -2873,6 +2873,7 @@ router.post(
             [masterTrainerId, studentId || null, type, title, description || null, date, time || null]
         );
         const { rows } = await db.query("SELECT * FROM calendar_events WHERE id = ?", [insert.insertId]);
+        await notifyCalendarNoteRecipients(db, masterTrainerId, studentId || null, title, insert.insertId, date);
         res.status(201).json(rows[0]);
     })
 );

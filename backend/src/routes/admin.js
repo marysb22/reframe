@@ -23,7 +23,7 @@ const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
-const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, getMeetingsInRange } = require("../utils/calendarQuery");
+const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, getMeetingsInRange, notifyCalendarNoteRecipients } = require("../utils/calendarQuery");
 
 const router = express.Router();
 
@@ -2600,6 +2600,7 @@ router.post(
       [req.user.id, studentId || null, type, title, description || null, date, time || null]
     );
     const { rows } = await db.query("SELECT * FROM calendar_events WHERE id = ?", [insert.insertId]);
+    await notifyCalendarNoteRecipients(db, req.user.id, studentId || null, title, insert.insertId, date);
     res.status(201).json(rows[0]);
   })
 );

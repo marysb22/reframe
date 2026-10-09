@@ -22,7 +22,7 @@ const { createUploadGuard, hashFile } = require("../utils/uploadGuard");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
-const { getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange } = require("../utils/calendarQuery");
+const { getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, notifyCalendarNoteRecipients } = require("../utils/calendarQuery");
 const {
   buildRecordsQuery,
   RECORD_TYPE_TABLES,
@@ -3622,6 +3622,7 @@ router.post(
       [req.user.id, studentId || null, type, title, description || null, date, time || null]
     );
     const { rows } = await db.query("SELECT * FROM calendar_events WHERE id = ?", [insert.insertId]);
+    await notifyCalendarNoteRecipients(db, req.user.id, studentId || null, title, insert.insertId, date);
     res.status(201).json(toCalendarEvent(rows[0]));
   })
 );
