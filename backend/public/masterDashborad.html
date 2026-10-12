@@ -7056,7 +7056,7 @@
                 .map(
                     (o) => `
         <tr>
-          <td dir="auto">${escapeHtml(o.title || "Untitled")}</td>
+          <td dir="auto">${escapeHtml(o.title || "Untitled")}${o.providedByName ? `<div style="color:var(--faint);font-size:11px;font-weight:400;">Hours provided by: ${escapeHtml(o.providedByName)}</div>` : ""}</td>
           <td>${new Date(o.date).toLocaleDateString()}${o.time ? " " + o.time.slice(0, 5) : ""}</td>
           <td>${(o.durationMinutes / 60).toFixed(2)}h</td>
           <td>${o.recordedCount}/${o.attendeeCount} recorded</td>

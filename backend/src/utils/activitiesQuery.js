@@ -39,9 +39,16 @@ const UNION_BASE = `
             FROM sessions s JOIN students st ON st.id = s.student_id JOIN user_credentials uc ON uc.id = st.id
            WHERE s.occasion_id = so.id) AS trainee_blob,
          1 AS day_count,
-         (SELECT COUNT(*) FROM sessions s WHERE s.occasion_id = so.id) AS slot_count
+         (SELECT COUNT(*) FROM sessions s WHERE s.occasion_id = so.id) AS slot_count,
+         -- "Hours Provided By" (migration 035) -- whose delivered hours
+         -- this counts toward, distinct from who logged it (so.supervisor_id,
+         -- untouched/unused here beyond the WHERE scoping below). Falls
+         -- back to the creator when no explicit provider was set, same
+         -- COALESCE convention used everywhere else this column is read.
+         occ_provider.id AS provided_by_id, occ_provider.full_name AS provided_by_name
   FROM session_occasions so
   JOIN hour_types ht ON ht.code = so.session_type
+  LEFT JOIN supervisors occ_provider ON occ_provider.id = COALESCE(so.provided_by_supervisor_id, so.supervisor_id)
   WHERE so.supervisor_id = ? AND so.series_id IS NULL
 
   UNION ALL
@@ -54,12 +61,14 @@ const UNION_BASE = `
          (SELECT COUNT(*) FROM attendance a WHERE a.session_id = s.id AND a.status IN ('present', 'partial')) AS present_count,
          CONCAT(st.full_name, ' ', uc.member_code) AS trainee_blob,
          1 AS day_count,
-         1 AS slot_count
+         1 AS slot_count,
+         single_provider.id AS provided_by_id, single_provider.full_name AS provided_by_name
   FROM sessions s
   JOIN students st ON st.id = s.student_id
   JOIN user_credentials uc ON uc.id = st.id
   JOIN hour_types ht ON ht.code = s.session_type
   LEFT JOIN attendance att ON att.session_id = s.id
+  LEFT JOIN supervisors single_provider ON single_provider.id = COALESCE(s.provided_by_supervisor_id, s.supervisor_id)
   WHERE s.supervisor_id = ? AND s.occasion_id IS NULL
 
   UNION ALL
@@ -88,9 +97,16 @@ const UNION_BASE = `
             JOIN students st ON st.id = s.student_id JOIN user_credentials uc ON uc.id = st.id
            WHERE so.series_id = ss.id) AS trainee_blob,
          (SELECT COUNT(*) FROM session_occasions so WHERE so.series_id = ss.id) AS day_count,
-         (SELECT COUNT(DISTINCT s.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS slot_count
+         (SELECT COUNT(DISTINCT s.id) FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ss.id) AS slot_count,
+         -- A multi-day Session's provider is set once on session_series
+         -- and cascades to every day at creation/edit time (see
+         -- updateSessionSeries in groupSessions.js) -- all days share the
+         -- same provider by design, so reading it off the series row
+         -- itself (not per-day) is correct, not an approximation.
+         series_provider.id AS provided_by_id, series_provider.full_name AS provided_by_name
   FROM session_series ss
   JOIN hour_types ht ON ht.code = ss.session_type
+  LEFT JOIN supervisors series_provider ON series_provider.id = COALESCE(ss.provided_by_supervisor_id, ss.supervisor_id)
   WHERE ss.supervisor_id = ?
 `;
 

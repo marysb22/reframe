@@ -976,6 +976,8 @@ router.get(
         studentName: r.student_name,
         studentCode: r.student_code,
         attendanceStatus: r.attendance_status,
+        providedById: r.provided_by_id,
+        providedByName: r.provided_by_name,
       })),
       total: Number(countRows[0].total),
       page: listQuery.page,

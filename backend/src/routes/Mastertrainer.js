@@ -1801,8 +1801,12 @@ router.get(
         const { rows } = await db.query(
             `SELECT tso.id, tso.title, tso.session_date, tso.session_time, tso.duration_minutes,
               COUNT(ts.id) AS attendee_count,
-              COUNT(ta.id) AS recorded_count
+              COUNT(ta.id) AS recorded_count,
+              COALESCE(tso.provided_by_supervisor_id, tso.master_trainer_id) AS provided_by_id,
+              COALESCE(provider.full_name, creator.full_name) AS provided_by_name
        FROM tot_session_occasions tso
+       JOIN supervisors creator ON creator.id = tso.master_trainer_id
+       LEFT JOIN supervisors provider ON provider.id = tso.provided_by_supervisor_id
        LEFT JOIN tot_training_sessions ts ON ts.occasion_id = tso.id
        LEFT JOIN tot_training_attendance ta ON ta.session_id = ts.id
        WHERE tso.master_trainer_id = ?
@@ -1819,6 +1823,8 @@ router.get(
                 durationMinutes: r.duration_minutes,
                 attendeeCount: Number(r.attendee_count),
                 recordedCount: Number(r.recorded_count),
+                providedById: r.provided_by_id,
+                providedByName: r.provided_by_name,
             })),
         });
     })
