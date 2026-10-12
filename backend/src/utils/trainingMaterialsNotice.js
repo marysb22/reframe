@@ -12,7 +12,22 @@
 // meant to change rarely and under explicit review ("without approval"),
 // which a deploy-time constant already enforces better than a free-text DB
 // field would.
-const CURRENT_VERSION = "training-materials-v1";
+//
+// "training-materials-v1" -> "training-materials-library-v1": the notice
+// used to be a whole-dashboard gate (shown on first login, anywhere); it
+// is now scoped to the Library specifically (see
+// maybeShowTrainingMaterialsNoticeIfOnLibrary() in each dashboard). That's
+// a materially different thing to agree to -- someone who clicked "I
+// Agree" under the old website-wide framing never saw this Library-
+// specific scoping, so their old acceptance row must NOT silently satisfy
+// this one. The version string itself carries that distinction (not a
+// separate column/table): hasAcceptedCurrentVersion()'s WHERE clause
+// already only matches CURRENT_VERSION exactly, so this rename alone is
+// the entire fix -- every existing acceptance row (old version string) is
+// left untouched in the database (nothing is deleted or reset), it's just
+// no longer a match, so every previously-accepted account is correctly
+// asked again, once, the next time they open the Library.
+const CURRENT_VERSION = "training-materials-library-v1";
 
 const NOTICE = {
   version: CURRENT_VERSION,

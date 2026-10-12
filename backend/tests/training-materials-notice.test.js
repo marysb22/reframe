@@ -26,6 +26,12 @@ const path = require("path");
 const jwt = require("jsonwebtoken");
 const cfg = require(path.join(__dirname, "..", "src", "config"));
 const { pool } = require(path.join(__dirname, "..", "src", "db"));
+// Read the server's own current version rather than hardcoding the string
+// here a second time -- this is exactly the kind of drift that happens
+// when a version bump (see trainingMaterialsNotice.js's own comment on
+// why "training-materials-v1" became "training-materials-library-v1")
+// isn't mirrored everywhere the old literal was hardcoded.
+const { CURRENT_VERSION } = require(path.join(__dirname, "..", "src", "utils", "trainingMaterialsNotice"));
 
 const BASE = "http://localhost:3000";
 const results = [];
@@ -235,7 +241,7 @@ async function run() {
       role: "admin",
     });
     assertEqual(r.status, 200);
-    assertEqual(r.body.version, "training-materials-v1");
+    assertEqual(r.body.version, CURRENT_VERSION);
 
     const { rows } = await pool.query(
       "SELECT user_id, notice_version, accepted_at FROM training_materials_notice_acceptances WHERE user_id = ?",
@@ -243,7 +249,7 @@ async function run() {
     );
     assertEqual(rows.length, 1, "exactly one acceptance row");
     assertEqual(Number(rows[0].user_id), fx.studentId, "must record the REAL authenticated trainee, not the forged admin id");
-    assertEqual(rows[0].notice_version, "training-materials-v1", "must use the server's real current version");
+    assertEqual(rows[0].notice_version, CURRENT_VERSION, "must use the server's real current version");
     assert(new Date(rows[0].accepted_at).getTime() >= before - 5000, "accepted_at must be a real server timestamp, not the forged year-2000 one");
   });
 
@@ -272,6 +278,40 @@ async function run() {
     // Restore current-version acceptance for the tests that follow.
     await pool.query("DELETE FROM training_materials_notice_acceptances WHERE user_id = ?", [fx.studentId]);
     await apiRequest("POST", "/profile/training-materials-notice/accept", traineeTok, {});
+  });
+
+  await test("Migration: an existing OLD-version row is preserved (not deleted/overwritten) once the user accepts the current version", async () => {
+    // The real scenario this guards against regressing: a real account
+    // that already accepted under a previous notice version (e.g. the
+    // original website-wide framing, before the notice became
+    // Library-scoped) must keep that historical row when they accept the
+    // new one -- two rows, same user, two different version strings, per
+    // the table's own UNIQUE(user_id, notice_version) design. Nothing
+    // about accepting a new version may ever delete or mutate the old row.
+    await pool.query("DELETE FROM training_materials_notice_acceptances WHERE user_id = ?", [fx.totId]);
+    await pool.query(
+      "INSERT INTO training_materials_notice_acceptances (user_id, notice_version, accepted_at) VALUES (?, 'training-materials-v1', DATE_SUB(NOW(), INTERVAL 30 DAY))",
+      [fx.totId]
+    );
+    const before = await apiRequest("GET", "/profile/me", totTok);
+    assertEqual(before.body.needsTrainingMaterialsNotice, true, "an old-version-only row must still require the current version");
+
+    await apiRequest("POST", "/profile/training-materials-notice/accept", totTok, {});
+
+    const { rows } = await pool.query(
+      "SELECT notice_version FROM training_materials_notice_acceptances WHERE user_id = ? ORDER BY accepted_at",
+      [fx.totId]
+    );
+    assertEqual(rows.length, 2, "both the historical old-version row and the new current-version row must exist");
+    assertEqual(rows[0].notice_version, "training-materials-v1", "the old row must be untouched, not deleted or rewritten");
+    assertEqual(rows[1].notice_version, CURRENT_VERSION, "the new row must use the server's real current version");
+
+    const after = await apiRequest("GET", "/profile/me", totTok);
+    assertEqual(after.body.needsTrainingMaterialsNotice, false, "accepting the current version satisfies it going forward");
+
+    // Restore the ToT to her pre-test (not-yet-accepted) state -- later
+    // tests in this file depend on her still needing to accept.
+    await pool.query("DELETE FROM training_materials_notice_acceptances WHERE user_id = ?", [fx.totId]);
   });
 
   await test("A different trainee token cannot accept on this trainee's behalf -- acceptance is always the caller's own", async () => {
