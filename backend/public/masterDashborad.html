@@ -3832,19 +3832,6 @@
             <!-- ============================================================= -->
             <section class="dash-section active-section" id="section-dashboard" data-title="Good to see you" data-eyebrow="Master Trainer console">
 
-                <div class="tm-notice-banner">
-                    <i class="fa fa-shield-halved"></i>
-                    <div class="tm-notice-banner-text">
-                        <strong>Training Materials: Restricted Use.</strong>
-                        Training materials are for registered students during the training period only. Copying, sharing, or distributing them outside the training framework is prohibited without prior authorization.
-                        <span class="tm-notice-banner-ar">
-                            <strong>مواد التدريب: استخدام مقيّد.</strong>
-                            مواد التدريب مخصصة للطلاب المسجلين خلال فترة التدريب فقط. يُمنع نسخها أو مشاركتها أو توزيعها خارج إطار التدريب دون إذن مسبق.
-                        </span>
-                        <button type="button" class="tm-notice-banner-link" onclick="openTrainingNoticeReadOnly()">Read Usage Notice / اقرأ إشعار الاستخدام</button>
-                    </div>
-                </div>
-
                 <section class="kpi-grid">
                     <div class="kpi-card">
                         <div class="kpi-top">
@@ -4299,6 +4286,20 @@
                         </div>
                         <button class="btn" onclick="openAddBookModal()"><i class="fa fa-plus"></i> Add Book</button>
                     </div>
+
+                    <div class="tm-notice-banner">
+                        <i class="fa fa-shield-halved"></i>
+                        <div class="tm-notice-banner-text">
+                            <strong>Training Materials: Restricted Use.</strong>
+                            Training materials are for registered students during the training period only. Copying, sharing, or distributing them outside the training framework is prohibited without prior authorization.
+                            <span class="tm-notice-banner-ar">
+                                <strong>مواد التدريب: استخدام مقيّد.</strong>
+                                مواد التدريب مخصصة للطلاب المسجلين خلال فترة التدريب فقط. يُمنع نسخها أو مشاركتها أو توزيعها خارج إطار التدريب دون إذن مسبق.
+                            </span>
+                            <button type="button" class="tm-notice-banner-link" onclick="openTrainingNoticeReadOnly()">Read Usage Notice / اقرأ إشعار الاستخدام</button>
+                        </div>
+                    </div>
+
                     <div class="toolbar" style="margin-top:14px;">
                         <input type="text" id="librarySearch" placeholder="Search by title, author, publisher, category, or type..." oninput="applyLibraryFilters()">
                     </div>
@@ -5314,6 +5315,8 @@
                 SECTION_LOADERS[name]();
             }
 
+            if (name === "library") maybeShowTrainingMaterialsNoticeIfOnLibrary();
+
             closeMobileSidebar();
             window.scrollTo({
                 top: 0,
@@ -5351,7 +5354,7 @@
             if (!me) return;
             const p = me.profile;
             currentProfile = p;
-            maybeShowTrainingMaterialsNotice(p.needsTrainingMaterialsNotice);
+            maybeShowTrainingMaterialsNoticeIfOnLibrary();
             document.getElementById("mtName").textContent = p.full_name;
             document.getElementById("mtInitials").textContent = initials(p.full_name);
             if (p.photo) {
@@ -5386,6 +5389,19 @@
                 .split("\n\n").map((p) => `<p>${escapeHtml(p)}</p>`).join("");
             document.getElementById("trainingNoticeModalBodyAr").innerHTML = notice.ar.body
                 .split("\n\n").map((p) => `<p>${escapeHtml(p)}</p>`).join("");
+        }
+
+        // The notice is Library-specific, not a whole-dashboard gate: only
+        // ever shown while section-library is the active section. Called
+        // once loadMe() resolves (handles landing directly on #library)
+        // and again every time showSection() runs (handles navigating
+        // into Library later); a no-op in every other case, including
+        // every later re-check once already accepted (needsIt false).
+        function maybeShowTrainingMaterialsNoticeIfOnLibrary() {
+            const lib = document.getElementById("section-library");
+            if (lib && lib.classList.contains("active-section")) {
+                maybeShowTrainingMaterialsNotice(currentProfile && currentProfile.needsTrainingMaterialsNotice);
+            }
         }
 
         async function maybeShowTrainingMaterialsNotice(needsIt) {
