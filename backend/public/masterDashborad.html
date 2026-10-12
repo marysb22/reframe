@@ -1157,19 +1157,143 @@
             border-bottom: none;
         }
         
-        @media (max-width: 720px) {
+        /* Chat header avatar (Direct Message / Group room name) -- reuses
+           the same .gc-avatar look already used inside the message thread,
+           just a touch larger, so the header reads "[avatar] Name" the way
+           every modern messaging app does. Hidden until a thread/room is
+           actually open (same element the JS fills in). */
+        .gc-thread-header .gc-avatar {
+            width: 36px;
+            height: 36px;
+            font-size: 13px;
+            margin-right: 10px;
+        }
+        .gc-thread-header-info {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+        }
+        .gc-thread-header-info h4 {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Back button: only meaningful once the mobile layout below hides
+           the room list behind the open thread -- stays display:none at
+           desktop widths, where both panes are already visible side by
+           side and there is nothing to "go back" to. */
+        .mobile-back-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 17px;
+            cursor: pointer;
+            padding: 6px 10px 6px 0;
+            margin-right: 2px;
+            flex-shrink: 0;
+        }
+
+        /* Group room list avatar -- matches .inbox-avatar's exact look
+           (same rounded-square gradient tile) for visual consistency
+           between the Direct Messages and Group Chats tabs. */
+        .gc-room-item {
+            display: flex !important;
+            align-items: center;
+            gap: 12px;
+        }
+        .gc-room-item-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        .gc-room-item-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* ===== Mobile chat redesign =====
+           Below ~760px the old layout stacked a short, capped-height room
+           list directly above an equally-capped thread -- both competing
+           for space in the page's normal scroll, nothing full-screen,
+           nothing WhatsApp-like. Below, only ONE pane is visible at a
+           time on a panel that actually HAS a room list to switch away
+           from (.gc-layout.has-list): the room/conversation list by
+           default, or the open thread once openDirectThread()/
+           openGcRoom() add .mobile-show-thread (removed again by the
+           header's new back button). Each visible pane gets the full
+           available height instead of a small fixed cap. */
+        @media (max-width: 760px) {
             .gc-layout {
                 grid-template-columns: 1fr;
+                gap: 0;
                 height: auto;
             }
-            .gc-room-list {
-                max-height: 160px;
+
+            .gc-layout.has-list > .gc-room-list-wrap,
+            .gc-layout.has-list > .gc-room-list {
+                height: calc(100dvh - 260px);
+                min-height: 340px;
+                max-height: none;
+            }
+            .gc-layout .gc-room-list {
+                max-height: none;
+            }
+
+            .gc-layout.has-list .gc-thread-panel {
+                display: none;
+            }
+            .gc-layout.has-list.mobile-show-thread > .gc-room-list-wrap,
+            .gc-layout.has-list.mobile-show-thread > .gc-room-list {
+                display: none;
+            }
+            .gc-layout.has-list.mobile-show-thread .gc-thread-panel {
+                display: flex;
+            }
+
+            .gc-thread-panel {
+                height: calc(100dvh - 260px);
+                min-height: 340px;
+                padding: 10px;
             }
             .gc-thread-body {
-                max-height: 340px;
+                max-height: none;
+            }
+
+            .mobile-back-btn {
+                display: inline-flex;
+                align-items: center;
+            }
+
+            .chat-bubble {
+                font-size: 14px;
+                max-width: 85%;
+                padding: 10px 14px;
+            }
+            .gc-msg-col {
+                max-width: 82%;
+            }
+            .gc-composer textarea {
+                font-size: 15px;
+            }
+            .gc-composer .icon-btn {
+                width: 42px;
+                height: 42px;
+                font-size: 15px;
+            }
+            .inbox-item {
+                padding: 12px;
             }
         }
-        
+
         .profile-mini {
             display: flex;
             align-items: center;
@@ -1816,48 +1940,60 @@
                 max-height: 45vh;
             }
         }
-        .notice-banner {
+        /* Persistent Training Materials notice -- deliberately named
+           .tm-notice-banner, NOT .notice-banner: that class already exists
+           elsewhere in this file (a calm, compact amber info-strip style)
+           and an earlier pass here accidentally reused the same class
+           name with conflicting danger-red styling, which silently won
+           the cascade and turned every pre-existing banner red/bold too
+           -- the "oversized red box" look came from exactly that
+           collision. This is its own, non-colliding style: matches the
+           initial popup's own restrained language (neutral --surface-2
+           card, --border-soft border, a quiet brand-teal accent) rather
+           than a danger/warning treatment -- a standing notice, not an
+           alert. */
+        .tm-notice-banner {
             display: flex;
             align-items: flex-start;
             gap: 10px;
-            background: var(--danger-bg);
-            border: 1px solid var(--danger);
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-left: 3px solid var(--primary-light);
             border-radius: var(--radius-md);
-            padding: 12px 16px;
+            padding: 10px 14px;
             margin-bottom: 18px;
         }
-        .notice-banner i {
-            color: var(--danger);
-            font-size: 16px;
-            margin-top: 2px;
+        .tm-notice-banner i {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 3px;
+            flex-shrink: 0;
         }
-        .notice-banner-text {
-            font-size: 12.5px;
-            color: var(--text);
+        .tm-notice-banner-text {
+            font-size: 12px;
+            color: var(--muted);
             line-height: 1.55;
         }
-        .notice-banner-text strong {
-            display: block;
-            color: var(--danger);
-            font-size: 13px;
-            margin-bottom: 2px;
+        .tm-notice-banner-text strong {
+            color: var(--text);
+            font-weight: 700;
         }
-        .notice-banner-ar {
+        .tm-notice-banner-ar {
             display: block;
-            margin-top: 8px;
+            margin-top: 3px;
             direction: rtl;
             text-align: right;
         }
-        .notice-banner-link {
+        .tm-notice-banner-link {
             background: none;
             border: none;
-            color: var(--danger);
-            font-weight: 700;
+            color: var(--primary);
+            font-weight: 600;
             text-decoration: underline;
             cursor: pointer;
-            font-size: 12.5px;
+            font-size: 11.5px;
             padding: 0;
-            margin-top: 8px;
+            margin-top: 4px;
             display: inline-block;
         }
 
@@ -3696,16 +3832,16 @@
             <!-- ============================================================= -->
             <section class="dash-section active-section" id="section-dashboard" data-title="Good to see you" data-eyebrow="Master Trainer console">
 
-                <div class="notice-banner">
-                    <i class="fa fa-triangle-exclamation"></i>
-                    <div class="notice-banner-text">
-                        <strong>Training Materials: Restricted Use</strong>
+                <div class="tm-notice-banner">
+                    <i class="fa fa-shield-halved"></i>
+                    <div class="tm-notice-banner-text">
+                        <strong>Training Materials: Restricted Use.</strong>
                         Training materials are for registered students during the training period only. Copying, sharing, or distributing them outside the training framework is prohibited without prior authorization.
-                        <span class="notice-banner-ar">
-                            <strong>مواد التدريب: استخدام مقيّد</strong>
+                        <span class="tm-notice-banner-ar">
+                            <strong>مواد التدريب: استخدام مقيّد.</strong>
                             مواد التدريب مخصصة للطلاب المسجلين خلال فترة التدريب فقط. يُمنع نسخها أو مشاركتها أو توزيعها خارج إطار التدريب دون إذن مسبق.
                         </span>
-                        <button type="button" class="notice-banner-link" onclick="openTrainingNoticeReadOnly()">Read Usage Notice / اقرأ إشعار الاستخدام</button>
+                        <button type="button" class="tm-notice-banner-link" onclick="openTrainingNoticeReadOnly()">Read Usage Notice / اقرأ إشعار الاستخدام</button>
                     </div>
                 </div>
 
@@ -4449,7 +4585,7 @@
 
                     <div id="directChatPanel">
                         <p class="card-subtitle">One conversation per ToT in your Group.</p>
-                        <div class="gc-layout">
+                        <div class="gc-layout has-list">
                             <div class="gc-room-list-wrap">
                                 <div class="chat-search-box">
                                     <i class="fa fa-search"></i>
@@ -4461,7 +4597,11 @@
                             </div>
                             <div class="gc-thread-panel">
                                 <div class="gc-thread-header" id="dmThreadHeader" style="display:none;">
-                                    <h4 id="dmThreadName">&mdash;</h4>
+                                    <div class="gc-thread-header-info">
+                                        <button type="button" class="mobile-back-btn" onclick="mobileShowList(this)" aria-label="Back to conversations"><i class="fa fa-arrow-left"></i></button>
+                                        <div class="gc-avatar" id="dmThreadAvatar"></div>
+                                        <h4 id="dmThreadName">&mdash;</h4>
+                                    </div>
                                     <button type="button" class="icon-btn" title="Open full profile" onclick="if (dmActiveTotId) openTot(dmActiveTotId)"><i class="fa fa-user"></i></button>
                                 </div>
                                 <div class="chat-thread gc-thread-body" id="dmThread">
@@ -4480,7 +4620,7 @@
                             <p class="card-subtitle">Create a room and add your ToTs and Trainees -- everyone in the room can send and receive messages and files.</p>
                             <button type="button" class="btn" style="width:auto;flex-shrink:0;" onclick="openNewRoomModal()"><i class="fa fa-plus"></i> New Room</button>
                         </div>
-                        <div class="gc-layout">
+                        <div class="gc-layout has-list">
                             <div class="gc-room-list-wrap">
                                 <div class="chat-search-box">
                                     <i class="fa fa-search"></i>
@@ -4492,9 +4632,13 @@
                             </div>
                             <div class="gc-thread-panel">
                                 <div class="gc-thread-header" id="gcThreadHeader" style="display:none;">
-                                    <div>
-                                        <h4 id="gcThreadName">&mdash;</h4>
-                                        <div class="gc-member-count" id="gcThreadMemberCount"></div>
+                                    <div class="gc-thread-header-info">
+                                        <button type="button" class="mobile-back-btn" onclick="mobileShowList(this)" aria-label="Back to rooms"><i class="fa fa-arrow-left"></i></button>
+                                        <div class="gc-avatar" id="gcThreadAvatar"></div>
+                                        <div>
+                                            <h4 id="gcThreadName">&mdash;</h4>
+                                            <div class="gc-member-count" id="gcThreadMemberCount"></div>
+                                        </div>
                                     </div>
                                     <div style="display:flex;gap:6px;">
                                         <button class="icon-btn" title="Manage members" id="gcManageBtn" onclick="openManageMembersModal()" style="display:none;"><i class="fa fa-user-gear"></i></button>
@@ -8080,11 +8224,16 @@
         async function loadGroupChats() {
             connectGcSocket();
             await loadGcRoomList();
-            if (!gcActiveRoomId && gcRooms.length) openGcRoom(gcRooms[0].id);
+            if (!gcActiveRoomId && gcRooms.length) openGcRoom(gcRooms[0].id, false);
         }
 
         async function loadGcRoomList() {
-            const data = await apiRequest("/chat-rooms");
+            // ?type=group -- GET /api/chat-rooms (no filter) returns direct
+            // threads too (chat_rooms.is_direct rows -- a Master Trainer's
+            // own 1:1 with a ToT lives in this same table); the Group
+            // Chats tab must only ever list real rooms, not her own
+            // personal conversation mislabeled with a delete control.
+            const data = await apiRequest("/chat-rooms?type=group");
             if (!data) return;
             gcRooms = data.rooms;
             const searchInput = document.getElementById("gcSearchInput");
@@ -8135,21 +8284,33 @@
             }
             list.innerHTML = filtered.map((r) => `
         <button type="button" class="gc-room-item${r.id === gcActiveRoomId ? " active" : ""}" onclick="openGcRoom(${r.id})">
-          <div class="gc-room-name"><i class="fa fa-people-group" style="font-size:11px;color:var(--faint);margin-right:5px;"></i>${escapeHtml(r.name)}${r.unreadCount ? `<span class="gc-unread-badge">${r.unreadCount}</span>` : ""}</div>
+          <div class="gc-room-item-avatar">${escapeHtml(initials(r.name))}</div>
+          <div class="gc-room-item-body">
+          <div class="gc-room-name">${escapeHtml(r.name)}${r.unreadCount ? `<span class="gc-unread-badge">${r.unreadCount}</span>` : ""}</div>
           <div class="gc-room-preview">${r.lastMessage ? escapeHtml(r.lastMessage.senderName) + ": " + escapeHtml(r.lastMessage.preview) : "No messages yet"}</div>
+          </div>
         </button>
       `).join("");
         }
 
-        async function openGcRoom(roomId) {
+        // userInitiated=false (only loadGroupChats()'s auto-select-the-
+        // first-room call passes this) skips the mobile list->thread
+        // switch -- on a phone, opening the Group Chats tab should still
+        // show the room LIST first, not auto-drop into whichever room
+        // happens to be first (that auto-selection itself is unchanged
+        // existing behavior, previously only a desktop-visible side
+        // effect).
+        async function openGcRoom(roomId, userInitiated = true) {
             gcActiveRoomId = roomId;
             await loadGcRoomList();
             const room = gcRooms.find((r) => r.id === roomId);
             document.getElementById("gcThreadHeader").style.display = "flex";
             document.getElementById("gcThreadName").textContent = room ? room.name : "";
+            document.getElementById("gcThreadAvatar").textContent = initials(room ? room.name : "");
             document.getElementById("gcThreadMemberCount").textContent = room ? `${room.memberCount} member${room.memberCount === 1 ? "" : "s"}` : "";
             document.getElementById("gcManageBtn").style.display = room && room.isOwner ? "grid" : "none";
             document.getElementById("gcDeleteBtn").style.display = room && room.isOwner ? "grid" : "none";
+            if (userInitiated) mobileShowThread("#groupChatPanel");
 
             if (gcSocket) gcSocket.emit("joinRoom", roomId);
             await loadGcThread(roomId);
@@ -8511,7 +8672,9 @@
             const tot = allTots.find((t) => Number(t.id) === Number(totId));
             document.getElementById("dmThreadHeader").style.display = "flex";
             document.getElementById("dmThreadName").textContent = tot ? tot.full_name : "Conversation";
+            document.getElementById("dmThreadAvatar").innerHTML = avatarInnerHtml(tot);
             document.getElementById("dmComposer").style.display = "flex";
+            mobileShowThread("#directChatPanel");
 
             const thread = document.getElementById("dmThread");
             thread.innerHTML = '<div class="empty-state">Loading messages...</div>';
@@ -8678,6 +8841,16 @@
                 groupChatsLoaded = true;
                 loadGroupChats();
             }
+        }
+
+        // ---- Mobile chat: one pane (room list OR open thread) at a time --------
+        function mobileShowThread(panelSelector) {
+            const layout = document.querySelector(panelSelector + " .gc-layout");
+            if (layout) layout.classList.add("mobile-show-thread");
+        }
+        function mobileShowList(btn) {
+            const layout = btn.closest(".gc-layout");
+            if (layout) layout.classList.remove("mobile-show-thread");
         }
 
         async function openNewRoomModal() {
