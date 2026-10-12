@@ -4480,15 +4480,21 @@
                         <div class="widget-title">
                             <h3><i class="fa fa-chalkboard-user"></i>Training Delivery (To Trainees)</h3>
                         </div>
-                        <div class="kpi-grid kpi-grid-2" style="gap:12px;margin-bottom:10px;">
-                            <div class="kpi-card"><label>Total hours</label>
-                                <h2 id="trDeliveredTotal">&mdash;</h2>
+                        <!-- Total hours / Trainee attendance already shown above in the
+                             top KPI strip ("Training hours logged" / "Avg. attendance",
+                             see loadKpis -- /supervisor/me/caseload-summary) and computed
+                             from the exact same formula as this widget's own numbers (see
+                             /supervisor/me/training-delivered's comment on why the two are
+                             kept from drifting apart) -- showing both here was the same
+                             two numbers twice on one screen, not two different facts. -->
+                        <div class="kpi-card" style="padding:14px 16px;display:flex;gap:28px;flex-wrap:wrap;">
+                            <div><label>Training activities conducted</label>
+                                <h2 style="font-size:20px;" id="trDeliveredSessions">&mdash;</h2>
                             </div>
-                            <div class="kpi-card"><label>Trainee attendance</label>
-                                <h2 id="trDeliveredAttendance">&mdash;</h2>
+                            <div><label>Trainees trained</label>
+                                <h2 style="font-size:20px;" id="trDeliveredTrainees">&mdash;</h2>
                             </div>
                         </div>
-                        <p class="hint" style="margin:0;">Training activities conducted: <strong id="trDeliveredSessions">&mdash;</strong> &middot; Trainees trained: <strong id="trDeliveredTrainees">&mdash;</strong></p>
                     </div>
                 </section>
 
@@ -6599,8 +6605,6 @@
                 document.getElementById("trReceivedAdj").textContent = (received.adjustmentHours > 0 ? "+" : "") + received.adjustmentHours;
             }
             if (delivered) {
-                document.getElementById("trDeliveredTotal").textContent = Math.round(delivered.totalHours * 10) / 10;
-                document.getElementById("trDeliveredAttendance").textContent = delivered.traineeAttendanceRate != null ? delivered.traineeAttendanceRate + "%" : "—";
                 document.getElementById("trDeliveredSessions").textContent = delivered.sessionsConducted;
                 document.getElementById("trDeliveredTrainees").textContent = delivered.traineesTrained;
             }
