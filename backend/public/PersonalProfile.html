@@ -4304,7 +4304,7 @@
                         </div>
                     </div>
                     <p class="card-subtitle">Track your training fees, payments, and remaining balance.</p>
-                    <div class="readonly-banner"><i class="fa fa-eye"></i><span>View only &mdash; payments are recorded exclusively by the Admin. Your supervisor has no access to this information.</span></div>
+                    <div class="readonly-banner" id="paymentsReadonlyBanner"><i class="fa fa-eye"></i><span>View only &mdash; payments are recorded exclusively by the Admin. Your supervisor has no access to this information.</span></div>
                     <div id="paymentsWrap">
                         <div class="pay-skeleton" aria-hidden="true">
                             <div class="pay-skel-tabs">
@@ -7146,8 +7146,34 @@ function payPeriodStage(entry) {
   return { label: "Not Started", pill: "not-started" };
 }
 
+// Payments is still under active development (not yet approved for
+// release) -- flip this back to true to re-enable it for trainees. The
+// real implementation below is untouched and fully intact; this is the
+// only thing gating it. Matches the server-side hold in
+// GET /api/profile/payments (profile.js), which refuses the real request
+// the same way if this flag is ever bypassed via a direct API call.
+const PAYMENTS_FEATURE_ENABLED = false;
+
+function renderPaymentsOnHold() {
+  const banner = document.getElementById("paymentsReadonlyBanner");
+  if (banner) banner.style.display = "none";
+  const wrap = document.getElementById("paymentsWrap");
+  wrap.innerHTML = `
+    <div class="empty-state" style="padding:56px 24px;">
+      <div style="width:56px;height:56px;border-radius:14px;background:var(--surface-2);color:var(--primary);display:grid;place-items:center;font-size:22px;border:1px solid var(--border-soft);margin:0 auto 16px;">
+        <i class="fa fa-clock"></i>
+      </div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;">Payments — Coming Soon</div>
+      <div style="max-width:380px;margin:0 auto;">This section is still being set up and isn't available yet. Check back soon.</div>
+    </div>`;
+}
+
 async function loadPayments() {
   const wrap = document.getElementById("paymentsWrap");
+  if (!PAYMENTS_FEATURE_ENABLED) {
+    renderPaymentsOnHold();
+    return;
+  }
   const data = await apiRequest("/profile/payments");
   if (!data) {
     wrap.innerHTML = `

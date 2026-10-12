@@ -1473,6 +1473,15 @@ router.get(
   })
 );
 
+// Payments is still under active development, not yet approved for
+// release to trainees -- flip this back to true when it's ready. Nothing
+// below it was touched: the real query/response logic is fully intact,
+// this is the only thing gating it. Matches the frontend's own hold
+// (PersonalProfile.html's PAYMENTS_FEATURE_ENABLED), which already stops
+// the UI from ever calling this route while it's on hold; this is the
+// defense-in-depth layer for a direct API request that bypasses the UI.
+const PAYMENTS_FEATURE_ENABLED = false;
+
 // GET /api/profile/payments — my own summary + history for all 4 training
 // years, read-only. Restricted to the caller's own student_id by the WHERE
 // clause itself (there is no Row-Level Security in MySQL to lean on for
@@ -1484,6 +1493,9 @@ router.get(
   "/payments",
   requireStudent,
   asyncRoute(async (req, res, db) => {
+    if (!PAYMENTS_FEATURE_ENABLED) {
+      return res.status(403).json({ error: "Payments is not yet available.", onHold: true });
+    }
     const years = [];
     for (const trainingYear of [1, 2, 3, 4]) {
       const { rows: paymentsRows } = await db.query(
