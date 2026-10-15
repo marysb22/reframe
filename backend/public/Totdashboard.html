@@ -1570,7 +1570,7 @@
 
         .gs-day-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr auto;
+            grid-template-columns: 1fr 1fr 1fr 1.3fr auto;
             gap: 10px;
             align-items: end;
             margin-bottom: 10px;
@@ -1608,12 +1608,14 @@
                 grid-template-areas:
                     "date remove"
                     "hours remove"
-                    "time remove";
+                    "time remove"
+                    "provider remove";
                 row-gap: 8px;
             }
             .gs-day-row > div:nth-child(2) { grid-area: date; }
             .gs-day-row > div:nth-child(3) { grid-area: hours; }
             .gs-day-row > div:nth-child(4) { grid-area: time; }
+            .gs-day-row > div:nth-child(5) { grid-area: provider; }
             .gs-day-remove { grid-area: remove; align-self: center; }
         }
 
@@ -8468,7 +8470,14 @@ function gsSessionTypeToRawType(sessionType) {
 // pre-fills for editing. The remove button only shows once there's more
 // than one row -- a Session always needs at least one day.
 let gsDayRowSeq = 0;
-function addSessionDayRow(day) {
+// Each day gets its own "Hours Provided By" (migration 035) -- a Session
+// doesn't have to be delivered by the same person on every day (e.g. day 1
+// by the Master Trainer, day 2 by a different ToT). Defaults to whatever
+// the series-wide selector above is currently set to when adding a new
+// day, or to the day's own stored provider when editing -- never left
+// unset, so a day never silently falls back to "whoever happens to be
+// logged in" without the user seeing and confirming it.
+async function addSessionDayRow(day) {
   const list = document.getElementById("gsDaysList");
   const rowId = "gsday" + gsDayRowSeq++;
   const occasionId = day && day.occasionId ? day.occasionId : "";
@@ -8483,9 +8492,13 @@ function addSessionDayRow(day) {
     <div><label>Date</label><input type="date" class="gs-day-date" value="${date}" required></div>
     <div><label>Hours</label><input type="number" min="0" step="0.25" class="gs-day-hours" value="${hours}" required></div>
     <div><label>Time <span style="font-weight:400;color:var(--faint);">(optional)</span></label><input type="time" class="gs-day-time" value="${time}"></div>
+    <div><label>Hours Provided By</label><select class="gs-day-provided-by" required></select></div>
     <button type="button" class="gs-day-remove" onclick="removeSessionDayRow('${rowId}')" title="Remove this day"><i class="fa fa-trash"></i></button>`;
   list.appendChild(row);
   updateSessionDayRemoveButtons();
+  const topLevelProvider = document.getElementById("gsProvidedBy").value;
+  const defaultProviderId = day && day.providedBySupervisorId != null ? day.providedBySupervisorId : topLevelProvider || undefined;
+  await renderProvidedByOptions(row.querySelector(".gs-day-provided-by"), defaultProviderId);
 }
 function removeSessionDayRow(rowId) {
   const el = document.getElementById(rowId);
@@ -8504,6 +8517,7 @@ function readSessionDayRows() {
     date: row.querySelector(".gs-day-date").value,
     time: row.querySelector(".gs-day-time").value || undefined,
     durationMinutes: Math.round(Number(row.querySelector(".gs-day-hours").value) * 60),
+    providedBySupervisorId: Number(row.querySelector(".gs-day-provided-by").value) || undefined,
   }));
 }
 
@@ -8547,14 +8561,14 @@ async function openGroupSessionModal(startMultiDay) {
   document.getElementById("gsEditOccasionId").value = "";
   document.getElementById("gsEditSeriesId").value = "";
   renderSessionTypeOptions(document.getElementById("gsType"), false);
+  // Resolved before the day rows are added -- each new day row defaults to
+  // whatever this series-wide selector is currently set to (see
+  // addSessionDayRow), which would be empty if the rows were added first.
+  await renderProvidedByOptions(document.getElementById("gsProvidedBy"));
   document.getElementById("gsDaysList").innerHTML = "";
   gsDayRowSeq = 0;
-  addSessionDayRow();
-  if (startMultiDay) addSessionDayRow();
-  // Opened AFTER the roster resolves -- see masterDashborad.html's
-  // identical fix for why (the dropdown was visibly empty for however
-  // long the fetch took, since the modal itself opened instantly).
-  await renderProvidedByOptions(document.getElementById("gsProvidedBy"));
+  await addSessionDayRow();
+  if (startMultiDay) await addSessionDayRow();
   openModal("groupSessionModal");
 }
 
@@ -8574,7 +8588,7 @@ async function editGroupSessionOccasion(occasionId) {
   await renderProvidedByOptions(document.getElementById("gsProvidedBy"), o.providedBy && o.providedBy.id);
   document.getElementById("gsDaysList").innerHTML = "";
   gsDayRowSeq = 0;
-  addSessionDayRow({ date: o.date, time: o.time, durationMinutes: o.durationMinutes });
+  await addSessionDayRow({ date: o.date, time: o.time, durationMinutes: o.durationMinutes, providedBySupervisorId: o.providedBy && o.providedBy.id });
   openModal("groupSessionModal");
 }
 
@@ -8594,7 +8608,9 @@ async function editGroupSessionSeries(seriesId) {
   await renderProvidedByOptions(document.getElementById("gsProvidedBy"), data.series.providedBy && data.series.providedBy.id);
   document.getElementById("gsDaysList").innerHTML = "";
   gsDayRowSeq = 0;
-  data.days.forEach((d) => addSessionDayRow(d));
+  for (const d of data.days) {
+    await addSessionDayRow(d);
+  }
   openModal("groupSessionModal");
 }
 
@@ -8704,6 +8720,7 @@ function gsSeriesDaysHtml(days) {
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--surface-2);border-radius:8px;flex-wrap:wrap;">
           <div>
             <div><strong>${new Date(d.date).toLocaleDateString()}</strong>${d.time ? " " + d.time.slice(0, 5) : ""} &middot; ${(d.durationMinutes / 60).toFixed(2)}h &middot; ${d.traineeCount} expected</div>
+            ${d.providedByName ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;" dir="auto">Hours provided by: ${escapeHtml(d.providedByName)}</div>` : ""}
             <div style="font-size:12px;color:var(--muted);margin-top:2px;">
               Present: ${d.presentOnlyCount} &middot; Partial: ${d.partialCount} &middot; Absent: ${d.absentCount}${d.excusedCount ? ` &middot; Excused: ${d.excusedCount}` : ""}${d.pendingCount ? ` &middot; Pending: ${d.pendingCount}` : ""}
               &middot; Attendance: <strong>${d.attendanceRate != null ? d.attendanceRate.toFixed(2) + "%" : "&mdash;"}</strong> (${d.presentCount}/${d.traineeCount})

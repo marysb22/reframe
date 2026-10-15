@@ -1297,18 +1297,23 @@ router.post("/group-sessions", (req, res) => {
         // "Hours Provided By" (migration 035) -- validated against this same
         // Group's supervisor roster, never trusted as-is. Omitted -> the
         // creator (this Master Trainer), unchanged from before this field
-        // existed.
-        let providedById = req.masterTrainer.id;
-        if (providedBySupervisorId != null) {
-            const { rows: providerRows } = await pool.query("SELECT id FROM supervisors WHERE id = ? AND group_id = ?", [
-                Number(providedBySupervisorId),
-                groupId,
-            ]);
+        // existed. A multi-day Session can also name a different provider
+        // per day (each `days[i].providedBySupervisorId`) -- every distinct
+        // id referenced anywhere in this request is validated here.
+        const candidateProviderIds = new Set();
+        if (providedBySupervisorId != null) candidateProviderIds.add(Number(providedBySupervisorId));
+        if (Array.isArray(days)) {
+            for (const day of days) {
+                if (day && day.providedBySupervisorId != null) candidateProviderIds.add(Number(day.providedBySupervisorId));
+            }
+        }
+        for (const candidateId of candidateProviderIds) {
+            const { rows: providerRows } = await pool.query("SELECT id FROM supervisors WHERE id = ? AND group_id = ?", [candidateId, groupId]);
             if (!providerRows.length) {
                 return res.status(400).json({ error: "That person isn't an authorized provider for this Group" });
             }
-            providedById = Number(providedBySupervisorId);
         }
+        const providedById = providedBySupervisorId != null ? Number(providedBySupervisorId) : req.masterTrainer.id;
 
         const result = days
             ? await createMultiDaySession(pool, {
@@ -1634,7 +1639,9 @@ router.get(
               COUNT(CASE WHEN a.status = 'present' THEN 1 END) AS present_only_count,
               COUNT(CASE WHEN a.status = 'partial' THEN 1 END) AS partial_count,
               COUNT(CASE WHEN a.status = 'absent' THEN 1 END) AS absent_count,
-              COUNT(CASE WHEN a.status = 'excused' THEN 1 END) AS excused_count
+              COUNT(CASE WHEN a.status = 'excused' THEN 1 END) AS excused_count,
+              COALESCE(so.provided_by_supervisor_id, so.supervisor_id) AS provided_by_id,
+              (SELECT full_name FROM supervisors WHERE id = COALESCE(so.provided_by_supervisor_id, so.supervisor_id)) AS provided_by_name
        FROM session_occasions so
        LEFT JOIN sessions s ON s.occasion_id = so.id
        LEFT JOIN attendance a ON a.session_id = s.id
@@ -1680,6 +1687,10 @@ router.get(
                     excusedCount: Number(r.excused_count),
                     pendingCount: traineeCount - recordedCount,
                     attendanceRate: traineeCount > 0 ? Math.round((presentCount / traineeCount) * 10000) / 100 : null,
+                    // This day's own provider (migration 035) -- a Session's
+                    // days don't have to share one provider.
+                    providedBySupervisorId: r.provided_by_id,
+                    providedByName: r.provided_by_name,
                 };
             }),
             roster: rosterRows.map((r) => ({ studentId: r.student_id, fullName: r.full_name })),
@@ -1693,17 +1704,25 @@ router.put(
     asyncRoute(async (req, res, db) => {
         const { sessionType, title, notes, days, providedBySupervisorId } = req.body || {};
 
-        let providedById;
-        if (providedBySupervisorId != null) {
-            const { groupId } = req.masterTrainer;
-            const { rows: providerRows } = groupId
-                ? await db.query("SELECT id FROM supervisors WHERE id = ? AND group_id = ?", [Number(providedBySupervisorId), groupId])
-                : { rows: [] };
-            if (!providerRows.length) {
-                return res.status(400).json({ error: "That person isn't an authorized provider for this Group" });
+        const candidateProviderIds = new Set();
+        if (providedBySupervisorId != null) candidateProviderIds.add(Number(providedBySupervisorId));
+        if (Array.isArray(days)) {
+            for (const day of days) {
+                if (day && day.providedBySupervisorId != null) candidateProviderIds.add(Number(day.providedBySupervisorId));
             }
-            providedById = Number(providedBySupervisorId);
         }
+        if (candidateProviderIds.size) {
+            const { groupId } = req.masterTrainer;
+            for (const candidateId of candidateProviderIds) {
+                const { rows: providerRows } = groupId
+                    ? await db.query("SELECT id FROM supervisors WHERE id = ? AND group_id = ?", [candidateId, groupId])
+                    : { rows: [] };
+                if (!providerRows.length) {
+                    return res.status(400).json({ error: "That person isn't an authorized provider for this Group" });
+                }
+            }
+        }
+        const providedById = providedBySupervisorId != null ? Number(providedBySupervisorId) : undefined;
 
         const { rows } = await db.query(
             `SELECT DISTINCT s.student_id FROM sessions s JOIN session_occasions so ON so.id = s.occasion_id WHERE so.series_id = ?`,

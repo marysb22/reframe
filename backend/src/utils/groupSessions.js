@@ -268,6 +268,11 @@ async function createMultiDaySession(db, params) {
   let createdNonFuture = []; // only past/today days' entries -- mirrors createSessionOccasion's own isFuture gate so a scheduled future day never fires a "session logged" notification early.
   for (let i = 0; i < days.length; i++) {
     const day = days[i];
+    // A day can name its own provider (e.g. day 1 delivered by the Master
+    // Trainer, day 2 by a different ToT) -- falls back to the series-wide
+    // default (providedBySupervisorId) when the day doesn't override it,
+    // so a submission with no per-day overrides behaves exactly as before.
+    const dayProvidedBySupervisorId = day.providedBySupervisorId != null ? Number(day.providedBySupervisorId) : providedBySupervisorId;
     const result = await createSessionOccasion(db, {
       supervisorId,
       sessionType,
@@ -280,7 +285,7 @@ async function createMultiDaySession(db, params) {
       attachmentOriginalName: i === 0 ? attachmentOriginalName : null,
       studentIds,
       seriesId,
-      providedBySupervisorId,
+      providedBySupervisorId: dayProvidedBySupervisorId,
     });
     if (result.error) {
       // Roll back the days already created in this same submission so a
@@ -444,6 +449,10 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
   const keptIds = new Set();
 
   for (const day of days) {
+    // Same per-day override as createMultiDaySession -- a day with its own
+    // providedBySupervisorId keeps/sets that specific provider; a day with
+    // none falls back to the series-wide value just resolved above.
+    const dayProvidedBySupervisorId = day.providedBySupervisorId != null ? Number(day.providedBySupervisorId) : effectiveProvidedBy;
     if (day.occasionId && existingIds.has(Number(day.occasionId))) {
       const result = await updateSessionOccasion(db, {
         occasionId: Number(day.occasionId),
@@ -454,7 +463,7 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
         title: title,
         notes: notes,
         sessionType: effectiveType,
-        providedBySupervisorId: effectiveProvidedBy,
+        providedBySupervisorId: dayProvidedBySupervisorId,
       });
       if (result.error) return { error: `Day ${day.date}: ${result.error}` };
       keptIds.add(Number(day.occasionId));
@@ -469,7 +478,7 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
         notes,
         studentIds,
         seriesId,
-        providedBySupervisorId: effectiveProvidedBy,
+        providedBySupervisorId: dayProvidedBySupervisorId,
       });
       if (result.error) return { error: `Day ${day.date}: ${result.error}` };
       keptIds.add(result.occasionId);
