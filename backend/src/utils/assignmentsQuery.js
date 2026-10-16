@@ -21,8 +21,17 @@ const ASSIGNMENT_WITH_SUBMISSION_SELECT = `
 /** Maps one row from ASSIGNMENT_WITH_SUBMISSION_SELECT into the API shape,
  *  including a live-computed status (nothing in the app ever sets
  *  status='overdue' in the DB, same convention used on the Master Trainer
- *  dashboard's assignment overview). */
-function assignmentRowToApi(r) {
+ *  dashboard's assignment overview).
+ *
+ * @param {string} todayStr - 'YYYY-MM-DD', from MySQL's own CURDATE() (see
+ *  callers) -- NOT computed here via `new Date().toISOString()`, which is
+ *  UTC-based and silently disagreed with the server's local "today" for
+ *  however many hours separate local time from UTC, every day (the exact
+ *  bug already found and fixed on supervisor.js's /schedule route; this
+ *  function had the same bug independently). Required, not defaulted, so a
+ *  caller can't accidentally fall back to the old wrong behavior.
+ */
+function assignmentRowToApi(r, todayStr) {
   const item = {
     id: r.id,
     title: r.title,
@@ -50,7 +59,6 @@ function assignmentRowToApi(r) {
       : null,
   };
 
-  const todayStr = new Date().toISOString().slice(0, 10);
   if (item.status !== "completed" && item.dueDate && String(item.dueDate).slice(0, 10) < todayStr) {
     item.status = item.submission ? "submitted" : "overdue";
   } else if (item.submission && item.status === "pending") {

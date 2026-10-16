@@ -304,7 +304,16 @@ async function run() {
   console.log("\nBusiness-date correctness (don't invent dates)\n");
 
   await test("Assignments calendar uses due_date, not created_at", async () => {
-    const dueDate = ymd(new Date(Date.now() + 20 * 86400000));
+    // Read back from MySQL (DATE_ADD(CURDATE(), INTERVAL 20 DAY)), the exact
+    // expression the fixture used to set due_date -- not recomputed in JS
+    // via `Date.now() + 20 * 86400000`, which adds a fixed number of
+    // milliseconds and lands on the wrong calendar date whenever a
+    // Daylight Saving transition falls inside that 20-day window (confirmed
+    // directly: this mismatched the real due_date by a full day on a run
+    // spanning the Oct/Nov 2026 DST change). See assignmentsQuery.js's
+    // assignmentRowToApi for the same bug, found via this exact failure.
+    const { rows: dueDateRows } = await pool.query("SELECT DATE_ADD(CURDATE(), INTERVAL 20 DAY) AS d");
+    const dueDate = String(dueDateRows[0].d);
     const wrongDate = ymd(new Date()); // created_at's date -- must NOT appear here
     const r1 = await request("GET", `/supervisor/assignments-calendar?start=${dueDate}&end=${dueDate}`, totToken);
     assert(r1.body.items.some((i) => i.id === fx.assignmentId), "assignment missing on its real due_date");

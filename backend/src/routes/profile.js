@@ -1020,7 +1020,11 @@ router.get(
       `${ASSIGNMENT_WITH_SUBMISSION_SELECT} WHERE a.student_id = ? ORDER BY a.due_date IS NULL, a.due_date ASC LIMIT 500`,
       [req.user.id]
     );
-    let items = rows.map(assignmentRowToApi);
+    // CURDATE(), not Node's local/UTC clock -- see assignmentRowToApi's own
+    // doc comment for why.
+    const { rows: todayRows } = await db.query("SELECT CURDATE() AS today");
+    const todayStr = todayRows[0].today;
+    let items = rows.map((r) => assignmentRowToApi(r, todayStr));
     if (req.query.status) items = items.filter((i) => i.status === req.query.status);
     await attachSubmissionHistories(db, items);
     res.json({ assignments: items });
@@ -1037,7 +1041,8 @@ router.get(
       req.user.id,
     ]);
     if (!rows.length) return res.status(404).json({ error: "Assignment not found" });
-    const item = assignmentRowToApi(rows[0]);
+    const { rows: todayRows } = await db.query("SELECT CURDATE() AS today");
+    const item = assignmentRowToApi(rows[0], todayRows[0].today);
     await attachSubmissionHistories(db, [item]);
     res.json(item);
   })

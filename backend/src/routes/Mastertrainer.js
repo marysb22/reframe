@@ -1930,8 +1930,18 @@ router.get(
         if (!groupId) return noGroupResponse(res, { today: [], upcoming: [] });
 
         const { rows } = await db.query(
+            // CURDATE() selected alongside the rows (not compared against
+            // Node's own new Date()) -- same fix as supervisor.js's
+            // identical /schedule route: the WHERE clause and the
+            // today/upcoming split below must agree on the exact same
+            // "today", or a session lands on the wrong side of that
+            // boundary whenever the app server's local clock/timezone
+            // isn't in lockstep with MySQL's (new Date().toISOString() is
+            // UTC-based, so this silently misbucketed every session for
+            // however many hours separate local time from UTC, every day).
             `SELECT s.id, s.session_type, s.title, s.session_date AS date, s.session_time AS time,
-              s.duration_minutes, st.full_name AS student_name, sup.full_name AS trainer_name
+              s.duration_minutes, st.full_name AS student_name, sup.full_name AS trainer_name,
+              CURDATE() AS today
        FROM sessions s
        JOIN students st ON st.id = s.student_id
        JOIN supervisors sup ON sup.id = s.supervisor_id
@@ -1940,7 +1950,7 @@ router.get(
        LIMIT 100`, [groupId]
         );
 
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const todayStr = rows.length ? String(rows[0].today) : (await db.query("SELECT CURDATE() AS today")).rows[0].today;
         const today = [],
             upcoming = [];
         for (const r of rows) {
@@ -2045,7 +2055,8 @@ router.get(
         // row ever created.
         const { rows } = await db.query(
             `SELECT a.id, a.title, a.due_date, a.status, a.max_score,
-              st.full_name AS student_name, sup.id AS tot_id, sup.full_name AS trainer_name
+              st.full_name AS student_name, sup.id AS tot_id, sup.full_name AS trainer_name,
+              CURDATE() AS today
        FROM assignments a
        JOIN students st ON st.id = a.student_id
        JOIN supervisors sup ON sup.id = a.supervisor_id
@@ -2055,7 +2066,10 @@ router.get(
             params
         );
 
-        const todayStr = new Date().toISOString().slice(0, 10);
+        // CURDATE(), not Node's new Date().toISOString() (UTC-based, so this
+        // "overdue" boundary silently drifted a day during the local/UTC gap
+        // every day -- same bug class as /schedule above).
+        const todayStr = rows.length ? String(rows[0].today) : (await db.query("SELECT CURDATE() AS today")).rows[0].today;
         let completed = 0,
             overdue = 0;
         const assignments = rows.map((r) => {
@@ -2247,9 +2261,21 @@ router.get(
         };
         if (!groupId) return noGroupResponse(res, emptyShape);
 
-        const today = new Date();
-        const to = (req.query.to && String(req.query.to)) || today.toISOString().slice(0, 10);
-        const defaultFrom = new Date(today.getTime() - 6 * 86400000).toISOString().slice(0, 10);
+        // CURDATE(), not Node's new Date().toISOString() -- that read UTC
+        // time regardless of the server's local timezone, so the default
+        // range's end silently lagged a calendar day behind the real local
+        // "today" for however many hours separate local time from UTC,
+        // every day (same bug class already fixed on /schedule above).
+        // Shifted via shiftDate() (calendar-safe Date.UTC math on the
+        // Y/M/D components), not raw `Date.now() - 6*86400000` -- that adds
+        // a fixed number of milliseconds, which lands on the wrong calendar
+        // date whenever a Daylight Saving transition falls inside the
+        // window (confirmed directly: 20 days from 2026-10-16 computed as
+        // 2026-11-04 via millisecond arithmetic vs the correct 2026-11-05).
+        const { rows: todayRows } = await db.query("SELECT CURDATE() AS today");
+        const todayStr = todayRows[0].today;
+        const to = (req.query.to && String(req.query.to)) || todayStr;
+        const defaultFrom = shiftDate(todayStr, -6);
         const from = (req.query.from && String(req.query.from)) || defaultFrom;
 
         const rangeParams = Array(7).fill([groupId, from, to]).flat();
