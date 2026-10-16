@@ -3613,6 +3613,15 @@
                 align-items: flex-start;
                 gap: 14px;
             }
+            /* .top-right's own children (live clock, bell, avatar, Log out)
+               never wrapped on their own, overflowing the page horizontally
+               at narrow widths (confirmed live: 447px content in a 320-414px
+               viewport). masterDashborad.html's identical topbar already has
+               this fix; it was missing here. */
+            .top-right {
+                flex-wrap: wrap;
+                max-width: 100%;
+            }
             /* .topbar switching to a column above means .top-right (and the
                bell inside it) is no longer flush against the right edge --
                it's left-aligned to its own content width wherever it lands.

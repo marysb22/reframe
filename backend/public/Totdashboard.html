@@ -3479,6 +3479,21 @@
                 align-items: flex-start;
                 gap: 14px;
             }
+            /* .top-right's own children (live clock, bell, avatar, Log out)
+               never wrapped on their own -- stacking .topbar into a column
+               above only stopped them from being squeezed next to the page
+               title, but .top-right still tried to fit all four as one
+               nowrap row (measured ~419px) inside a ~390px viewport,
+               overflowing the whole page horizontally. Confirmed via a real
+               390px-viewport audit: document.documentElement.scrollWidth
+               was 439px against a 390px clientWidth, traced to this exact
+               element. masterDashborad.html's identical topbar already has
+               this exact fix (confirmed live there at 320/375px too) -- it
+               was never carried over to this file. Same fix here. */
+            .top-right {
+                flex-wrap: wrap;
+                max-width: 100%;
+            }
             /* .topbar switching to a column above means .top-right (and the
                bell inside it) is no longer flush against the right edge --
                it's left-aligned to its own content width wherever it lands.
