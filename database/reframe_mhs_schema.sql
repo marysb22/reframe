@@ -1,4 +1,21 @@
 -- =============================================================================
+-- ** OUT OF DATE as of this audit (2026-10-16) -- DO NOT import alone. **
+-- Missing at least 8 tables added by later migrations (~023-037):
+-- session_occasions, session_series, tot_session_occasions, excuse_reasons,
+-- admin_permissions, ai_conversations, ai_messages,
+-- training_materials_notice_acceptances -- plus columns added to existing
+-- tables by those same migrations (e.g. provided_by_supervisor_id,
+-- migration 035). Importing this file alone, as its own instructions below
+-- say to, produces a database the application cannot fully run against.
+--
+-- For an accurate CURRENT table/column reference, see
+-- reframe_mhs_schema.CURRENT.sql (generated from the live dev DB during
+-- this audit, no seed data). To actually bootstrap a new environment today,
+-- run the numbered files in database/migrations/ in order instead of this
+-- file -- they are the real, up-to-date source of truth. This file's design
+-- notes below and its Section 13 seed data are still accurate and useful;
+-- only its table/column list has drifted.
+-- =============================================================================
 -- Reframe MHS System -- MySQL 8.0 Database Schema
 -- =============================================================================
 -- Target: MySQL 8.0+ (Hostinger / phpMyAdmin compatible). No PostgreSQL
