@@ -1024,7 +1024,7 @@ router.get(
 
 // POST /api/admin/groups
 // { name, masterTrainer: {fullName, memberCode?}, trainers: [{fullName, memberCode?} x2],
-//   trainees: [{fullName, memberCode?}, ...], trainerPassword?, traineePassword? }
+//   trainees: [{fullName, memberCode?}, ...], trainerPassword?, traineePassword?, traineeCohort? }
 router.post(
   "/groups",
   asyncRoute(async (req, res, db) => {
@@ -1107,6 +1107,11 @@ router.post(
       throw err;
     }
     const group = { id: groupInsert.insertId, name };
+    // Optional cohort applied to every trainee created with the Group
+    // (same free-text/auto-create rule as Create Member / Edit Member).
+    // Without it, trainees created here had no way to get a cohort except
+    // one-by-one edits afterward.
+    const traineeCohortId = traineesIn.length ? await resolveCohortId(db, body.traineeCohort) : null;
 
     const masterTrainer = await insertSupervisorAccount(db, {
       fullName: masterTrainerIn.fullName,
@@ -1140,10 +1145,11 @@ router.post(
         [memberCode, traineeHash]
       );
       const id = cred.insertId;
-      await db.query(`INSERT INTO students (id, full_name, group_id) VALUES (?, ?, ?)`, [
+      await db.query(`INSERT INTO students (id, full_name, group_id, cohort_id) VALUES (?, ?, ?, ?)`, [
         id,
         traineesIn[i].fullName.trim(),
         group.id,
+        traineeCohortId,
       ]);
       await db.query("INSERT INTO settings (user_id) VALUES (?)", [id]);
       await db.query("INSERT INTO privacy_preferences (user_id) VALUES (?)", [id]);
@@ -1258,6 +1264,38 @@ router.delete(
     );
 
     res.json({ success: true });
+  })
+);
+
+// PATCH /api/admin/groups/:id/cohort  { cohort, overwrite? }
+// Sets the cohort for every trainee in a Group at once. By default only
+// trainees with NO cohort yet are filled in -- an existing cohort is never
+// replaced unless overwrite: true is sent explicitly. Same free-text/
+// auto-create rule as Edit Member (resolveCohortId).
+router.patch(
+  "/groups/:id/cohort",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid group id" });
+    const { rows: groupRows } = await db.query("SELECT id FROM trainer_groups WHERE id = ?", [id]);
+    if (!groupRows.length) return res.status(404).json({ error: "Group not found" });
+
+    const body = req.body || {};
+    const name = String(body.cohort || "").trim();
+    if (!name) return res.status(400).json({ error: "Cohort name is required" });
+    if (name.length > 100) return res.status(400).json({ error: "Cohort name is too long" });
+    const overwrite = body.overwrite === true;
+
+    const cohortId = await resolveCohortId(db, name);
+    const result = await db.query(
+      `UPDATE students SET cohort_id = ? WHERE group_id = ?${overwrite ? "" : " AND cohort_id IS NULL"}`,
+      [cohortId, id]
+    );
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'group_cohort_set', 'trainer_groups', ?, ?)",
+      [req.user.id, id, JSON.stringify({ cohort: name, overwrite, updated: result.affectedRows })]
+    );
+    res.json({ updated: result.affectedRows, cohort: name, overwrite });
   })
 );
 

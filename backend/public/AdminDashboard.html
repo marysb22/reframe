@@ -2304,6 +2304,9 @@
                         <div id="grpTraineesList"></div>
                         <button type="button" class="btn btn-secondary" style="width:auto;margin-top:6px;" onclick="addTraineeRow()"><i class="fa fa-plus"></i> Add trainee</button>
 
+                        <label>Trainees' cohort <span style="font-weight:400;color:var(--faint);">(optional, applied to every trainee in this group)</span></label>
+                        <input type="text" id="grpTraineeCohort" placeholder="e.g. 2026A" dir="auto" maxlength="100">
+
                         <label>Trainee password <span style="font-weight:400;color:var(--faint);">(shared by every trainee in this group)</span></label>
                         <input type="text" id="grpTraineePassword" value="password123">
 
@@ -2377,6 +2380,13 @@
           <option value="">Leave unassigned</option>
         </select>
                         <div class="field-hint" id="tcGroupHint">A Trainer (ToT) must be assigned to a group that already has an active Master Trainer.</div>
+
+                        <!-- Trainee only -->
+                        <div id="tcCohortWrap" style="display:none;">
+                            <label>Cohort <span class="hint">(optional)</span></label>
+                            <input type="text" id="tcCohort" placeholder="e.g. 2026A" dir="auto" maxlength="100">
+                            <div class="field-hint">Free text -- a cohort name that doesn't exist yet is created automatically.</div>
+                        </div>
 
                         <!-- Account fields: Master Trainer / Trainer (ToT) / Trainee only -->
                         <div id="tcAccountFields">
@@ -3047,6 +3057,30 @@
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeTraineeTotsModal()">Cancel</button>
                     <button type="submit" class="btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SET COHORT FOR A WHOLE GROUP -->
+    <div class="modal-overlay" id="groupCohortModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeGroupCohortModal()">&times;</button>
+            <h3>Set cohort for this group's trainees</h3>
+            <p class="hint" style="margin:0 0 12px;" id="gcHint"></p>
+            <form id="groupCohortForm" novalidate>
+                <input type="hidden" id="gcGroupId">
+                <label style="margin-top:0;">Cohort</label>
+                <input type="text" id="gcCohort" placeholder="e.g. 2026A" dir="auto" maxlength="100" autocomplete="off">
+                <div class="field-hint">Free text -- a cohort name that doesn't exist yet is created automatically.</div>
+                <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:400;">
+                    <input type="checkbox" id="gcOverwrite" style="width:16px;height:16px;margin:0;">
+                    Also replace trainees who already have a different cohort
+                </label>
+                <p id="gcError" role="alert" style="display:none;color:var(--danger, #c0392b);font-size:13px;margin:8px 0 0;"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeGroupCohortModal()">Cancel</button>
+                    <button type="submit" class="btn" id="gcSubmit">Apply</button>
                 </div>
             </form>
         </div>
@@ -3892,7 +3926,10 @@
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <h4 style="margin:0;font-size:13px;color:var(--muted);">Trainees</h4>
-      <button class="btn btn-sm" style="width:auto;margin-top:0;" onclick="openAddTraineeModal(${g.id})"><i class="fa fa-plus"></i> Add Trainee</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${g.trainees.length ? `<button class="btn btn-secondary btn-sm" style="width:auto;margin-top:0;" onclick="openGroupCohortModal(${g.id})"><i class="fa fa-layer-group"></i> Set cohort</button>` : ""}
+        <button class="btn btn-sm" style="width:auto;margin-top:0;" onclick="openAddTraineeModal(${g.id})"><i class="fa fa-plus"></i> Add Trainee</button>
+      </div>
     </div>
     <table>
       <thead><tr><th>Name</th><th>ID</th><th>Assigned TOT(s)</th><th>Status</th><th>Account Status</th><th></th></tr></thead>
@@ -3913,6 +3950,51 @@
             loadAdminGuestTrainers(g.id);
             loadAdminExternalTrainers(g.id);
         }
+
+        // ---- Set cohort for a whole Group (PATCH /admin/groups/:id/cohort) ---
+        // Fills in trainees who have no cohort yet; replacing an existing
+        // cohort only happens when the checkbox is ticked.
+        function openGroupCohortModal(groupId) {
+            const g = allGroups.find((x) => x.id === groupId);
+            if (!g) return;
+            document.getElementById("groupCohortForm").reset();
+            document.getElementById("gcError").style.display = "none";
+            document.getElementById("gcGroupId").value = groupId;
+            document.getElementById("gcHint").textContent = `"${g.name}" has ${g.trainees.length} trainee${g.trainees.length === 1 ? "" : "s"}. Trainees who already have a cohort keep it unless you tick the box below.`;
+            document.getElementById("groupCohortModal").classList.add("show");
+            setTimeout(() => document.getElementById("gcCohort").focus(), 50);
+        }
+        function closeGroupCohortModal() {
+            document.getElementById("groupCohortModal").classList.remove("show");
+        }
+        document.getElementById("groupCohortForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const cohort = document.getElementById("gcCohort").value.trim();
+            const err = document.getElementById("gcError");
+            if (!cohort) {
+                err.textContent = "Please enter a cohort name.";
+                err.style.display = "block";
+                return;
+            }
+            const overwrite = document.getElementById("gcOverwrite").checked;
+            const groupId = Number(document.getElementById("gcGroupId").value);
+            const btn = document.getElementById("gcSubmit");
+            btn.disabled = true;
+            try {
+                const result = await apiRequest(`/admin/groups/${groupId}/cohort`, { method: "PATCH", body: JSON.stringify({ cohort, overwrite }) });
+                if (!result) return;
+                closeGroupCohortModal();
+                showSuccessNotification(
+                    "Cohort Updated",
+                    result.updated
+                        ? `${result.updated} trainee${result.updated === 1 ? "" : "s"} now in cohort "${result.cohort}".`
+                        : `No trainee needed updating -- every trainee in this group already has a cohort. Tick "Also replace" to change them.`
+                );
+                await Promise.all([loadUsers(), loadGroups()]);
+            } finally {
+                btn.disabled = false;
+            }
+        });
 
         // ---- External Trainers (migration 039) -- review/correct only ------
         let adminExternalData = { groupId: null, externalTrainers: [] };
@@ -4285,7 +4367,15 @@ document.getElementById("groupForm").addEventListener("submit", async (e) => {
 
   const result = await apiRequest("/admin/groups", {
     method: "POST",
-    body: JSON.stringify({ name, masterTrainer, trainers, trainees, trainerPassword, traineePassword }),
+    body: JSON.stringify({
+      name,
+      masterTrainer,
+      trainers,
+      trainees,
+      trainerPassword,
+      traineePassword,
+      traineeCohort: document.getElementById("grpTraineeCohort").value.trim() || undefined,
+    }),
   });
 
   if (result) {
@@ -4429,6 +4519,7 @@ function updateTrainerCreateFormForRole() {
   // Guest / External Trainers get no account -- swap the ID/password fields
   // for their contact details.
   const outside = role === "guest" || role === "external";
+  document.getElementById("tcCohortWrap").style.display = role === "trainee" ? "block" : "none";
   document.getElementById("tcAccountFields").style.display = outside ? "none" : "block";
   document.getElementById("tcOutsideFields").style.display = outside ? "block" : "none";
   document.getElementById("tcOutsideHint").textContent =
@@ -4507,7 +4598,8 @@ document.getElementById("trainerCreateForm").addEventListener("submit", async (e
     return;
   }
 
-  const result = await createTrainer({ fullName, role, groupId, memberCode, tempPassword });
+  const cohort = role === "trainee" ? document.getElementById("tcCohort").value.trim() : "";
+  const result = await createTrainer({ fullName, role, groupId, memberCode, tempPassword, cohort });
   if (!result) return;
 
   const roleLabel = role === "trainee" ? "Trainee" : role === "primary" ? "Master Trainer" : "Trainer (ToT)";
