@@ -45,10 +45,12 @@ const UNION_BASE = `
          -- untouched/unused here beyond the WHERE scoping below). Falls
          -- back to the creator when no explicit provider was set, same
          -- COALESCE convention used everywhere else this column is read.
-         occ_provider.id AS provided_by_id, occ_provider.full_name AS provided_by_name
+         occ_provider.id AS provided_by_id, COALESCE(occ_provider_guest.full_name, occ_provider_ext.full_name, occ_provider.full_name) AS provided_by_name, so.provided_by_guest_trainer_id AS provided_by_guest_id, so.provided_by_external_trainer_id AS provided_by_external_id
   FROM session_occasions so
   JOIN hour_types ht ON ht.code = so.session_type
-  LEFT JOIN supervisors occ_provider ON occ_provider.id = COALESCE(so.provided_by_supervisor_id, so.supervisor_id)
+  LEFT JOIN supervisors occ_provider ON occ_provider.id = IF(so.provided_by_guest_trainer_id IS NULL AND so.provided_by_external_trainer_id IS NULL, COALESCE(so.provided_by_supervisor_id, so.supervisor_id), NULL)
+  LEFT JOIN guest_trainers occ_provider_guest ON occ_provider_guest.id = so.provided_by_guest_trainer_id
+  LEFT JOIN external_trainers occ_provider_ext ON occ_provider_ext.id = so.provided_by_external_trainer_id
   WHERE so.supervisor_id = ? AND so.series_id IS NULL
 
   UNION ALL
@@ -62,13 +64,15 @@ const UNION_BASE = `
          CONCAT(st.full_name, ' ', uc.member_code) AS trainee_blob,
          1 AS day_count,
          1 AS slot_count,
-         single_provider.id AS provided_by_id, single_provider.full_name AS provided_by_name
+         single_provider.id AS provided_by_id, COALESCE(single_provider_guest.full_name, single_provider_ext.full_name, single_provider.full_name) AS provided_by_name, s.provided_by_guest_trainer_id AS provided_by_guest_id, s.provided_by_external_trainer_id AS provided_by_external_id
   FROM sessions s
   JOIN students st ON st.id = s.student_id
   JOIN user_credentials uc ON uc.id = st.id
   JOIN hour_types ht ON ht.code = s.session_type
   LEFT JOIN attendance att ON att.session_id = s.id
-  LEFT JOIN supervisors single_provider ON single_provider.id = COALESCE(s.provided_by_supervisor_id, s.supervisor_id)
+  LEFT JOIN supervisors single_provider ON single_provider.id = IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL)
+  LEFT JOIN guest_trainers single_provider_guest ON single_provider_guest.id = s.provided_by_guest_trainer_id
+  LEFT JOIN external_trainers single_provider_ext ON single_provider_ext.id = s.provided_by_external_trainer_id
   WHERE s.supervisor_id = ? AND s.occasion_id IS NULL
 
   UNION ALL
@@ -103,10 +107,12 @@ const UNION_BASE = `
          -- updateSessionSeries in groupSessions.js) -- all days share the
          -- same provider by design, so reading it off the series row
          -- itself (not per-day) is correct, not an approximation.
-         series_provider.id AS provided_by_id, series_provider.full_name AS provided_by_name
+         series_provider.id AS provided_by_id, COALESCE(series_provider_guest.full_name, series_provider_ext.full_name, series_provider.full_name) AS provided_by_name, ss.provided_by_guest_trainer_id AS provided_by_guest_id, ss.provided_by_external_trainer_id AS provided_by_external_id
   FROM session_series ss
   JOIN hour_types ht ON ht.code = ss.session_type
-  LEFT JOIN supervisors series_provider ON series_provider.id = COALESCE(ss.provided_by_supervisor_id, ss.supervisor_id)
+  LEFT JOIN supervisors series_provider ON series_provider.id = IF(ss.provided_by_guest_trainer_id IS NULL AND ss.provided_by_external_trainer_id IS NULL, COALESCE(ss.provided_by_supervisor_id, ss.supervisor_id), NULL)
+  LEFT JOIN guest_trainers series_provider_guest ON series_provider_guest.id = ss.provided_by_guest_trainer_id
+  LEFT JOIN external_trainers series_provider_ext ON series_provider_ext.id = ss.provided_by_external_trainer_id
   WHERE ss.supervisor_id = ?
 `;
 

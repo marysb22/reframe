@@ -1601,7 +1601,7 @@ router.get(
     const { start, end } = req.query;
     if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
     const items = await getSessionsInRange(db, { kind: "student", id: req.user.id }, start, end);
-    res.json({ events: items.map((i) => ({ id: i.id, date: i.date, time: i.time, title: i.title })) });
+    res.json({ events: items.map((i) => ({ id: i.id, date: i.date, time: i.time, title: i.title, providedByName: i.providedByName })) });
   })
 );
 router.get(

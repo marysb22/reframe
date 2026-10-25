@@ -44,7 +44,17 @@ async function createSessionOccasion(db, params) {
     studentIds,
     seriesId = null, // set only when this occasion is one day of a multi-day Session (see createMultiDaySession below); NULL keeps this identical to a single-day Session, unchanged from before migration 030.
     providedBySupervisorId = supervisorId,
+    providedByGuestTrainerId = null,
+    providedByExternalTrainerId = null,
   } = params;
+  // A Guest Trainer provider (migration 038) and an internal provider are
+  // mutually exclusive -- a guest-delivered row stores NULL for the
+  // internal column so it is never credited to anyone's account. An
+  // External Trainer (migration 039) is a third, equally exclusive kind.
+  const provider = providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId);
+  const providerSupervisorId = provider.supervisorId;
+  const providerGuestTrainerId = provider.guestTrainerId;
+  const providerExternalTrainerId = provider.externalTrainerId;
 
   if (!date) return { error: "date is required" };
   if (!Number.isFinite(Number(durationMinutes)) || Number(durationMinutes) < 0) {
@@ -75,11 +85,13 @@ async function createSessionOccasion(db, params) {
   if (dupeRows.length) return { error: "This looks like a duplicate of a session just logged. Refresh and check the list before retrying." };
 
   const occasionInsert = await db.query(
-    `INSERT INTO session_occasions (supervisor_id, provided_by_supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes, attachment_filename, attachment_original_name, series_id)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO session_occasions (supervisor_id, provided_by_supervisor_id, provided_by_guest_trainer_id, provided_by_external_trainer_id, session_type, title, session_date, session_time, duration_minutes, notes, attachment_filename, attachment_original_name, series_id)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       supervisorId,
-      providedBySupervisorId,
+      providerSupervisorId,
+      providerGuestTrainerId,
+      providerExternalTrainerId,
       sessionType,
       title || null,
       date,
@@ -101,12 +113,14 @@ async function createSessionOccasion(db, params) {
     seen.add(studentId);
 
     const sessionInsert = await db.query(
-      `INSERT INTO sessions (student_id, supervisor_id, provided_by_supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes, status, occasion_id, attachment_filename, attachment_original_name)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO sessions (student_id, supervisor_id, provided_by_supervisor_id, provided_by_guest_trainer_id, provided_by_external_trainer_id, session_type, title, session_date, session_time, duration_minutes, notes, status, occasion_id, attachment_filename, attachment_original_name)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         studentId,
         supervisorId,
-        providedBySupervisorId,
+        providerSupervisorId,
+        providerGuestTrainerId,
+        providerExternalTrainerId,
         sessionType,
         title || null,
         date,
@@ -236,7 +250,10 @@ async function createMultiDaySession(db, params) {
     attachmentOriginalName,
     studentIds,
     providedBySupervisorId = supervisorId,
+    providedByGuestTrainerId = null,
+    providedByExternalTrainerId = null,
   } = params;
+  const seriesProvider = providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId);
 
   if (!Array.isArray(days) || !days.length) {
     return { error: "At least one day is required" };
@@ -258,8 +275,8 @@ async function createMultiDaySession(db, params) {
   if (!htRows.length) return { error: "That session type does not exist or is inactive" };
 
   const seriesInsert = await db.query(
-    `INSERT INTO session_series (supervisor_id, provided_by_supervisor_id, session_type, title, notes) VALUES (?,?,?,?,?)`,
-    [supervisorId, providedBySupervisorId, sessionType, title || null, notes || null]
+    `INSERT INTO session_series (supervisor_id, provided_by_supervisor_id, provided_by_guest_trainer_id, provided_by_external_trainer_id, session_type, title, notes) VALUES (?,?,?,?,?,?,?)`,
+    [supervisorId, seriesProvider.supervisorId, seriesProvider.guestTrainerId, seriesProvider.externalTrainerId, sessionType, title || null, notes || null]
   );
   const seriesId = seriesInsert.insertId;
 
@@ -272,7 +289,8 @@ async function createMultiDaySession(db, params) {
     // Trainer, day 2 by a different ToT) -- falls back to the series-wide
     // default (providedBySupervisorId) when the day doesn't override it,
     // so a submission with no per-day overrides behaves exactly as before.
-    const dayProvidedBySupervisorId = day.providedBySupervisorId != null ? Number(day.providedBySupervisorId) : providedBySupervisorId;
+    // A day's override may name a Guest Trainer instead (migration 038).
+    const dayProvider = dayProviderPair(day, seriesProvider);
     const result = await createSessionOccasion(db, {
       supervisorId,
       sessionType,
@@ -285,7 +303,9 @@ async function createMultiDaySession(db, params) {
       attachmentOriginalName: i === 0 ? attachmentOriginalName : null,
       studentIds,
       seriesId,
-      providedBySupervisorId: dayProvidedBySupervisorId,
+      providedBySupervisorId: dayProvider.supervisorId,
+      providedByGuestTrainerId: dayProvider.guestTrainerId,
+      providedByExternalTrainerId: dayProvider.externalTrainerId,
     });
     if (result.error) {
       // Roll back the days already created in this same submission so a
@@ -323,8 +343,11 @@ async function createMultiDaySession(db, params) {
  * a local `sessionType` variable, it just never made it into the PUT
  * body for a single-occasion edit.
  */
-async function updateSessionOccasion(db, { occasionId, supervisorId, date, time, durationMinutes, title, notes, sessionType, providedBySupervisorId }) {
-  const { rows } = await db.query("SELECT id, supervisor_id, session_type, provided_by_supervisor_id FROM session_occasions WHERE id = ?", [occasionId]);
+async function updateSessionOccasion(db, { occasionId, supervisorId, date, time, durationMinutes, title, notes, sessionType, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId }) {
+  const { rows } = await db.query(
+    "SELECT id, supervisor_id, session_type, provided_by_supervisor_id, provided_by_guest_trainer_id, provided_by_external_trainer_id FROM session_occasions WHERE id = ?",
+    [occasionId]
+  );
   if (!rows.length || Number(rows[0].supervisor_id) !== Number(supervisorId)) {
     return { error: "Session occasion not found" };
   }
@@ -345,7 +368,19 @@ async function updateSessionOccasion(db, { occasionId, supervisorId, date, time,
   // has already validated an incoming value against the Group's supervisor
   // roster before this ever runs; omitted (undefined/null) keeps whatever
   // this occasion already had, never silently resets it to the creator.
-  const effectiveProvidedBy = providedBySupervisorId != null ? Number(providedBySupervisorId) : rows[0].provided_by_supervisor_id;
+  //
+  // A provider is EITHER internal or a Guest Trainer (migration 038) --
+  // whichever the caller passed replaces both columns together, so
+  // switching a session from a guest back to an internal trainer (or vice
+  // versa) can never leave both set.
+  const effective =
+    providedBySupervisorId != null || providedByGuestTrainerId != null || providedByExternalTrainerId != null
+      ? providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId)
+      : {
+          supervisorId: rows[0].provided_by_supervisor_id,
+          guestTrainerId: rows[0].provided_by_guest_trainer_id,
+          externalTrainerId: rows[0].provided_by_external_trainer_id,
+        };
 
   // COALESCE(?, title/notes), not a direct SET -- title/notes are optional
   // on this call (e.g. a caller only changing sessionType/date, like
@@ -356,18 +391,18 @@ async function updateSessionOccasion(db, { occasionId, supervisorId, date, time,
   // value (including an explicit "" to intentionally clear it, which is
   // not NULL and so still applies).
   await db.query(
-    `UPDATE session_occasions SET session_date = ?, session_time = ?, duration_minutes = ?, title = COALESCE(?, title), notes = COALESCE(?, notes), session_type = ?, provided_by_supervisor_id = ?, updated_at = NOW()
+    `UPDATE session_occasions SET session_date = ?, session_time = ?, duration_minutes = ?, title = COALESCE(?, title), notes = COALESCE(?, notes), session_type = ?, provided_by_supervisor_id = ?, provided_by_guest_trainer_id = ?, provided_by_external_trainer_id = ?, updated_at = NOW()
      WHERE id = ?`,
-    [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, effectiveProvidedBy, occasionId]
+    [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, effective.supervisorId, effective.guestTrainerId, effective.externalTrainerId, occasionId]
   );
   // Every attendee's own sessions row under this occasion must carry the
   // same date/duration/title/type/provider -- that row, not the occasion
   // row, is what the hours formula and each trainee's own activity list
   // actually read.
   await db.query(
-    `UPDATE sessions SET session_date = ?, session_time = ?, duration_minutes = ?, title = COALESCE(?, title), notes = COALESCE(?, notes), session_type = ?, provided_by_supervisor_id = ?, updated_at = NOW()
+    `UPDATE sessions SET session_date = ?, session_time = ?, duration_minutes = ?, title = COALESCE(?, title), notes = COALESCE(?, notes), session_type = ?, provided_by_supervisor_id = ?, provided_by_guest_trainer_id = ?, provided_by_external_trainer_id = ?, updated_at = NOW()
      WHERE occasion_id = ?`,
-    [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, effectiveProvidedBy, occasionId]
+    [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, effective.supervisorId, effective.guestTrainerId, effective.externalTrainerId, occasionId]
   );
 
   return { updated: true };
@@ -411,10 +446,11 @@ async function deleteSessionOccasion(db, { occasionId, supervisorId }) {
  * per-day functions a single-day Session uses, so none of this
  * duplicates the hours/attendance logic.
  */
-async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, title, notes, days, studentIds, providedBySupervisorId }) {
-  const { rows: seriesRows } = await db.query("SELECT id, supervisor_id, provided_by_supervisor_id FROM session_series WHERE id = ?", [
-    seriesId,
-  ]);
+async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, title, notes, days, studentIds, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId }) {
+  const { rows: seriesRows } = await db.query(
+    "SELECT id, supervisor_id, provided_by_supervisor_id, provided_by_guest_trainer_id, provided_by_external_trainer_id FROM session_series WHERE id = ?",
+    [seriesId]
+  );
   if (!seriesRows.length || Number(seriesRows[0].supervisor_id) !== Number(supervisorId)) {
     return { error: "Session not found" };
   }
@@ -429,11 +465,18 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
   // Same "resolved once, applied to the series row and every day" shape as
   // effectiveType below -- omitted (undefined/null) keeps the series' (and
   // therefore every day's) current provider rather than resetting it.
-  const effectiveProvidedBy = providedBySupervisorId != null ? Number(providedBySupervisorId) : seriesRows[0].provided_by_supervisor_id;
+  const effectiveProvider =
+    providedBySupervisorId != null || providedByGuestTrainerId != null || providedByExternalTrainerId != null
+      ? providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId)
+      : {
+          supervisorId: seriesRows[0].provided_by_supervisor_id,
+          guestTrainerId: seriesRows[0].provided_by_guest_trainer_id,
+          externalTrainerId: seriesRows[0].provided_by_external_trainer_id,
+        };
 
   await db.query(
-    `UPDATE session_series SET session_type = COALESCE(?, session_type), title = ?, notes = ?, provided_by_supervisor_id = ?, updated_at = NOW() WHERE id = ?`,
-    [sessionType || null, title || null, notes || null, effectiveProvidedBy, seriesId]
+    `UPDATE session_series SET session_type = COALESCE(?, session_type), title = ?, notes = ?, provided_by_supervisor_id = ?, provided_by_guest_trainer_id = ?, provided_by_external_trainer_id = ?, updated_at = NOW() WHERE id = ?`,
+    [sessionType || null, title || null, notes || null, effectiveProvider.supervisorId, effectiveProvider.guestTrainerId, effectiveProvider.externalTrainerId, seriesId]
   );
 
   // Resolved once, up front, so every day -- existing or brand-new -- gets
@@ -452,7 +495,7 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
     // Same per-day override as createMultiDaySession -- a day with its own
     // providedBySupervisorId keeps/sets that specific provider; a day with
     // none falls back to the series-wide value just resolved above.
-    const dayProvidedBySupervisorId = day.providedBySupervisorId != null ? Number(day.providedBySupervisorId) : effectiveProvidedBy;
+    const dayProvider = dayProviderPair(day, effectiveProvider);
     if (day.occasionId && existingIds.has(Number(day.occasionId))) {
       const result = await updateSessionOccasion(db, {
         occasionId: Number(day.occasionId),
@@ -463,7 +506,9 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
         title: title,
         notes: notes,
         sessionType: effectiveType,
-        providedBySupervisorId: dayProvidedBySupervisorId,
+        providedBySupervisorId: dayProvider.supervisorId,
+        providedByGuestTrainerId: dayProvider.guestTrainerId,
+        providedByExternalTrainerId: dayProvider.externalTrainerId,
       });
       if (result.error) return { error: `Day ${day.date}: ${result.error}` };
       keptIds.add(Number(day.occasionId));
@@ -478,7 +523,9 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
         notes,
         studentIds,
         seriesId,
-        providedBySupervisorId: dayProvidedBySupervisorId,
+        providedBySupervisorId: dayProvider.supervisorId,
+        providedByGuestTrainerId: dayProvider.guestTrainerId,
+        providedByExternalTrainerId: dayProvider.externalTrainerId,
       });
       if (result.error) return { error: `Day ${day.date}: ${result.error}` };
       keptIds.add(result.occasionId);
@@ -494,6 +541,25 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
   }
 
   return { updated: true };
+}
+
+/**
+ * Normalizes a provider choice to exactly one kind: a Guest Trainer
+ * (migration 038) or an External Trainer (migration 039) clears the other
+ * two columns. Callers have already rejected requests naming more than one.
+ */
+function providerPair(supervisorId, guestTrainerId, externalTrainerId = null) {
+  if (guestTrainerId != null) return { supervisorId: null, guestTrainerId: Number(guestTrainerId), externalTrainerId: null };
+  if (externalTrainerId != null) return { supervisorId: null, guestTrainerId: null, externalTrainerId: Number(externalTrainerId) };
+  return { supervisorId: supervisorId != null ? Number(supervisorId) : null, guestTrainerId: null, externalTrainerId: null };
+}
+
+/** A day's own provider override (internal, guest, or external), else the series-wide one. */
+function dayProviderPair(day, fallback) {
+  if (day && day.providedByGuestTrainerId != null) return providerPair(null, day.providedByGuestTrainerId);
+  if (day && day.providedByExternalTrainerId != null) return providerPair(null, null, day.providedByExternalTrainerId);
+  if (day && day.providedBySupervisorId != null) return providerPair(day.providedBySupervisorId, null);
+  return fallback;
 }
 
 async function currentSeriesType(db, seriesId) {

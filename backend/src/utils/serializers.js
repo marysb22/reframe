@@ -276,6 +276,10 @@ function toRecord(row) {
     score: row.score,
     supervisorId: row.supervisor_id,
     supervisorName: row.supervisor_name,
+    // Session rows only: who actually delivered it (may differ from
+    // supervisorName, who logged it) -- undefined for other record types.
+    providedByName: row.provided_by_name ?? undefined,
+    providedByKind: row.provided_by_kind ?? undefined,
     createdAt: row.created_at,
     hourTypeCode: row.hour_type_code,
     // Session-type rows only: the linked attendance row's real status/
@@ -526,7 +530,7 @@ async function computeHoursByType(db, { studentId, supervisorId } = {}) {
                               ELSE 0 END / 60 AS hours
                   FROM sessions s
                   JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-                  WHERE COALESCE(s.provided_by_supervisor_id, s.supervisor_id) = ? AND s.status != 'cancelled' AND s.occasion_id IS NULL
+                  WHERE IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL) = ? AND s.status != 'cancelled' AND s.occasion_id IS NULL
 
                   UNION ALL
 
@@ -534,7 +538,7 @@ async function computeHoursByType(db, { studentId, supervisorId } = {}) {
                   -- exactly once, never once per attendee.
                   SELECT so.session_type AS code, so.duration_minutes / 60 AS hours
                   FROM session_occasions so
-                  WHERE COALESCE(so.provided_by_supervisor_id, so.supervisor_id) = ?
+                  WHERE IF(so.provided_by_guest_trainer_id IS NULL AND so.provided_by_external_trainer_id IS NULL, COALESCE(so.provided_by_supervisor_id, so.supervisor_id), NULL) = ?
                     AND EXISTS (
                       SELECT 1 FROM sessions s2
                       JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')

@@ -1,3 +1,5 @@
+const { providerNameSql } = require("./guestTrainers");
+
 /**
  * The old schema stored attendance/sessions/hours/assignments/notes/
  * evaluations as one flexible student_records table with a `record_type`
@@ -25,7 +27,8 @@ function buildRecordsQuery(studentId, recordType) {
   const sql = `
     SELECT id, student_id, supervisor_id, record_type, record_date, record_time,
            duration_minutes, status, title, content, score, created_at, hour_type_code,
-           attendance_status, attendance_minutes_completed, attachment_filename, attachment_original_name
+           attendance_status, attendance_minutes_completed, attachment_filename, attachment_original_name,
+           provided_by_name, provided_by_kind
     FROM (
       SELECT s.id, s.student_id, s.supervisor_id,
              CASE
@@ -37,7 +40,14 @@ function buildRecordsQuery(studentId, recordType) {
              s.duration_minutes, s.status, s.title, s.notes AS content, CAST(NULL AS DECIMAL(5,2)) AS score, s.created_at,
              s.session_type AS hour_type_code,
              a.status AS attendance_status, a.minutes_completed AS attendance_minutes_completed,
-             CAST(NULL AS CHAR) AS attachment_filename, CAST(NULL AS CHAR) AS attachment_original_name
+             CAST(NULL AS CHAR) AS attachment_filename, CAST(NULL AS CHAR) AS attachment_original_name,
+             -- Who actually DELIVERED this row (migrations 035/038/039) --
+             -- distinct from supervisor_id (who logged it). Each day of a
+             -- multi-day Session is its own row with its own provider.
+             ${providerNameSql("s")} AS provided_by_name,
+             CASE WHEN s.provided_by_external_trainer_id IS NOT NULL THEN 'external'
+                  WHEN s.provided_by_guest_trainer_id IS NOT NULL THEN 'guest'
+                  ELSE 'internal' END AS provided_by_kind
       FROM sessions s LEFT JOIN attendance a ON a.session_id = s.id
       WHERE s.student_id = ?
 
@@ -45,7 +55,8 @@ function buildRecordsQuery(studentId, recordType) {
 
       SELECT a.id, a.student_id, a.supervisor_id, 'attendance' AS record_type,
              a.attendance_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), a.status, CAST(NULL AS CHAR), a.notes, CAST(NULL AS DECIMAL(5,2)), a.created_at,
-             CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR)
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR),
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR)
       FROM attendance a WHERE a.student_id = ?
 
       UNION ALL
@@ -53,7 +64,8 @@ function buildRecordsQuery(studentId, recordType) {
       SELECT th.id, th.student_id, th.supervisor_id, 'training_hours' AS record_type,
              th.hour_date, CAST(NULL AS TIME), CAST(ROUND(th.hours * 60) AS SIGNED) AS duration_minutes,
              CAST(NULL AS CHAR), CAST(NULL AS CHAR), th.description, CAST(NULL AS DECIMAL(5,2)), th.created_at,
-             CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR)
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR),
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR)
       FROM training_hours th WHERE th.student_id = ?
 
       UNION ALL
@@ -61,14 +73,16 @@ function buildRecordsQuery(studentId, recordType) {
       SELECT sh.id, sh.student_id, sh.supervisor_id, 'supervision_hours' AS record_type,
              sh.hour_date, CAST(NULL AS TIME), CAST(ROUND(sh.hours * 60) AS SIGNED) AS duration_minutes,
              CAST(NULL AS CHAR), CAST(NULL AS CHAR), sh.description, CAST(NULL AS DECIMAL(5,2)), sh.created_at,
-             CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR)
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR),
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR)
       FROM supervision_hours sh WHERE sh.student_id = ?
 
       UNION ALL
 
       SELECT asg.id, asg.student_id, asg.supervisor_id, 'assignment' AS record_type,
              asg.due_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), asg.status, asg.title, asg.description, CAST(NULL AS DECIMAL(5,2)), asg.created_at,
-             CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR)
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR),
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR)
       FROM assignments asg WHERE asg.student_id = ?
 
       UNION ALL
@@ -76,14 +90,16 @@ function buildRecordsQuery(studentId, recordType) {
       SELECT n.id, n.student_id, n.supervisor_id, 'note' AS record_type,
              n.note_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR), n.content, CAST(NULL AS DECIMAL(5,2)), n.created_at,
              CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED),
-             n.attachment_filename, n.attachment_original_name
+             n.attachment_filename, n.attachment_original_name,
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR)
       FROM supervisor_notes n WHERE n.student_id = ?
 
       UNION ALL
 
       SELECT ev.id, ev.student_id, ev.supervisor_id, 'evaluation' AS record_type,
              ev.evaluation_date, CAST(NULL AS TIME), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), ev.title, ev.content, ev.score, ev.created_at,
-             CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR)
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR),
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR)
       FROM evaluations ev WHERE ev.student_id = ?
 
       UNION ALL
@@ -99,7 +115,8 @@ function buildRecordsQuery(studentId, recordType) {
       SELECT tha.id, tha.student_id, tha.added_by, 'hour_adjustment' AS record_type,
              DATE(tha.created_at), CAST(NULL AS TIME), CAST(ROUND(tha.hours * 60) AS SIGNED) AS duration_minutes,
              tha.hour_type, tha.reason, tha.notes, CAST(NULL AS DECIMAL(5,2)), tha.created_at,
-             tha.hour_type, CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR)
+             tha.hour_type, CAST(NULL AS CHAR), CAST(NULL AS SIGNED), CAST(NULL AS CHAR), CAST(NULL AS CHAR),
+             CAST(NULL AS CHAR), CAST(NULL AS CHAR)
       FROM trainee_hour_adjustments tha WHERE tha.student_id = ?
     ) combined
     ${recordType ? "WHERE record_type = ?" : ""}

@@ -25,7 +25,15 @@ async function createTotSessionOccasion(db, params) {
   // so there's no other eligible provider to select yet. Carried through
   // for schema/UI symmetry with the trainee-facing sessions and so Session
   // Details can show Created By/Hours Provided By consistently everywhere.
-  const { masterTrainerId, title, date, time, durationMinutes, notes, totIds, providedBySupervisorId = masterTrainerId } = params;
+  const { masterTrainerId, title, date, time, durationMinutes, notes, totIds, providedBySupervisorId = masterTrainerId, providedByGuestTrainerId = null, providedByExternalTrainerId = null } = params;
+  // A Guest Trainer (migration 038) may deliver this ToT session instead --
+  // mutually exclusive with the internal provider column, same rule as
+  // groupSessions.js, so the session is never credited to the Master
+  // Trainer's account when an external trainer actually delivered it.
+  // An External Trainer (migration 039) is a third, equally exclusive kind.
+  const providerSupervisorId = providedByGuestTrainerId != null || providedByExternalTrainerId != null ? null : providedBySupervisorId;
+  const providerGuestTrainerId = providedByGuestTrainerId != null ? Number(providedByGuestTrainerId) : null;
+  const providerExternalTrainerId = providerGuestTrainerId == null && providedByExternalTrainerId != null ? Number(providedByExternalTrainerId) : null;
 
   if (!date) return { error: "date is required" };
   if (!Number.isFinite(Number(durationMinutes)) || Number(durationMinutes) < 0) {
@@ -47,9 +55,9 @@ async function createTotSessionOccasion(db, params) {
   if (dupeRows.length) return { error: "This looks like a duplicate of a session just logged. Refresh and check the list before retrying." };
 
   const occasionInsert = await db.query(
-    `INSERT INTO tot_session_occasions (master_trainer_id, provided_by_supervisor_id, title, session_date, session_time, duration_minutes, notes)
-     VALUES (?,?,?,?,?,?,?)`,
-    [masterTrainerId, providedBySupervisorId, title || null, date, time || null, Number(durationMinutes), notes || null]
+    `INSERT INTO tot_session_occasions (master_trainer_id, provided_by_supervisor_id, provided_by_guest_trainer_id, provided_by_external_trainer_id, title, session_date, session_time, duration_minutes, notes)
+     VALUES (?,?,?,?,?,?,?,?,?)`,
+    [masterTrainerId, providerSupervisorId, providerGuestTrainerId, providerExternalTrainerId, title || null, date, time || null, Number(durationMinutes), notes || null]
   );
   const occasionId = occasionInsert.insertId;
 
@@ -61,9 +69,9 @@ async function createTotSessionOccasion(db, params) {
     seen.add(totId);
 
     const sessionInsert = await db.query(
-      `INSERT INTO tot_training_sessions (tot_id, master_trainer_id, provided_by_supervisor_id, title, session_date, session_time, duration_minutes, notes, status, occasion_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [totId, masterTrainerId, providedBySupervisorId, title || null, date, time || null, Number(durationMinutes), notes || null, isFuture ? "scheduled" : "completed", occasionId]
+      `INSERT INTO tot_training_sessions (tot_id, master_trainer_id, provided_by_supervisor_id, provided_by_guest_trainer_id, provided_by_external_trainer_id, title, session_date, session_time, duration_minutes, notes, status, occasion_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [totId, masterTrainerId, providerSupervisorId, providerGuestTrainerId, providerExternalTrainerId, title || null, date, time || null, Number(durationMinutes), notes || null, isFuture ? "scheduled" : "completed", occasionId]
     );
     created.push({ totId, sessionId: sessionInsert.insertId });
   }

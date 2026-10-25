@@ -2257,55 +2257,103 @@
             gap: 12px;
         }
 
+        /* Group Session form: "Shared Training Information" + one card per
+           "Training Day" -- each day has its own date, hours, optional time and
+           "Delivered by", so a multi-day training split between trainers is
+           recorded exactly as it happened. Logical properties (inline-start/
+           end) keep the layout correct in RTL. */
+        .gs-section {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px 14px;
+            margin: 0 0 14px;
+            min-width: 0;
+        }
+        .gs-section-title {
+            font-size: 13px;
+            font-weight: 700;
+            padding: 0 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .gs-section-hint {
+            margin: 0 0 10px;
+            font-size: 12px;
+            color: var(--muted);
+        }
         .gs-day-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1.3fr auto;
-            gap: 10px;
-            align-items: end;
+            border: 1px solid var(--border);
+            border-inline-start: 4px solid var(--primary, #4a8f8c);
+            border-radius: 10px;
+            background: var(--surface-2, var(--surface));
+            padding: 10px 12px;
             margin-bottom: 10px;
         }
-
+        .gs-day-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            min-width: 0;
+        }
+        .gs-day-badge {
+            font-weight: 700;
+            font-size: 12.5px;
+            white-space: nowrap;
+        }
+        .gs-day-who {
+            flex: 1;
+            min-width: 0;
+            font-size: 12px;
+            color: var(--muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .gs-day-fields {
+            display: grid;
+            grid-template-columns: 1fr 0.7fr 0.9fr 1.4fr;
+            gap: 10px;
+            align-items: end;
+        }
+        .gs-day-fields > div {
+            min-width: 0;
+        }
         .gs-day-row label {
             font-size: 11px;
             margin: 0 0 4px;
         }
-
         .gs-day-remove {
-            width: 38px;
-            height: 38px;
+            width: 34px;
+            height: 34px;
+            flex: none;
             border-radius: 9px;
             border: 1px solid var(--border);
             background: var(--surface);
             color: var(--danger);
             cursor: pointer;
         }
-
-        /* An equal 1fr 1fr 1fr looks fair on paper, but a native <input
-           type="date"> or type="time"> refuses to shrink below its own
-           built-in picker UI's width, while a plain <input type="number">
-           (Hours) has no such floor -- so under real narrow-viewport
-           pressure, Date and Time claim their required minimum first and
-           Hours gets whatever's left, confirmed directly to collapse to
-           ~32px (barely one digit) at a 390px phone width, distorting the
-           whole row's spacing including where Time visually lands. Below
-           480px, stack each field on its own full-width row instead of
-           forcing three native pickers plus a delete button into one --
-           the desktop 3-up layout above is untouched. */
+        .gs-provider-summary {
+            font-size: 12.5px;
+            color: var(--muted);
+            margin-top: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 14px;
+        }
+        .gs-provider-summary strong {
+            color: var(--text);
+        }
+        /* A native date/time picker refuses to shrink below its own UI width,
+           so on tablets the four day fields go 2-up, and on phones each field
+           gets its own full-width line. */
+        @media (max-width: 760px) {
+            .gs-day-fields { grid-template-columns: 1fr 1fr; }
+        }
         @media (max-width: 480px) {
-            .gs-day-row {
-                grid-template-columns: 1fr auto;
-                grid-template-areas:
-                    "date remove"
-                    "hours remove"
-                    "time remove"
-                    "provider remove";
-                row-gap: 8px;
-            }
-            .gs-day-row > div:nth-child(2) { grid-area: date; }
-            .gs-day-row > div:nth-child(3) { grid-area: hours; }
-            .gs-day-row > div:nth-child(4) { grid-area: time; }
-            .gs-day-row > div:nth-child(5) { grid-area: provider; }
-            .gs-day-remove { grid-area: remove; align-self: center; }
+            .gs-day-fields { grid-template-columns: 1fr; row-gap: 8px; }
+            .gs-section { padding: 10px 10px 12px; }
         }
 
         .record-form label {
@@ -3992,6 +4040,30 @@
                     <div id="groupTraineesList">
                         <div class="empty-state">Loading group...</div>
                     </div>
+
+                    <!-- Guest Trainers (migration 038): external trainers
+                         associated with this Group. Association only -- they
+                         get no login and no access; it makes them selectable
+                         as "Hours Provided By" on this Group's Sessions. -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 8px;">
+                        <h3 style="margin:0;font-size:14px;">Guest Trainers</h3>
+                        <button type="button" class="btn" style="width:auto;" onclick="openGuestTrainerModal()"><i class="fa fa-user-plus"></i>Add Guest Trainer</button>
+                    </div>
+                    <p class="card-subtitle" style="margin-top:0;">External trainers who deliver Sessions for this Group. They are not TOTs or Master Trainers and have no access to Reframe.</p>
+                    <div id="groupGuestTrainersList">
+                        <div class="empty-state">Loading guest trainers...</div>
+                    </div>
+
+                    <!-- External Trainers (migration 039): a separate kind
+                         from Guest Trainers -- trainers from outside the
+                         organization recorded on a Session ("+ Add External
+                         Trainer (outside organization)" in Hours Provided By).
+                         Not part of this Group's roster; no access. -->
+                    <h3 style="margin:22px 0 8px;font-size:14px;">External Trainers</h3>
+                    <p class="card-subtitle" style="margin-top:0;">Trainers from outside the organization recorded as the provider of one of this Group's Sessions. They are not Guest Trainers, are not on the Group's roster, and have no access to Reframe.</p>
+                    <div id="groupExternalTrainersList">
+                        <div class="empty-state">Loading external trainers...</div>
+                    </div>
                 </section>
             </section>
 
@@ -4964,6 +5036,59 @@
          Group at once -- Attendance is a separate step afterward, see the
          Group Sessions list + shared attendanceModal below. See
          POST /master-trainer/group-sessions). -->
+    <!-- EDIT EXTERNAL TRAINER (migration 039) -->
+    <div class="modal-overlay" id="editExternalTrainerModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('editExternalTrainerModal')">&times;</button>
+            <h3>Edit External Trainer</h3>
+            <form id="editExternalTrainerForm" novalidate>
+                <input type="hidden" id="eetId" value="">
+                <div class="record-form-grid">
+                    <div><label>Full name</label><input type="text" id="eetFullName" dir="auto" maxlength="255" autocomplete="off"></div>
+                    <div><label>Organization</label><input type="text" id="eetOrganization" dir="auto" maxlength="255" autocomplete="off"></div>
+                    <div><label>Specialization <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="text" id="eetSpecialization" dir="auto" maxlength="255" autocomplete="off"></div>
+                    <div><label>Email <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="email" id="eetEmail" dir="ltr" maxlength="255" autocomplete="off"></div>
+                    <div><label>Phone <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="tel" id="eetPhone" dir="ltr" maxlength="50" autocomplete="off"></div>
+                </div>
+                <p id="eetError" role="alert" style="display:none;color:var(--danger, #c0392b);font-size:13px;margin:8px 0 0;"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editExternalTrainerModal')">Cancel</button>
+                    <button type="submit" class="btn" id="eetSubmit">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD / EDIT GUEST TRAINER (migration 038) -->
+    <div class="modal-overlay" id="guestTrainerModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeModal('guestTrainerModal')">&times;</button>
+            <h3 id="gtModalTitle">Add Guest Trainer</h3>
+            <p class="card-subtitle" style="margin-top:0;">No account is created. A Guest Trainer can be selected as "Hours Provided By" on your Group's Sessions and gets no access to the system.</p>
+            <form id="guestTrainerForm" novalidate>
+                <input type="hidden" id="gtEditId" value="">
+                <div id="gtPromoteWrap" style="display:none;">
+                    <label>Already recorded for a Session</label>
+                    <select id="gtPromoteSelect"></select>
+                </div>
+                <div id="gtFieldsWrap">
+                    <div class="record-form-grid">
+                        <div><label>Full name</label><input type="text" id="gtFullName" dir="auto" maxlength="255" autocomplete="off"></div>
+                        <div><label>Organization <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="text" id="gtOrganization" dir="auto" maxlength="255" autocomplete="off"></div>
+                        <div><label>Email <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="email" id="gtEmail" dir="ltr" maxlength="255" autocomplete="off"></div>
+                        <div><label>Phone <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="tel" id="gtPhone" dir="ltr" maxlength="50" autocomplete="off"></div>
+                        <div><label>Specialization <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="text" id="gtSpecialization" dir="auto" maxlength="255" autocomplete="off"></div>
+                    </div>
+                </div>
+                <p id="gtError" role="alert" style="display:none;color:var(--danger, #c0392b);font-size:13px;margin:8px 0 0;"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('guestTrainerModal')">Cancel</button>
+                    <button type="submit" class="btn" id="gtSubmit">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="groupSessionModal">
         <div class="modal-box wide">
             <button class="close-modal" onclick="closeModal('groupSessionModal')">&times;</button>
@@ -4972,24 +5097,34 @@
             <form id="groupSessionForm">
                 <input type="hidden" id="gsEditOccasionId" value="">
                 <input type="hidden" id="gsEditSeriesId" value="">
-                <div class="record-form-grid">
-                    <div><label>Session Title</label><input type="text" id="gsTitle" dir="auto" required></div>
-                    <div><label>Session Type</label><select id="gsType" required></select></div>
-                    <div><label title="Whose delivered hours this session counts toward">Hours Provided By</label><select id="gsProvidedBy" required></select></div>
-                    <div><label>Attachment <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="file" id="gsAttachment" accept=".pdf,.doc,.docx,image/*"></div>
-                </div>
+                <!-- Shared Training Information -- applies to the whole Session (every
+                     day). Who delivered each day is NOT here: it's chosen per day below,
+                     so a Session split between trainers is recorded as it happened. -->
+                <fieldset class="gs-section">
+                    <legend class="gs-section-title"><i class="fa fa-layer-group"></i> Shared Training Information</legend>
+                    <p class="gs-section-hint">Applies to the whole training, on every day.</p>
+                    <div class="record-form-grid">
+                        <div><label>Session Title</label><input type="text" id="gsTitle" dir="auto" required></div>
+                        <div><label>Session Type</label><select id="gsType" required></select></div>
+                        <div><label>Attachment <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="file" id="gsAttachment" accept=".pdf,.doc,.docx,image/*"></div>
+                    </div>
+                    <label>Notes <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+                    <textarea id="gsNotes" dir="auto"></textarea>
+                    <!-- Session-wide default provider (session_series.provided_by_*),
+                         kept in sync with Day 1 on save -- not shown: each day's own
+                         "Delivered by" below is what's recorded and attributed. -->
+                    <select id="gsProvidedBy" hidden aria-hidden="true" tabindex="-1"></select>
+                </fieldset>
 
-                <!-- One row per day -- a normal Session is just one row,
-                     exactly as before; "+ Add another day" turns this into a
-                     multi-day Session (e.g. 5 days x 5h = 25h total), each
-                     day keeping its own date/hours and, later, its own
-                     independent Attendance. -->
-                <label>Day(s)</label>
-                <div id="gsDaysList"></div>
-                <button type="button" class="btn btn-secondary" style="width:auto;margin-bottom:14px;" onclick="addSessionDayRow()"><i class="fa fa-plus"></i> Add another day</button>
-
-                <label>Notes <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
-                <textarea id="gsNotes" dir="auto"></textarea>
+                <!-- Training Days -- one card per day, each with its own date, hours,
+                     optional start time and the trainer who actually delivered it. -->
+                <fieldset class="gs-section">
+                    <legend class="gs-section-title"><i class="fa fa-calendar-days"></i> Training Days</legend>
+                    <p class="gs-section-hint">Each day keeps its own date, hours and the trainer who actually delivered it. Add a day for a multi-day training.</p>
+                    <div id="gsDaysList"></div>
+                    <button type="button" class="btn btn-secondary" style="width:auto;margin-bottom:14px;" onclick="addSessionDayRow()"><i class="fa fa-plus"></i> Add another day</button>
+                    <div id="gsProviderSummary" class="gs-provider-summary" aria-live="polite"></div>
+                </fieldset>
 
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('groupSessionModal')">Cancel</button>
@@ -5055,6 +5190,7 @@
                     <div><label>Date</label><input type="date" id="gtsDate" required></div>
                     <div><label>Starting Time <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="time" id="gtsTime"></div>
                     <div><label>Number of Hours</label><input type="number" min="0" step="0.25" id="gtsHours" required></div>
+                    <div><label title="Who actually delivered this Session">Delivered By</label><select id="gtsProvidedBy" required></select></div>
                 </div>
                 <label>Notes <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
                 <textarea id="gtsNotes"></textarea>
@@ -5106,6 +5242,7 @@
     </div>
 
     <script src="scripts/api-config.js"></script>
+    <script src="scripts/guest-providers.js"></script>
     <script src="scripts/charts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
     <script>
@@ -5469,16 +5606,13 @@
         }
 
         // "Hours Provided By" breakdown (migration 035) -- one row per
-        // Group member (herself + every ToT) plus a bold total, matching
-        // GET /supervisor/me/group-training-breakdown exactly. Also warms
-        // the gsProvidedByRoster cache the Add/Edit Session modal uses, so
-        // opening that modal right after the dashboard loads doesn't need
-        // its own round trip.
+        // Group member (herself + every ToT), then the Group's Guest
+        // Trainers (migration 038), plus a bold total, matching
+        // GET /supervisor/me/group-training-breakdown exactly.
         async function loadProviderBreakdown() {
             const wrap = document.getElementById("providerBreakdownList");
             const data = await apiRequest("/supervisor/me/group-training-breakdown");
             if (!data) return;
-            gsProvidedByRoster = data.breakdown;
             if (!data.breakdown.length) {
                 wrap.innerHTML = '<div class="empty-state">No Group members yet.</div>';
                 return;
@@ -5497,6 +5631,15 @@
         </div>`;
         }
 
+        // Shown next to "who logged it" (trainerName) only when someone else
+        // actually delivered the Session -- a teammate or an external Guest
+        // Trainer (migration 035/038).
+        function deliveredByHtml(item) {
+            if (!item || !item.providedByName) return "";
+            if (!item.providedByIsGuest && !item.providedByIsExternal && item.providedByName === item.trainerName) return "";
+            return ` <span style="color:var(--muted);font-size:11.5px;" dir="auto">&middot; delivered by ${escapeHtml(GuestProviders.deliveredByText(item))}</span>`;
+        }
+
         async function loadSchedule() {
             const data = await apiRequest("/master-trainer/schedule");
             const list = document.getElementById("scheduleList");
@@ -5512,7 +5655,7 @@
             list.innerHTML = items.map((i) => `
         <li class="sched-item">
           <div class="sched-time">${i.time || "--:--"}<small>${i.isToday ? "Today" : i.date}</small></div>
-          <div class="sinfo"><strong>${escapeHtml(i.title || (i.recordType === "training_session" ? "Training activity" : "Supervision activity"))}</strong><span>${escapeHtml(i.studentName)} &middot; with ${escapeHtml(i.trainerName)}</span></div>
+          <div class="sinfo"><strong>${escapeHtml(i.title || (i.recordType === "training_session" ? "Training activity" : "Supervision activity"))}</strong><span>${escapeHtml(i.studentName)} &middot; with ${escapeHtml(i.trainerName)}${deliveredByHtml(i)}</span></div>
           <span class="sched-badge ${i.recordType}">${i.recordType === "training_session" ? "Training" : "Supervision"}</span>
         </li>`).join("");
         }
@@ -5762,7 +5905,229 @@
 
         // ---- My Group ---------------------------------------------------------
 
+        // ---- Guest Trainers (migration 038) -------------------------------
+        // External trainers associated with this Group. Removing one only
+        // removes the association -- the person and every Session they
+        // delivered keep their history and hours attribution.
+        let guestTrainerData = { guestTrainers: [], sessionOnly: [] };
+        async function loadGuestTrainers() {
+            const wrap = document.getElementById("groupGuestTrainersList");
+            wrap.innerHTML = '<div class="empty-state">Loading guest trainers...</div>';
+            const data = await apiRequest("/master-trainer/guest-trainers");
+            if (!data) {
+                wrap.innerHTML = '<div class="empty-state">Couldn\'t load Guest Trainers. Please try again.</div>';
+                return;
+            }
+            guestTrainerData = data;
+            if (!data.guestTrainers.length) {
+                wrap.innerHTML = '<div class="empty-state">No Guest Trainers yet. Use "Add Guest Trainer" to add an external trainer to this Group.</div>';
+                return;
+            }
+            wrap.innerHTML = data.guestTrainers
+                .map((g) => {
+                    const meta =
+                        g.kind === "internal"
+                            ? [g.role, g.homeGroupName ? `from ${g.homeGroupName}` : "", g.memberCode].filter(Boolean)
+                            : [g.organization, g.specialization, g.email, g.phone].filter(Boolean);
+                    const actions =
+                        g.kind === "external"
+                            ? `<button type="button" class="icon-btn" title="Edit details" data-gt-edit="${g.guestTrainerId}"><i class="fa fa-pen"></i></button>`
+                            : "";
+                    return `
+        <div class="mt-tot-card" style="cursor:default;">
+          <div class="avatar-circle">${escapeHtml(initials(g.fullName))}</div>
+          <div style="flex:1;min-width:0;">
+            <strong dir="auto">${escapeHtml(g.fullName)}</strong> <span class="pill">${g.kind === "internal" ? "Reframe trainer" : "Guest Trainer"}</span>
+            <div class="mt-tot-stats">${meta.map((m) => `<span dir="auto" style="overflow-wrap:anywhere;">${escapeHtml(m)}</span>`).join("")}</div>
+          </div>
+          ${actions}
+          <button type="button" class="icon-btn danger" title="Remove from this Group" data-gt-remove="${g.associationId}" data-gt-name="${escapeHtml(g.fullName)}"><i class="fa fa-user-minus"></i></button>
+        </div>`;
+                })
+                .join("");
+        }
+        document.getElementById("groupGuestTrainersList").addEventListener("click", (e) => {
+            const edit = e.target.closest("[data-gt-edit]");
+            if (edit) return openGuestTrainerModal(Number(edit.dataset.gtEdit));
+            const remove = e.target.closest("[data-gt-remove]");
+            if (remove) removeGuestTrainer(Number(remove.dataset.gtRemove), remove.dataset.gtName);
+        });
+
+        function openGuestTrainerModal(editGuestTrainerId) {
+            const form = document.getElementById("guestTrainerForm");
+            form.reset();
+            document.getElementById("gtError").style.display = "none";
+            const editing = editGuestTrainerId ? guestTrainerData.guestTrainers.find((g) => g.guestTrainerId === editGuestTrainerId) : null;
+            document.getElementById("gtEditId").value = editing ? editing.guestTrainerId : "";
+            document.getElementById("gtModalTitle").textContent = editing ? "Edit Guest Trainer" : "Add Guest Trainer";
+            // Someone already recorded as a one-off Session provider can be
+            // promoted to a Group Guest Trainer instead of being re-typed
+            // (and duplicated).
+            const promoteWrap = document.getElementById("gtPromoteWrap");
+            const promote = document.getElementById("gtPromoteSelect");
+            if (!editing && guestTrainerData.sessionOnly.length) {
+                promote.innerHTML =
+                    '<option value="">— Enter a new person below —</option>' +
+                    guestTrainerData.sessionOnly
+                        .map((g) => `<option value="${g.guestTrainerId}" dir="auto">${escapeHtml(g.fullName)}${g.organization ? ` (${escapeHtml(g.organization)})` : ""}</option>`)
+                        .join("");
+                promoteWrap.style.display = "block";
+            } else {
+                promote.innerHTML = "";
+                promoteWrap.style.display = "none";
+            }
+            document.getElementById("gtFieldsWrap").style.display = "block";
+            if (editing) {
+                document.getElementById("gtFullName").value = editing.fullName || "";
+                document.getElementById("gtOrganization").value = editing.organization || "";
+                document.getElementById("gtEmail").value = editing.email || "";
+                document.getElementById("gtPhone").value = editing.phone || "";
+                document.getElementById("gtSpecialization").value = editing.specialization || "";
+            }
+            openModal("guestTrainerModal");
+        }
+        document.getElementById("gtPromoteSelect").addEventListener("change", (e) => {
+            document.getElementById("gtFieldsWrap").style.display = e.target.value ? "none" : "block";
+        });
+
+        document.getElementById("guestTrainerForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const err = document.getElementById("gtError");
+            const showError = (msg) => {
+                err.textContent = msg;
+                err.style.display = "block";
+            };
+            const editId = document.getElementById("gtEditId").value;
+            const promoteId = document.getElementById("gtPromoteSelect").value;
+            const body = {
+                fullName: document.getElementById("gtFullName").value.trim(),
+                organization: document.getElementById("gtOrganization").value.trim(),
+                email: document.getElementById("gtEmail").value.trim(),
+                phone: document.getElementById("gtPhone").value.trim(),
+                specialization: document.getElementById("gtSpecialization").value.trim(),
+            };
+            if (!promoteId) {
+                if (body.fullName.length < 2) return showError("Please enter the trainer's full name.");
+                if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) return showError("Please enter a valid email address, or leave it empty.");
+            }
+            const btn = document.getElementById("gtSubmit");
+            btn.disabled = true;
+            btn.textContent = "Saving…";
+            try {
+                const result = editId
+                    ? await apiRequest(`/master-trainer/guest-trainers/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+                    : await apiRequest("/master-trainer/guest-trainers", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(promoteId ? { guestTrainerId: Number(promoteId) } : body),
+                      });
+                if (!result) return;
+                closeModal("guestTrainerModal");
+                showSuccessNotification(editId ? "Guest Trainer Updated" : "Guest Trainer Added", editId ? "The details have been saved." : `${result.fullName} can now be selected as "Hours Provided By" on your Group's Sessions.`);
+                await GuestProviders.loadProviders(true);
+                loadGuestTrainers();
+                loadProviderBreakdown();
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Save";
+            }
+        });
+
+        async function removeGuestTrainer(associationId, name) {
+            if (!confirm(`Remove ${name} from this Group's Guest Trainers? Sessions they already delivered keep their history and hours.`)) return;
+            const result = await apiRequest(`/master-trainer/guest-trainers/associations/${associationId}`, { method: "DELETE" });
+            if (!result) return;
+            showToast(`${name} removed from Guest Trainers`, "success");
+            await GuestProviders.loadProviders(true);
+            loadGuestTrainers();
+            loadProviderBreakdown();
+        }
+
+        // ---- External Trainers (migration 039) -----------------------------
+        // Read + edit only: they're recorded from a Session's "Hours Provided
+        // By", and can't be deleted (their delivered Sessions keep them).
+        let externalTrainerList = [];
+        async function loadExternalTrainers() {
+            const wrap = document.getElementById("groupExternalTrainersList");
+            wrap.innerHTML = '<div class="empty-state">Loading external trainers...</div>';
+            const data = await apiRequest("/supervisor/external-trainers");
+            if (!data) {
+                wrap.innerHTML = '<div class="empty-state">Couldn\'t load External Trainers. Please try again.</div>';
+                return;
+            }
+            externalTrainerList = data.externalTrainers;
+            if (!externalTrainerList.length) {
+                wrap.innerHTML = '<div class="empty-state">No External Trainers recorded yet. Choose "+ Add External Trainer (outside organization)" in a Session\'s "Hours Provided By" to record one.</div>';
+                return;
+            }
+            wrap.innerHTML = externalTrainerList
+                .map((t) => {
+                    const meta = [t.organization, t.specialization, t.email, t.phone, `${t.sessionsDelivered} Session${t.sessionsDelivered === 1 ? "" : "s"} delivered`].filter(Boolean);
+                    return `
+        <div class="mt-tot-card" style="cursor:default;">
+          <div class="avatar-circle">${escapeHtml(initials(t.fullName))}</div>
+          <div style="flex:1;min-width:0;">
+            <strong dir="auto">${escapeHtml(t.fullName)}</strong> <span class="pill">External Trainer</span>
+            <div class="mt-tot-stats">${meta.map((m) => `<span dir="auto" style="overflow-wrap:anywhere;">${escapeHtml(m)}</span>`).join("")}</div>
+          </div>
+          <button type="button" class="icon-btn" title="Edit details" data-et-edit="${t.externalTrainerId}"><i class="fa fa-pen"></i></button>
+        </div>`;
+                })
+                .join("");
+        }
+        document.getElementById("groupExternalTrainersList").addEventListener("click", (e) => {
+            const edit = e.target.closest("[data-et-edit]");
+            if (!edit) return;
+            const t = externalTrainerList.find((x) => x.externalTrainerId === Number(edit.dataset.etEdit));
+            if (!t) return;
+            document.getElementById("editExternalTrainerForm").reset();
+            document.getElementById("eetError").style.display = "none";
+            document.getElementById("eetId").value = t.externalTrainerId;
+            document.getElementById("eetFullName").value = t.fullName || "";
+            document.getElementById("eetOrganization").value = t.organization || "";
+            document.getElementById("eetSpecialization").value = t.specialization || "";
+            document.getElementById("eetEmail").value = t.email || "";
+            document.getElementById("eetPhone").value = t.phone || "";
+            openModal("editExternalTrainerModal");
+        });
+        document.getElementById("editExternalTrainerForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const err = document.getElementById("eetError");
+            const body = {
+                fullName: document.getElementById("eetFullName").value.trim(),
+                organization: document.getElementById("eetOrganization").value.trim(),
+                specialization: document.getElementById("eetSpecialization").value.trim(),
+                email: document.getElementById("eetEmail").value.trim(),
+                phone: document.getElementById("eetPhone").value.trim(),
+            };
+            const showError = (msg) => {
+                err.textContent = msg;
+                err.style.display = "block";
+            };
+            if (body.fullName.length < 2) return showError("Please enter the trainer's full name.");
+            if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) return showError("Please enter a valid email address, or leave it empty.");
+            const btn = document.getElementById("eetSubmit");
+            btn.disabled = true;
+            try {
+                const result = await apiRequest(`/master-trainer/external-trainers/${document.getElementById("eetId").value}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body),
+                });
+                if (!result) return;
+                closeModal("editExternalTrainerModal");
+                showSuccessNotification("External Trainer Updated", "The details have been saved.");
+                await GuestProviders.loadProviders(true);
+                loadExternalTrainers();
+                loadProviderBreakdown();
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
         async function loadGroup() {
+            loadGuestTrainers();
+            loadExternalTrainers();
             const wrap = document.getElementById("groupTotsList");
             wrap.innerHTML = '<div class="empty-state">Loading group...</div>';
             const data = await apiRequest("/master-trainer/group");
@@ -5956,7 +6321,7 @@
           <ul class="record-list">${currentTot.recentRecords.map((r) => `
             <li class="record-item"><div>
               ${r.title ? `<strong dir="auto">${escapeHtml(r.title)}</strong>` : `<strong>${escapeHtml((r.recordType || "").replace(/_/g, " "))}</strong>`}
-              <div class="rmeta">${r.date || ""} ${r.time || ""} &middot; logged by ${escapeHtml(r.supervisorName || "")}</div>
+              <div class="rmeta">${r.date || ""} ${r.time || ""} &middot; logged by ${escapeHtml(r.supervisorName || "")}${r.providedByName && r.providedByName !== r.supervisorName ? ` \u00b7 delivered by <span dir="auto">${escapeHtml(r.providedByName)}</span>` : ""}</div>
               ${r.content ? `<div class="rcontent" dir="auto">${escapeHtml(r.content)}</div>` : ""}
             </div>${r.status ? `<span class="pill ${r.status}">${escapeHtml(r.status)}</span>` : ""}</li>`).join("")}</ul>`
                     : '<p class="empty-state">No records yet.</p>';
@@ -6273,7 +6638,7 @@
             <tr>
               <td>${s.date}</td>
               <td>${s.time || "--:--"}</td>
-              <td>${escapeHtml(s.trainerName)}</td>
+              <td dir="auto">${escapeHtml(s.trainerName)}${deliveredByHtml(s)}</td>
               <td>${escapeHtml(s.studentName)}</td>
               <td dir="auto">${escapeHtml(s.title || "&mdash;")}</td>
               <td>${s.durationMinutes ? s.durationMinutes + " min" : "&mdash;"}</td>
@@ -6620,32 +6985,12 @@
         }
 
         // "Hours Provided By" (migration 035) -- the dropdown's options are
-        // this Group's own supervisor roster (Master Trainer + every ToT),
-        // reusing GET /supervisor/me/group-training-breakdown (role-level
-        // auth, so this Master Trainer account can call it same as a ToT
-        // can) rather than a second roster endpoint -- that response's
-        // {supervisorId, name, role} shape is exactly what a roster needs.
-        // Cached for the session's lifetime -- the Group's own supervisor
-        // membership doesn't change while this modal is open.
-        let gsProvidedByRoster = null;
-        function getMyUserId() {
-            return Number((JSON.parse(localStorage.getItem("user") || localStorage.getItem("reframe_user") || "{}")).id);
-        }
-        async function loadProvidedByRoster() {
-            if (gsProvidedByRoster) return gsProvidedByRoster;
-            const data = await apiRequest("/supervisor/me/group-training-breakdown");
-            gsProvidedByRoster = (data && data.breakdown) || [];
-            return gsProvidedByRoster;
-        }
-        async function renderProvidedByOptions(selectEl, selectedId) {
-            const roster = await loadProvidedByRoster();
-            const effectiveSelectedId = selectedId != null ? Number(selectedId) : getMyUserId();
-            selectEl.innerHTML = roster
-                .map(
-                    (p) =>
-                        `<option value="${p.supervisorId}" ${Number(p.supervisorId) === effectiveSelectedId ? "selected" : ""}>${escapeHtml(p.role)} — ${escapeHtml(p.name)}</option>`
-                )
-                .join("");
+        // this Group's own supervisor roster (Master Trainer + every ToT)
+        // and, since migration 038, its Guest Trainers and session-only
+        // external trainers, from GET /supervisor/me/eligible-providers --
+        // see scripts/guest-providers.js (shared with Totdashboard.html).
+        async function renderProvidedByOptions(selectEl, selected, opts) {
+            return GuestProviders.renderProviderSelect(selectEl, selected, opts || {});
         }
 
         // One row per day -- addSessionDayRow(day) with no argument adds a
@@ -6670,22 +7015,37 @@
             row.className = "gs-day-row";
             row.id = rowId;
             row.innerHTML = `
-      <input type="hidden" class="gs-day-occasion-id" value="${occasionId}">
-      <div><label>Date</label><input type="date" class="gs-day-date" value="${date}" required></div>
-      <div><label>Hours</label><input type="number" min="0" step="0.25" class="gs-day-hours" value="${hours}" required></div>
-      <div><label>Time <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="time" class="gs-day-time" value="${time}"></div>
-      <div><label>Hours Provided By</label><select class="gs-day-provided-by" required></select></div>
-      <button type="button" class="gs-day-remove" onclick="removeSessionDayRow('${rowId}')" title="Remove this day"><i class="fa fa-trash"></i></button>`;
+              <div class="gs-day-head">
+                <span class="gs-day-badge">Day</span>
+                <span class="gs-day-who" dir="auto"></span>
+                <button type="button" class="gs-day-remove" onclick="removeSessionDayRow('${rowId}')" title="Remove this day" aria-label="Remove this day"><i class="fa fa-trash"></i></button>
+              </div>
+              <input type="hidden" class="gs-day-occasion-id" value="${occasionId}">
+              <div class="gs-day-fields">
+                <div><label>Date</label><input type="date" class="gs-day-date" value="${date}" required></div>
+                <div><label>Hours</label><input type="number" min="0" step="0.25" class="gs-day-hours" value="${hours}" required></div>
+                <div><label>Start time <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="time" class="gs-day-time" value="${time}"></div>
+                <div><label title="Who actually delivered this day -- this day's hours count toward them">Delivered by</label><select class="gs-day-provided-by" required></select></div>
+              </div>`;
             list.appendChild(row);
             updateSessionDayRemoveButtons();
-            const topLevelProvider = document.getElementById("gsProvidedBy").value;
-            const defaultProviderId = day && day.providedBySupervisorId != null ? day.providedBySupervisorId : topLevelProvider || undefined;
-            await renderProvidedByOptions(row.querySelector(".gs-day-provided-by"), defaultProviderId);
+            // A new day starts with the previous day's trainer (the usual case when
+  // adding consecutive days); a reopened day always shows its own.
+  const previousDaySelect = row.previousElementSibling && row.previousElementSibling.querySelector(".gs-day-provided-by");
+  const topLevelProvider = (previousDaySelect && previousDaySelect.value) || document.getElementById("gsProvidedBy").value;
+            const dayProvider = day && (day.providedByGuestTrainerId != null || day.providedByExternalTrainerId != null || day.providedBySupervisorId != null)
+                ? { guestTrainerId: day.providedByGuestTrainerId, externalTrainerId: day.providedByExternalTrainerId, supervisorId: day.providedBySupervisorId, name: day.providedByName }
+                : topLevelProvider || undefined;
+            await renderProvidedByOptions(row.querySelector(".gs-day-provided-by"), dayProvider);
+            row.addEventListener("input", refreshSessionDayCards);
+            row.addEventListener("change", refreshSessionDayCards);
+            refreshSessionDayCards();
         }
         function removeSessionDayRow(rowId) {
             const el = document.getElementById(rowId);
             if (el) el.remove();
             updateSessionDayRemoveButtons();
+            refreshSessionDayCards();
         }
         function updateSessionDayRemoveButtons() {
             const rows = document.querySelectorAll("#gsDaysList .gs-day-row");
@@ -6693,13 +7053,56 @@
                 row.querySelector(".gs-day-remove").style.visibility = rows.length > 1 ? "visible" : "hidden";
             });
         }
+        // Numbers every day card ("Day 2 of 5"), shows who delivered it and the
+        // day's hours in its header, and keeps a live per-trainer hours summary
+        // under the list -- so it's obvious at a glance which trainer delivered
+        // which day, and how a training's hours split between trainers.
+        function sessionDayProviderLabel(select) {
+            const opt = select && select.selectedOptions && select.selectedOptions[0];
+            if (!opt || !/^[sge]:/.test(opt.value)) return "";
+            const text = opt.textContent || "";
+            const i = text.indexOf(" — ");
+            return (i >= 0 ? text.slice(i + 3) : text).replace(/ \(no longer in this Group\)$/, "").trim();
+        }
+        function refreshSessionDayCards() {
+            const rows = Array.from(document.querySelectorAll("#gsDaysList .gs-day-row"));
+            const totals = new Map();
+            let grand = 0;
+            rows.forEach((row, i) => {
+                row.querySelector(".gs-day-badge").textContent = rows.length === 1 ? "Session day" : `Day ${i + 1} of ${rows.length}`;
+                const select = row.querySelector(".gs-day-provided-by");
+                const who = sessionDayProviderLabel(select);
+                const hours = Number(row.querySelector(".gs-day-hours").value) || 0;
+                row.querySelector(".gs-day-who").textContent = who ? `Delivered by ${who}${hours ? " · " + hours + "h" : ""}` : "";
+                if (who) {
+                    const t = totals.get(select.value) || { who, hours: 0, days: 0 };
+                    t.hours += hours;
+                    t.days += 1;
+                    totals.set(select.value, t);
+                }
+                grand += hours;
+            });
+            const summary = document.getElementById("gsProviderSummary");
+            if (!summary) return;
+            if (rows.length < 2) {
+                summary.innerHTML = "";
+                return;
+            }
+            const round = (n) => Math.round(n * 100) / 100;
+            summary.innerHTML =
+                "<span>Hours by trainer:</span>" +
+                [...totals.values()]
+                    .map((t) => `<span dir="auto"><strong>${escapeHtml(t.who)}</strong> ${round(t.hours)}h (${t.days} day${t.days === 1 ? "" : "s"})</span>`)
+                    .join("") +
+                `<span>Total <strong>${round(grand)}h</strong></span>`;
+        }
         function readSessionDayRows() {
             return Array.from(document.querySelectorAll("#gsDaysList .gs-day-row")).map((row) => ({
                 occasionId: row.querySelector(".gs-day-occasion-id").value || undefined,
                 date: row.querySelector(".gs-day-date").value,
                 time: row.querySelector(".gs-day-time").value || undefined,
                 durationMinutes: Math.round(Number(row.querySelector(".gs-day-hours").value) * 60),
-                providedBySupervisorId: Number(row.querySelector(".gs-day-provided-by").value) || undefined,
+                ...GuestProviders.readProviderSelect(row.querySelector(".gs-day-provided-by")),
             }));
         }
 
@@ -6744,10 +7147,10 @@
             document.getElementById("gsTitle").value = o.title || "";
             document.getElementById("gsType").value = o.sessionType;
             document.getElementById("gsNotes").value = o.notes || "";
-            await renderProvidedByOptions(document.getElementById("gsProvidedBy"), o.providedBy && o.providedBy.id);
+            await renderProvidedByOptions(document.getElementById("gsProvidedBy"), o.providedBy);
             document.getElementById("gsDaysList").innerHTML = "";
             gsDayRowSeq = 0;
-            await addSessionDayRow({ date: o.date, time: o.time, durationMinutes: o.durationMinutes, providedBySupervisorId: o.providedBy && o.providedBy.id });
+            await addSessionDayRow({ date: o.date, time: o.time, durationMinutes: o.durationMinutes, providedBySupervisorId: o.providedBy && o.providedBy.id, providedByGuestTrainerId: o.providedBy && o.providedBy.guestTrainerId, providedByExternalTrainerId: o.providedBy && o.providedBy.externalTrainerId, providedByName: o.providedBy && o.providedBy.name });
             openModal("groupSessionModal");
         }
 
@@ -6765,7 +7168,7 @@
             document.getElementById("gsTitle").value = data.series.title || "";
             document.getElementById("gsType").value = data.series.sessionType;
             document.getElementById("gsNotes").value = data.series.notes || "";
-            await renderProvidedByOptions(document.getElementById("gsProvidedBy"), data.series.providedBy && data.series.providedBy.id);
+            await renderProvidedByOptions(document.getElementById("gsProvidedBy"), data.series.providedBy);
             document.getElementById("gsDaysList").innerHTML = "";
             gsDayRowSeq = 0;
             for (const d of data.days) {
@@ -6780,7 +7183,12 @@
             const sessionType = document.getElementById("gsType").value;
             const title = document.getElementById("gsTitle").value;
             const notes = document.getElementById("gsNotes").value || undefined;
-            const providedBySupervisorId = Number(document.getElementById("gsProvidedBy").value) || undefined;
+            const { providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId } = GuestProviders.readProviderSelect(
+      // Day 1's own provider -- for a single-day Session this IS the
+      // provider; for a multi-day one it's only the Session-wide default
+      // (every day below still sends and keeps its own).
+      document.querySelector("#gsDaysList .gs-day-provided-by") || document.getElementById("gsProvidedBy")
+    );
             const days = readSessionDayRows();
             const editOccasionId = document.getElementById("gsEditOccasionId").value;
             const editSeriesId = document.getElementById("gsEditSeriesId").value;
@@ -6794,23 +7202,25 @@
                 result = await apiRequest(`/master-trainer/group-session-series/${editSeriesId}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ sessionType, title, notes, days, providedBySupervisorId }),
+                    body: JSON.stringify({ sessionType, title, notes, days, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId }),
                 });
             } else if (editOccasionId) {
                 const d = days[0];
                 result = await apiRequest(`/master-trainer/group-sessions/${editOccasionId}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ sessionType, title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes, providedBySupervisorId }),
+                    body: JSON.stringify({ sessionType, title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId }),
                 });
             } else if (days.length > 1) {
-                const payload = { sessionType, title, notes, days, providedBySupervisorId };
+                const payload = { sessionType, title, notes, days, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId };
                 if (attachmentFile) {
                     const form = new FormData();
                     form.append("sessionType", sessionType);
                     form.append("title", title);
                     if (notes) form.append("notes", notes);
                     if (providedBySupervisorId) form.append("providedBySupervisorId", providedBySupervisorId);
+                    if (providedByGuestTrainerId) form.append("providedByGuestTrainerId", providedByGuestTrainerId);
+                    if (providedByExternalTrainerId) form.append("providedByExternalTrainerId", providedByExternalTrainerId);
                     form.append("days", JSON.stringify(days));
                     form.append("attachment", attachmentFile);
                     result = await apiRequest("/master-trainer/group-sessions", { method: "POST", body: form });
@@ -6823,7 +7233,7 @@
                 }
             } else {
                 const d = days[0];
-                const payload = { sessionType, title, date: d.date, time: d.time, durationMinutes: d.durationMinutes, notes, providedBySupervisorId };
+                const payload = { sessionType, title, date: d.date, time: d.time, durationMinutes: d.durationMinutes, notes, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId };
                 if (attachmentFile) {
                     const form = new FormData();
                     Object.entries(payload).forEach(([k, v]) => {
@@ -6883,10 +7293,24 @@
         // POST /master-trainer/group-tot-sessions. "every TOT" is simply
         // this Group's full roster -- a Master Trainer only ever has one
         // Group, so there is no separate "all groups" scope to offer.
-        function openGroupTotSessionModal() {
+        // "Delivered By" (migration 038): this Master Trainer (default) or one
+        // of the Group's Guest Trainers. The Group's own ToTs are this
+        // Session's audience, never its provider, so they aren't offered.
+        async function openGroupTotSessionModal() {
             const form = document.getElementById("groupTotSessionForm");
             form.reset();
+            const me = GuestProviders.providerKey(currentMasterTrainerId());
+            await renderProvidedByOptions(document.getElementById("gtsProvidedBy"), me, {
+                filter: (p) => p.kind !== "member" || p.key === me,
+            });
             openModal("groupTotSessionModal");
+        }
+        function currentMasterTrainerId() {
+            try {
+                return Number(JSON.parse(localStorage.getItem("user") || localStorage.getItem("reframe_user") || "{}").id) || null;
+            } catch {
+                return null;
+            }
         }
 
         document.getElementById("groupTotSessionForm").addEventListener("submit", async (e) => {
@@ -6905,6 +7329,7 @@
                     durationMinutes,
                     notes: document.getElementById("gtsNotes").value || undefined,
                     includeSelf: document.getElementById("gtsIncludeSelf").checked,
+                    ...GuestProviders.readProviderSelect(document.getElementById("gtsProvidedBy")),
                 }),
             });
 
@@ -6989,7 +7414,7 @@
         function sessionOccasionRowHtml(o) {
             return `
         <tr>
-          <td dir="auto">${escapeHtml(o.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(Single-Day Session)</span>${o.providedByName ? `<div style="color:var(--faint);font-size:11px;font-weight:400;">Hours provided by: ${escapeHtml(o.providedByName)}</div>` : ""}</td>
+          <td dir="auto">${escapeHtml(o.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(Single-Day Session)</span>${o.providedByName ? `<div style="color:var(--faint);font-size:11px;font-weight:400;">Hours provided by: ${escapeHtml(GuestProviders.deliveredByText(o))}</div>` : ""}</td>
           <td>${escapeHtml(o.sessionTypeLabel)}</td>
           <td>${new Date(o.date).toLocaleDateString()}${o.time ? " " + o.time.slice(0, 5) : ""}</td>
           <td>${(o.durationMinutes / 60).toFixed(2)}h</td>
@@ -7009,7 +7434,7 @@
                 : `${new Date(s.startDate).toLocaleDateString()} – ${new Date(s.endDate).toLocaleDateString()}`;
             const mainRow = `
         <tr class="gs-series-row" onclick="toggleSessionSeriesExpand(${s.id})" style="cursor:pointer;">
-          <td dir="auto"><i class="fa fa-chevron-${expanded ? "down" : "right"}" style="width:12px;color:var(--faint);margin-right:6px;"></i>${escapeHtml(s.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(${s.dayCount}-day Session)</span>${s.providedByName ? `<div style="color:var(--faint);font-size:11px;font-weight:400;">Hours provided by: ${escapeHtml(s.providedByName)}</div>` : ""}</td>
+          <td dir="auto"><i class="fa fa-chevron-${expanded ? "down" : "right"}" style="width:12px;color:var(--faint);margin-right:6px;"></i>${escapeHtml(s.title || "Untitled")} <span style="color:var(--faint);font-size:11px;">(${s.dayCount}-day Session)</span>${s.providedByName ? `<div style="color:var(--faint);font-size:11px;font-weight:400;">Hours provided by: ${escapeHtml(GuestProviders.deliveredByText(s))}</div>` : ""}</td>
           <td>${escapeHtml(s.sessionTypeLabel)}</td>
           <td>${dateRange}</td>
           <td>${(s.totalMinutes / 60).toFixed(2)}h total</td>
@@ -7045,7 +7470,7 @@
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--surface-2);border-radius:8px;flex-wrap:wrap;">
             <div>
               <div><strong>${new Date(d.date).toLocaleDateString()}</strong>${d.time ? " " + d.time.slice(0, 5) : ""} &middot; ${(d.durationMinutes / 60).toFixed(2)}h &middot; ${d.traineeCount} expected</div>
-              ${d.providedByName ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;" dir="auto">Hours provided by: ${escapeHtml(d.providedByName)}</div>` : ""}
+              ${d.providedByName ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;" dir="auto">Hours provided by: ${escapeHtml(GuestProviders.deliveredByText(d))}</div>` : ""}
               <div style="font-size:12px;color:var(--muted);margin-top:2px;">
                 Present: ${d.presentOnlyCount} &middot; Partial: ${d.partialCount} &middot; Absent: ${d.absentCount}${d.excusedCount ? ` &middot; Excused: ${d.excusedCount}` : ""}${d.pendingCount ? ` &middot; Pending: ${d.pendingCount}` : ""}
                 &middot; Attendance: <strong>${d.attendanceRate != null ? d.attendanceRate.toFixed(2) + "%" : "&mdash;"}</strong> (${d.presentCount}/${d.traineeCount})
@@ -7071,7 +7496,7 @@
                 .map(
                     (o) => `
         <tr>
-          <td dir="auto">${escapeHtml(o.title || "Untitled")}${o.providedByName ? `<div style="color:var(--faint);font-size:11px;font-weight:400;">Hours provided by: ${escapeHtml(o.providedByName)}</div>` : ""}</td>
+          <td dir="auto">${escapeHtml(o.title || "Untitled")}${o.providedByName ? `<div style="color:var(--faint);font-size:11px;font-weight:400;">Hours provided by: ${escapeHtml(GuestProviders.deliveredByText(o))}</div>` : ""}</td>
           <td>${new Date(o.date).toLocaleDateString()}${o.time ? " " + o.time.slice(0, 5) : ""}</td>
           <td>${(o.durationMinutes / 60).toFixed(2)}h</td>
           <td>${o.recordedCount}/${o.attendeeCount} recorded</td>
@@ -7259,7 +7684,7 @@
           <ul class="record-list">${currentTrainee.records.map((r) => `
             <li class="record-item"><div>
               ${r.title ? `<strong dir="auto">${escapeHtml(r.title)}</strong>` : `<strong>${escapeHtml((r.recordType || "").replace(/_/g, " "))}</strong>`}
-              <div class="rmeta">${r.date || ""} &middot; logged by ${escapeHtml(r.supervisorName || "")}</div>
+              <div class="rmeta">${r.date || ""} &middot; logged by ${escapeHtml(r.supervisorName || "")}${r.providedByName && r.providedByName !== r.supervisorName ? ` \u00b7 delivered by <span dir="auto">${escapeHtml(r.providedByName)}</span>` : ""}</div>
               ${r.content ? `<div class="rcontent" dir="auto">${escapeHtml(r.content)}</div>` : ""}
             </div>${r.status ? `<span class="pill ${r.status}">${escapeHtml(r.status)}</span>` : ""}</li>`).join("")}</ul>`
                     : '<p class="empty-state">No records yet.</p>';
@@ -7365,7 +7790,7 @@
           <td><span class="sched-badge ${s.recordType}">${s.recordType === "training_session" ? "Training" : "Supervision"}</span></td>
           <td>${escapeHtml(s.title || "&mdash;")}</td>
           <td>${escapeHtml(s.studentName)}</td>
-          <td>${escapeHtml(s.trainerName)}</td>
+          <td dir="auto">${escapeHtml(s.trainerName)}${deliveredByHtml(s)}</td>
           <td>${s.durationMinutes ? s.durationMinutes + " min" : "&mdash;"}</td>
           <td><span class="pill ${s.status}">${escapeHtml(s.status)}</span></td>
         </tr>`).join("");
@@ -9524,7 +9949,7 @@
                     calItems.push({
                         id: i.id,
                         date: i.date,
-                        title: i.title,
+                        title: (i.providedByName ? `${i.title} · ${i.providedByName}` : i.title),
                         type: "session",
                         kind: i.kind,
                         seriesId: i.seriesId,

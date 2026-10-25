@@ -1,4 +1,5 @@
 const { createNotification, getUserContactInfo } = require("./notifications");
+const { providerNameSql } = require("./guestTrainers");
 
 // Shared "activities in a date range, for the Calendar" queries -- one
 // implementation reused by all four roles (ToT/ Master Trainer/ Admin/
@@ -34,22 +35,25 @@ async function getSessionsInRange(db, scope, start, end) {
   const supCol = "supervisor_id";
   if (scope.kind === "student") {
     const { rows } = await db.query(
-      `SELECT s.id, s.session_type, s.title, s.session_date AS date, s.session_time AS time, s.duration_minutes
+      `SELECT s.id, s.session_type, s.title, s.session_date AS date, s.session_time AS time, s.duration_minutes,
+              ${providerNameSql("s")} AS provided_by_name
        FROM sessions s
        WHERE s.student_id = ? AND s.status != 'cancelled' AND s.session_date BETWEEN ? AND ?`,
       [scope.id, start, end]
     );
-    return rows.map((r) => ({ type: "session", id: r.id, date: String(r.date), time: r.time, title: r.title || "Training activity" }));
+    return rows.map((r) => ({ type: "session", id: r.id, date: String(r.date), time: r.time, title: r.title || "Training activity", providedByName: r.provided_by_name }));
   }
   const { clause, params } = scopeSql(supCol, scope);
   const [occasionsRes, standaloneRes] = await Promise.all([
     db.query(
-      `SELECT so.id, so.title, so.session_date AS date, so.session_time AS time, so.series_id, so.supervisor_id
+      `SELECT so.id, so.title, so.session_date AS date, so.session_time AS time, so.series_id, so.supervisor_id,
+              ${providerNameSql("so")} AS provided_by_name
        FROM session_occasions so WHERE ${clause.replace(supCol, "so." + supCol)} AND so.session_date BETWEEN ? AND ?`,
       [...params, start, end]
     ),
     db.query(
-      `SELECT s.id, s.title, s.session_date AS date, s.session_time AS time, s.supervisor_id
+      `SELECT s.id, s.title, s.session_date AS date, s.session_time AS time, s.supervisor_id,
+              ${providerNameSql("s")} AS provided_by_name
        FROM sessions s WHERE ${clause.replace(supCol, "s." + supCol)} AND s.occasion_id IS NULL AND s.status != 'cancelled' AND s.session_date BETWEEN ? AND ?`,
       [...params, start, end]
     ),
@@ -68,6 +72,8 @@ async function getSessionsInRange(db, scope, start, end) {
       kind: r.series_id ? "series_day" : "occasion",
       seriesId: r.series_id || null,
       supervisorId: r.supervisor_id,
+      // Who actually delivered this day (each day of a multi-day Session has its own).
+      providedByName: r.provided_by_name,
     })),
     ...standaloneRes.rows.map((r) => ({
       type: "session",
@@ -78,6 +84,8 @@ async function getSessionsInRange(db, scope, start, end) {
       kind: "single",
       seriesId: null,
       supervisorId: r.supervisor_id,
+      // Who actually delivered this day (each day of a multi-day Session has its own).
+      providedByName: r.provided_by_name,
     })),
   ];
 }

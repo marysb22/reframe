@@ -3033,6 +3033,79 @@
         </div>
     </div>
 
+    <!-- EDIT EXTERNAL TRAINER (migration 039) -->
+    <div class="modal-overlay" id="adminExternalTrainerModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeAdminExternalTrainerModal()">&times;</button>
+            <h3>Edit External Trainer</h3>
+            <p class="hint" style="margin:0 0 12px;">A trainer from outside the organization. Not a Guest Trainer, no account, no access.</p>
+            <form id="adminExternalTrainerForm" novalidate>
+                <input type="hidden" id="aetId">
+                <label style="margin-top:0;">Full name</label>
+                <input type="text" id="aetFullName" dir="auto" maxlength="255" autocomplete="off">
+                <label>Organization</label>
+                <input type="text" id="aetOrganization" dir="auto" maxlength="255" autocomplete="off">
+                <label>Specialization <span class="hint">(optional)</span></label>
+                <input type="text" id="aetSpecialization" dir="auto" maxlength="255" autocomplete="off">
+                <label>Email <span class="hint">(optional)</span></label>
+                <input type="email" id="aetEmail" dir="ltr" maxlength="255" autocomplete="off">
+                <label>Phone <span class="hint">(optional)</span></label>
+                <input type="tel" id="aetPhone" dir="ltr" maxlength="50" autocomplete="off">
+                <p id="aetError" role="alert" style="display:none;color:var(--danger, #c0392b);font-size:13px;margin:8px 0 0;"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAdminExternalTrainerModal()">Cancel</button>
+                    <button type="submit" class="btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD / EDIT GUEST TRAINER (migration 038) -->
+    <div class="modal-overlay" id="adminGuestTrainerModal">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeAdminGuestTrainerModal()">&times;</button>
+            <h3 id="agtTitle">Add Guest Trainer</h3>
+            <p class="hint" style="margin:0 0 12px;">No account is created and no role, Group membership or permission changes. A Guest Trainer can be selected as "Hours Provided By" on this Group's Sessions.</p>
+            <form id="adminGuestTrainerForm" novalidate>
+                <input type="hidden" id="agtGroupId">
+                <input type="hidden" id="agtEditId">
+                <div id="agtKindWrap">
+                    <label style="margin-top:0;">Guest Trainer type</label>
+                    <select id="agtKind">
+                        <option value="external">External trainer (no Reframe account)</option>
+                        <option value="internal">Existing Reframe trainer from another Group</option>
+                        <option value="promote">Already recorded for one of this Group's Sessions</option>
+                    </select>
+                </div>
+                <div id="agtInternalWrap" style="display:none;">
+                    <label>Trainer</label>
+                    <select id="agtSupervisor"></select>
+                </div>
+                <div id="agtPromoteWrap" style="display:none;">
+                    <label>External trainer</label>
+                    <select id="agtPromote"></select>
+                </div>
+                <div id="agtExternalWrap">
+                    <label>Full name</label>
+                    <input type="text" id="agtFullName" dir="auto" maxlength="255" autocomplete="off">
+                    <label>Organization <span class="hint">(optional)</span></label>
+                    <input type="text" id="agtOrganization" dir="auto" maxlength="255" autocomplete="off">
+                    <label>Email <span class="hint">(optional)</span></label>
+                    <input type="email" id="agtEmail" dir="ltr" maxlength="255" autocomplete="off">
+                    <label>Phone <span class="hint">(optional)</span></label>
+                    <input type="tel" id="agtPhone" dir="ltr" maxlength="50" autocomplete="off">
+                    <label>Specialization <span class="hint">(optional)</span></label>
+                    <input type="text" id="agtSpecialization" dir="auto" maxlength="255" autocomplete="off">
+                </div>
+                <p id="agtError" role="alert" style="display:none;color:var(--danger, #c0392b);font-size:13px;margin:8px 0 0;"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAdminGuestTrainerModal()">Cancel</button>
+                    <button type="submit" class="btn" id="agtSubmit">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- EDIT MEMBER (Master Trainer / Trainer (ToT) / Trainee) -->
     <div class="modal-overlay" id="editMemberModal">
         <div class="modal-box">
@@ -3276,7 +3349,7 @@
 
             calItems = [];
             if (sessions && sessions.events) {
-                sessions.events.forEach((i) => calItems.push({ id: i.id, date: i.date, title: i.title, type: "session" }));
+                sessions.events.forEach((i) => calItems.push({ id: i.id, date: i.date, title: (i.providedByName ? `${i.title} · ${i.providedByName}` : i.title), type: "session" }));
             }
             if (events && events.events) {
                 events.events.forEach((ev) =>
@@ -3806,7 +3879,236 @@
       <thead><tr><th>Name</th><th>ID</th><th>Assigned TOT(s)</th><th>Status</th><th>Account Status</th><th></th></tr></thead>
       <tbody>${traineesRows}</tbody>
     </table>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 10px;">
+      <h4 style="margin:0;font-size:13px;color:var(--muted);">Guest Trainers</h4>
+      <button class="btn btn-sm" style="width:auto;margin-top:0;" onclick="openAdminGuestTrainerModal(${g.id})"><i class="fa fa-user-plus"></i> Add Guest Trainer</button>
+    </div>
+    <p class="hint" style="margin:0 0 10px;">External trainers, or Reframe trainers from another Group, who deliver Sessions for this Group. Adding one never changes their role or access.</p>
+    <div id="gdGuestTrainers"><div class="empty-state">Loading guest trainers...</div></div>
+
+    <h4 style="margin:22px 0 10px;font-size:13px;color:var(--muted);">External Trainers</h4>
+    <p class="hint" style="margin:0 0 10px;">Trainers from outside the organization recorded as a provider on this Group's Sessions. Separate from Guest Trainers: never on the Group's roster, no access.</p>
+    <div id="gdExternalTrainers"><div class="empty-state">Loading external trainers...</div></div>
   `;
+            loadAdminGuestTrainers(g.id);
+            loadAdminExternalTrainers(g.id);
+        }
+
+        // ---- External Trainers (migration 039) -- review/correct only ------
+        let adminExternalData = { groupId: null, externalTrainers: [] };
+        async function loadAdminExternalTrainers(groupId) {
+            const wrap = document.getElementById("gdExternalTrainers");
+            if (!wrap) return;
+            const data = await apiRequest(`/admin/groups/${groupId}/external-trainers`);
+            if (currentGroupId !== groupId) return;
+            if (!data) {
+                wrap.innerHTML = '<div class="empty-state">Couldn\'t load External Trainers.</div>';
+                return;
+            }
+            adminExternalData = { groupId, externalTrainers: data.externalTrainers };
+            if (!data.externalTrainers.length) {
+                wrap.innerHTML = '<div class="empty-state">No External Trainers recorded for this Group.</div>';
+                return;
+            }
+            wrap.innerHTML = `<div class="trainer-grid">${data.externalTrainers
+                .map(
+                    (t) => `
+    <div class="trainer-card">
+      <div class="trainer-name-row">
+        <div><strong dir="auto">${escapeHtml(t.fullName)}</strong> <span class="pill supervisor">External</span></div>
+        <button class="icon-btn" title="Edit details" data-aet-edit="${t.externalTrainerId}"><i class="fa fa-pen"></i></button>
+      </div>
+      <div class="trainer-detail" dir="auto" style="overflow-wrap:anywhere;">${[t.organization, t.specialization, t.email, t.phone].filter(Boolean).map(escapeHtml).join(" &middot; ") || "&mdash;"}</div>
+      <div class="hint" style="margin-top:4px;">${t.sessionsDelivered} Session${t.sessionsDelivered === 1 ? "" : "s"} delivered</div>
+    </div>`
+                )
+                .join("")}</div>`;
+        }
+        document.getElementById("groupDetailWrap").addEventListener("click", (e) => {
+            const edit = e.target.closest("[data-aet-edit]");
+            if (!edit) return;
+            const t = adminExternalData.externalTrainers.find((x) => x.externalTrainerId === Number(edit.dataset.aetEdit));
+            if (!t) return;
+            document.getElementById("adminExternalTrainerForm").reset();
+            document.getElementById("aetError").style.display = "none";
+            document.getElementById("aetId").value = t.externalTrainerId;
+            document.getElementById("aetFullName").value = t.fullName || "";
+            document.getElementById("aetOrganization").value = t.organization || "";
+            document.getElementById("aetSpecialization").value = t.specialization || "";
+            document.getElementById("aetEmail").value = t.email || "";
+            document.getElementById("aetPhone").value = t.phone || "";
+            document.getElementById("adminExternalTrainerModal").classList.add("show");
+        });
+        function closeAdminExternalTrainerModal() {
+            document.getElementById("adminExternalTrainerModal").classList.remove("show");
+        }
+        document.getElementById("adminExternalTrainerForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const err = document.getElementById("aetError");
+            const body = {
+                fullName: document.getElementById("aetFullName").value.trim(),
+                organization: document.getElementById("aetOrganization").value.trim(),
+                specialization: document.getElementById("aetSpecialization").value.trim(),
+                email: document.getElementById("aetEmail").value.trim(),
+                phone: document.getElementById("aetPhone").value.trim(),
+            };
+            const showError = (msg) => {
+                err.textContent = msg;
+                err.style.display = "block";
+            };
+            if (body.fullName.length < 2) return showError("Please enter the trainer's full name.");
+            if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) return showError("Please enter a valid email address, or leave it empty.");
+            const result = await apiRequest(`/admin/external-trainers/${document.getElementById("aetId").value}`, { method: "PATCH", body: JSON.stringify(body) });
+            if (!result) return;
+            closeAdminExternalTrainerModal();
+            showSuccessNotification("External Trainer Updated", "The details have been saved.");
+            loadAdminExternalTrainers(adminExternalData.groupId);
+        });
+
+        // ---- Guest Trainers (migration 038) ---------------------------------
+        let adminGuestData = { groupId: null, guestTrainers: [], sessionOnly: [] };
+        async function loadAdminGuestTrainers(groupId) {
+            const wrap = document.getElementById("gdGuestTrainers");
+            if (!wrap) return;
+            const data = await apiRequest(`/admin/groups/${groupId}/guest-trainers`);
+            if (currentGroupId !== groupId) return; // the user moved to another group meanwhile
+            if (!data) {
+                wrap.innerHTML = '<div class="empty-state">Couldn\'t load Guest Trainers.</div>';
+                return;
+            }
+            adminGuestData = { groupId, ...data };
+            if (!data.guestTrainers.length) {
+                wrap.innerHTML = '<div class="empty-state">No Guest Trainers yet.</div>';
+                return;
+            }
+            wrap.innerHTML = `<div class="trainer-grid">${data.guestTrainers
+                .map((t) => {
+                    const meta =
+                        t.kind === "internal"
+                            ? [t.role, t.homeGroupName ? `Group: ${t.homeGroupName}` : "No Group", t.memberCode]
+                            : [t.organization, t.specialization, t.email, t.phone];
+                    return `
+    <div class="trainer-card">
+      <div class="trainer-name-row">
+        <div><strong dir="auto">${escapeHtml(t.fullName)}</strong> <span class="pill supervisor">${t.kind === "internal" ? "Reframe trainer" : "External"}</span></div>
+        <div>
+          ${t.kind === "external" ? `<button class="icon-btn" title="Edit details" data-agt-edit="${t.guestTrainerId}"><i class="fa fa-pen"></i></button>` : ""}
+          <button class="btn btn-secondary btn-sm" data-agt-remove="${t.associationId}" data-agt-name="${escapeHtml(t.fullName)}">Remove</button>
+        </div>
+      </div>
+      <div class="trainer-detail" dir="auto" style="overflow-wrap:anywhere;">${meta.filter(Boolean).map(escapeHtml).join(" &middot; ") || "&mdash;"}</div>
+    </div>`;
+                })
+                .join("")}</div>`;
+        }
+        document.getElementById("groupDetailWrap").addEventListener("click", (e) => {
+            const edit = e.target.closest("[data-agt-edit]");
+            if (edit) return openAdminGuestTrainerModal(adminGuestData.groupId, Number(edit.dataset.agtEdit));
+            const remove = e.target.closest("[data-agt-remove]");
+            if (remove) removeAdminGuestTrainer(Number(remove.dataset.agtRemove), remove.dataset.agtName);
+        });
+
+        async function openAdminGuestTrainerModal(groupId, editGuestTrainerId) {
+            document.getElementById("adminGuestTrainerForm").reset();
+            document.getElementById("agtError").style.display = "none";
+            const editing = editGuestTrainerId ? adminGuestData.guestTrainers.find((t) => t.guestTrainerId === editGuestTrainerId) : null;
+            document.getElementById("agtGroupId").value = groupId;
+            document.getElementById("agtEditId").value = editing ? editing.guestTrainerId : "";
+            document.getElementById("agtTitle").textContent = editing ? "Edit Guest Trainer" : "Add Guest Trainer";
+            document.getElementById("agtKindWrap").style.display = editing ? "none" : "block";
+            const kindSel = document.getElementById("agtKind");
+            kindSel.value = "external";
+            const internalSel = document.getElementById("agtSupervisor");
+            internalSel.innerHTML = '<option value="">Loading...</option>';
+            const promoteOpt = kindSel.querySelector('option[value="promote"]');
+            promoteOpt.disabled = !(adminGuestData.sessionOnly || []).length;
+            document.getElementById("agtPromote").innerHTML = (adminGuestData.sessionOnly || [])
+                .map((t) => `<option value="${t.guestTrainerId}">${escapeHtml(t.fullName)}${t.organization ? ` (${escapeHtml(t.organization)})` : ""}</option>`)
+                .join("");
+            if (editing) {
+                document.getElementById("agtFullName").value = editing.fullName || "";
+                document.getElementById("agtOrganization").value = editing.organization || "";
+                document.getElementById("agtEmail").value = editing.email || "";
+                document.getElementById("agtPhone").value = editing.phone || "";
+                document.getElementById("agtSpecialization").value = editing.specialization || "";
+            }
+            syncAdminGuestKind();
+            document.getElementById("adminGuestTrainerModal").classList.add("show");
+            if (!editing) {
+                const data = await apiRequest(`/admin/groups/${groupId}/guest-trainer-candidates`);
+                const list = (data && data.candidates) || [];
+                internalSel.innerHTML = list.length
+                    ? '<option value="">Select a trainer...</option>' +
+                      list.map((c) => `<option value="${c.supervisorId}">${escapeHtml(c.fullName)} — ${escapeHtml(c.role)}${c.groupName ? `, ${escapeHtml(c.groupName)}` : ""} (${escapeHtml(c.memberCode)})</option>`).join("")
+                    : '<option value="">No other active trainers available</option>';
+            }
+        }
+        function closeAdminGuestTrainerModal() {
+            document.getElementById("adminGuestTrainerModal").classList.remove("show");
+        }
+        function syncAdminGuestKind() {
+            const kind = document.getElementById("agtKind").value;
+            const editing = !!document.getElementById("agtEditId").value;
+            document.getElementById("agtExternalWrap").style.display = editing || kind === "external" ? "block" : "none";
+            document.getElementById("agtInternalWrap").style.display = !editing && kind === "internal" ? "block" : "none";
+            document.getElementById("agtPromoteWrap").style.display = !editing && kind === "promote" ? "block" : "none";
+        }
+        document.getElementById("agtKind").addEventListener("change", syncAdminGuestKind);
+
+        document.getElementById("adminGuestTrainerForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const err = document.getElementById("agtError");
+            const showError = (msg) => {
+                err.textContent = msg;
+                err.style.display = "block";
+            };
+            const groupId = Number(document.getElementById("agtGroupId").value);
+            const editId = document.getElementById("agtEditId").value;
+            const kind = document.getElementById("agtKind").value;
+            const details = {
+                fullName: document.getElementById("agtFullName").value.trim(),
+                organization: document.getElementById("agtOrganization").value.trim(),
+                email: document.getElementById("agtEmail").value.trim(),
+                phone: document.getElementById("agtPhone").value.trim(),
+                specialization: document.getElementById("agtSpecialization").value.trim(),
+            };
+            let body;
+            if (editId || kind === "external") {
+                if (details.fullName.length < 2) return showError("Please enter the trainer's full name.");
+                if (details.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)) return showError("Please enter a valid email address, or leave it empty.");
+                body = details;
+            } else if (kind === "internal") {
+                const supervisorId = Number(document.getElementById("agtSupervisor").value);
+                if (!supervisorId) return showError("Please select a trainer.");
+                body = { supervisorId };
+            } else {
+                const guestTrainerId = Number(document.getElementById("agtPromote").value);
+                if (!guestTrainerId) return showError("Please select a trainer.");
+                body = { guestTrainerId };
+            }
+            const btn = document.getElementById("agtSubmit");
+            btn.disabled = true;
+            try {
+                const result = editId
+                    ? await apiRequest(`/admin/guest-trainers/${editId}`, { method: "PATCH", body: JSON.stringify(body) })
+                    : await apiRequest(`/admin/groups/${groupId}/guest-trainers`, { method: "POST", body: JSON.stringify(body) });
+                if (!result) return;
+                closeAdminGuestTrainerModal();
+                showSuccessNotification(editId ? "Guest Trainer Updated" : "Guest Trainer Added", editId ? "The details have been saved." : `${result.fullName} is now a Guest Trainer for this Group.`);
+                loadAdminGuestTrainers(groupId);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        async function removeAdminGuestTrainer(associationId, name) {
+            const groupId = adminGuestData.groupId;
+            if (!confirm(`Remove ${name} from this Group's Guest Trainers? Sessions they already delivered keep their history and hours.`)) return;
+            const result = await apiRequest(`/admin/groups/${groupId}/guest-trainers/${associationId}`, { method: "DELETE" });
+            if (!result) return;
+            showToast(`${name} removed from Guest Trainers`, "success");
+            loadAdminGuestTrainers(groupId);
         }
 
         // ---- Trainee lifecycle Status (administrative, Admin/Master Trainer only)
@@ -4842,6 +5144,10 @@ function renderTrainersAndHours(data) {
   const hoursRows = [
     ...(th.totTrainers || []).map((t, i) => ({ role: `ToT Trainer ${i + 1} (${t.fullName})`, hours: t.hours })),
     th.masterTrainer ? { role: `Master Trainer (${th.masterTrainer.fullName})`, hours: th.masterTrainer.hours } : null,
+    // Supervision delivered by someone outside this trainee's own team --
+    // an external or other-Group Guest Trainer (migration 038), or a
+    // former trainer -- listed so those hours aren't silently missing.
+    ...(th.otherProviders || []).map((p) => ({ role: `${p.kind === "guest" ? "Guest Trainer" : p.kind === "external" ? "External Trainer" : "Other Trainer"} (${p.fullName})`, hours: p.hours })),
     th.trainee ? { role: `Trainee (${th.trainee.fullName})`, hours: th.trainee.hours } : null,
   ].filter(Boolean);
 
@@ -4849,7 +5155,7 @@ function renderTrainersAndHours(data) {
   hoursBody.innerHTML = hoursRows.length
     ? hoursRows
         .map(
-          (r) => `<tr><td>${escapeHtml(r.role)}</td><td style="text-align:right;">${Number(r.hours || 0).toFixed(1)}</td></tr>`
+          (r) => `<tr><td dir="auto">${escapeHtml(r.role)}</td><td style="text-align:right;">${Number(r.hours || 0).toFixed(1)}</td></tr>`
         )
         .join("")
     : '<tr><td colspan="2" class="empty-state">No hours logged yet.</td></tr>';
@@ -4917,7 +5223,7 @@ function renderStudentProfile(data) {
           <td dir="auto">${r.title ? escapeHtml(r.title) : "&mdash;"}</td>
           <td>${r.date ? new Date(r.date).toLocaleDateString() : "&mdash;"}</td>
           <td>${bits.length ? escapeHtml(bits.join(", ")) : "&mdash;"}</td>
-          <td>${r.supervisorName ? escapeHtml(r.supervisorName) : "&mdash;"}</td>
+          <td dir="auto">${r.supervisorName ? escapeHtml(r.supervisorName) : "&mdash;"}${r.providedByName && r.providedByName !== r.supervisorName ? `<div class="hint" style="margin:2px 0 0;">delivered by ${escapeHtml(r.providedByName)}</div>` : ""}</td>
         </tr>`;
       })
       .join("");

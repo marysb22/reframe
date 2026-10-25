@@ -24,6 +24,14 @@ const { checkFileContent } = require("../utils/fileTypeCheck");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
 const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, getMeetingsInRange, notifyCalendarNoteRecipients } = require("../utils/calendarQuery");
+const {
+  findOrCreateGroupGuest,
+  updateGuestDetails,
+  addGroupAssociation,
+  listGroupGuests,
+  updateExternalDetails,
+  listGroupExternals,
+} = require("../utils/guestTrainers");
 
 const router = express.Router();
 
@@ -1252,6 +1260,211 @@ router.delete(
   })
 );
 
+// ---- Guest Trainers (migration 038) ---------------------------------------
+// A Group's Guest Trainers are either an EXTERNAL person (no Reframe login,
+// a guest_trainers row) or an EXISTING trainer account from another Group
+// (a supervisors row). Associating someone never changes their role, Group
+// membership, caseload, or permissions -- it only makes them selectable as
+// "Hours Provided By" on this Group's sessions. No account is ever created
+// here (this app has no invitation flow, and pre-set passwords for
+// external people are deliberately not issued).
+
+async function loadGroupOr404(db, rawId, res) {
+  const id = parseIdParam(rawId);
+  if (!id) {
+    res.status(400).json({ error: "Invalid group id" });
+    return null;
+  }
+  const { rows } = await db.query("SELECT id, name FROM trainer_groups WHERE id = ?", [id]);
+  if (!rows.length) {
+    res.status(404).json({ error: "Group not found" });
+    return null;
+  }
+  return rows[0];
+}
+
+// GET /api/admin/groups/:id/guest-trainers
+router.get(
+  "/groups/:id/guest-trainers",
+  asyncRoute(async (req, res, db) => {
+    const group = await loadGroupOr404(db, req.params.id, res);
+    if (!group) return;
+    const { rows: sessionOnlyRows } = await db.query(
+      `SELECT gt.id, gt.full_name, gt.email, gt.phone, gt.organization, gt.specialization
+         FROM guest_trainers gt
+        WHERE gt.owner_group_id = ?
+          AND NOT EXISTS (SELECT 1 FROM group_guest_trainers ggt WHERE ggt.group_id = ? AND ggt.guest_trainer_id = gt.id)
+        ORDER BY gt.full_name`,
+      [group.id, group.id]
+    );
+    res.json({
+      guestTrainers: await listGroupGuests(db, group.id),
+      sessionOnly: sessionOnlyRows.map((r) => ({
+        guestTrainerId: r.id,
+        fullName: r.full_name,
+        email: r.email,
+        phone: r.phone,
+        organization: r.organization,
+        specialization: r.specialization,
+      })),
+    });
+  })
+);
+
+// GET /api/admin/groups/:id/guest-trainer-candidates -- existing Reframe
+// trainer accounts (active, not in this Group, not already its guest).
+router.get(
+  "/groups/:id/guest-trainer-candidates",
+  asyncRoute(async (req, res, db) => {
+    const group = await loadGroupOr404(db, req.params.id, res);
+    if (!group) return;
+    const { rows } = await db.query(
+      `SELECT sup.id, sup.full_name, sup.supervisor_type, uc.member_code, tg.name AS group_name
+         FROM supervisors sup
+         JOIN user_credentials uc ON uc.id = sup.id AND uc.status = 'active'
+         LEFT JOIN trainer_groups tg ON tg.id = sup.group_id
+        WHERE (sup.group_id IS NULL OR sup.group_id != ?)
+          AND NOT EXISTS (SELECT 1 FROM group_guest_trainers ggt WHERE ggt.group_id = ? AND ggt.supervisor_id = sup.id)
+        ORDER BY sup.full_name`,
+      [group.id, group.id]
+    );
+    res.json({
+      candidates: rows.map((r) => ({
+        supervisorId: r.id,
+        fullName: r.full_name,
+        memberCode: r.member_code,
+        role: r.supervisor_type === "primary" ? "Master Trainer" : "ToT",
+        groupName: r.group_name,
+      })),
+    });
+  })
+);
+
+// POST /api/admin/groups/:id/guest-trainers
+//   { supervisorId }                 -- an existing trainer account
+//   { guestTrainerId }               -- promote a session-only external trainer of this Group
+//   { fullName, email?, phone?, organization?, specialization? } -- an external trainer
+router.post(
+  "/groups/:id/guest-trainers",
+  asyncRoute(async (req, res, db) => {
+    const group = await loadGroupOr404(db, req.params.id, res);
+    if (!group) return;
+    const body = req.body || {};
+
+    let added;
+    let detail;
+    if (body.supervisorId != null) {
+      const supervisorId = parseIdParam(body.supervisorId);
+      const { rows } = supervisorId
+        ? await db.query(
+            `SELECT sup.id, sup.full_name, sup.group_id, uc.status FROM supervisors sup JOIN user_credentials uc ON uc.id = sup.id WHERE sup.id = ?`,
+            [supervisorId]
+          )
+        : { rows: [] };
+      if (!rows.length) return res.status(404).json({ error: "Trainer account not found" });
+      if (rows[0].status !== "active") return res.status(400).json({ error: "That trainer account is suspended" });
+      if (Number(rows[0].group_id) === group.id) {
+        return res.status(409).json({ error: "This trainer is already a member of this Group" });
+      }
+      added = await addGroupAssociation(db, { groupId: group.id, supervisorId, addedBy: req.user.id });
+      detail = { supervisorId, fullName: rows[0].full_name };
+    } else {
+      let guest;
+      if (body.guestTrainerId != null) {
+        const guestTrainerId = parseIdParam(body.guestTrainerId);
+        const { rows } = guestTrainerId
+          ? await db.query("SELECT * FROM guest_trainers WHERE id = ? AND owner_group_id = ?", [guestTrainerId, group.id])
+          : { rows: [] };
+        if (!rows.length) return res.status(404).json({ error: "Guest Trainer not found" });
+        guest = rows[0];
+      } else {
+        const found = await findOrCreateGroupGuest(db, { groupId: group.id, createdBy: req.user.id, input: body });
+        if (found.error) return res.status(400).json({ error: found.error });
+        guest = found.guest;
+      }
+      added = await addGroupAssociation(db, { groupId: group.id, guestTrainerId: guest.id, addedBy: req.user.id });
+      detail = { guestTrainerId: guest.id, fullName: guest.full_name };
+    }
+    if (added.error) return res.status(added.status).json({ error: added.error });
+
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'guest_trainer_associated', 'group_guest_trainers', ?, ?)",
+      [req.user.id, added.association.id, JSON.stringify({ groupId: group.id, ...detail })]
+    );
+    res.status(201).json({ associationId: added.association.id, ...detail });
+  })
+);
+
+// DELETE /api/admin/groups/:id/guest-trainers/:associationId -- removes the
+// association only; the person and their delivered-session history stay.
+router.delete(
+  "/groups/:id/guest-trainers/:associationId",
+  asyncRoute(async (req, res, db) => {
+    const group = await loadGroupOr404(db, req.params.id, res);
+    if (!group) return;
+    const associationId = parseIdParam(req.params.associationId);
+    const { rows } = associationId
+      ? await db.query("SELECT id, guest_trainer_id, supervisor_id FROM group_guest_trainers WHERE id = ? AND group_id = ?", [associationId, group.id])
+      : { rows: [] };
+    if (!rows.length) return res.status(404).json({ error: "Guest Trainer not found in this Group" });
+    await db.query("DELETE FROM group_guest_trainers WHERE id = ?", [associationId]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, 'guest_trainer_removed', 'group_guest_trainers', ?, ?)",
+      [req.user.id, associationId, JSON.stringify({ groupId: group.id, guestTrainerId: rows[0].guest_trainer_id, supervisorId: rows[0].supervisor_id })]
+    );
+    res.json({ success: true });
+  })
+);
+
+// ---- External Trainers (migration 039) -------------------------------------
+// A separate provider kind from Guest Trainers -- never on a Group roster,
+// recorded from Session forms. Admin can review and correct them; there is
+// no delete (Sessions reference them ON DELETE RESTRICT).
+
+// GET /api/admin/groups/:id/external-trainers
+router.get(
+  "/groups/:id/external-trainers",
+  asyncRoute(async (req, res, db) => {
+    const group = await loadGroupOr404(db, req.params.id, res);
+    if (!group) return;
+    res.json({ externalTrainers: await listGroupExternals(db, group.id) });
+  })
+);
+
+// PATCH /api/admin/external-trainers/:id
+router.patch(
+  "/external-trainers/:id",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    const { rows } = id ? await db.query("SELECT id FROM external_trainers WHERE id = ?", [id]) : { rows: [] };
+    if (!rows.length) return res.status(404).json({ error: "External Trainer not found" });
+    const result = await updateExternalDetails(db, id, req.body);
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    await db.query("INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'external_trainer_updated', 'external_trainers', ?)", [
+      req.user.id,
+      id,
+    ]);
+    res.json({ updated: true });
+  })
+);
+
+// PATCH /api/admin/guest-trainers/:id -- edit an external trainer's details.
+router.patch(
+  "/guest-trainers/:id",
+  asyncRoute(async (req, res, db) => {
+    const id = parseIdParam(req.params.id);
+    const { rows } = id ? await db.query("SELECT id FROM guest_trainers WHERE id = ?", [id]) : { rows: [] };
+    if (!rows.length) return res.status(404).json({ error: "Guest Trainer not found" });
+    const result = await updateGuestDetails(db, id, req.body);
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    await db.query("INSERT INTO audit_logs (actor_id, action, entity_type, entity_id) VALUES (?, 'guest_trainer_updated', 'guest_trainers', ?)", [
+      req.user.id,
+      id,
+    ]);
+    res.json({ updated: true });
+  })
+);
+
 // ---- Trainers (create/assign independently of Group creation) -----------
 // A Trainer (Master Trainer or Trainer/ToT) is a `supervisors` row like any
 // created via POST /groups, but these two routes let Admin create or
@@ -1766,21 +1979,35 @@ async function getTrainersAndHours(db, studentId, studentFullName) {
   // provider distinction at all -- whoever logs one of those IS the
   // provider by definition, there is no separate "on behalf of" concept
   // for a manual entry the way there is for a session row.
+  //
+  // A session delivered by an external Guest Trainer (migration 038) has
+  // supervisor_id = NULL here and its own guest_id instead -- grouped
+  // separately so those hours are never credited to the creator and never
+  // dropped either (see otherProviders below). An External Trainer
+  // (migration 039) is grouped the same way under its own external_id.
   const { rows: hoursRows } = await db.query(
-    `SELECT supervisor_id, COALESCE(SUM(hours), 0) AS hours FROM (
-       SELECT supervisor_id, hours FROM supervision_hours WHERE student_id = ?
+    `SELECT supervisor_id, guest_id, external_id, COALESCE(SUM(hours), 0) AS hours FROM (
+       SELECT supervisor_id, NULL AS guest_id, NULL AS external_id, hours FROM supervision_hours WHERE student_id = ?
        UNION ALL
-       SELECT COALESCE(s.provided_by_supervisor_id, s.supervisor_id) AS supervisor_id,
+       SELECT IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL) AS supervisor_id,
+              s.provided_by_guest_trainer_id AS guest_id,
+              s.provided_by_external_trainer_id AS external_id,
               CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours FROM sessions s
          JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
          WHERE s.student_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled'
        UNION ALL
-       SELECT added_by AS supervisor_id, hours FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'supervision'
-     ) combined GROUP BY supervisor_id`,
+       SELECT added_by AS supervisor_id, NULL AS guest_id, NULL AS external_id, hours FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'supervision'
+     ) combined GROUP BY supervisor_id, guest_id, external_id`,
     [studentId, studentId, studentId]
   );
   const hoursBySupervisor = {};
-  hoursRows.forEach((r) => (hoursBySupervisor[r.supervisor_id] = Number(r.hours)));
+  const hoursByGuest = {};
+  const hoursByExternal = {};
+  hoursRows.forEach((r) => {
+    if (r.external_id != null) hoursByExternal[r.external_id] = Number(r.hours);
+    else if (r.guest_id != null) hoursByGuest[r.guest_id] = Number(r.hours);
+    else if (r.supervisor_id != null) hoursBySupervisor[r.supervisor_id] = Number(r.hours);
+  });
 
   // Training hours -- reads the exact same computeHoursByType() total every
   // other trainee-hours view in the app already trusts (Trainee Profile's
@@ -1818,13 +2045,37 @@ async function getTrainersAndHours(db, studentId, studentFullName) {
   const masterTrainer = masterTrainerRow ? toTrainerInfo(masterTrainerRow) : null;
   const totTrainers = totTrainerRows.map(toTrainerInfo);
 
+  // Supervision hours this trainee received from anyone outside their own
+  // caseload team: external Guest Trainers, internal Guest Trainers from
+  // another Group (migration 038), or a former trainer.
+  const caseloadIds = new Set(supervisorRows.map((s) => String(s.id)));
+  const otherProviders = [];
+  const guestIds = Object.keys(hoursByGuest);
+  if (guestIds.length) {
+    const { rows } = await db.query(`SELECT id, full_name FROM guest_trainers WHERE id IN (${guestIds.map(() => "?").join(",")})`, guestIds);
+    rows.forEach((r) => otherProviders.push({ kind: "guest", guestTrainerId: r.id, fullName: r.full_name, hours: hoursByGuest[r.id] || 0 }));
+  }
+  const externalIds = Object.keys(hoursByExternal);
+  if (externalIds.length) {
+    const { rows } = await db.query(`SELECT id, full_name FROM external_trainers WHERE id IN (${externalIds.map(() => "?").join(",")})`, externalIds);
+    rows.forEach((r) => otherProviders.push({ kind: "external", externalTrainerId: r.id, fullName: r.full_name, hours: hoursByExternal[r.id] || 0 }));
+  }
+  const otherInternalIds = Object.keys(hoursBySupervisor).filter((id) => !caseloadIds.has(id));
+  if (otherInternalIds.length) {
+    const { rows } = await db.query(`SELECT id, full_name FROM supervisors WHERE id IN (${otherInternalIds.map(() => "?").join(",")})`, otherInternalIds);
+    rows.forEach((r) => otherProviders.push({ kind: "internal", supervisorId: r.id, fullName: r.full_name, hours: hoursBySupervisor[r.id] || 0 }));
+  }
+  otherProviders.sort((a, b) => String(a.fullName).localeCompare(String(b.fullName)));
+
   return {
     masterTrainer,
     totTrainers,
+    otherProviders,
     trainingHours: {
       trainee: { fullName: studentFullName, hours: traineeHours, hoursByType },
       masterTrainer: masterTrainer ? { fullName: masterTrainer.fullName, hours: masterTrainer.hours } : null,
       totTrainers: totTrainers.map((t) => ({ fullName: t.fullName, hours: t.hours })),
+      otherProviders: otherProviders.map((p) => ({ fullName: p.fullName, hours: p.hours, kind: p.kind })),
     },
   };
 }
@@ -2549,7 +2800,7 @@ router.get(
     const { start, end } = req.query;
     if (!start || !end) return res.status(400).json({ error: "start and end are required (YYYY-MM-DD)" });
     const items = await getSessionsInRange(db, { kind: "system" }, start, end);
-    res.json({ events: items.map((i) => ({ id: i.id, date: i.date, time: i.time, title: i.title })) });
+    res.json({ events: items.map((i) => ({ id: i.id, date: i.date, time: i.time, title: i.title, providedByName: i.providedByName })) });
   })
 );
 router.get(

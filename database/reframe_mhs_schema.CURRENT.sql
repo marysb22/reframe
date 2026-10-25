@@ -25,6 +25,20 @@
 -- does not duplicate. See that file's header for the seed-data section and
 -- its design-notes documentation, which are still accurate and worth
 -- keeping; only its table/column list was out of date.
+--
+-- UPDATED 2026-10-24 for migration 038 (Guest Trainers): the two new tables
+-- (guest_trainers, group_guest_trainers) and the five tables that gained
+-- provided_by_guest_trainer_id (sessions, session_occasions, session_series,
+-- tot_training_sessions, tot_session_occasions) were re-taken with
+-- mysqldump --no-data from the same local dev database AFTER applying
+-- database/migrations/038_guest_trainers.sql to it. Every other table is
+-- unchanged from the original dump. Still a dev-derived REFERENCE, not a
+-- production dump and not a bootstrap script.
+--
+-- UPDATED 2026-10-24 for migration 039 (External Trainers): external_trainers
+-- and the same five session tables (now also carrying
+-- provided_by_external_trainer_id) re-taken the same way, from the same local
+-- dev database AFTER applying 039_external_trainers.sql to it.
 -- =============================================================================
 
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -548,6 +562,71 @@ CREATE TABLE `excuse_reasons` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `external_trainers` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `full_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name_key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `organization` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `specialization` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `owner_group_id` bigint DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ext_owner_name` (`owner_group_id`,`name_key`),
+  KEY `fk_ext_created_by` (`created_by`),
+  KEY `idx_ext_owner_email` (`owner_group_id`,`email`),
+  CONSTRAINT `fk_ext_created_by` FOREIGN KEY (`created_by`) REFERENCES `user_credentials` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_ext_owner_group` FOREIGN KEY (`owner_group_id`) REFERENCES `trainer_groups` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='External Trainers (outside the organization/Group, no Reframe login, never on a Group roster). Never deleted by the application -- sessions reference them ON DELETE RESTRICT. See migration 039.';
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `group_guest_trainers` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `group_id` bigint NOT NULL,
+  `guest_trainer_id` bigint DEFAULT NULL,
+  `supervisor_id` bigint DEFAULT NULL,
+  `added_by` bigint DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ggt_group_guest` (`group_id`,`guest_trainer_id`),
+  UNIQUE KEY `uq_ggt_group_supervisor` (`group_id`,`supervisor_id`),
+  KEY `fk_ggt_guest` (`guest_trainer_id`),
+  KEY `fk_ggt_supervisor` (`supervisor_id`),
+  KEY `fk_ggt_added_by` (`added_by`),
+  CONSTRAINT `fk_ggt_added_by` FOREIGN KEY (`added_by`) REFERENCES `user_credentials` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_ggt_group` FOREIGN KEY (`group_id`) REFERENCES `trainer_groups` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ggt_guest` FOREIGN KEY (`guest_trainer_id`) REFERENCES `guest_trainers` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ggt_supervisor` FOREIGN KEY (`supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Guest Trainers associated with a Group (migration 038). Association only -- grants no access and is not used for session delivery attribution, which lives on each session row.';
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `guest_trainers` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `full_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name_key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `organization` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `specialization` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `owner_group_id` bigint DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_guest_owner_name` (`owner_group_id`,`name_key`),
+  KEY `fk_guest_created_by` (`created_by`),
+  KEY `idx_guest_owner_email` (`owner_group_id`,`email`),
+  CONSTRAINT `fk_guest_created_by` FOREIGN KEY (`created_by`) REFERENCES `user_credentials` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_guest_owner_group` FOREIGN KEY (`owner_group_id`) REFERENCES `trainer_groups` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='External Guest Trainers (no Reframe login). Never deleted by the application -- sessions reference them ON DELETE RESTRICT so historical provider attribution is always preserved. See migration 038.';
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `hour_types` (
   `code` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `label` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -787,6 +866,8 @@ CREATE TABLE `session_occasions` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `supervisor_id` bigint NOT NULL,
   `provided_by_supervisor_id` bigint DEFAULT NULL,
+  `provided_by_guest_trainer_id` bigint DEFAULT NULL,
+  `provided_by_external_trainer_id` bigint DEFAULT NULL,
   `session_type` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `session_date` date NOT NULL,
@@ -803,12 +884,16 @@ CREATE TABLE `session_occasions` (
   KEY `fk_socc_hour_type` (`session_type`),
   KEY `fk_socc_series` (`series_id`),
   KEY `fk_socc_provided_by` (`provided_by_supervisor_id`),
+  KEY `fk_socc_provided_by_guest` (`provided_by_guest_trainer_id`),
+  KEY `fk_socc_provided_by_external` (`provided_by_external_trainer_id`),
   CONSTRAINT `fk_socc_hour_type` FOREIGN KEY (`session_type`) REFERENCES `hour_types` (`code`) ON UPDATE CASCADE,
   CONSTRAINT `fk_socc_provided_by` FOREIGN KEY (`provided_by_supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_socc_provided_by_external` FOREIGN KEY (`provided_by_external_trainer_id`) REFERENCES `external_trainers` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_socc_provided_by_guest` FOREIGN KEY (`provided_by_guest_trainer_id`) REFERENCES `guest_trainers` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_socc_series` FOREIGN KEY (`series_id`) REFERENCES `session_series` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_socc_supervisor` FOREIGN KEY (`supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `session_occasions_chk_1` CHECK ((`duration_minutes` >= 0))
-) ENGINE=InnoDB AUTO_INCREMENT=2370 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2806 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -816,6 +901,8 @@ CREATE TABLE `session_series` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `supervisor_id` bigint NOT NULL,
   `provided_by_supervisor_id` bigint DEFAULT NULL,
+  `provided_by_guest_trainer_id` bigint DEFAULT NULL,
+  `provided_by_external_trainer_id` bigint DEFAULT NULL,
   `session_type` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `notes` text COLLATE utf8mb4_unicode_ci,
@@ -825,10 +912,14 @@ CREATE TABLE `session_series` (
   KEY `fk_sseries_supervisor` (`supervisor_id`),
   KEY `fk_sseries_hour_type` (`session_type`),
   KEY `fk_sseries_provided_by` (`provided_by_supervisor_id`),
+  KEY `fk_sseries_provided_by_guest` (`provided_by_guest_trainer_id`),
+  KEY `fk_sseries_provided_by_external` (`provided_by_external_trainer_id`),
   CONSTRAINT `fk_sseries_hour_type` FOREIGN KEY (`session_type`) REFERENCES `hour_types` (`code`) ON UPDATE CASCADE,
   CONSTRAINT `fk_sseries_provided_by` FOREIGN KEY (`provided_by_supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_sseries_provided_by_external` FOREIGN KEY (`provided_by_external_trainer_id`) REFERENCES `external_trainers` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_sseries_provided_by_guest` FOREIGN KEY (`provided_by_guest_trainer_id`) REFERENCES `guest_trainers` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_sseries_supervisor` FOREIGN KEY (`supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=412 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Groups multiple session_occasions rows (one per day) into a single multi-day Session. NULL series_id on session_occasions = an ordinary single-day Session, unchanged from before this migration.';
+) ENGINE=InnoDB AUTO_INCREMENT=478 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Groups multiple session_occasions rows (one per day) into a single multi-day Session. NULL series_id on session_occasions = an ordinary single-day Session, unchanged from before this migration.';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -837,6 +928,8 @@ CREATE TABLE `sessions` (
   `student_id` bigint NOT NULL,
   `supervisor_id` bigint NOT NULL,
   `provided_by_supervisor_id` bigint DEFAULT NULL,
+  `provided_by_guest_trainer_id` bigint DEFAULT NULL,
+  `provided_by_external_trainer_id` bigint DEFAULT NULL,
   `session_type` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `session_date` date NOT NULL,
@@ -856,14 +949,18 @@ CREATE TABLE `sessions` (
   KEY `idx_sessions_supervisor_date` (`supervisor_id`,`session_date` DESC),
   KEY `fk_sessions_hour_type` (`session_type`),
   KEY `fk_sessions_provided_by` (`provided_by_supervisor_id`),
+  KEY `fk_sessions_provided_by_guest` (`provided_by_guest_trainer_id`),
+  KEY `fk_sessions_provided_by_external` (`provided_by_external_trainer_id`),
   CONSTRAINT `fk_sessions_hour_type` FOREIGN KEY (`session_type`) REFERENCES `hour_types` (`code`) ON UPDATE CASCADE,
   CONSTRAINT `fk_sessions_occasion` FOREIGN KEY (`occasion_id`) REFERENCES `session_occasions` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_sessions_provided_by` FOREIGN KEY (`provided_by_supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_sessions_provided_by_external` FOREIGN KEY (`provided_by_external_trainer_id`) REFERENCES `external_trainers` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_sessions_provided_by_guest` FOREIGN KEY (`provided_by_guest_trainer_id`) REFERENCES `guest_trainers` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_sessions_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_sessions_supervisor` FOREIGN KEY (`supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `sessions_chk_2` CHECK (((`duration_minutes` is null) or (`duration_minutes` >= 0))),
   CONSTRAINT `sessions_chk_3` CHECK ((`status` in (_utf8mb4'scheduled',_utf8mb4'completed',_utf8mb4'cancelled')))
-) ENGINE=InnoDB AUTO_INCREMENT=22216 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25638 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -1045,6 +1142,8 @@ CREATE TABLE `tot_session_occasions` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `master_trainer_id` bigint NOT NULL,
   `provided_by_supervisor_id` bigint DEFAULT NULL,
+  `provided_by_guest_trainer_id` bigint DEFAULT NULL,
+  `provided_by_external_trainer_id` bigint DEFAULT NULL,
   `title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `session_date` date NOT NULL,
   `session_time` time DEFAULT NULL,
@@ -1055,10 +1154,14 @@ CREATE TABLE `tot_session_occasions` (
   PRIMARY KEY (`id`),
   KEY `fk_tsocc_mt` (`master_trainer_id`),
   KEY `fk_tsocc_provided_by` (`provided_by_supervisor_id`),
+  KEY `fk_tsocc_provided_by_guest` (`provided_by_guest_trainer_id`),
+  KEY `fk_tsocc_provided_by_external` (`provided_by_external_trainer_id`),
   CONSTRAINT `fk_tsocc_mt` FOREIGN KEY (`master_trainer_id`) REFERENCES `supervisors` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_tsocc_provided_by` FOREIGN KEY (`provided_by_supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_tsocc_provided_by_external` FOREIGN KEY (`provided_by_external_trainer_id`) REFERENCES `external_trainers` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_tsocc_provided_by_guest` FOREIGN KEY (`provided_by_guest_trainer_id`) REFERENCES `guest_trainers` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `tot_session_occasions_chk_1` CHECK ((`duration_minutes` >= 0))
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='One Master-Trainer-to-Group Session event (ToTs, optionally including the Master Trainer herself). Mirrors session_occasions for the tot_training_sessions/tot_training_attendance pair.';
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='One Master-Trainer-to-Group Session event (ToTs, optionally including the Master Trainer herself). Mirrors session_occasions for the tot_training_sessions/tot_training_attendance pair.';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -1095,6 +1198,8 @@ CREATE TABLE `tot_training_sessions` (
   `tot_id` bigint NOT NULL,
   `master_trainer_id` bigint NOT NULL,
   `provided_by_supervisor_id` bigint DEFAULT NULL,
+  `provided_by_guest_trainer_id` bigint DEFAULT NULL,
+  `provided_by_external_trainer_id` bigint DEFAULT NULL,
   `title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `session_date` date NOT NULL,
   `session_time` time DEFAULT NULL,
@@ -1110,13 +1215,17 @@ CREATE TABLE `tot_training_sessions` (
   KEY `idx_totsess_tot` (`tot_id`),
   KEY `idx_totsess_mt` (`master_trainer_id`),
   KEY `fk_totsess_provided_by` (`provided_by_supervisor_id`),
+  KEY `fk_totsess_provided_by_guest` (`provided_by_guest_trainer_id`),
+  KEY `fk_totsess_provided_by_external` (`provided_by_external_trainer_id`),
   CONSTRAINT `fk_totsess_mt` FOREIGN KEY (`master_trainer_id`) REFERENCES `supervisors` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_totsess_occasion` FOREIGN KEY (`occasion_id`) REFERENCES `tot_session_occasions` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_totsess_provided_by` FOREIGN KEY (`provided_by_supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_totsess_provided_by_external` FOREIGN KEY (`provided_by_external_trainer_id`) REFERENCES `external_trainers` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_totsess_provided_by_guest` FOREIGN KEY (`provided_by_guest_trainer_id`) REFERENCES `guest_trainers` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_totsess_tot` FOREIGN KEY (`tot_id`) REFERENCES `supervisors` (`id`) ON DELETE CASCADE,
   CONSTRAINT `tot_training_sessions_chk_1` CHECK ((`duration_minutes` >= 0)),
   CONSTRAINT `tot_training_sessions_chk_2` CHECK ((`status` in (_utf8mb4'scheduled',_utf8mb4'completed',_utf8mb4'cancelled')))
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Master Trainer -> ToT training sessions. Mirrors the sessions table shape for a relationship the existing student-only sessions table cannot represent.';
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Master Trainer -> ToT training sessions. Mirrors the sessions table shape for a relationship the existing student-only sessions table cannot represent.';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;

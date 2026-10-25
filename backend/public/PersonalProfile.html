@@ -5203,7 +5203,7 @@
                 .map((r) => `
       <li class="sched-item">
         <div class="sched-time">${r.time || "--:--"}<small>${r.date}</small></div>
-        <div class="sinfo"><strong>${escapeHtml(r.title || recordLabel(r))}</strong><span>logged by ${escapeHtml(r.supervisorName)}</span></div>
+        <div class="sinfo"><strong>${escapeHtml(r.title || recordLabel(r))}</strong><span>logged by ${escapeHtml(r.supervisorName)}${r.providedByName && r.providedByName !== r.supervisorName ? ` \u00b7 delivered by <span dir="auto">${escapeHtml(r.providedByName)}</span>` : ""}</span></div>
         <span class="sched-badge ${r.recordType}">${r.recordType === "training_session" ? "Training" : "Supervision"}</span>
       </li>
     `)
@@ -6100,7 +6100,7 @@ function renderSessions() {
       }
       return `<li class="record-item">
         <strong dir="auto">${recordLabel(r)}${r.title ? " \u00b7 " + escapeHtml(r.title) : ""}</strong>
-        <div class="rmeta">${bits.join(" \u00b7 ")} \u00b7 logged by ${escapeHtml(r.supervisorName)}</div>
+        <div class="rmeta">${bits.join(" \u00b7 ")} \u00b7 logged by ${escapeHtml(r.supervisorName)}${r.providedByName && r.providedByName !== r.supervisorName ? ` \u00b7 delivered by <span dir="auto">${escapeHtml(r.providedByName)}</span>` : ""}</div>
         ${r.content ? `<div class="rcontent" dir="auto">${escapeHtml(r.content)}</div>` : ""}
       </li>`;
     })
