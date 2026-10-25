@@ -2358,16 +2358,18 @@
 
                 <div class="system-card">
                     <h3><i class="fa fa-user-plus"></i>Create a new Member</h3>
-                    <p class="hint">Create a Master Trainer, Trainer (ToT), or Trainee without creating a new Group. The form below changes based on the role you pick.</p>
+                    <p class="hint">Create a Master Trainer, Trainer (ToT), Trainee, Guest Trainer or External Trainer without creating a new Group. The form below changes based on the role you pick.</p>
                     <form id="trainerCreateForm">
                         <label>Full name</label>
-                        <input type="text" id="tcName" required placeholder="Full name">
+                        <input type="text" id="tcName" required placeholder="Full name" dir="auto">
 
                         <label>Role</label>
                         <select id="tcRole">
           <option value="primary">Master Trainer</option>
           <option value="in_training">Trainer (ToT)</option>
           <option value="trainee">Trainee</option>
+          <option value="guest">Guest Trainer (no account)</option>
+          <option value="external">External Trainer (no account)</option>
         </select>
 
                         <label id="tcGroupLabel">Assign to group</label>
@@ -2376,12 +2378,29 @@
         </select>
                         <div class="field-hint" id="tcGroupHint">A Trainer (ToT) must be assigned to a group that already has an active Master Trainer.</div>
 
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                            <div><label>ID (optional)</label><input type="text" id="tcId" placeholder="Auto-generate"></div>
-                            <div><label>Temp password</label><input type="text" id="tcPassword" value="password123"></div>
+                        <!-- Account fields: Master Trainer / Trainer (ToT) / Trainee only -->
+                        <div id="tcAccountFields">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div><label>ID (optional)</label><input type="text" id="tcId" placeholder="Auto-generate"></div>
+                                <div><label>Temp password</label><input type="text" id="tcPassword" value="password123"></div>
+                            </div>
+                            <div class="field-hint">The Member will be required to change their password on first login.</div>
                         </div>
 
-                        <div class="field-hint">The Member will be required to change their password on first login.</div>
+                        <!-- Guest / External Trainer details (migrations 038/039): no
+                             account, no login, no access -- only selectable as "Hours
+                             Provided By" on that Group's Sessions. -->
+                        <div id="tcOutsideFields" style="display:none;">
+                            <label>Organization <span class="hint">(optional)</span></label>
+                            <input type="text" id="tcOrganization" dir="auto" maxlength="255" autocomplete="off">
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+                                <div><label>Email <span class="hint">(optional)</span></label><input type="email" id="tcEmail" dir="ltr" maxlength="255" autocomplete="off"></div>
+                                <div><label>Phone <span class="hint">(optional)</span></label><input type="tel" id="tcPhone" dir="ltr" maxlength="50" autocomplete="off"></div>
+                            </div>
+                            <label>Specialization <span class="hint">(optional)</span></label>
+                            <input type="text" id="tcSpecialization" dir="auto" maxlength="255" autocomplete="off">
+                            <div class="field-hint" id="tcOutsideHint"></div>
+                        </div>
                         <button type="submit" class="btn">Create member</button>
                     </form>
                     <div class="result-box" id="tcResult"></div>
@@ -4407,7 +4426,23 @@ function updateTrainerCreateFormForRole() {
   const groupHint = document.getElementById("tcGroupHint");
   const groupSelect = document.getElementById("tcGroup");
 
-  if (role === "trainee") {
+  // Guest / External Trainers get no account -- swap the ID/password fields
+  // for their contact details.
+  const outside = role === "guest" || role === "external";
+  document.getElementById("tcAccountFields").style.display = outside ? "none" : "block";
+  document.getElementById("tcOutsideFields").style.display = outside ? "block" : "none";
+  document.getElementById("tcOutsideHint").textContent =
+    role === "guest"
+      ? "Added to this Group's Guest Trainers list. No account or login is created; they can be selected as \"Hours Provided By\" on the Group's Sessions."
+      : role === "external"
+        ? "A trainer from outside the organization, recorded for this Group. Not on the Group's roster, no account or login; selectable as \"Hours Provided By\" on the Group's Sessions."
+        : "";
+
+  if (outside) {
+    groupLabel.textContent = "Group";
+    groupHint.textContent = role === "guest" ? "A Guest Trainer belongs to a Group's Guest Trainers list." : "An External Trainer is recorded for one Group.";
+    groupSelect.querySelector('option[value=""]').textContent = "Select a group...";
+  } else if (role === "trainee") {
     groupLabel.textContent = "Group";
     groupHint.textContent = "A Trainee must belong to a Group.";
     groupSelect.querySelector('option[value=""]').textContent = "Select a group...";
@@ -4434,6 +4469,41 @@ document.getElementById("trainerCreateForm").addEventListener("submit", async (e
   }
   if (role === "trainee" && !groupId) {
     showToast("A Trainee must be assigned to a group", "error");
+    return;
+  }
+
+  // Guest / External Trainer: no account -- created through their own
+  // Group-scoped endpoints (migrations 038/039), not POST /admin/trainers.
+  if (role === "guest" || role === "external") {
+    const label = role === "guest" ? "Guest Trainer" : "External Trainer";
+    if (!groupId) return showToast(`Select the Group this ${label} belongs to`, "error");
+    if (fullName.length < 2) return showToast("Please enter the trainer's full name", "error");
+    const details = {
+      fullName,
+      organization: document.getElementById("tcOrganization").value.trim(),
+      email: document.getElementById("tcEmail").value.trim(),
+      phone: document.getElementById("tcPhone").value.trim(),
+      specialization: document.getElementById("tcSpecialization").value.trim(),
+    };
+    if (details.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)) return showToast("Please enter a valid email address, or leave it empty", "error");
+    const outsideResult = await apiRequest(`/admin/groups/${groupId}/${role === "guest" ? "guest-trainers" : "external-trainers"}`, {
+      method: "POST",
+      body: JSON.stringify(details),
+    });
+    if (!outsideResult) return;
+    const groupName = (allGroups.find((g) => String(g.id) === String(groupId)) || {}).name || "the group";
+    const reused = role === "external" && outsideResult.created === false;
+    const box = document.getElementById("tcResult");
+    box.className = "result-box show";
+    box.innerHTML = `
+    <div class="rlabel">${label} "${escapeHtml(outsideResult.fullName)}" ${reused ? "was already recorded for" : "added to"} ${escapeHtml(groupName)}</div>
+    <div class="result-row"><span>Account</span><strong>None -- no login is created</strong></div>
+  `;
+    showSuccessNotification(`${label} ${reused ? "Already Recorded" : "Added"}`, `"${outsideResult.fullName}" can now be selected as "Hours Provided By" on ${groupName}'s Sessions.`);
+    document.getElementById("trainerCreateForm").reset();
+    document.getElementById("tcPassword").value = "password123";
+    updateTrainerCreateFormForRole();
+    if (currentGroupId) renderGroupDetail();
     return;
   }
 

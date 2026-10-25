@@ -31,6 +31,7 @@ const {
   listGroupGuests,
   updateExternalDetails,
   listGroupExternals,
+  findOrCreateGroupExternal,
 } = require("../utils/guestTrainers");
 
 const router = express.Router();
@@ -1428,6 +1429,34 @@ router.get(
     const group = await loadGroupOr404(db, req.params.id, res);
     if (!group) return;
     res.json({ externalTrainers: await listGroupExternals(db, group.id) });
+  })
+);
+
+// POST /api/admin/groups/:id/external-trainers
+//   { fullName, organization?, email?, phone?, specialization? }
+// Records an External Trainer for a Group directly (Admin > Create Member),
+// the same record a Master Trainer/ToT creates from a Session's "Hours
+// Provided By". Idempotent per Group: the same person (normalized name or
+// email) resolves to the existing record. No account, no access.
+router.post(
+  "/groups/:id/external-trainers",
+  asyncRoute(async (req, res, db) => {
+    const group = await loadGroupOr404(db, req.params.id, res);
+    if (!group) return;
+    const result = await findOrCreateGroupExternal(db, { groupId: group.id, createdBy: req.user.id, input: req.body });
+    if (result.error) return res.status(400).json({ error: result.error });
+    if (result.created) {
+      await db.query(
+        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'external_trainer_created', 'external_trainers', ?, ?)",
+        [req.user.id, result.external.id, JSON.stringify({ groupId: group.id })]
+      );
+    }
+    res.status(result.created ? 201 : 200).json({
+      externalTrainerId: result.external.id,
+      fullName: result.external.full_name,
+      organization: result.external.organization,
+      created: result.created,
+    });
   })
 );
 

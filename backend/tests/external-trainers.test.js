@@ -435,6 +435,31 @@ async function main() {
     assertEqual(patch.status, 200, "admin edit");
   });
 
+  await test("Admin > Create Member: records an External Trainer for a Group (idempotent, no account)", async () => {
+    const res = await request("POST", `/admin/groups/${fx.groupId}/external-trainers`, adminToken, {
+      fullName: "ZZTEXT Admin-Created",
+      organization: "Partner Clinic",
+      email: "admin.created@clinic.org",
+    });
+    assertEqual(res.status, 201, "expected 201");
+    const id = res.body.externalTrainerId;
+    const again = await request("POST", `/admin/groups/${fx.groupId}/external-trainers`, adminToken, { fullName: "zztext  admin-created" });
+    assertEqual(again.status, 200, "repeat reuses");
+    assertEqual(again.body.externalTrainerId, id, "same record");
+    const { rows } = await pool.query("SELECT COUNT(*) AS n FROM user_credentials WHERE member_code LIKE 'ZZTEXT%' AND id NOT IN (?, ?, ?, ?, ?, ?, ?)", [
+      fx.mtId, fx.totId, fx.mt2Id, fx.adminId, ...fx.studentIds, 0,
+    ]);
+    assertEqual(Number(rows[0].n), 0, "no login account created");
+    const prov = await request("GET", "/supervisor/me/eligible-providers", totToken);
+    assert(prov.body.providers.some((p) => p.key === `e:${id}` && p.kind === "external"), "selectable on the Group's Sessions");
+    const { rows: g } = await pool.query("SELECT COUNT(*) AS n FROM guest_trainers WHERE full_name = 'ZZTEXT Admin-Created'");
+    assertEqual(Number(g[0].n), 0, "not a Guest Trainer");
+    const notGroup = await request("POST", `/admin/groups/999999999/external-trainers`, adminToken, { fullName: "Nobody" });
+    assertEqual(notGroup.status, 404, "unknown Group -> 404");
+    const notAdmin = await request("POST", `/admin/groups/${fx.groupId}/external-trainers`, mtToken, { fullName: "Sneaky" });
+    assertEqual(notAdmin.status, 403, "non-admin -> 403");
+  });
+
   await test("History is protected: an External Trainer with Sessions can't be deleted", async () => {
     let blocked = false;
     try {
