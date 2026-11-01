@@ -37,6 +37,19 @@ const {
     updateExternalDetails,
 } = require("../utils/guestTrainers");
 const { summarizeSeriesProviders, applySeriesSummary } = require("../utils/seriesProviders");
+const {
+    creditRowsSql,
+    normalizeContributions,
+    validateContributionLists,
+    existingContributionChoices,
+    prepareSessionContributions,
+    writeContributions,
+    attachContributions,
+    attachToSessionRows,
+    loadContributions,
+    sumMinutes,
+    leadProvider,
+} = require("../utils/contributions");
 
 const router = express.Router();
 
@@ -728,31 +741,9 @@ router.get(
               -- merely who created the session row (a Master Trainer can log
               -- a session on a ToT's behalf, or vice versa).
               ((SELECT COALESCE(SUM(th.hours), 0) FROM training_hours th WHERE th.supervisor_id = sup.id) +
-               COALESCE((
-                  SELECT SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60
-                  FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-                  WHERE IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL) = sup.id AND s.session_type = 'training' AND s.status != 'cancelled' AND s.occasion_id IS NULL
-                ), 0) +
-               COALESCE((
-                  SELECT SUM(so.duration_minutes) / 60 FROM session_occasions so
-                  WHERE IF(so.provided_by_guest_trainer_id IS NULL AND so.provided_by_external_trainer_id IS NULL, COALESCE(so.provided_by_supervisor_id, so.supervisor_id), NULL) = sup.id AND so.session_type = 'training'
-                    AND EXISTS (SELECT 1 FROM sessions s2 JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
-                                WHERE s2.occasion_id = so.id AND s2.status != 'cancelled')
-                ), 0) +
                (SELECT COALESCE(SUM(tha.hours), 0) FROM trainee_hour_adjustments tha
                   WHERE tha.hour_type = 'training' AND tha.added_by = sup.id)) AS training_hours,
               ((SELECT COALESCE(SUM(sh.hours), 0) FROM supervision_hours sh WHERE sh.supervisor_id = sup.id) +
-               COALESCE((
-                  SELECT SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60
-                  FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-                  WHERE IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL) = sup.id AND s.session_type = 'supervision' AND s.status != 'cancelled' AND s.occasion_id IS NULL
-                ), 0) +
-               COALESCE((
-                  SELECT SUM(so.duration_minutes) / 60 FROM session_occasions so
-                  WHERE IF(so.provided_by_guest_trainer_id IS NULL AND so.provided_by_external_trainer_id IS NULL, COALESCE(so.provided_by_supervisor_id, so.supervisor_id), NULL) = sup.id AND so.session_type = 'supervision'
-                    AND EXISTS (SELECT 1 FROM sessions s2 JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
-                                WHERE s2.occasion_id = so.id AND s2.status != 'cancelled')
-                ), 0) +
                (SELECT COALESCE(SUM(tha.hours), 0) FROM trainee_hour_adjustments tha
                   WHERE tha.hour_type = 'supervision' AND tha.added_by = sup.id)) AS supervision_hours,
               (SELECT COALESCE((
@@ -786,28 +777,36 @@ router.get(
         const { rows: hourRows } = await db.query(
             `SELECT sup.id AS supervisor_id, ht.code, ht.label, ht.is_primary,
               COALESCE((SELECT SUM(hours) FROM training_hours WHERE supervisor_id = sup.id), 0) AS legacy_hours,
-              -- Same UNION-ALL-in-a-derived-table rewrite as the GET /tots
-              -- roster query above, for the same reason -- both branches
-              -- here are correlated to sup.id AND ht.code (two outer
-              -- aliases), which was even more exposed to the same MariaDB
-              -- derived-table correlation loss.
-              (COALESCE((
-                  SELECT SUM(CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END) / 60
-                  FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-                  WHERE IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL) = sup.id AND s.session_type = ht.code AND s.status != 'cancelled' AND s.occasion_id IS NULL
-                ), 0) +
-               COALESCE((
-                  SELECT SUM(so.duration_minutes) / 60 FROM session_occasions so
-                  WHERE IF(so.provided_by_guest_trainer_id IS NULL AND so.provided_by_external_trainer_id IS NULL, COALESCE(so.provided_by_supervisor_id, so.supervisor_id), NULL) = sup.id AND so.session_type = ht.code
-                    AND EXISTS (SELECT 1 FROM sessions s2 JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
-                                WHERE s2.occasion_id = so.id AND s2.status != 'cancelled')
-                ), 0)) AS derived_hours,
+              -- Session-derived hours are added in JS from the shared credit
+              -- rows (utils/contributions.js), see derivedByTot below.
+              0 AS derived_hours,
               COALESCE((SELECT SUM(hours) FROM trainee_hour_adjustments WHERE added_by = sup.id AND hour_type = ht.code), 0) AS adjustment_hours
        FROM supervisors sup
        JOIN hour_types ht ON ht.is_active = 1
        WHERE sup.group_id = ? AND sup.supervisor_type = 'in_training'`,
             [groupId]
         );
+        // Session-derived delivered hours per ToT and hour type, from the
+        // shared credit rows (utils/contributions.js): each trainer of a
+        // multi-trainer day gets only their own minutes (migration 040);
+        // legacy days/sessions credit their single provider, exactly as the
+        // per-ToT subqueries this replaces did.
+        const credits = creditRowsSql({ internalProviderGroup: true }, { internalProviderGroup: groupId });
+        const { rows: creditTotals } = await db.query(
+            `SELECT provider_id, code, SUM(hours) AS hours FROM (${credits.sql}) combined WHERE kind = 's' GROUP BY provider_id, code`,
+            credits.params
+        );
+        const derivedByTot = new Map();
+        for (const c of creditTotals) {
+            const key = `${Number(c.provider_id)}:${c.code}`;
+            derivedByTot.set(key, (derivedByTot.get(key) || 0) + Number(c.hours));
+        }
+        const derived = (supId, code) => derivedByTot.get(`${Number(supId)}:${code}`) || 0;
+        rows.forEach((r) => {
+            r.training_hours = Number(r.training_hours) + derived(r.id, "training");
+            r.supervision_hours = Number(r.supervision_hours) + derived(r.id, "supervision");
+        });
+
         const hoursByTotId = new Map();
         for (const r of hourRows) {
             if (!hoursByTotId.has(r.supervisor_id)) hoursByTotId.set(r.supervisor_id, []);
@@ -815,7 +814,7 @@ router.get(
                 code: r.code,
                 label: r.label,
                 isPrimary: !!r.is_primary,
-                hours: Number(r.legacy_hours) + Number(r.derived_hours) + Number(r.adjustment_hours),
+                hours: Number(r.legacy_hours) + derived(r.supervisor_id, r.code) + Number(r.adjustment_hours),
             });
         }
         rows.forEach((r) => {
@@ -868,36 +867,29 @@ router.get(
           (SELECT COUNT(DISTINCT ss.id) FROM session_series ss WHERE ss.supervisor_id = ? AND ss.session_type = 'supervision')
         ) AS supervision_sessions,
         ((SELECT COALESCE(SUM(hours), 0) FROM training_hours WHERE supervisor_id = ?) +
-         (SELECT COALESCE(SUM(hours), 0) FROM (
-            SELECT CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
-            FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-            WHERE IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL) = ? AND s.session_type = 'training' AND s.status != 'cancelled' AND s.occasion_id IS NULL
-            UNION ALL
-            SELECT so.duration_minutes / 60 FROM session_occasions so
-            WHERE IF(so.provided_by_guest_trainer_id IS NULL AND so.provided_by_external_trainer_id IS NULL, COALESCE(so.provided_by_supervisor_id, so.supervisor_id), NULL) = ? AND so.session_type = 'training'
-              AND EXISTS (SELECT 1 FROM sessions s2 JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
-                          WHERE s2.occasion_id = so.id AND s2.status != 'cancelled')
-          ) derived) +
          (SELECT COALESCE(SUM(hours), 0) FROM trainee_hour_adjustments WHERE hour_type = 'training' AND added_by = ?)) AS training_hours,
         ((SELECT COALESCE(SUM(hours), 0) FROM supervision_hours WHERE supervisor_id = ?) +
-         (SELECT COALESCE(SUM(hours), 0) FROM (
-            SELECT CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
-            FROM sessions s JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-            WHERE IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL) = ? AND s.session_type = 'supervision' AND s.status != 'cancelled' AND s.occasion_id IS NULL
-            UNION ALL
-            SELECT so.duration_minutes / 60 FROM session_occasions so
-            WHERE IF(so.provided_by_guest_trainer_id IS NULL AND so.provided_by_external_trainer_id IS NULL, COALESCE(so.provided_by_supervisor_id, so.supervisor_id), NULL) = ? AND so.session_type = 'supervision'
-              AND EXISTS (SELECT 1 FROM sessions s2 JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
-                          WHERE s2.occasion_id = so.id AND s2.status != 'cancelled')
-          ) derived) +
          (SELECT COALESCE(SUM(hours), 0) FROM trainee_hour_adjustments WHERE hour_type = 'supervision' AND added_by = ?)) AS supervision_hours,
         (SELECT COUNT(*) FROM assignments WHERE supervisor_id = ?) AS assignments_total,
         (SELECT COUNT(*) FROM assignments WHERE supervisor_id = ? AND status = 'completed') AS assignments_completed,
         (SELECT COUNT(*) FROM evaluations WHERE supervisor_id = ?) AS evaluation_count,
         (SELECT COUNT(*) FROM meetings WHERE supervisor_id = ?) AS meeting_count,
         (SELECT COUNT(*) FROM learning_materials WHERE supervisor_id = ? AND material_type != 'book') AS material_count`,
-            Array(19).fill(totId)
+            Array(15).fill(totId)
         );
+        // Session-derived delivered hours, from the shared credit rows
+        // (utils/contributions.js) -- a multi-trainer day credits this ToT
+        // only with their own minutes (migration 040).
+        {
+            const credits = creditRowsSql({ internalProviderId: true }, { internalProviderId: totId });
+            const { rows: creditTotals } = await db.query(
+                `SELECT code, SUM(hours) AS hours FROM (${credits.sql}) combined GROUP BY code`,
+                credits.params
+            );
+            const byCode = new Map(creditTotals.map((c) => [c.code, Number(c.hours)]));
+            statRows[0].training_hours = Number(statRows[0].training_hours) + (byCode.get("training") || 0);
+            statRows[0].supervision_hours = Number(statRows[0].supervision_hours) + (byCode.get("supervision") || 0);
+        }
 
         // "Training received" -- hours this ToT received FROM the calling
         // Master Trainer, kept structurally separate from the "delivered"
@@ -1019,6 +1011,15 @@ router.get(
 // mirroring the same redesign applied to the trainee-facing records in
 // supervisor.js) so hours are always derivable, never a typed number.
 
+/** A ToT session's trainers: the Master Trainer or Guest/External Trainers, never one of the Group's own ToTs (they're the audience). */
+function totSessionTrainerCheck(db, groupId, masterTrainerId) {
+    return async (c) => {
+        if (c.supervisorId == null || Number(c.supervisorId) === Number(masterTrainerId)) return null;
+        const { rows } = await db.query("SELECT 1 FROM supervisors WHERE id = ? AND group_id = ?", [c.supervisorId, groupId]);
+        return rows.length ? "A ToT session is delivered by the Master Trainer or a Guest/External Trainer" : null;
+    };
+}
+
 // POST /api/master-trainer/tots/:totId/sessions  { date, time, durationMinutes, title, notes, attendanceStatus }
 router.post(
     "/tots/:totId/sessions",
@@ -1028,7 +1029,16 @@ router.post(
         const tot = await loadGroupTot(db, groupId, totId, res);
         if (!tot) return;
 
-        const { date, time, durationMinutes, title, notes, attendanceStatus } = req.body || {};
+        const { date, time, title, notes, attendanceStatus } = req.body || {};
+        // Several trainers on this day (migration 040): duration = their sum.
+        const prepared = await prepareSessionContributions(db, {
+            groupId,
+            body: req.body,
+            extraCheck: totSessionTrainerCheck(db, groupId, masterTrainerId),
+        });
+        if (prepared.error) return res.status(400).json({ error: prepared.error });
+        const durationMinutes = prepared.top ? sumMinutes(prepared.top) : req.body && req.body.durationMinutes;
+        const lead = prepared.top ? leadProvider(prepared.top) : null;
         if (!date) return res.status(400).json({ error: "date is required" });
         if (!Number.isFinite(Number(durationMinutes)) || Number(durationMinutes) < 0) {
             return res.status(400).json({ error: "durationMinutes is required and must be a non-negative number" });
@@ -1060,11 +1070,24 @@ router.post(
         }
 
         const sessionInsert = await db.query(
-            `INSERT INTO tot_training_sessions (tot_id, master_trainer_id, title, session_date, session_time, duration_minutes, notes, status)
-       VALUES (?,?,?,?,?,?,?,?)`,
-            [totId, masterTrainerId, title || null, date, time || null, Number(durationMinutes), notes || null, isFuture ? "scheduled" : "completed"]
+            `INSERT INTO tot_training_sessions (tot_id, master_trainer_id, provided_by_supervisor_id, provided_by_guest_trainer_id, provided_by_external_trainer_id, title, session_date, session_time, duration_minutes, notes, status)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+                totId,
+                masterTrainerId,
+                lead ? lead.providedBySupervisorId : null,
+                lead ? lead.providedByGuestTrainerId : null,
+                lead ? lead.providedByExternalTrainerId : null,
+                title || null,
+                date,
+                time || null,
+                Number(durationMinutes),
+                notes || null,
+                isFuture ? "scheduled" : "completed",
+            ]
         );
         const sessionId = sessionInsert.insertId;
+        if (prepared.top) await writeContributions(db, "tot_session", sessionId, prepared.top);
         if (!isFuture) {
             await db.query(
                 `INSERT INTO tot_training_attendance (session_id, tot_id, status, recorded_by) VALUES (?,?,?,?)`,
@@ -1091,13 +1114,14 @@ router.get(
 
         const { rows } = await db.query(
             `SELECT ts.id, ts.session_date, ts.session_time, ts.duration_minutes, ts.title, ts.notes, ts.status,
-              ta.status AS attendance_status, ts.created_at
+              ta.status AS attendance_status, ts.created_at, ts.occasion_id
        FROM tot_training_sessions ts
        LEFT JOIN tot_training_attendance ta ON ta.session_id = ts.id
        WHERE ts.tot_id = ? ORDER BY ts.session_date DESC, ts.created_at DESC`,
             [totId]
         );
-        res.json({ sessions: rows });
+        // Each session's trainers (migration 040): its own, or its group ToT session's.
+        res.json({ sessions: await attachContributions(db, rows, (r) => (r.occasion_id ? ["tot_occasion", r.occasion_id] : ["tot_session", r.id])) });
     })
 );
 
@@ -1117,7 +1141,40 @@ router.put(
         if (!existingRows.length) return res.status(404).json({ error: "Session not found" });
         const existing = existingRows[0];
 
-        const { date, time, durationMinutes, title, notes, attendanceStatus, status } = req.body || {};
+        const { date, time, title, notes, attendanceStatus, status } = req.body || {};
+        let { durationMinutes } = req.body || {};
+        // Several trainers on this day (migration 040). Sending
+        // contributions replaces them (duration = their sum); an older
+        // request that only changes durationMinutes is refused for a day
+        // with several trainers (it would silently re-split their hours),
+        // and kept in sync for a day with exactly one.
+        const prepared = await prepareSessionContributions(db, {
+            groupId,
+            body: req.body,
+            existing: await existingContributionChoices(db, "tot_session", [sessionId]),
+            extraCheck: totSessionTrainerCheck(db, groupId, masterTrainerId),
+        });
+        if (prepared.error) return res.status(400).json({ error: prepared.error });
+        let contribs = prepared.top || null;
+        if (!contribs) {
+            const current = await existingContributionChoices(db, "tot_session", [sessionId]);
+            if (current.length && durationMinutes != null) {
+                const { rows: sumRows } = await db.query("SELECT SUM(minutes) AS m FROM session_contributions WHERE tot_session_id = ?", [sessionId]);
+                if (Number(sumRows[0].m) !== Number(durationMinutes)) {
+                    if (current.length > 1) return res.status(400).json({ error: "This session has several trainers -- change each trainer's hours in the trainers list instead" });
+                    contribs = [{ ...current[0], minutes: Number(durationMinutes) }];
+                }
+            }
+        }
+        const lead = contribs && contribs.length ? leadProvider(contribs) : null;
+        if (contribs && contribs.length) durationMinutes = sumMinutes(contribs);
+        if (lead) {
+            await db.query(
+                "UPDATE tot_training_sessions SET provided_by_supervisor_id = ?, provided_by_guest_trainer_id = ?, provided_by_external_trainer_id = ? WHERE id = ?",
+                [lead.providedBySupervisorId, lead.providedByGuestTrainerId, lead.providedByExternalTrainerId, sessionId]
+            );
+            await writeContributions(db, "tot_session", sessionId, contribs);
+        }
         await db.query(
             `UPDATE tot_training_sessions SET
         session_date = COALESCE(?, session_date), session_time = COALESCE(?, session_time),
@@ -1341,7 +1398,7 @@ router.get(
         res.json({
             student,
             tots,
-            records: recordRows.map(toRecord),
+            records: await attachToSessionRows(db, recordRows.map(toRecord), (r) => (["training_session", "supervision_session", "hour_session"].includes(r.recordType) ? r.id : null)),
             documents: documents.map(toDocument),
             milestones,
         });
@@ -1464,6 +1521,11 @@ router.post("/group-sessions", (req, res) => {
         // id referenced anywhere in this request is validated here -- an
         // internal trainer or one of this Group's Guest Trainers
         // (migration 038), see resolveProviders.
+        // Several trainers per day (migration 040): every trainer and title is
+        // validated against this Group before anything is written.
+        const prepared = await prepareSessionContributions(pool, { groupId, body: req.body, days });
+        if (prepared.error) return res.status(400).json({ error: prepared.error });
+        days = prepared.days;
         const providers = await resolveProviders(pool, { groupId, body: req.body, days });
         if (providers.error) return res.status(400).json({ error: providers.error });
         const topProvider = providers.top || { supervisorId: req.masterTrainer.id, guestTrainerId: null };
@@ -1478,6 +1540,7 @@ router.post("/group-sessions", (req, res) => {
                   attachmentFilename,
                   attachmentOriginalName,
                   studentIds,
+                  contributions: prepared.top,
                   providedBySupervisorId: topProvider.supervisorId,
                   providedByGuestTrainerId: topProvider.guestTrainerId,
                   providedByExternalTrainerId: topProvider.externalTrainerId,
@@ -1493,6 +1556,7 @@ router.post("/group-sessions", (req, res) => {
                   attachmentFilename,
                   attachmentOriginalName,
                   studentIds,
+                  contributions: prepared.top,
                   providedBySupervisorId: topProvider.supervisorId,
                   providedByGuestTrainerId: topProvider.guestTrainerId,
                   providedByExternalTrainerId: topProvider.externalTrainerId,
@@ -1569,7 +1633,7 @@ router.get(
             [req.masterTrainer.id]
         );
         res.json({
-            occasions: rows.map((r) => ({
+            occasions: await attachContributions(db, rows.map((r) => ({
                 id: r.id,
                 title: r.title,
                 sessionTypeLabel: r.session_type_label,
@@ -1584,7 +1648,7 @@ router.get(
                 providedByIsGuest: r.provided_by_guest_id != null,
                 providedByExternalTrainerId: r.provided_by_external_id ?? null,
                 providedByIsExternal: r.provided_by_external_id != null,
-            })),
+            })), (o) => ["occasion", o.id]),
         });
     })
 );
@@ -1631,6 +1695,7 @@ router.get(
                 durationMinutes: o.duration_minutes,
                 notes: o.notes,
                 seriesId: o.series_id,
+                contributions: (await loadContributions(db, "occasion", [o.id])).get(Number(o.id)) || [],
                 createdBy: { id: o.created_by_id, name: o.created_by_name },
                 providedBy: { id: o.provided_by_id, name: o.provided_by_name, guestTrainerId: o.provided_by_guest_id ?? null, isGuest: o.provided_by_guest_id != null, externalTrainerId: o.provided_by_external_id ?? null, isExternal: o.provided_by_external_id != null },
             },
@@ -1675,6 +1740,9 @@ router.put(
         const { date, time, durationMinutes, title, notes, sessionType } = req.body || {};
         const occasionId = Number(req.params.id);
 
+        const existingDayContributions = await existingContributionChoices(db, "occasion", [occasionId]);
+        const prepared = await prepareSessionContributions(db, { groupId: req.masterTrainer.groupId, body: req.body, existing: existingDayContributions });
+        if (prepared.error) return res.status(400).json({ error: prepared.error });
         const providers = await resolveProviders(db, {
             groupId: req.masterTrainer.groupId,
             body: req.body,
@@ -1691,6 +1759,7 @@ router.put(
             title,
             notes,
             sessionType,
+            contributions: prepared.top,
             providedBySupervisorId: providers.top ? providers.top.supervisorId : undefined,
             providedByGuestTrainerId: providers.top ? providers.top.guestTrainerId : undefined,
             providedByExternalTrainerId: providers.top ? providers.top.externalTrainerId : undefined,
@@ -1849,7 +1918,7 @@ router.get(
                 mixedProviders: !!(summary && summary.mixedProviders),
                 deliveredByName: summary ? summary.providedByName : sr.provided_by_name,
             },
-            days: dayRows.map((r) => {
+            days: await attachContributions(db, dayRows.map((r) => {
                 const traineeCount = Number(r.trainee_count);
                 const recordedCount = Number(r.recorded_count);
                 const presentCount = Number(r.present_count);
@@ -1876,7 +1945,7 @@ router.get(
                     providedByExternalTrainerId: r.provided_by_external_id ?? null,
                     providedByIsExternal: r.provided_by_external_id != null,
                 };
-            }),
+            }), (d) => ["occasion", d.occasionId]),
             roster: rosterRows.map((r) => ({ studentId: r.student_id, fullName: r.full_name })),
         });
     })
@@ -1889,10 +1958,14 @@ router.put(
         const { sessionType, title, notes, days } = req.body || {};
         const seriesId = Number(req.params.id);
 
+        const { rows: seriesDayRows } = await db.query("SELECT id FROM session_occasions WHERE series_id = ?", [seriesId]);
+        const existingSeriesContributions = await existingContributionChoices(db, "occasion", seriesDayRows.map((r) => r.id));
+        const prepared = await prepareSessionContributions(db, { groupId: req.masterTrainer.groupId, body: req.body, days, existing: existingSeriesContributions });
+        if (prepared.error) return res.status(400).json({ error: prepared.error });
         const providers = await resolveProviders(db, {
             groupId: req.masterTrainer.groupId,
             body: req.body,
-            days,
+            days: prepared.days,
             existing: await existingProvidersForSeries(db, seriesId, req.masterTrainer.id),
         });
         if (providers.error) return res.status(400).json({ error: providers.error });
@@ -1907,7 +1980,7 @@ router.put(
             sessionType,
             title,
             notes,
-            days: Array.isArray(days) ? applyDayProviders(days, providers.days) : days,
+            days: Array.isArray(prepared.days) ? applyDayProviders(prepared.days, providers.days) : prepared.days,
             studentIds: rows.map((r) => r.student_id),
             providedBySupervisorId: providers.top ? providers.top.supervisorId : undefined,
             providedByGuestTrainerId: providers.top ? providers.top.guestTrainerId : undefined,
@@ -1969,6 +2042,20 @@ router.post(
         // or an External Trainer. The Group's own ToTs are the audience here, never the
         // provider, so they're rejected even though resolveProviders would
         // accept them for a trainee-facing session.
+        //
+        // Several trainers on this day (migration 040) follow the same rule:
+        // the Master Trainer, internal/external Guest Trainers or External
+        // Trainers -- never one of the Group's own ToTs.
+        const prepared = await prepareSessionContributions(db, {
+            groupId,
+            body: req.body,
+            extraCheck: async (c) => {
+                if (c.supervisorId == null || Number(c.supervisorId) === Number(masterTrainerId)) return null;
+                const { rows: memberRows } = await db.query("SELECT 1 FROM supervisors WHERE id = ? AND group_id = ?", [c.supervisorId, groupId]);
+                return memberRows.length ? "A ToT session is delivered by the Master Trainer or a Guest/External Trainer" : null;
+            },
+        });
+        if (prepared.error) return res.status(400).json({ error: prepared.error });
         const providers = await resolveProviders(db, { groupId, body: req.body });
         if (providers.error) return res.status(400).json({ error: providers.error });
         const provider = providers.top || { supervisorId: masterTrainerId, guestTrainerId: null };
@@ -1985,6 +2072,7 @@ router.post(
             durationMinutes,
             notes,
             totIds,
+            contributions: prepared.top,
             providedBySupervisorId: provider.supervisorId,
             providedByGuestTrainerId: provider.guestTrainerId,
             providedByExternalTrainerId: provider.externalTrainerId,
@@ -1994,7 +2082,7 @@ router.post(
         for (const { totId, sessionId } of result.created) {
             await db.query(
                 "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'tot_training_session_added', 'tot_training_sessions', ?, ?)",
-                [masterTrainerId, sessionId, JSON.stringify({ totId, durationMinutes: Number(durationMinutes), date })]
+                [masterTrainerId, sessionId, JSON.stringify({ totId, durationMinutes: result.durationMinutes, date })]
             );
         }
 
@@ -2027,7 +2115,7 @@ router.get(
             [req.masterTrainer.id]
         );
         res.json({
-            occasions: rows.map((r) => ({
+            occasions: await attachContributions(db, rows.map((r) => ({
                 id: r.id,
                 title: r.title,
                 date: r.session_date,
@@ -2041,7 +2129,7 @@ router.get(
                 providedByIsGuest: r.provided_by_guest_id != null,
                 providedByExternalTrainerId: r.provided_by_external_id ?? null,
                 providedByIsExternal: r.provided_by_external_id != null,
-            })),
+            })), (o) => ["tot_occasion", o.id]),
         });
     })
 );
@@ -2083,6 +2171,7 @@ router.get(
                 date: o.session_date,
                 time: o.session_time,
                 durationMinutes: o.duration_minutes,
+                contributions: (await loadContributions(db, "tot_occasion", [o.id])).get(Number(o.id)) || [],
                 createdBy: { id: o.created_by_id, name: o.created_by_name },
                 providedBy: { id: o.provided_by_id, name: o.provided_by_name, guestTrainerId: o.provided_by_guest_id ?? null, isGuest: o.provided_by_guest_id != null, externalTrainerId: o.provided_by_external_id ?? null, isExternal: o.provided_by_external_id != null },
             },
@@ -2172,7 +2261,11 @@ router.get(
             };
             (String(r.date) === todayStr ? today : upcoming).push(item);
         }
-        res.json({ today, upcoming: upcoming.slice(0, 15) });
+        // A day with several trainers (migration 040) names all of them.
+        res.json({
+            today: await attachToSessionRows(db, today, (x) => x.id),
+            upcoming: await attachToSessionRows(db, upcoming.slice(0, 15), (x) => x.id),
+        });
     })
 );
 
@@ -2217,7 +2310,7 @@ router.get(
         );
 
         res.json({
-            sessions: rows.map((r) => ({
+            sessions: await attachToSessionRows(db, rows.map((r) => ({
                 id: r.id,
                 recordType: r.session_type === "training" ? "training_session" : "supervision_session",
                 title: r.title,
@@ -2236,7 +2329,7 @@ router.get(
                 providedByIsGuest: r.provided_by_guest_id != null,
                 providedByExternalTrainerId: r.provided_by_external_id ?? null,
                 providedByIsExternal: r.provided_by_external_id != null,
-            })),
+            })), (x) => x.id),
         });
     })
 );
@@ -2695,7 +2788,7 @@ router.get(
        WHERE sup.group_id = ? AND s.session_date BETWEEN ? AND ?
        ORDER BY s.session_date ASC, (s.session_time IS NULL), s.session_time ASC`, [groupId, start, end]
         );
-        const sessions = sessionRows.map((r) => ({
+        const sessions = await attachToSessionRows(db, sessionRows.map((r) => ({
             id: r.id,
             recordType: r.session_type === "training" ? "training_session" : "supervision_session",
             title: r.title,
@@ -2712,7 +2805,7 @@ router.get(
             providedByIsGuest: r.provided_by_guest_id != null,
             providedByExternalTrainerId: r.provided_by_external_id ?? null,
             providedByIsExternal: r.provided_by_external_id != null,
-        }));
+        })), (x) => x.id);
 
         // ---- Per-ToT performance this week -----------------------------
         const { rows: totRows } = await db.query(

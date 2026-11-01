@@ -27,20 +27,39 @@ async function summarizeSeriesProviders(db, seriesIds) {
   const out = new Map();
   if (!ids.length) return out;
 
+  // A day with several trainers (migration 040) contributes one row per
+  // trainer with that trainer's own minutes; a day without contributions
+  // contributes its single legacy provider with the whole duration.
+  const placeholders = ids.map(() => "?").join(",");
   const { rows } = await db.query(
-    `SELECT so.series_id,
+    `SELECT so.series_id, so.id AS occasion_id, so.session_date,
             ${providerSupervisorIdSql("so")} AS supervisor_id,
             so.provided_by_guest_trainer_id AS guest_id,
             so.provided_by_external_trainer_id AS external_id,
             so.duration_minutes,
-            ${providerNameSql("so")} AS name
+            ${providerNameSql("so")} AS name,
+            0 AS sort_order
        FROM session_occasions so
-      WHERE so.series_id IN (${ids.map(() => "?").join(",")})
-      ORDER BY so.session_date, so.id`,
-    ids
+      WHERE so.series_id IN (${placeholders})
+        AND NOT EXISTS (SELECT 1 FROM session_contributions scx WHERE scx.occasion_id = so.id)
+     UNION ALL
+     SELECT so.series_id, so.id, so.session_date,
+            sc.supervisor_id, sc.guest_trainer_id, sc.external_trainer_id,
+            sc.minutes,
+            COALESCE(gt.full_name, et.full_name, sp.full_name),
+            sc.sort_order
+       FROM session_contributions sc
+       JOIN session_occasions so ON so.id = sc.occasion_id
+       LEFT JOIN guest_trainers gt ON gt.id = sc.guest_trainer_id
+       LEFT JOIN external_trainers et ON et.id = sc.external_trainer_id
+       LEFT JOIN supervisors sp ON sp.id = sc.supervisor_id
+      WHERE so.series_id IN (${placeholders})
+      ORDER BY session_date, occasion_id, sort_order`,
+    [...ids, ...ids]
   );
 
   const bySeries = new Map();
+  const daysSeen = new Map(); // key -> Set(occasion ids), so a trainer counts a day once
   for (const r of rows) {
     const seriesId = Number(r.series_id);
     if (!bySeries.has(seriesId)) bySeries.set(seriesId, new Map());
@@ -61,7 +80,12 @@ async function summarizeSeriesProviders(db, seriesIds) {
     }
     const p = providers.get(key);
     p.minutes += Number(r.duration_minutes) || 0;
-    p.dayCount += 1;
+    const seenKey = `${seriesId}|${key}`;
+    if (!daysSeen.has(seenKey)) daysSeen.set(seenKey, new Set());
+    if (!daysSeen.get(seenKey).has(Number(r.occasion_id))) {
+      daysSeen.get(seenKey).add(Number(r.occasion_id));
+      p.dayCount += 1;
+    }
   }
 
   for (const [seriesId, providersMap] of bySeries) {

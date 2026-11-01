@@ -23,6 +23,8 @@ const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { fetchEventChildren, writeEventChildren, generateUniqueSlug } = require("../utils/eventChildren");
 const { buildRecordsQuery } = require("../utils/recordsQuery");
+const { slugify } = require("../utils/slugify");
+const { attachToSessionRows } = require("../utils/contributions");
 const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, getMeetingsInRange, notifyCalendarNoteRecipients } = require("../utils/calendarQuery");
 const {
   findOrCreateGroupGuest,
@@ -1455,6 +1457,99 @@ router.delete(
   })
 );
 
+// ---- Trainer titles (migration 040) ------------------------------------------
+// Professional titles shown on a session trainer's contribution ("Master
+// Trainer", "External Trainer", ...). Descriptive only -- never an account
+// role, Group membership or permission. Deactivated, never deleted, so
+// historical contributions keep their label.
+
+// GET /api/admin/trainer-titles
+router.get(
+  "/trainer-titles",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(
+      `SELECT tt.code, tt.label, tt.is_active, tt.sort_order,
+              (SELECT COUNT(*) FROM session_contributions sc WHERE sc.title_code = tt.code) AS usage_count
+         FROM trainer_titles tt ORDER BY tt.sort_order, tt.label`
+    );
+    res.json({
+      titles: rows.map((r) => ({
+        code: r.code,
+        label: r.label,
+        isActive: r.is_active === true || Number(r.is_active) === 1,
+        sortOrder: Number(r.sort_order),
+        usageCount: Number(r.usage_count),
+      })),
+    });
+  })
+);
+
+function cleanTitleLabel(raw) {
+  const label = String(raw == null ? "" : raw).normalize("NFC").replace(/\s+/g, " ").trim();
+  if (label.length < 2) return { error: "Title is required (at least 2 characters)" };
+  if (label.length > 80) return { error: "Title is too long (80 characters max)" };
+  return { label };
+}
+
+// POST /api/admin/trainer-titles { label }
+router.post(
+  "/trainer-titles",
+  asyncRoute(async (req, res, db) => {
+    const checked = cleanTitleLabel((req.body || {}).label);
+    if (checked.error) return res.status(400).json({ error: checked.error });
+    const { rows: dupRows } = await db.query("SELECT code FROM trainer_titles WHERE LOWER(label) = LOWER(?)", [checked.label]);
+    if (dupRows.length) return res.status(409).json({ error: `A title named "${checked.label}" already exists` });
+    // Stable code from the label; an Arabic-only label has nothing to
+    // transliterate, so it falls back to a generic, still-unique code.
+    const base = slugify(checked.label).replace(/-/g, "_").slice(0, 24) || "title";
+    let code = base;
+    for (let i = 2; ; i++) {
+      const { rows } = await db.query("SELECT 1 FROM trainer_titles WHERE code = ?", [code]);
+      if (!rows.length) break;
+      code = `${base}_${i}`.slice(0, 30);
+    }
+    const { rows: maxRows } = await db.query("SELECT COALESCE(MAX(sort_order), 0) AS m FROM trainer_titles");
+    try {
+      await db.query("INSERT INTO trainer_titles (code, label, sort_order) VALUES (?,?,?)", [code, checked.label, Number(maxRows[0].m) + 10]);
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "That title already exists" });
+      throw err;
+    }
+    await db.query("INSERT INTO audit_logs (actor_id, action, entity_type, new_values) VALUES (?, 'trainer_title_created', 'trainer_titles', ?)", [
+      req.user.id,
+      JSON.stringify({ code, label: checked.label }),
+    ]);
+    res.status(201).json({ code, label: checked.label, isActive: true });
+  })
+);
+
+// PATCH /api/admin/trainer-titles/:code { label?, isActive? }
+router.patch(
+  "/trainer-titles/:code",
+  asyncRoute(async (req, res, db) => {
+    const code = String(req.params.code || "").slice(0, 30);
+    const { rows } = await db.query("SELECT code, label, is_active FROM trainer_titles WHERE code = ?", [code]);
+    if (!rows.length) return res.status(404).json({ error: "Title not found" });
+    const body = req.body || {};
+    let label = rows[0].label;
+    if (body.label !== undefined) {
+      const checked = cleanTitleLabel(body.label);
+      if (checked.error) return res.status(400).json({ error: checked.error });
+      const { rows: dupRows } = await db.query("SELECT code FROM trainer_titles WHERE LOWER(label) = LOWER(?) AND code != ?", [checked.label, code]);
+      if (dupRows.length) return res.status(409).json({ error: `A title named "${checked.label}" already exists` });
+      label = checked.label;
+    }
+    const wasActive = rows[0].is_active === true || Number(rows[0].is_active) === 1;
+    const isActive = body.isActive === undefined ? wasActive : !!body.isActive;
+    await db.query("UPDATE trainer_titles SET label = ?, is_active = ? WHERE code = ?", [label, isActive ? 1 : 0, code]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, old_values, new_values) VALUES (?, 'trainer_title_updated', 'trainer_titles', ?, ?)",
+      [req.user.id, JSON.stringify({ code, label: rows[0].label, isActive: wasActive }), JSON.stringify({ code, label, isActive })]
+    );
+    res.json({ code, label, isActive });
+  })
+);
+
 // ---- External Trainers (migration 039) -------------------------------------
 // A separate provider kind from Guest Trainers -- never on a Group roster,
 // recorded from Session forms. Admin can review and correct them; there is
@@ -1795,7 +1890,11 @@ router.get(
       );
       supRows.forEach((r) => (supNames[r.id] = r.full_name));
     }
-    const records = recordRows.map((r) => toRecord({ ...r, supervisor_name: supNames[r.supervisor_id] }));
+    const records = await attachToSessionRows(
+      db,
+      recordRows.map((r) => toRecord({ ...r, supervisor_name: supNames[r.supervisor_id] })),
+      (r) => (["training_session", "supervision_session", "hour_session"].includes(r.recordType) ? r.id : null)
+    );
 
     const { rows: documentRows } = await db.query(
       `SELECT d.*, COALESCE(a.full_name, sup.full_name) AS uploaded_by_name FROM documents d
@@ -2062,10 +2161,24 @@ async function getTrainersAndHours(db, studentId, studentFullName) {
               CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours FROM sessions s
          JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
          WHERE s.student_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled'
+           -- A day/session with several trainers (migration 040) is credited
+           -- from its contributions below instead, never from this row too.
+           AND NOT EXISTS (SELECT 1 FROM session_contributions scx WHERE scx.occasion_id = s.occasion_id OR scx.session_id = s.id)
+       UNION ALL
+       -- Each trainer's share of THIS trainee's attended time:
+       -- contribution minutes x attended / day duration (a full attendance
+       -- gives each trainer exactly their own minutes).
+       SELECT sc.supervisor_id, sc.guest_trainer_id, sc.external_trainer_id,
+              sc.minutes * (CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END)
+                / NULLIF(s.duration_minutes, 0) / 60 AS hours
+         FROM sessions s
+         JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
+         JOIN session_contributions sc ON (sc.occasion_id = s.occasion_id OR sc.session_id = s.id)
+         WHERE s.student_id = ? AND s.session_type = 'supervision' AND s.status != 'cancelled'
        UNION ALL
        SELECT added_by AS supervisor_id, NULL AS guest_id, NULL AS external_id, hours FROM trainee_hour_adjustments WHERE student_id = ? AND hour_type = 'supervision'
      ) combined GROUP BY supervisor_id, guest_id, external_id`,
-    [studentId, studentId, studentId]
+    [studentId, studentId, studentId, studentId]
   );
   const hoursBySupervisor = {};
   const hoursByGuest = {};

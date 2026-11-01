@@ -12,6 +12,8 @@
 // attendance is known -- this mirrors the shipped UI exactly (Add Session,
 // then open the occasion's Attendance modal separately).
 
+const { writeContributions, loadContributions, sumMinutes, leadProvider, keyOf } = require("./contributions");
+
 const ATTENDANCE_STATUSES = ["present", "absent", "excused", "partial"];
 
 /**
@@ -37,11 +39,12 @@ async function createSessionOccasion(db, params) {
     title,
     date,
     time,
-    durationMinutes,
+    durationMinutes: requestedDurationMinutes,
     notes,
     attachmentFilename,
     attachmentOriginalName,
     studentIds,
+    contributions = null, // several trainers on this day (migration 040), already validated by the route
     seriesId = null, // set only when this occasion is one day of a multi-day Session (see createMultiDaySession below); NULL keeps this identical to a single-day Session, unchanged from before migration 030.
     providedBySupervisorId = supervisorId,
     providedByGuestTrainerId = null,
@@ -51,7 +54,17 @@ async function createSessionOccasion(db, params) {
   // mutually exclusive -- a guest-delivered row stores NULL for the
   // internal column so it is never credited to anyone's account. An
   // External Trainer (migration 039) is a third, equally exclusive kind.
-  const provider = providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId);
+  //
+  // With contributions (migration 040) the day's duration is the SUM of
+  // its trainers' minutes (sequential parts of the day), and the
+  // provided_by_* columns mirror the first trainer for older read paths --
+  // attribution itself then reads the contributions only.
+  const contribs = Array.isArray(contributions) && contributions.length ? contributions : null;
+  const durationMinutes = contribs ? sumMinutes(contribs) : requestedDurationMinutes;
+  const lead = contribs ? leadProvider(contribs) : null;
+  const provider = lead
+    ? providerPair(lead.providedBySupervisorId, lead.providedByGuestTrainerId, lead.providedByExternalTrainerId)
+    : providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId);
   const providerSupervisorId = provider.supervisorId;
   const providerGuestTrainerId = provider.guestTrainerId;
   const providerExternalTrainerId = provider.externalTrainerId;
@@ -104,6 +117,7 @@ async function createSessionOccasion(db, params) {
     ]
   );
   const occasionId = occasionInsert.insertId;
+  if (contribs) await writeContributions(db, "occasion", occasionId, contribs);
 
   const created = [];
   const seen = new Set();
@@ -136,7 +150,7 @@ async function createSessionOccasion(db, params) {
     created.push({ studentId, sessionId: sessionInsert.insertId });
   }
 
-  return { occasionId, created, isFuture, sessionTypeLabel };
+  return { occasionId, created, isFuture, sessionTypeLabel, durationMinutes: Number(durationMinutes) };
 }
 
 /**
@@ -260,6 +274,8 @@ async function createMultiDaySession(db, params) {
   }
   for (const day of days) {
     if (!day || !day.date) return { error: "Every day needs a date" };
+    // A day with trainers (migration 040) takes its duration from them.
+    if (Array.isArray(day.contributions) && day.contributions.length) continue;
     if (!Number.isFinite(Number(day.durationMinutes)) || Number(day.durationMinutes) < 0) {
       return { error: `Day ${day.date}: durationMinutes is required and must be a non-negative number` };
     }
@@ -303,6 +319,7 @@ async function createMultiDaySession(db, params) {
       attachmentOriginalName: i === 0 ? attachmentOriginalName : null,
       studentIds,
       seriesId,
+      contributions: day.contributions,
       providedBySupervisorId: dayProvider.supervisorId,
       providedByGuestTrainerId: dayProvider.guestTrainerId,
       providedByExternalTrainerId: dayProvider.externalTrainerId,
@@ -314,7 +331,7 @@ async function createMultiDaySession(db, params) {
       await db.query("DELETE FROM session_series WHERE id = ?", [seriesId]);
       return { error: `Day ${day.date}: ${result.error}` };
     }
-    occasions.push({ occasionId: result.occasionId, date: day.date, durationMinutes: Number(day.durationMinutes) });
+    occasions.push({ occasionId: result.occasionId, date: day.date, durationMinutes: result.durationMinutes });
     created = created.concat(result.created);
     if (!result.isFuture) createdNonFuture = createdNonFuture.concat(result.created);
   }
@@ -343,7 +360,7 @@ async function createMultiDaySession(db, params) {
  * a local `sessionType` variable, it just never made it into the PUT
  * body for a single-occasion edit.
  */
-async function updateSessionOccasion(db, { occasionId, supervisorId, date, time, durationMinutes, title, notes, sessionType, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId }) {
+async function updateSessionOccasion(db, { occasionId, supervisorId, date, time, durationMinutes: requestedDurationMinutes, title, notes, sessionType, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId, contributions }) {
   const { rows } = await db.query(
     "SELECT id, supervisor_id, session_type, provided_by_supervisor_id, provided_by_guest_trainer_id, provided_by_external_trainer_id FROM session_occasions WHERE id = ?",
     [occasionId]
@@ -352,6 +369,41 @@ async function updateSessionOccasion(db, { occasionId, supervisorId, date, time,
     return { error: "Session occasion not found" };
   }
   if (!date) return { error: "date is required" };
+
+  // Several trainers on this day (migration 040). contributions:
+  //   array     -> replaces the day's trainers; duration = their sum
+  //   undefined -> an older single-provider request: a day that already
+  //                has ONE contribution is kept in sync with the new
+  //                provider/duration; a day with SEVERAL is refused if the
+  //                request would change its total or lead trainer (that
+  //                would silently re-split other trainers' hours).
+  const existingContribs = (await loadContributions(db, "occasion", [occasionId])).get(Number(occasionId)) || [];
+  let contribs = Array.isArray(contributions) && contributions.length ? contributions : null;
+  let durationMinutes = requestedDurationMinutes;
+  if (!contribs && existingContribs.length) {
+    const providerGiven = providedBySupervisorId != null || providedByGuestTrainerId != null || providedByExternalTrainerId != null;
+    const given = providerGiven ? keyOf(providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId)) : null;
+    if (existingContribs.length > 1) {
+      const total = existingContribs.reduce((t, c) => t + c.minutes, 0);
+      if (Number(requestedDurationMinutes) !== total || (given && given !== existingContribs[0].key)) {
+        return { error: "This day has several trainers -- change each trainer's hours in the trainers list instead" };
+      }
+    } else {
+      const only = existingContribs[0];
+      const sameProvider = !given || given === only.key;
+      contribs = [
+        {
+          supervisorId: sameProvider ? only.supervisorId : providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId).supervisorId,
+          guestTrainerId: sameProvider ? only.guestTrainerId : providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId).guestTrainerId,
+          externalTrainerId: sameProvider ? only.externalTrainerId : providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId).externalTrainerId,
+          titleCode: sameProvider ? only.titleCode : null,
+          minutes: Number(requestedDurationMinutes),
+        },
+      ];
+      if (!(contribs[0].minutes > 0)) contribs = []; // a 0-minute day keeps no trainer row
+    }
+  }
+  if (contribs && contribs.length) durationMinutes = sumMinutes(contribs);
   if (!Number.isFinite(Number(durationMinutes)) || Number(durationMinutes) < 0) {
     return { error: "durationMinutes is required and must be a non-negative number" };
   }
@@ -373,8 +425,10 @@ async function updateSessionOccasion(db, { occasionId, supervisorId, date, time,
   // whichever the caller passed replaces both columns together, so
   // switching a session from a guest back to an internal trainer (or vice
   // versa) can never leave both set.
-  const effective =
-    providedBySupervisorId != null || providedByGuestTrainerId != null || providedByExternalTrainerId != null
+  const lead = contribs && contribs.length ? leadProvider(contribs) : null;
+  const effective = lead
+    ? providerPair(lead.providedBySupervisorId, lead.providedByGuestTrainerId, lead.providedByExternalTrainerId)
+    : providedBySupervisorId != null || providedByGuestTrainerId != null || providedByExternalTrainerId != null
       ? providerPair(providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId)
       : {
           supervisorId: rows[0].provided_by_supervisor_id,
@@ -404,6 +458,7 @@ async function updateSessionOccasion(db, { occasionId, supervisorId, date, time,
      WHERE occasion_id = ?`,
     [date, time || null, Number(durationMinutes), title ?? null, notes ?? null, effectiveType, effective.supervisorId, effective.guestTrainerId, effective.externalTrainerId, occasionId]
   );
+  if (contribs) await writeContributions(db, "occasion", occasionId, contribs);
 
   return { updated: true };
 }
@@ -506,6 +561,7 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
         title: title,
         notes: notes,
         sessionType: effectiveType,
+        contributions: day.contributions,
         providedBySupervisorId: dayProvider.supervisorId,
         providedByGuestTrainerId: dayProvider.guestTrainerId,
         providedByExternalTrainerId: dayProvider.externalTrainerId,
@@ -523,6 +579,7 @@ async function updateSessionSeries(db, { seriesId, supervisorId, sessionType, ti
         notes,
         studentIds,
         seriesId,
+        contributions: day.contributions,
         providedBySupervisorId: dayProvider.supervisorId,
         providedByGuestTrainerId: dayProvider.guestTrainerId,
         providedByExternalTrainerId: dayProvider.externalTrainerId,

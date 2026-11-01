@@ -1628,6 +1628,10 @@
             gap: 10px;
             align-items: end;
         }
+        .gs-day-fields.gs-day-fields-2 { grid-template-columns: 1fr 1fr; margin-bottom: 8px; }
+        .gs-day-trainers-label { font-size: 11.5px; font-weight: 700; margin: 4px 0 6px; }
+        .gs-day-trainers-label span { font-weight: 400; color: var(--muted); }
+        @media (max-width: 480px) { .gs-day-fields.gs-day-fields-2 { grid-template-columns: 1fr; } }
         .gs-day-fields > div {
             min-width: 0;
         }
@@ -4443,6 +4447,11 @@
                     <li><a data-section="documents" href="#documents"><i class="fa fa-folder-open"></i>Documents</a></li>
                     <li><a data-section="announcements" href="#announcements"><i class="fa fa-bullhorn"></i>Announcements</a></li>
                 </ul>
+                <div class="nav-label">Training Team</div>
+                <ul>
+                    <li><a data-section="trainer-space" href="#trainer-space"><i class="fa fa-lock"></i>Trainer Space</a></li>
+                    <li><a data-section="trainer-reports" href="#trainer-reports"><i class="fa fa-file-lines"></i>Trainer Reports</a></li>
+                </ul>
                 <div class="nav-label">Account</div>
                 <ul>
                     <li><a data-section="settings" href="#settings"><i class="fa fa-gear"></i>Settings</a></li>
@@ -5149,6 +5158,30 @@
             <!-- ============================================================= -->
             <!-- DOCUMENTS                                                      -->
             <!-- ============================================================= -->
+            <!-- Trainer Space / Trainer Reports (migration 040): private to the
+                 training team -- see scripts/trainer-space.js. -->
+            <section class="dash-section" id="section-trainer-space" data-title="Trainer Space" data-eyebrow="Training team">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-lock"></i>
+                            <h2>Trainer Space</h2>
+                        </div>
+                    </div>
+                    <p class="muted" style="margin:0 0 10px;font-size:13px;">Documents, learning materials and feedback shared between the Master Trainer and the ToTs of your Group.</p>
+                    <div id="trainerSpaceRoot"></div>
+                </section>
+            </section>
+            <section class="dash-section" id="section-trainer-reports" data-title="Trainer Reports" data-eyebrow="Training team">
+                <section class="system-card">
+                    <div class="card-title">
+                        <div class="card-title-left"><i class="fa fa-file-lines"></i>
+                            <h2>Trainer Reports</h2>
+                        </div>
+                    </div>
+                    <p class="muted" style="margin:0 0 10px;font-size:13px;">Reports written by and for the training team. Never visible to trainees.</p>
+                    <div id="trainerReportsRoot"></div>
+                </section>
+            </section>
             <section class="dash-section" id="section-documents" data-title="Documents" data-eyebrow="Communication">
                 <section class="system-card">
                     <div class="card-title">
@@ -5506,8 +5539,9 @@
                 <input type="date" id="sesDate">
                 <label>Time</label>
                 <input type="time" id="sesTime">
-                <label>Duration (minutes)</label>
-                <input type="number" min="0" id="sesDuration">
+                <!-- Several trainers on this activity (migration 040): the duration is their total. -->
+                <label>Trainers on this activity</label>
+                <div id="sesTrainers"></div>
                 <label>Notes</label>
                 <textarea id="sesContent"></textarea>
                 <div class="modal-actions">
@@ -5656,6 +5690,7 @@
 
     <script src="scripts/api-config.js"></script>
     <script src="scripts/guest-providers.js"></script>
+    <script src="scripts/trainer-space.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
     <script>
         const API = window.API_BASE + "/api";
@@ -5947,7 +5982,7 @@
 
         const SECTION_IDS = [
             "dashboard", "library", "students", "calendar", "events", "materials", "assignments",
-            "meetings", "chat", "documents", "announcements", "profile", "settings",
+            "meetings", "chat", "documents", "trainer-space", "trainer-reports", "announcements", "profile", "settings",
         ];
 
         const SECTION_LOADERS = {
@@ -5958,6 +5993,8 @@
             meetings: () => loadMeetings(),
             chat: () => loadChatInbox(),
             documents: () => loadAllDocuments(),
+            "trainer-space": () => TrainerSpace.mount(document.getElementById("trainerSpaceRoot"), { sections: ["documents", "materials", "feedback"], myId: getMyUserIdForTrainers }),
+            "trainer-reports": () => TrainerSpace.mount(document.getElementById("trainerReportsRoot"), { sections: ["reports"], myId: getMyUserIdForTrainers }),
         };
         const loadedSections = new Set(["dashboard", "students", "materials", "announcements"]);
 
@@ -7015,7 +7052,8 @@
             value = nc(value, "");
             if (field === "date") return `<div><label>Date</label><input type="date" id="rf_date" value="${escapeHtml(value)}"></div>`;
             if (field === "time") return `<div><label>Time</label><input type="time" id="rf_time" value="${escapeHtml(value)}"></div>`;
-            if (field === "duration") return `<div><label>Duration (minutes)</label><input type="number" min="0" id="rf_duration" value="${escapeHtml(value)}"></div>`;
+            // Several trainers on this session (migration 040): the duration is their total.
+            if (field === "duration") return `<div class="full"><label>Trainers on this activity</label><div id="rf_trainers" data-minutes="${escapeHtml(value)}"></div></div>`;
             if (field === "title") return `<div><label>Title</label><input type="text" id="rf_title" value="${escapeHtml(value)}"></div>`;
             if (field === "score") return `<div><label>Score (0-100)</label><input type="number" min="0" max="100" id="rf_score" value="${escapeHtml(value)}"></div>`;
             if (field === "status") {
@@ -7107,6 +7145,35 @@ function renderRecordPanel(container, type) {
   `;
 
   document.getElementById("recordForm").addEventListener("submit", (e) => submitRecordForm(e, type));
+  mountRecordTrainers(editing);
+}
+
+/** Mounts the trainers block of the record form: the record's own trainers when editing, else this ToT. */
+function mountRecordTrainers(editing) {
+  const box = document.getElementById("rf_trainers");
+  if (!box) return;
+  // A trainee's row that belongs to a Group Session: its trainers (and
+  // hours) are edited on that Group Session, not on this one row.
+  if (editing && editing.contributionsFrom === "occasion") {
+    box.removeAttribute("id");
+    box.innerHTML = `<div class="hint" dir="auto">${escapeHtml(GuestProviders.contributionsText(editing.contributions) || editing.providedByName || "")} &middot; part of a Group Session -- edit its trainers and hours from the Group Session.</div>`;
+    return;
+  }
+  const minutes = Number(box.dataset.minutes) || null;
+  const me = GuestProviders.providerKey(getMyUserIdForTrainers());
+  TrainerRows.mount(box, {
+    contributions: editing && editing.contributions,
+    // A session saved before trainers existed was delivered by whoever logged it.
+    legacy: editing && !(editing.contributions && editing.contributions.length) ? { provider: { supervisorId: editing.supervisorId, name: editing.providedByName || editing.supervisorName }, minutes } : null,
+    defaultKey: me,
+  });
+}
+function getMyUserIdForTrainers() {
+  try {
+    return Number(JSON.parse(localStorage.getItem("user") || localStorage.getItem("reframe_user") || "{}").id) || null;
+  } catch {
+    return null;
+  }
 }
 
 async function renderHourAdjustmentPanel(container, hourType) {
@@ -7263,7 +7330,13 @@ async function submitRecordForm(e, type) {
   const get = (id) => { const el = document.getElementById(id); return el && el.value; };
   if (get("rf_date")) payload.date = get("rf_date");
   if (get("rf_time")) payload.time = get("rf_time");
-  if (get("rf_duration")) payload.durationMinutes = Number(get("rf_duration"));
+  const trainerBox = document.getElementById("rf_trainers");
+  if (trainerBox) {
+    const trainers = TrainerRows.read(trainerBox);
+    if (trainers.error) return showToast(trainers.error, "error");
+    payload.contributions = trainers.contributions;
+    payload.durationMinutes = trainers.totalMinutes;
+  }
   if (get("rf_title")) payload.title = get("rf_title");
   if (get("rf_score")) payload.score = Number(get("rf_score"));
   if (get("rf_status")) payload.status = get("rf_status");
@@ -8556,105 +8629,122 @@ let gsDayRowSeq = 0;
 // unset, so a day never silently falls back to "whoever happens to be
 // logged in" without the user seeing and confirming it.
 async function addSessionDayRow(day) {
-  const list = document.getElementById("gsDaysList");
-  const rowId = "gsday" + gsDayRowSeq++;
-  const occasionId = day && day.occasionId ? day.occasionId : "";
-  const date = day && day.date ? String(day.date).slice(0, 10) : "";
-  const time = day && day.time ? String(day.time).slice(0, 5) : "";
-  const hours = day && day.durationMinutes != null ? day.durationMinutes / 60 : "";
-  const row = document.createElement("div");
-  row.className = "gs-day-row";
-  row.id = rowId;
-  row.innerHTML = `
-    <div class="gs-day-head">
-      <span class="gs-day-badge">Day</span>
-      <span class="gs-day-who" dir="auto"></span>
-      <button type="button" class="gs-day-remove" onclick="removeSessionDayRow('${rowId}')" title="Remove this day" aria-label="Remove this day"><i class="fa fa-trash"></i></button>
-    </div>
-    <input type="hidden" class="gs-day-occasion-id" value="${occasionId}">
-    <div class="gs-day-fields">
-      <div><label>Date</label><input type="date" class="gs-day-date" value="${date}" required></div>
-      <div><label>Hours</label><input type="number" min="0" step="0.25" class="gs-day-hours" value="${hours}" required></div>
-      <div><label>Start time <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="time" class="gs-day-time" value="${time}"></div>
-      <div><label title="Who actually delivered this day -- this day's hours count toward them">Delivered by</label><select class="gs-day-provided-by" required></select></div>
-    </div>`;
-  list.appendChild(row);
-  updateSessionDayRemoveButtons();
-  // A new day starts with the previous day's trainer (the usual case when
-  // adding consecutive days); a reopened day always shows its own.
-  const previousDaySelect = row.previousElementSibling && row.previousElementSibling.querySelector(".gs-day-provided-by");
-  const topLevelProvider = (previousDaySelect && previousDaySelect.value) || document.getElementById("gsProvidedBy").value;
-  const dayProvider = day && (day.providedByGuestTrainerId != null || day.providedByExternalTrainerId != null || day.providedBySupervisorId != null)
-      ? { guestTrainerId: day.providedByGuestTrainerId, externalTrainerId: day.providedByExternalTrainerId, supervisorId: day.providedBySupervisorId, name: day.providedByName }
-      : topLevelProvider || undefined;
-  await renderProvidedByOptions(row.querySelector(".gs-day-provided-by"), dayProvider);
-  row.addEventListener("input", refreshSessionDayCards);
-  row.addEventListener("change", refreshSessionDayCards);
-  refreshSessionDayCards();
+    const list = document.getElementById("gsDaysList");
+    const rowId = "gsday" + gsDayRowSeq++;
+    const occasionId = day && day.occasionId ? day.occasionId : "";
+    const date = day && day.date ? String(day.date).slice(0, 10) : "";
+    const time = day && day.time ? String(day.time).slice(0, 5) : "";
+    const row = document.createElement("div");
+    row.className = "gs-day-row";
+    row.id = rowId;
+    row.innerHTML = `
+      <div class="gs-day-head">
+        <span class="gs-day-badge">Day</span>
+        <span class="gs-day-who" dir="auto"></span>
+        <button type="button" class="gs-day-remove" onclick="removeSessionDayRow('${rowId}')" title="Remove this day" aria-label="Remove this day"><i class="fa fa-trash"></i></button>
+      </div>
+      <input type="hidden" class="gs-day-occasion-id" value="${occasionId}">
+      <div class="gs-day-fields gs-day-fields-2">
+        <div><label>Date</label><input type="date" class="gs-day-date" value="${date}" required></div>
+        <div><label>Start time <span style="font-weight:400;color:var(--muted);">(optional)</span></label><input type="time" class="gs-day-time" value="${time}"></div>
+      </div>
+      <div class="gs-day-trainers-label">Trainers on this day <span>-- each delivers their own part; the day's hours are the total</span></div>
+      <div class="gs-day-trainers"></div>`;
+    list.appendChild(row);
+    updateSessionDayRemoveButtons();
+    // Several trainers per day (migration 040). A reopened day shows its own
+    // trainers; a day saved before trainers existed shows its single
+    // provider as one row; a new day starts with the previous day's trainer.
+    const previousDayTrainer = row.previousElementSibling && row.previousElementSibling.querySelector(".gs-day-trainers .tr-who");
+    const defaultKey = (previousDayTrainer && previousDayTrainer.value) || document.getElementById("gsProvidedBy").value || undefined;
+    const legacyProvider =
+        day && !(day.contributions && day.contributions.length) && (day.providedByGuestTrainerId != null || day.providedByExternalTrainerId != null || day.providedBySupervisorId != null)
+            ? { guestTrainerId: day.providedByGuestTrainerId, externalTrainerId: day.providedByExternalTrainerId, supervisorId: day.providedBySupervisorId, name: day.providedByName }
+            : null;
+    await TrainerRows.mount(row.querySelector(".gs-day-trainers"), {
+        contributions: day && day.contributions,
+        legacy: legacyProvider ? { provider: legacyProvider, minutes: day.durationMinutes } : null,
+        defaultKey,
+        onChange: refreshSessionDayCards,
+    });
+    row.addEventListener("input", refreshSessionDayCards);
+    row.addEventListener("change", refreshSessionDayCards);
+    refreshSessionDayCards();
 }
 function removeSessionDayRow(rowId) {
-  const el = document.getElementById(rowId);
-  if (el) el.remove();
-  updateSessionDayRemoveButtons();
+    const el = document.getElementById(rowId);
+    if (el) el.remove();
+    updateSessionDayRemoveButtons();
     refreshSessionDayCards();
 }
 function updateSessionDayRemoveButtons() {
-  const rows = document.querySelectorAll("#gsDaysList .gs-day-row");
-  rows.forEach((row) => {
-    row.querySelector(".gs-day-remove").style.visibility = rows.length > 1 ? "visible" : "hidden";
-  });
+    const rows = document.querySelectorAll("#gsDaysList .gs-day-row");
+    rows.forEach((row) => {
+        row.querySelector(".gs-day-remove").style.visibility = rows.length > 1 ? "visible" : "hidden";
+    });
 }
-// Numbers every day card ("Day 2 of 5"), shows who delivered it and the
-// day's hours in its header, and keeps a live per-trainer hours summary
-// under the list -- so it's obvious at a glance which trainer delivered
-// which day, and how a training's hours split between trainers.
-function sessionDayProviderLabel(select) {
-    const opt = select && select.selectedOptions && select.selectedOptions[0];
-    if (!opt || !/^[sge]:/.test(opt.value)) return "";
-    const text = opt.textContent || "";
-    const i = text.indexOf(" — ");
-    return (i >= 0 ? text.slice(i + 3) : text).replace(/ \(no longer in this Group\)$/, "").trim();
-}
+// Numbers every day card ("Day 2 of 5"), shows that day's trainers and
+// hours in its header, and keeps a live "hours by trainer" summary under
+// the list -- so it's obvious who delivered what, on which day.
 function refreshSessionDayCards() {
     const rows = Array.from(document.querySelectorAll("#gsDaysList .gs-day-row"));
     const totals = new Map();
     let grand = 0;
+    const round = (n) => Math.round(n * 100) / 100;
     rows.forEach((row, i) => {
         row.querySelector(".gs-day-badge").textContent = rows.length === 1 ? "Session day" : `Day ${i + 1} of ${rows.length}`;
-        const select = row.querySelector(".gs-day-provided-by");
-        const who = sessionDayProviderLabel(select);
-        const hours = Number(row.querySelector(".gs-day-hours").value) || 0;
-        row.querySelector(".gs-day-who").textContent = who ? `Delivered by ${who}${hours ? " · " + hours + "h" : ""}` : "";
-        if (who) {
-            const t = totals.get(select.value) || { who, hours: 0, days: 0 };
+        const trainerBlock = row.querySelector(".gs-day-trainers");
+        const names = TrainerRows.names(trainerBlock);
+        let dayHours = 0;
+        trainerBlock.querySelectorAll(".tr-row").forEach((tr) => {
+            const who = tr.querySelector(".tr-who");
+            const hours = Number(tr.querySelector(".tr-hours").value) || 0;
+            dayHours += hours;
+            const label = TrainerRows.names({ querySelectorAll: () => [who] })[0];
+            if (!label) return;
+            const t = totals.get(who.value) || { who: label, hours: 0, days: new Set() };
             t.hours += hours;
-            t.days += 1;
-            totals.set(select.value, t);
-        }
-        grand += hours;
+            t.days.add(i);
+            totals.set(who.value, t);
+        });
+        row.querySelector(".gs-day-who").textContent = names.length ? `Delivered by ${names.join(", ")}${dayHours ? " · " + round(dayHours) + "h" : ""}` : "";
+        grand += dayHours;
     });
     const summary = document.getElementById("gsProviderSummary");
     if (!summary) return;
-    if (rows.length < 2) {
+    if (totals.size < 2 && rows.length < 2) {
         summary.innerHTML = "";
         return;
     }
-    const round = (n) => Math.round(n * 100) / 100;
     summary.innerHTML =
         "<span>Hours by trainer:</span>" +
         [...totals.values()]
-            .map((t) => `<span dir="auto"><strong>${escapeHtml(t.who)}</strong> ${round(t.hours)}h (${t.days} day${t.days === 1 ? "" : "s"})</span>`)
+            .map((t) => `<span dir="auto"><strong>${escapeHtml(t.who)}</strong> ${round(t.hours)}h (${t.days.size} day${t.days.size === 1 ? "" : "s"})</span>`)
             .join("") +
         `<span>Total <strong>${round(grand)}h</strong></span>`;
 }
+// Returns the day list for the API, or { error } if a day's trainers are
+// incomplete. Each day: its trainers (contributions), its total minutes,
+// and its first trainer as the legacy single provider.
 function readSessionDayRows() {
-  return Array.from(document.querySelectorAll("#gsDaysList .gs-day-row")).map((row) => ({
-    occasionId: row.querySelector(".gs-day-occasion-id").value || undefined,
-    date: row.querySelector(".gs-day-date").value,
-    time: row.querySelector(".gs-day-time").value || undefined,
-    durationMinutes: Math.round(Number(row.querySelector(".gs-day-hours").value) * 60),
-    ...GuestProviders.readProviderSelect(row.querySelector(".gs-day-provided-by")),
-  }));
+    const days = [];
+    const rows = Array.from(document.querySelectorAll("#gsDaysList .gs-day-row"));
+    for (const [i, row] of rows.entries()) {
+        const read = TrainerRows.read(row.querySelector(".gs-day-trainers"));
+        if (read.error) return { error: rows.length > 1 ? `Day ${i + 1}: ${read.error}` : read.error };
+        const first = read.contributions[0];
+        days.push({
+            occasionId: row.querySelector(".gs-day-occasion-id").value || undefined,
+            date: row.querySelector(".gs-day-date").value,
+            time: row.querySelector(".gs-day-time").value || undefined,
+            durationMinutes: read.totalMinutes,
+            contributions: read.contributions,
+            providedBySupervisorId: first.providedBySupervisorId,
+            providedByGuestTrainerId: first.providedByGuestTrainerId,
+            providedByExternalTrainerId: first.providedByExternalTrainerId,
+        });
+    }
+    return days;
 }
 
 // startMultiDay (from the "Add Multi-Day Session" button) pre-seeds a
@@ -8707,7 +8797,7 @@ async function editGroupSessionOccasion(occasionId) {
   await renderProvidedByOptions(document.getElementById("gsProvidedBy"), o.providedBy);
   document.getElementById("gsDaysList").innerHTML = "";
   gsDayRowSeq = 0;
-  await addSessionDayRow({ date: o.date, time: o.time, durationMinutes: o.durationMinutes, providedBySupervisorId: o.providedBy && o.providedBy.id, providedByGuestTrainerId: o.providedBy && o.providedBy.guestTrainerId, providedByExternalTrainerId: o.providedBy && o.providedBy.externalTrainerId, providedByName: o.providedBy && o.providedBy.name });
+  await addSessionDayRow({ date: o.date, time: o.time, durationMinutes: o.durationMinutes, providedBySupervisorId: o.providedBy && o.providedBy.id, providedByGuestTrainerId: o.providedBy && o.providedBy.guestTrainerId, providedByExternalTrainerId: o.providedBy && o.providedBy.externalTrainerId, providedByName: o.providedBy && o.providedBy.name, contributions: o.contributions });
   openModal("groupSessionModal");
 }
 
@@ -8743,9 +8833,10 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
       // Day 1's own provider -- for a single-day Session this IS the
       // provider; for a multi-day one it's only the Session-wide default
       // (every day below still sends and keeps its own).
-      document.querySelector("#gsDaysList .gs-day-provided-by") || document.getElementById("gsProvidedBy")
+      document.querySelector("#gsDaysList .gs-day-trainers .tr-who") || document.getElementById("gsProvidedBy")
     );
   const days = readSessionDayRows();
+  if (days.error) return showToast(days.error, "error");
   const editOccasionId = document.getElementById("gsEditOccasionId").value;
   const editSeriesId = document.getElementById("gsEditSeriesId").value;
   const attachmentFile = document.getElementById("gsAttachment").files[0];
@@ -8762,7 +8853,7 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
     result = await apiRequest(`/supervisor/session-occasions/${editOccasionId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionType, title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId }),
+      body: JSON.stringify({ sessionType, title, notes, date: d.date, time: d.time, durationMinutes: d.durationMinutes, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId, contributions: d.contributions }),
     });
   } else if (days.length > 1) {
     if (attachmentFile) {
@@ -8785,11 +8876,12 @@ document.getElementById("groupSessionForm").addEventListener("submit", async (e)
     }
   } else {
     const d = days[0];
-    const payload = { sessionType, title, date: d.date, time: d.time, durationMinutes: d.durationMinutes, notes, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId };
+    const payload = { sessionType, title, date: d.date, time: d.time, durationMinutes: d.durationMinutes, notes, providedBySupervisorId, providedByGuestTrainerId, providedByExternalTrainerId, contributions: d.contributions };
     if (attachmentFile) {
       const form = new FormData();
       Object.entries(payload).forEach(([k, v]) => {
-        if (v !== undefined) form.append(k, v);
+        // arrays (the day's trainers) travel as JSON in a multipart form
+        if (v !== undefined) form.append(k, typeof v === "object" ? JSON.stringify(v) : v);
       });
       form.append("attachment", attachmentFile);
       result = await apiRequest("/supervisor/session-occasions", { method: "POST", body: form });
@@ -9047,9 +9139,17 @@ function openSessionModal(session) {
     document.getElementById("sesTitle").value = session.title || "";
     document.getElementById("sesDate").value = session.date || "";
     document.getElementById("sesTime").value = session.time || "";
-    document.getElementById("sesDuration").value = session.durationMinutes || "";
     document.getElementById("sesContent").value = session.content || "";
   }
+  const me = GuestProviders.providerKey(getMyUserIdForTrainers());
+  TrainerRows.mount(document.getElementById("sesTrainers"), {
+    contributions: session && session.contributions,
+    legacy:
+      session && !(session.contributions && session.contributions.length)
+        ? { provider: session.providedById ? { supervisorId: session.providedById, name: session.providedByName } : { supervisorId: getMyUserIdForTrainers() }, minutes: session.durationMinutes }
+        : null,
+    defaultKey: me,
+  });
   openModal("sessionModal");
 }
 
@@ -9069,6 +9169,9 @@ function activityToSessionRecord(a) {
     time: a.time,
     durationMinutes: a.durationMinutes,
     content: a.notes,
+    contributions: a.contributions,
+    providedById: a.providedById,
+    providedByName: a.providedByName,
   };
 }
 
@@ -9096,10 +9199,14 @@ document.getElementById("sessionModalForm").addEventListener("submit", async (e)
     title: document.getElementById("sesTitle").value,
     date: document.getElementById("sesDate").value,
     time: document.getElementById("sesTime").value,
-    durationMinutes: document.getElementById("sesDuration").value ? Number(document.getElementById("sesDuration").value) : undefined,
+    durationMinutes: undefined,
     content: document.getElementById("sesContent").value,
   };
   if (isDynamicType) payload.hourTypeCode = rawType.slice("hour_session:".length);
+  const trainers = TrainerRows.read(document.getElementById("sesTrainers"));
+  if (trainers.error) return showToast(trainers.error, "error");
+  payload.contributions = trainers.contributions;
+  payload.durationMinutes = trainers.totalMinutes;
 
   const url = editId ? `/supervisor/records/${editType}/${editId}` : `/supervisor/students/${studentId}/records`;
   const method = editId ? "PUT" : "POST";

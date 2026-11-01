@@ -1,5 +1,6 @@
 const { createNotification, getUserContactInfo } = require("./notifications");
 const { providerNameSql } = require("./guestTrainers");
+const { attachContributions, attachToSessionRows } = require("./contributions");
 
 // Shared "activities in a date range, for the Calendar" queries -- one
 // implementation reused by all four roles (ToT/ Master Trainer/ Admin/
@@ -41,7 +42,12 @@ async function getSessionsInRange(db, scope, start, end) {
        WHERE s.student_id = ? AND s.status != 'cancelled' AND s.session_date BETWEEN ? AND ?`,
       [scope.id, start, end]
     );
-    return rows.map((r) => ({ type: "session", id: r.id, date: String(r.date), time: r.time, title: r.title || "Training activity", providedByName: r.provided_by_name }));
+    // A day with several trainers (migration 040) names all of them.
+    return attachToSessionRows(
+      db,
+      rows.map((r) => ({ type: "session", id: r.id, date: String(r.date), time: r.time, title: r.title || "Training activity", providedByName: r.provided_by_name })),
+      (it) => it.id
+    );
   }
   const { clause, params } = scopeSql(supCol, scope);
   const [occasionsRes, standaloneRes] = await Promise.all([
@@ -58,7 +64,7 @@ async function getSessionsInRange(db, scope, start, end) {
       [...params, start, end]
     ),
   ]);
-  return [
+  const items = [
     // kind/seriesId tell the caller whether a click should open the single-
     // day occasion editor or the whole multi-day series editor; supervisorId
     // lets a Master Trainer's group-wide view tell her own Group Sessions
@@ -88,6 +94,8 @@ async function getSessionsInRange(db, scope, start, end) {
       providedByName: r.provided_by_name,
     })),
   ];
+  // A day with several trainers (migration 040) names all of them.
+  return attachContributions(db, items, (it) => (it.kind === "single" ? ["session", it.id] : ["occasion", it.id]));
 }
 
 async function getMaterialsInRange(db, scope, start, end) {

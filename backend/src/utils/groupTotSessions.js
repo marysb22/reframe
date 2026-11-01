@@ -4,6 +4,8 @@
 // the TOT-level equivalent of groupSessions.js, used by
 // routes/Mastertrainer.js's POST/GET /group-tot-sessions. See migration 024.
 
+const { writeContributions, sumMinutes, leadProvider } = require("./contributions");
+
 const ATTENDANCE_STATUSES = ["present", "absent", "excused", "partial"];
 
 /**
@@ -25,7 +27,15 @@ async function createTotSessionOccasion(db, params) {
   // so there's no other eligible provider to select yet. Carried through
   // for schema/UI symmetry with the trainee-facing sessions and so Session
   // Details can show Created By/Hours Provided By consistently everywhere.
-  const { masterTrainerId, title, date, time, durationMinutes, notes, totIds, providedBySupervisorId = masterTrainerId, providedByGuestTrainerId = null, providedByExternalTrainerId = null } = params;
+  const { masterTrainerId, title, date, time, durationMinutes: requestedDurationMinutes, notes, totIds, contributions = null } = params;
+  // Several trainers on this day (migration 040): duration = their sum,
+  // provided_by_* mirror the first one, attribution reads the contributions.
+  const contribs = Array.isArray(contributions) && contributions.length ? contributions : null;
+  const durationMinutes = contribs ? sumMinutes(contribs) : requestedDurationMinutes;
+  const lead = contribs ? leadProvider(contribs) : null;
+  const providedBySupervisorId = lead ? lead.providedBySupervisorId : params.providedBySupervisorId === undefined ? masterTrainerId : params.providedBySupervisorId;
+  const providedByGuestTrainerId = lead ? lead.providedByGuestTrainerId : params.providedByGuestTrainerId ?? null;
+  const providedByExternalTrainerId = lead ? lead.providedByExternalTrainerId : params.providedByExternalTrainerId ?? null;
   // A Guest Trainer (migration 038) may deliver this ToT session instead --
   // mutually exclusive with the internal provider column, same rule as
   // groupSessions.js, so the session is never credited to the Master
@@ -60,6 +70,7 @@ async function createTotSessionOccasion(db, params) {
     [masterTrainerId, providerSupervisorId, providerGuestTrainerId, providerExternalTrainerId, title || null, date, time || null, Number(durationMinutes), notes || null]
   );
   const occasionId = occasionInsert.insertId;
+  if (contribs) await writeContributions(db, "tot_occasion", occasionId, contribs);
 
   const created = [];
   const seen = new Set();
@@ -76,7 +87,7 @@ async function createTotSessionOccasion(db, params) {
     created.push({ totId, sessionId: sessionInsert.insertId });
   }
 
-  return { occasionId, created, isFuture };
+  return { occasionId, created, isFuture, durationMinutes: Number(durationMinutes) };
 }
 
 /**

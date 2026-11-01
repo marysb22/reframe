@@ -39,6 +39,12 @@
 -- and the same five session tables (now also carrying
 -- provided_by_external_trainer_id) re-taken the same way, from the same local
 -- dev database AFTER applying 039_external_trainers.sql to it.
+--
+-- UPDATED 2026-11-01 for migration 040: trainer_titles and session_contributions
+-- (new) and learning_materials (visibility, team_section, updated_at) re-taken
+-- with mysqldump --no-data from the local dev database AFTER applying
+-- 040_session_contributions_and_trainer_space.sql to it. Seed rows for
+-- trainer_titles live in the migration, not here.
 -- =============================================================================
 
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -697,6 +703,9 @@ CREATE TABLE `learning_materials` (
   `doi` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `isbn` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `oclc_number` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `visibility` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'trainees',
+  `team_section` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_materials_idempotency_key` (`idempotency_key`),
   UNIQUE KEY `uniq_materials_book_hash` (`book_hash_key`),
@@ -707,16 +716,19 @@ CREATE TABLE `learning_materials` (
   KEY `idx_materials_file_hash` (`file_hash`),
   KEY `idx_materials_group` (`group_id`),
   KEY `idx_materials_shared_supervisor` (`shared_with_supervisor_id`),
+  KEY `idx_materials_visibility_group` (`visibility`,`group_id`),
   CONSTRAINT `fk_material_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin_users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_material_group` FOREIGN KEY (`group_id`) REFERENCES `trainer_groups` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_material_shared_supervisor` FOREIGN KEY (`shared_with_supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_material_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_material_supervisor` FOREIGN KEY (`supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `chk_material_has_file` CHECK (((`filename` is not null) or (`external_url` is not null))),
+  CONSTRAINT `chk_material_team_section` CHECK (((`team_section` is null) or (`team_section` in ('documents','materials','feedback','reports')))),
+  CONSTRAINT `chk_material_visibility` CHECK ((`visibility` in ('trainees','training_team'))),
   CONSTRAINT `chk_publication_year` CHECK (((`publication_year` is null) or (`publication_year` between 1000 and 2100))),
   CONSTRAINT `chk_resource_type` CHECK (((`resource_type` is null) or (`resource_type` in (_utf8mb4'book',_utf8mb4'article',_utf8mb4'research_paper',_utf8mb4'academic_paper',_utf8mb4'thesis',_utf8mb4'ebook',_utf8mb4'reference',_utf8mb4'guide',_utf8mb4'report',_utf8mb4'other')))),
   CONSTRAINT `learning_materials_chk_1` CHECK ((`material_type` in (_utf8mb4'document',_utf8mb4'image',_utf8mb4'video',_utf8mb4'audio',_utf8mb4'link',_utf8mb4'assignment',_utf8mb4'worksheet',_utf8mb4'reading',_utf8mb4'book')))
-) ENGINE=InnoDB AUTO_INCREMENT=596 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=741 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -1381,3 +1393,56 @@ CREATE TABLE `videos` (
   CONSTRAINT `videos_chk_1` CHECK (((`duration_seconds` is null) or (`duration_seconds` >= 0)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Distinct from learning_materials: purpose-built for session recordings and lecture video, with duration/thumbnail metadata a generic file share does not need.';
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+-- ---- Added by migration 040 (taken from the dev database after applying it) ----
+CREATE TABLE `trainer_titles` (
+  `code` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `label` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Professional titles shown on a trainer''s session contribution (migration 040). Descriptive only -- never an account role or permission. Admin-managed;
+
+CREATE TABLE `session_contributions` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `occasion_id` bigint DEFAULT NULL,
+  `session_id` bigint DEFAULT NULL,
+  `tot_occasion_id` bigint DEFAULT NULL,
+  `tot_session_id` bigint DEFAULT NULL,
+  `supervisor_id` bigint DEFAULT NULL,
+  `guest_trainer_id` bigint DEFAULT NULL,
+  `external_trainer_id` bigint DEFAULT NULL,
+  `title_code` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `minutes` int NOT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_scontrib_occ_sup` (`occasion_id`,`supervisor_id`),
+  UNIQUE KEY `uq_scontrib_occ_guest` (`occasion_id`,`guest_trainer_id`),
+  UNIQUE KEY `uq_scontrib_occ_ext` (`occasion_id`,`external_trainer_id`),
+  UNIQUE KEY `uq_scontrib_ses_sup` (`session_id`,`supervisor_id`),
+  UNIQUE KEY `uq_scontrib_ses_guest` (`session_id`,`guest_trainer_id`),
+  UNIQUE KEY `uq_scontrib_ses_ext` (`session_id`,`external_trainer_id`),
+  UNIQUE KEY `uq_scontrib_tocc_sup` (`tot_occasion_id`,`supervisor_id`),
+  UNIQUE KEY `uq_scontrib_tocc_guest` (`tot_occasion_id`,`guest_trainer_id`),
+  UNIQUE KEY `uq_scontrib_tocc_ext` (`tot_occasion_id`,`external_trainer_id`),
+  UNIQUE KEY `uq_scontrib_tses_sup` (`tot_session_id`,`supervisor_id`),
+  UNIQUE KEY `uq_scontrib_tses_guest` (`tot_session_id`,`guest_trainer_id`),
+  UNIQUE KEY `uq_scontrib_tses_ext` (`tot_session_id`,`external_trainer_id`),
+  KEY `fk_scontrib_supervisor` (`supervisor_id`),
+  KEY `fk_scontrib_guest` (`guest_trainer_id`),
+  KEY `fk_scontrib_external` (`external_trainer_id`),
+  KEY `fk_scontrib_title` (`title_code`),
+  CONSTRAINT `fk_scontrib_external` FOREIGN KEY (`external_trainer_id`) REFERENCES `external_trainers` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_scontrib_guest` FOREIGN KEY (`guest_trainer_id`) REFERENCES `guest_trainers` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_scontrib_occasion` FOREIGN KEY (`occasion_id`) REFERENCES `session_occasions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_scontrib_session` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_scontrib_supervisor` FOREIGN KEY (`supervisor_id`) REFERENCES `supervisors` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_scontrib_title` FOREIGN KEY (`title_code`) REFERENCES `trainer_titles` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_scontrib_tot_occasion` FOREIGN KEY (`tot_occasion_id`) REFERENCES `tot_session_occasions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_scontrib_tot_session` FOREIGN KEY (`tot_session_id`) REFERENCES `tot_training_sessions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_scontrib_minutes` CHECK ((`minutes` >= 0))
+) ENGINE=InnoDB AUTO_INCREMENT=76 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='One row per trainer per training day (migration 040). Sequential: a day''s duration = SUM(minutes). A parent with no rows uses its legacy single provided_by_* provider.';
+

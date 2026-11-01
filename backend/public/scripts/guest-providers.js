@@ -343,12 +343,26 @@
    */
   function deliveredByText(item) {
     if (!item) return "";
+    // A day with its own trainers (migration 040): "Karim (Master Trainer) 3h · Sami (External Trainer) 2h".
+    if (Array.isArray(item.contributions) && item.contributions.length) {
+      if (item.contributions.length === 1) {
+        const c = item.contributions[0];
+        return `${providerDisplayName(c.name, c.kind === "guest", c.kind === "external")}${c.titleLabel ? ` -- ${c.titleLabel}` : ""}`;
+      }
+      return item.contributions.map((c) => `${c.name}${c.titleLabel ? ` (${c.titleLabel})` : ""} ${c.hours}h`).join(" · ");
+    }
     if (item.mixedProviders && Array.isArray(item.providers) && item.providers.length > 1) {
       return item.providers
         .map((p) => `${providerDisplayName(p.name, p.kind === "guest", p.kind === "external")} ${p.hours}h`)
         .join(" · ");
     }
     return providerDisplayName(item.providedByName, item.providedByIsGuest, item.providedByIsExternal);
+  }
+
+  /** "Karim (Master Trainer) 3h · Sami (External Trainer) 2h" for a day's contributions; callers still escape. */
+  function contributionsText(list) {
+    if (!Array.isArray(list) || !list.length) return "";
+    return list.map((c) => `${c.name}${c.titleLabel ? ` (${c.titleLabel})` : ""} ${c.hours}h`).join(" · ");
   }
 
   window.GuestProviders = {
@@ -358,5 +372,192 @@
     providerKey,
     providerDisplayName,
     deliveredByText,
+    contributionsText,
   };
+
+  // ---- Several trainers on one day (migration 040) -------------------------
+  // TrainerRows.mount(container, opts) renders an editable list of
+  // { trainer, title, hours } rows plus "+ Add trainer"; TrainerRows.read
+  // returns the API's contributions array. A day's trainers are sequential:
+  // its total is the sum of their hours. A title is descriptive only -- it
+  // never grants a role or permission.
+  let titles = null;
+  let titlesPromise = null;
+  function loadTitles(force) {
+    if (force) {
+      titles = null;
+      titlesPromise = null;
+    }
+    if (titles) return Promise.resolve(titles);
+    if (!titlesPromise) {
+      titlesPromise = apiRequest("/supervisor/trainer-titles").then((data) => {
+        titles = (data && data.titles) || [];
+        titlesPromise = null;
+        return titles;
+      });
+    }
+    return titlesPromise;
+  }
+
+  /** The title a trainer gets by default, from what kind of provider they are. */
+  function defaultTitleFor(provider) {
+    if (!provider) return "";
+    if (provider.kind === "external") return "external_trainer";
+    if (provider.kind === "external_guest" || provider.kind === "internal_guest" || provider.kind === "session_only") return "guest_trainer";
+    if (provider.kind === "member") return provider.role === "Master Trainer" ? "master_trainer" : "tot";
+    return "";
+  }
+
+  function rowKeyOf(c) {
+    if (!c) return null;
+    if (c.key) return c.key;
+    return providerKey(c);
+  }
+
+  async function addTrainerRow(container, c, opts) {
+    const list = container.querySelector(".tr-rows");
+    const row = document.createElement("div");
+    row.className = "tr-row";
+    const hours = c && c.minutes != null ? Math.round((c.minutes / 60) * 100) / 100 : "";
+    row.innerHTML = `
+      <div class="tr-f tr-f-who"><label>Trainer</label><select class="tr-who" required></select></div>
+      <div class="tr-f tr-f-title"><label title="A professional title only -- it never changes anyone's account or permissions">Title</label><select class="tr-title"></select></div>
+      <div class="tr-f tr-f-hours"><label>Hours</label><input type="number" class="tr-hours" min="0.25" step="0.25" value="${hours}" required></div>
+      <button type="button" class="tr-remove" title="Remove this trainer" aria-label="Remove this trainer"><i class="fa fa-xmark"></i></button>`;
+    list.appendChild(row);
+
+    const who = row.querySelector(".tr-who");
+    const prev = list.children.length > 1 ? null : opts.defaultKey;
+    await renderProviderSelect(who, rowKeyOf(c) || prev || undefined, { filter: opts.filter, fallbackName: c && c.name });
+    const titleSel = row.querySelector(".tr-title");
+    const all = await loadTitles();
+    const wanted = c && c.titleCode != null ? c.titleCode : null;
+    const opt = (t) => `<option value="${escapeHtml(t.code)}">${escapeHtml(t.label)}</option>`;
+    let html = '<option value="">— No title —</option>' + all.map(opt).join("");
+    // A title since deactivated stays shown (and kept) on an existing day.
+    if (wanted && !all.some((t) => t.code === wanted)) html += `<option value="${escapeHtml(wanted)}">${escapeHtml((c && c.titleLabel) || wanted)} (inactive)</option>`;
+    titleSel.innerHTML = html;
+    const applyDefaultTitle = () => {
+      if (titleSel.dataset.touched) return;
+      const p = (roster || []).find((x) => x.key === who.value);
+      titleSel.value = defaultTitleFor(p);
+    };
+    if (wanted != null) {
+      titleSel.value = wanted;
+      titleSel.dataset.touched = "1";
+    } else applyDefaultTitle();
+    titleSel.addEventListener("change", () => (titleSel.dataset.touched = "1"));
+    who.addEventListener("change", applyDefaultTitle);
+    row.querySelector(".tr-remove").addEventListener("click", () => {
+      row.remove();
+      refreshTrainerRows(container);
+    });
+    row.addEventListener("input", () => refreshTrainerRows(container));
+    row.addEventListener("change", () => refreshTrainerRows(container));
+    refreshTrainerRows(container);
+    return row;
+  }
+
+  function refreshTrainerRows(container) {
+    const rows = Array.from(container.querySelectorAll(".tr-row"));
+    rows.forEach((r) => (r.querySelector(".tr-remove").style.visibility = rows.length > 1 ? "visible" : "hidden"));
+    const total = rows.reduce((t, r) => t + (Number(r.querySelector(".tr-hours").value) || 0), 0);
+    const out = container.querySelector(".tr-total");
+    if (out) out.innerHTML = `Day total: <strong>${Math.round(total * 100) / 100}h</strong>${rows.length > 1 ? ` <span class="tr-hint">(${rows.length} trainers, one after another)</span>` : ""}`;
+    if (typeof container._trOnChange === "function") container._trOnChange();
+  }
+
+  /**
+   * Renders the trainers block into `container`. opts:
+   *   contributions -- existing rows to show (API shape), else one empty row
+   *   legacy        -- { provider, minutes } for a day saved before
+   *                    contributions existed: shown as one row
+   *   defaultKey    -- provider key for a brand-new first row
+   *   filter(p)     -- limit selectable providers (e.g. no ToTs on a ToT session)
+   *   onChange()    -- called whenever a row changes
+   */
+  async function mountTrainerRows(container, opts = {}) {
+    container.classList.add("tr-block");
+    container.innerHTML = `
+      <div class="tr-rows"></div>
+      <div class="tr-foot">
+        <button type="button" class="btn btn-secondary tr-add" style="width:auto;margin:0;"><i class="fa fa-user-plus"></i> Add trainer</button>
+        <span class="tr-total" aria-live="polite"></span>
+      </div>`;
+    container._trOnChange = opts.onChange;
+    const rowOpts = { filter: opts.filter, defaultKey: opts.defaultKey };
+    container.querySelector(".tr-add").addEventListener("click", () => addTrainerRow(container, null, rowOpts));
+    const list = Array.isArray(opts.contributions) && opts.contributions.length ? opts.contributions : null;
+    if (list) {
+      for (const c of list) await addTrainerRow(container, c, rowOpts);
+    } else if (opts.legacy && opts.legacy.provider) {
+      await addTrainerRow(container, { ...opts.legacy.provider, minutes: opts.legacy.minutes, titleCode: null }, rowOpts);
+    } else {
+      await addTrainerRow(container, null, rowOpts);
+    }
+    refreshTrainerRows(container);
+  }
+
+  /** { contributions, totalMinutes, error } from a mounted block. */
+  function readTrainerRows(container) {
+    const rows = Array.from(container.querySelectorAll(".tr-row"));
+    const contributions = [];
+    const seen = new Set();
+    for (const [i, r] of rows.entries()) {
+      const who = r.querySelector(".tr-who");
+      const pair = readProviderSelect(who);
+      const hours = Number(r.querySelector(".tr-hours").value);
+      if (!/^[sge]:\d+$/.test(who.value || "")) return { error: `Trainer ${i + 1}: choose a trainer` };
+      if (!(hours > 0)) return { error: `Trainer ${i + 1}: enter the hours they delivered` };
+      if (seen.has(who.value)) return { error: `Trainer ${i + 1}: the same trainer is listed twice on this day` };
+      seen.add(who.value);
+      contributions.push({
+        providedBySupervisorId: pair.providedBySupervisorId,
+        providedByGuestTrainerId: pair.providedByGuestTrainerId,
+        providedByExternalTrainerId: pair.providedByExternalTrainerId,
+        titleCode: r.querySelector(".tr-title").value || null,
+        minutes: Math.round(hours * 60),
+      });
+    }
+    if (!contributions.length) return { error: "Add at least one trainer" };
+    return { contributions, totalMinutes: contributions.reduce((t, c) => t + c.minutes, 0) };
+  }
+
+  /** Display names of a mounted block's trainers ("Karim, Sami"). */
+  function trainerRowsNames(container) {
+    return Array.from(container.querySelectorAll(".tr-row .tr-who"))
+      .map((s) => {
+        const o = s.selectedOptions && s.selectedOptions[0];
+        if (!o || !/^[sge]:/.test(o.value)) return "";
+        const t = o.textContent || "";
+        const i = t.indexOf(" — ");
+        return (i >= 0 ? t.slice(i + 3) : t).replace(/ \(no longer in this Group\)$/, "").trim();
+      })
+      .filter(Boolean);
+  }
+
+  window.TrainerRows = { mount: mountTrainerRows, read: readTrainerRows, names: trainerRowsNames, loadTitles, defaultTitleFor };
+
+  // Styles for the trainers block, injected once (both dashboards share it).
+  if (!document.getElementById("trainer-rows-style")) {
+    const st = document.createElement("style");
+    st.id = "trainer-rows-style";
+    st.textContent = `
+      .tr-block { min-width: 0; }
+      .tr-row { display: grid; grid-template-columns: 1.6fr 1.1fr 0.6fr auto; gap: 8px; align-items: end; margin-bottom: 8px; }
+      .tr-row label { font-size: 11px; margin: 0 0 4px; }
+      .tr-f { min-width: 0; }
+      .tr-f select, .tr-f input { width: 100%; min-width: 0; }
+      .tr-remove { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--danger); cursor: pointer; }
+      .tr-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+      .tr-total { font-size: 12.5px; color: var(--muted); }
+      .tr-total strong { color: var(--text); }
+      .tr-hint { font-size: 11.5px; }
+      @media (max-width: 640px) {
+        .tr-row { grid-template-columns: 1fr 1fr; grid-template-areas: "who who" "title hours" "remove remove"; }
+        .tr-f-who { grid-area: who; } .tr-f-title { grid-area: title; } .tr-f-hours { grid-area: hours; }
+        .tr-remove { grid-area: remove; justify-self: end; }
+      }`;
+    document.head.appendChild(st);
+  }
 })();

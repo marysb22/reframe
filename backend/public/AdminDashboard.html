@@ -2008,6 +2008,7 @@
                 <ul>
                     <li><a data-section="trainerCreate" href="#trainerCreate"><i class="fa fa-user-plus"></i>Create Member</a></li>
                     <li><a data-section="trainers" href="#trainers"><i class="fa fa-chalkboard-user"></i>All Trainers</a></li>
+                    <li><a data-section="trainerTitles" href="#trainerTitles"><i class="fa fa-id-badge"></i>Trainer Titles</a></li>
                 </ul>
 
                 <div class="nav-label">Accounts</div>
@@ -2357,6 +2358,26 @@
             <!-- ============================================================= -->
             <!-- CREATE MEMBER                                                  -->
             <!-- ============================================================= -->
+            <!-- TRAINER TITLES (migration 040) -- professional titles shown next
+                 to each trainer of a session day. Descriptive only: a title
+                 never grants an account role or any permission. -->
+            <section class="dash-section" id="section-trainerTitles" data-title="Trainer Titles" data-eyebrow="Trainers">
+                <div class="system-card">
+                    <h3><i class="fa fa-id-badge"></i>Trainer Titles</h3>
+                    <p class="hint">The titles trainers can pick for each person who delivered part of a session day (e.g. Master Trainer, External Trainer). A title is only a label: it never changes anyone's account, role or permissions. Titles already used on past sessions can be deactivated but not deleted, so history keeps its label.</p>
+                    <form id="titleCreateForm" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:12px 0 16px;" novalidate>
+                        <div style="flex:1;min-width:200px;"><label style="margin-top:0;">New title</label><input type="text" id="titleNewLabel" dir="auto" maxlength="80" placeholder="e.g. Co-Facilitator" autocomplete="off"></div>
+                        <button type="submit" class="btn" style="width:auto;margin-top:0;"><i class="fa fa-plus"></i> Add title</button>
+                    </form>
+                    <div style="overflow-x:auto;">
+                        <table>
+                            <thead><tr><th>Title</th><th>Status</th><th>Used on</th><th></th></tr></thead>
+                            <tbody id="titlesBody"><tr><td colspan="4" class="empty-state">Loading titles...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <section class="dash-section" id="section-trainerCreate" data-title="Create Member" data-eyebrow="Trainers">
 
                 <div class="system-card">
@@ -3303,7 +3324,7 @@
 
         // ---- Section switching -------------------------------------------------
 
-        const SECTION_IDS = ["dashboard", "library", "calendar", "groupCreate", "groups", "trainerCreate", "trainers", "studentProfiles", "cvs", "events", "payments", "settings"];
+        const SECTION_IDS = ["dashboard", "library", "calendar", "groupCreate", "groups", "trainerCreate", "trainers", "trainerTitles", "studentProfiles", "cvs", "events", "payments", "settings"];
         let calendarInited = false;
 
         function showSection(name) {
@@ -3327,6 +3348,8 @@
             if (window.location.hash.slice(1) !== name) {
                 history.replaceState(null, "", "#" + name);
             }
+
+            if (name === "trainerTitles") loadTrainerTitles();
 
             if (name === "calendar" && !calendarInited) {
                 calendarInited = true;
@@ -3950,6 +3973,63 @@
             loadAdminGuestTrainers(g.id);
             loadAdminExternalTrainers(g.id);
         }
+
+        // ---- Trainer Titles (migration 040) --------------------------------
+        let trainerTitles = [];
+        async function loadTrainerTitles() {
+            const body = document.getElementById("titlesBody");
+            const data = await apiRequest("/admin/trainer-titles");
+            if (!data) {
+                body.innerHTML = '<tr><td colspan="4" class="empty-state">Could not load titles.</td></tr>';
+                return;
+            }
+            trainerTitles = data.titles;
+            if (!trainerTitles.length) {
+                body.innerHTML = '<tr><td colspan="4" class="empty-state">No titles yet.</td></tr>';
+                return;
+            }
+            body.innerHTML = trainerTitles
+                .map(
+                    (t) => `<tr>
+      <td dir="auto"><strong>${escapeHtml(t.label)}</strong></td>
+      <td><span class="pill ${t.isActive ? "active" : "suspended"}">${t.isActive ? "Active" : "Inactive"}</span></td>
+      <td>${t.usageCount} trainer entr${t.usageCount === 1 ? "y" : "ies"}</td>
+      <td style="white-space:nowrap;">
+        <button class="icon-btn" title="Rename" data-title-rename="${escapeHtml(t.code)}"><i class="fa fa-pen"></i></button>
+        <button class="btn btn-secondary btn-sm" style="width:auto;margin-top:0;" data-title-toggle="${escapeHtml(t.code)}">${t.isActive ? "Deactivate" : "Activate"}</button>
+      </td>
+    </tr>`
+                )
+                .join("");
+        }
+        document.getElementById("titlesBody").addEventListener("click", async (e) => {
+            const ren = e.target.closest("[data-title-rename]");
+            const tog = e.target.closest("[data-title-toggle]");
+            const code = (ren && ren.dataset.titleRename) || (tog && tog.dataset.titleToggle);
+            const t = trainerTitles.find((x) => x.code === code);
+            if (!t) return;
+            if (ren) {
+                const label = prompt("Rename this title", t.label);
+                if (label == null || label.trim() === t.label) return;
+                const result = await apiRequest(`/admin/trainer-titles/${encodeURIComponent(code)}`, { method: "PATCH", body: JSON.stringify({ label: label.trim() }) });
+                if (result) showToast("Title renamed", "success");
+            } else {
+                const result = await apiRequest(`/admin/trainer-titles/${encodeURIComponent(code)}`, { method: "PATCH", body: JSON.stringify({ isActive: !t.isActive }) });
+                if (result) showToast(t.isActive ? "Title deactivated -- no longer offered for new entries" : "Title activated", "success");
+            }
+            loadTrainerTitles();
+        });
+        document.getElementById("titleCreateForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const input = document.getElementById("titleNewLabel");
+            const label = input.value.trim();
+            if (label.length < 2) return showToast("Enter a title (at least 2 characters)", "error");
+            const result = await apiRequest("/admin/trainer-titles", { method: "POST", body: JSON.stringify({ label }) });
+            if (!result) return;
+            input.value = "";
+            showToast(`"${result.label}" added`, "success");
+            loadTrainerTitles();
+        });
 
         // ---- Set cohort for a whole Group (PATCH /admin/groups/:id/cohort) ---
         // Fills in trainees who have no cohort yet; replacing an existing

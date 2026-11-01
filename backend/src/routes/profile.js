@@ -17,6 +17,7 @@ const {
 const { hashPassword, verifyPassword } = require("../utils/authUtils");
 const { photoUpload, cvUpload, submissionUpload, documentUpload } = require("../utils/uploads");
 const { checkFileContent, detectImageExtension } = require("../utils/fileTypeCheck");
+const { attachToSessionRows } = require("../utils/contributions");
 const { getSessionsInRange, getMaterialsInRange, getDocumentsInRange, getAssignmentsInRange, getNotesInRange } = require("../utils/calendarQuery");
 const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { createUploadGuard } = require("../utils/uploadGuard");
@@ -616,7 +617,10 @@ router.get(
       supRows.forEach((r) => (names[r.id] = r.full_name));
     }
 
-    res.json({ records: rows.map((r) => toRecord({ ...r, supervisor_name: names[r.supervisor_id] })) });
+    // Each session row names who actually delivered it -- several trainers
+    // for a multi-trainer day (migration 040).
+    const recordItems = rows.map((r) => toRecord({ ...r, supervisor_name: names[r.supervisor_id] }));
+    res.json({ records: await attachToSessionRows(db, recordItems, (r) => (["training_session", "supervision_session", "hour_session"].includes(r.recordType) ? r.id : null)) });
   })
 );
 
@@ -1444,6 +1448,9 @@ router.get(
          -- into a trainee's own feed.
          AND lm.shared_with_supervisor_id IS NULL
          AND lm.group_id IS NULL
+         -- Private Trainer Space / Trainer Reports content (migration 040)
+         -- is never trainee-facing, whatever its other columns say.
+         AND lm.visibility = 'trainees'
          AND lm.material_type != 'book'
          ${filter}
        ORDER BY lm.created_at DESC`,

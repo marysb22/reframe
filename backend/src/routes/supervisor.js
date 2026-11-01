@@ -56,6 +56,19 @@ const {
   providerNameSql,
 } = require("../utils/guestTrainers");
 const { summarizeSeriesProviders, applySeriesSummary } = require("../utils/seriesProviders");
+const {
+  creditRowsSql,
+  normalizeContributions,
+  validateContributionLists,
+  existingContributionChoices,
+  prepareSessionContributions,
+  writeContributions,
+  attachContributions,
+  attachToSessionRows,
+  loadContributions,
+  sumMinutes,
+  leadProvider,
+} = require("../utils/contributions");
 const { DOCUMENT_SELECT } = require("../utils/documentsQuery");
 
 const router = express.Router();
@@ -160,7 +173,7 @@ router.get(
 
     res.json({
       student: toProfileResponse(student),
-      records: records.map(toRecord),
+      records: await attachToSessionRows(db, records.map(toRecord), (r) => (["training_session", "supervision_session", "hour_session"].includes(r.recordType) ? r.id : null)),
       documents: documents.map((r) => ({ ...toDocument(r), canManage: Number(r.uploaded_by) === Number(req.user.id) })),
       progress: await computeProgressSummary(db, studentId),
     });
@@ -228,7 +241,8 @@ router.post(
     const student = await loadAssignedStudent(db, req.user.id, studentId, res);
     if (!student) return;
 
-    const { recordType, date, time, durationMinutes, status, attendanceStatus, minutesCompleted, title, content, score, hourTypeCode } = req.body || {};
+    const { recordType, date, time, status, attendanceStatus, minutesCompleted, title, content, score, hourTypeCode } = req.body || {};
+    let { durationMinutes } = req.body || {};
     if (!RECORD_TYPES.includes(recordType)) {
       return res.status(400).json({ error: `recordType must be one of: ${RECORD_TYPES.join(", ")}` });
     }
@@ -240,6 +254,14 @@ router.post(
       case "training_session":
       case "supervision_session":
       case "hour_session": {
+        // Several trainers on this session (migration 040): each trainer's
+        // own minutes, the session's duration = their sum. Validated against
+        // this ToT's Group like any provider.
+        const { rows: myGroupRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
+        const recordContributions = await prepareSessionContributions(db, { groupId: myGroupRows.length ? myGroupRows[0].group_id : null, body: req.body });
+        if (recordContributions.error) return res.status(400).json({ error: recordContributions.error });
+        if (recordContributions.top) durationMinutes = sumMinutes(recordContributions.top);
+        const recordLead = recordContributions.top ? leadProvider(recordContributions.top) : null;
         // Hours are never a typed number anymore -- they're derived from
         // this session's duration + its attendance status. A session dated
         // today or earlier already happened, so attendance is required and
@@ -308,11 +330,25 @@ router.post(
           });
         }
         const sessionInsert = await db.query(
-          `INSERT INTO sessions (student_id, supervisor_id, session_type, title, session_date, session_time, duration_minutes, notes, status)
-           VALUES (?,?,?,?,?,?,?,?,?)`,
-          [studentId, req.user.id, sessionType, title || null, date, time || null, Number(durationMinutes), content || null, isFuture ? "scheduled" : "completed"]
+          `INSERT INTO sessions (student_id, supervisor_id, provided_by_supervisor_id, provided_by_guest_trainer_id, provided_by_external_trainer_id, session_type, title, session_date, session_time, duration_minutes, notes, status)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [
+            studentId,
+            req.user.id,
+            recordLead ? recordLead.providedBySupervisorId : null,
+            recordLead ? recordLead.providedByGuestTrainerId : null,
+            recordLead ? recordLead.providedByExternalTrainerId : null,
+            sessionType,
+            title || null,
+            date,
+            time || null,
+            Number(durationMinutes),
+            content || null,
+            isFuture ? "scheduled" : "completed",
+          ]
         );
         insertedId = sessionInsert.insertId;
+        if (recordContributions.top) await writeContributions(db, "session", insertedId, recordContributions.top);
         if (!isFuture) {
           await db.query(
             `INSERT INTO attendance (student_id, supervisor_id, session_id, attendance_date, status, minutes_completed, recorded_by)
@@ -477,6 +513,11 @@ router.post("/session-occasions", (req, res) => {
     // migration 038 a provider may also be one of this Group's Guest
     // Trainers (providedByGuestTrainerId) -- resolveProviders validates
     // both kinds against the same Group-scoped eligibility list.
+    // Several trainers per day (migration 040): every trainer and title is
+    // validated against this Group before anything is written.
+    const prepared = await prepareSessionContributions(pool, { groupId, body: req.body, days });
+    if (prepared.error) return res.status(400).json({ error: prepared.error });
+    days = prepared.days;
     const providers = await resolveProviders(pool, { groupId, body: req.body, days });
     if (providers.error) return res.status(400).json({ error: providers.error });
     const topProvider = providers.top || { supervisorId: req.user.id, guestTrainerId: null };
@@ -492,6 +533,7 @@ router.post("/session-occasions", (req, res) => {
           attachmentFilename,
           attachmentOriginalName,
           studentIds,
+          contributions: prepared.top,
           providedBySupervisorId: topProvider.supervisorId,
           providedByGuestTrainerId: topProvider.guestTrainerId,
           providedByExternalTrainerId: topProvider.externalTrainerId,
@@ -507,6 +549,7 @@ router.post("/session-occasions", (req, res) => {
           attachmentFilename,
           attachmentOriginalName,
           studentIds,
+          contributions: prepared.top,
           providedBySupervisorId: topProvider.supervisorId,
           providedByGuestTrainerId: topProvider.guestTrainerId,
           providedByExternalTrainerId: topProvider.externalTrainerId,
@@ -583,7 +626,7 @@ router.get(
       [req.user.id]
     );
     res.json({
-      occasions: rows.map((r) => ({
+      occasions: await attachContributions(db, rows.map((r) => ({
         id: r.id,
         title: r.title,
         sessionTypeLabel: r.session_type_label,
@@ -597,7 +640,7 @@ router.get(
         providedByIsGuest: r.provided_by_guest_id != null,
         providedByExternalTrainerId: r.provided_by_external_id ?? null,
         providedByIsExternal: r.provided_by_external_id != null,
-      })),
+      })), (o) => ["occasion", o.id]),
     });
   })
 );
@@ -624,6 +667,8 @@ router.get(
     );
     if (!occRows.length) return res.status(404).json({ error: "Session occasion not found" });
     const o = occRows[0];
+    // The day's trainers (migration 040) -- empty for a single-provider day.
+    const dayContributions = (await loadContributions(db, "occasion", [o.id])).get(Number(o.id)) || [];
 
     const { rows: rosterRows } = await db.query(
       `SELECT st.id AS student_id, st.full_name, a.status, a.minutes_completed, a.excuse_reason_code
@@ -646,6 +691,7 @@ router.get(
         durationMinutes: o.duration_minutes,
         notes: o.notes,
         seriesId: o.series_id,
+        contributions: dayContributions,
         createdBy: { id: o.created_by_id, name: o.created_by_name },
         providedBy: { id: o.provided_by_id, name: o.provided_by_name, guestTrainerId: o.provided_by_guest_id ?? null, isGuest: o.provided_by_guest_id != null, externalTrainerId: o.provided_by_external_id ?? null, isExternal: o.provided_by_external_id != null },
       },
@@ -699,6 +745,9 @@ router.put(
     // unchanged is always allowed (see resolveProviders).
     const { rows: meRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
     const groupId = meRows.length ? meRows[0].group_id : null;
+    const existingDayContributions = await existingContributionChoices(db, "occasion", [occasionId]);
+    const prepared = await prepareSessionContributions(db, { groupId, body: req.body, existing: existingDayContributions });
+    if (prepared.error) return res.status(400).json({ error: prepared.error });
     const providers = await resolveProviders(db, {
       groupId,
       body: req.body,
@@ -715,6 +764,7 @@ router.put(
       title,
       notes,
       sessionType,
+      contributions: prepared.top,
       providedBySupervisorId: providers.top ? providers.top.supervisorId : undefined,
       providedByGuestTrainerId: providers.top ? providers.top.guestTrainerId : undefined,
       providedByExternalTrainerId: providers.top ? providers.top.externalTrainerId : undefined,
@@ -878,7 +928,7 @@ router.get(
         mixedProviders: !!(summary && summary.mixedProviders),
         deliveredByName: summary ? summary.providedByName : sr.provided_by_name,
       },
-      days: dayRows.map((r) => {
+      days: await attachContributions(db, dayRows.map((r) => {
         const traineeCount = Number(r.trainee_count);
         const recordedCount = Number(r.recorded_count);
         const presentCount = Number(r.present_count);
@@ -911,7 +961,7 @@ router.get(
           providedByExternalTrainerId: r.provided_by_external_id ?? null,
           providedByIsExternal: r.provided_by_external_id != null,
         };
-      }),
+      }), (d) => ["occasion", d.occasionId]),
       roster: rosterRows.map((r) => ({ studentId: r.student_id, fullName: r.full_name })),
     });
   })
@@ -930,10 +980,14 @@ router.put(
     // Session already stores stay valid unchanged (see resolveProviders).
     const { rows: meRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
     const groupId = meRows.length ? meRows[0].group_id : null;
+    const { rows: seriesDayRows } = await db.query("SELECT id FROM session_occasions WHERE series_id = ?", [seriesId]);
+    const existingSeriesContributions = await existingContributionChoices(db, "occasion", seriesDayRows.map((r) => r.id));
+    const prepared = await prepareSessionContributions(db, { groupId, body: req.body, days, existing: existingSeriesContributions });
+    if (prepared.error) return res.status(400).json({ error: prepared.error });
     const providers = await resolveProviders(db, {
       groupId,
       body: req.body,
-      days,
+      days: prepared.days,
       existing: await existingProvidersForSeries(db, seriesId, req.user.id),
     });
     if (providers.error) return res.status(400).json({ error: providers.error });
@@ -948,7 +1002,7 @@ router.put(
       sessionType,
       title,
       notes,
-      days: Array.isArray(days) ? applyDayProviders(days, providers.days) : days,
+      days: Array.isArray(prepared.days) ? applyDayProviders(prepared.days, providers.days) : prepared.days,
       studentIds: rows.map((r) => r.student_id),
       providedBySupervisorId: providers.top ? providers.top.supervisorId : undefined,
       providedByGuestTrainerId: providers.top ? providers.top.guestTrainerId : undefined,
@@ -1008,7 +1062,7 @@ router.get(
     const summaries = await summarizeSeriesProviders(db, rows.filter((r) => r.kind === "series").map((r) => r.id));
     const withSummary = (item) => (item.kind === "series" ? applySeriesSummary(item, summaries.get(Number(item.id))) : item);
     res.json({
-      activities: rows.map((r) => withSummary({
+      activities: await attachContributions(db, rows.map((r) => withSummary({
         id: r.id,
         kind: r.kind, // 'occasion' | 'single' | 'series'
         title: r.title,
@@ -1045,7 +1099,7 @@ router.get(
         providedByIsGuest: r.provided_by_guest_id != null,
         providedByExternalTrainerId: r.provided_by_external_id ?? null,
         providedByIsExternal: r.provided_by_external_id != null,
-      })),
+      })), (a) => (a.kind === "occasion" ? ["occasion", a.id] : a.kind === "single" ? ["session", a.id] : null)),
       total: Number(countRows[0].total),
       page: listQuery.page,
       pageSize: listQuery.pageSize,
@@ -1094,8 +1148,8 @@ router.put(
       return res.status(403).json({ error: "You can only edit records you created" });
     }
 
-    const { date, time, durationMinutes, status, title, content, score, attendanceStatus, minutesCompleted, sessionType, hourTypeCode } =
-      req.body || {};
+    const { date, time, status, title, content, score, attendanceStatus, minutesCompleted, sessionType, hourTypeCode } = req.body || {};
+    let { durationMinutes } = req.body || {};
 
     if (recordType === "training_session" || recordType === "supervision_session" || recordType === "hour_session") {
       // A single-trainee session's type (training_session/supervision_session/
@@ -1104,6 +1158,42 @@ router.put(
       // there's no cross-table move to worry about; only its session_type
       // value needs to change, same as the Group Session edit path already
       // does via updateSessionOccasion.
+      // Several trainers on this session (migration 040) -- only for a
+      // standalone session; a Group Session day's trainers are edited on
+      // the Group Session itself. Sending contributions replaces them
+      // (duration = their sum); an older request changing only the duration
+      // is refused when there are several trainers, and kept in sync when
+      // there is exactly one.
+      const { rows: myGroupRows } = await db.query("SELECT group_id FROM supervisors WHERE id = ?", [req.user.id]);
+      const recordContributions = await prepareSessionContributions(db, {
+        groupId: myGroupRows.length ? myGroupRows[0].group_id : null,
+        body: req.body,
+        existing: await existingContributionChoices(db, "session", [recordId]),
+      });
+      if (recordContributions.error) return res.status(400).json({ error: recordContributions.error });
+      let recordContribs = recordContributions.top || null;
+      if (recordContribs && existing.occasion_id) {
+        return res.status(400).json({ error: "This activity is part of a Group Session -- edit its trainers on the Group Session instead" });
+      }
+      if (!recordContribs && durationMinutes != null && !existing.occasion_id) {
+        const current = await existingContributionChoices(db, "session", [recordId]);
+        if (current.length) {
+          const { rows: sumRows } = await db.query("SELECT SUM(minutes) AS m FROM session_contributions WHERE session_id = ?", [recordId]);
+          if (Number(sumRows[0].m) !== Number(durationMinutes)) {
+            if (current.length > 1) return res.status(400).json({ error: "This session has several trainers -- change each trainer's hours in the trainers list instead" });
+            recordContribs = [{ ...current[0], minutes: Number(durationMinutes) }];
+          }
+        }
+      }
+      if (recordContribs && recordContribs.length) {
+        durationMinutes = sumMinutes(recordContribs);
+        const lead = leadProvider(recordContribs);
+        await db.query(
+          "UPDATE sessions SET provided_by_supervisor_id = ?, provided_by_guest_trainer_id = ?, provided_by_external_trainer_id = ? WHERE id = ?",
+          [lead.providedBySupervisorId, lead.providedByGuestTrainerId, lead.providedByExternalTrainerId, recordId]
+        );
+        await writeContributions(db, "session", recordId, recordContribs);
+      }
       const newType = hourTypeCode || sessionType;
       if (newType && newType !== existing.session_type) {
         const { rows: htRows } = await db.query("SELECT code FROM hour_types WHERE code = ? AND is_active = 1", [newType]);
@@ -1507,26 +1597,12 @@ router.get(
       // deliberately so the two can't drift apart (see that function's own
       // comment on why this exists as its own query here rather than a
       // third hand-written copy).
-      db.query(
-        `SELECT COALESCE(SUM(hours), 0) AS hours FROM (
-           SELECT CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
-           FROM sessions s
-           JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-           WHERE IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL) = ? AND s.status != 'cancelled' AND s.occasion_id IS NULL
-
-           UNION ALL
-
-           SELECT so.duration_minutes / 60 AS hours
-           FROM session_occasions so
-           WHERE IF(so.provided_by_guest_trainer_id IS NULL AND so.provided_by_external_trainer_id IS NULL, COALESCE(so.provided_by_supervisor_id, so.supervisor_id), NULL) = ?
-             AND EXISTS (
-               SELECT 1 FROM sessions s2
-               JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
-               WHERE s2.occasion_id = so.id AND s2.status != 'cancelled'
-             )
-         ) combined`,
-        [supervisorId, supervisorId]
-      ),
+      // Several trainers per day (migration 040): each is credited only
+      // with their own minutes -- see creditRowsSql.
+      (() => {
+        const credits = creditRowsSql({ internalProviderId: true }, { internalProviderId: supervisorId });
+        return db.query(`SELECT COALESCE(SUM(hours), 0) AS hours FROM (${credits.sql}) combined`, credits.params);
+      })(),
       db.query(
         // 'partial' counts as attended -- the same rule computeProgressSummary
         // and every other attendance-rate calculation in the app already
@@ -1679,34 +1755,22 @@ router.get(
     // external_id = the External Trainer (migration 039) -- exactly one is
     // non-NULL per row, so each delivered hour lands in exactly one
     // breakdown entry, never zero and never two.
-    const { rows: hoursRows } = await db.query(
-      `SELECT provider_id, guest_id, external_id, SUM(hours) AS hours FROM (
-         SELECT IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL) AS provider_id,
-                s.provided_by_guest_trainer_id AS guest_id,
-                s.provided_by_external_trainer_id AS external_id,
-                CASE WHEN a.status = 'present' THEN s.duration_minutes ELSE COALESCE(a.minutes_completed, 0) END / 60 AS hours
-         FROM sessions s
-         JOIN students st ON st.id = s.student_id
-         JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-         WHERE st.group_id = ? AND s.status != 'cancelled' AND s.occasion_id IS NULL
-
-         UNION ALL
-
-         SELECT IF(so.provided_by_guest_trainer_id IS NULL AND so.provided_by_external_trainer_id IS NULL, COALESCE(so.provided_by_supervisor_id, so.supervisor_id), NULL) AS provider_id,
-                so.provided_by_guest_trainer_id AS guest_id,
-                so.provided_by_external_trainer_id AS external_id,
-                so.duration_minutes / 60 AS hours
-         FROM session_occasions so
-         WHERE EXISTS (
-           SELECT 1 FROM sessions s2
-           JOIN students st2 ON st2.id = s2.student_id
-           JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
-           WHERE s2.occasion_id = so.id AND s2.status != 'cancelled' AND st2.group_id = ?
-         )
-       ) combined
-       GROUP BY provider_id, guest_id, external_id`,
-      [groupId, groupId]
+    // One row per (provider kind, provider id) from the shared credit rows
+    // (utils/contributions.js): a day with several trainers credits each
+    // one only their own minutes; a legacy day credits its single
+    // provider. Mapped back to the provider_id / guest_id / external_id
+    // shape the rest of this route already uses.
+    const credits = creditRowsSql({ studentGroup: true }, { studentGroup: groupId });
+    const { rows: creditTotals } = await db.query(
+      `SELECT kind, provider_id, SUM(hours) AS hours FROM (${credits.sql}) combined GROUP BY kind, provider_id`,
+      credits.params
     );
+    const hoursRows = creditTotals.map((r) => ({
+      provider_id: r.kind === "s" ? r.provider_id : null,
+      guest_id: r.kind === "g" ? r.provider_id : null,
+      external_id: r.kind === "e" ? r.provider_id : null,
+      hours: r.hours,
+    }));
     const hoursByProvider = new Map();
     const hoursByGuest = new Map();
     const hoursByExternal = new Map();
@@ -1839,6 +1903,17 @@ router.post(
       created: result.created,
       key: `g:${result.guest.id}`,
     });
+  })
+);
+
+// GET /api/supervisor/trainer-titles -- active professional titles for a
+// session's trainers (migration 040). Descriptive only: a title never
+// grants an account role or permission.
+router.get(
+  "/trainer-titles",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query("SELECT code, label FROM trainer_titles WHERE is_active = 1 ORDER BY sort_order, label");
+    res.json({ titles: rows.map((r) => ({ code: r.code, label: r.label })) });
   })
 );
 
@@ -3029,24 +3104,38 @@ router.get(
  * Returns { groupId, sharedWithSupervisorId } (both null for the existing
  * trainee-targeted/whole-caseload behavior) or { error, status }.
  */
-async function resolveMaterialTarget(pool, callerId, targetSupervisorId, shareWithGroup) {
+// A Group / single-trainer share is PRIVATE to the training team
+// (visibility 'training_team', migration 040): never shown to trainees, in
+// any list or file download. teamSection (documents / materials / feedback
+// / reports) files it in the Trainer Space or Trainer Reports page; a
+// section with no explicit recipient means the whole training team.
+const TEAM_SECTIONS = ["documents", "materials", "feedback", "reports"];
+async function resolveMaterialTarget(pool, callerId, targetSupervisorId, shareWithGroup, teamSection) {
+  let section = null;
+  if (teamSection != null && teamSection !== "") {
+    if (!TEAM_SECTIONS.includes(String(teamSection))) return { error: "Unknown Trainer Space section", status: 400 };
+    section = String(teamSection);
+  }
   if (targetSupervisorId) {
     const { rows: meRows } = await pool.query("SELECT group_id FROM supervisors WHERE id = ?", [callerId]);
     const myGroupId = meRows[0] && meRows[0].group_id;
-    const { rows: targetRows } = await pool.query(
-      "SELECT id FROM supervisors WHERE id = ? AND group_id = ? AND supervisor_type = 'in_training'",
-      [targetSupervisorId, myGroupId]
-    );
-    if (!targetRows.length) return { error: "That Trainer (ToT) is not in your Group", status: 403 };
-    return { groupId: null, sharedWithSupervisorId: targetSupervisorId };
+    // Any trainer of the caller's own Group (its Master Trainer or a ToT),
+    // never the caller themself and never another Group's trainer.
+    const { rows: targetRows } = await pool.query("SELECT id FROM supervisors WHERE id = ? AND group_id = ? AND id != ?", [
+      targetSupervisorId,
+      myGroupId,
+      callerId,
+    ]);
+    if (!targetRows.length) return { error: "That trainer is not in your Group", status: 403 };
+    return { groupId: null, sharedWithSupervisorId: targetSupervisorId, visibility: "training_team", teamSection: section || "materials" };
   }
-  if (shareWithGroup) {
+  if (shareWithGroup || section) {
     const { rows: meRows } = await pool.query("SELECT group_id FROM supervisors WHERE id = ?", [callerId]);
     const myGroupId = meRows[0] && meRows[0].group_id;
     if (!myGroupId) return { error: "You don't have a Group assigned yet", status: 400 };
-    return { groupId: myGroupId, sharedWithSupervisorId: null };
+    return { groupId: myGroupId, sharedWithSupervisorId: null, visibility: "training_team", teamSection: section || "materials" };
   }
-  return { groupId: null, sharedWithSupervisorId: null };
+  return { groupId: null, sharedWithSupervisorId: null, visibility: "trainees", teamSection: null };
 }
 
 async function notifyMaterialRecipients(pool, supervisorId, studentId, materialTitle, materialId, target) {
@@ -3056,10 +3145,9 @@ async function notifyMaterialRecipients(pool, supervisorId, studentId, materialT
   if (target && target.sharedWithSupervisorId) {
     recipientIds = [Number(target.sharedWithSupervisorId)];
   } else if (target && target.groupId) {
-    const { rows } = await pool.query(
-      "SELECT id FROM supervisors WHERE group_id = ? AND supervisor_type = 'in_training'",
-      [target.groupId]
-    );
+    // The whole training team -- the Group's Master Trainer and ToTs --
+    // except whoever shared it. Never a trainee: this is private content.
+    const { rows } = await pool.query("SELECT id FROM supervisors WHERE group_id = ? AND id != ?", [target.groupId, supervisorId]);
     recipientIds = rows.map((r) => r.id);
   } else if (studentId) {
     recipientIds = [Number(studentId)];
@@ -3127,7 +3215,7 @@ router.post("/materials", (req, res) => {
       // that silent hang, not just slowness, was what made users think
       // their click "didn't work" and click Add/Share again.
       try {
-        const { title, description, materialType, studentId, idempotencyKey, targetSupervisorId, shareWithGroup } = req.body || {};
+        const { title, description, materialType, studentId, idempotencyKey, targetSupervisorId, shareWithGroup, teamSection } = req.body || {};
         if (!title || !materialType) {
           fs.unlink(req.file.path, () => {});
           return res.status(400).json({ error: "title and materialType are required" });
@@ -3151,7 +3239,7 @@ router.post("/materials", (req, res) => {
         // Share with one specific ToT, or the caller's whole Group, instead
         // of the trainee-facing studentId/whole-caseload targeting -- see
         // resolveMaterialTarget's comment.
-        const target = await resolveMaterialTarget(pool, req.user.id, targetSupervisorId, shareWithGroup);
+        const target = await resolveMaterialTarget(pool, req.user.id, targetSupervisorId, shareWithGroup, teamSection);
         if (target.error) {
           fs.unlink(req.file.path, () => {});
           return res.status(target.status).json({ error: target.error });
@@ -3169,9 +3257,9 @@ router.post("/materials", (req, res) => {
         let insert;
         try {
           insert = await pool.query(
-            `INSERT INTO learning_materials (supervisor_id, student_id, group_id, shared_with_supervisor_id, title, description, material_type, filename, original_name, file_hash, idempotency_key)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-            [req.user.id, finalStudentId, target.groupId, target.sharedWithSupervisorId, title, description || null, materialType, req.file.filename, req.file.originalname, fileHash, idempotencyKey || null]
+            `INSERT INTO learning_materials (supervisor_id, student_id, group_id, shared_with_supervisor_id, visibility, team_section, title, description, material_type, filename, original_name, file_hash, idempotency_key)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [req.user.id, finalStudentId, target.groupId, target.sharedWithSupervisorId, target.visibility, target.teamSection, title, description || null, materialType, req.file.filename, req.file.originalname, fileHash, idempotencyKey || null]
           );
         } catch (dbErr) {
           // Lost a race against a near-simultaneous request carrying the
@@ -3212,7 +3300,7 @@ router.post("/materials", (req, res) => {
       return res.status(409).json({ error: "Upload already in progress." });
     }
     try {
-      const { title, description, materialType, externalUrl, studentId, idempotencyKey, targetSupervisorId, shareWithGroup } = req.body || {};
+      const { title, description, materialType, externalUrl, studentId, idempotencyKey, targetSupervisorId, shareWithGroup, teamSection } = req.body || {};
       if (!title || materialType !== "link" || !externalUrl) {
         return res.status(400).json({ error: "For non-file materials, materialType must be 'link' and externalUrl is required" });
       }
@@ -3222,16 +3310,16 @@ router.post("/materials", (req, res) => {
         return res.status(200).json(toMaterial({ ...existing, supervisor_name: req.user.member_code }));
       }
 
-      const target = await resolveMaterialTarget(pool, req.user.id, targetSupervisorId, shareWithGroup);
+      const target = await resolveMaterialTarget(pool, req.user.id, targetSupervisorId, shareWithGroup, teamSection);
       if (target.error) return res.status(target.status).json({ error: target.error });
       const finalStudentId = target.groupId || target.sharedWithSupervisorId ? null : studentId || null;
 
       let insert;
       try {
         insert = await pool.query(
-          `INSERT INTO learning_materials (supervisor_id, student_id, group_id, shared_with_supervisor_id, title, description, material_type, external_url, idempotency_key)
-           VALUES (?,?,?,?,?,?,'link',?,?)`,
-          [req.user.id, finalStudentId, target.groupId, target.sharedWithSupervisorId, title, description || null, externalUrl, idempotencyKey || null]
+          `INSERT INTO learning_materials (supervisor_id, student_id, group_id, shared_with_supervisor_id, visibility, team_section, title, description, material_type, external_url, idempotency_key)
+           VALUES (?,?,?,?,?,?,?,?,'link',?,?)`,
+          [req.user.id, finalStudentId, target.groupId, target.sharedWithSupervisorId, target.visibility, target.teamSection, title, description || null, externalUrl, idempotencyKey || null]
         );
       } catch (dbErr) {
         if (dbErr.code === "ER_DUP_ENTRY" && idempotencyKey) {
@@ -3283,6 +3371,108 @@ router.delete(
       [req.user.id, req.params.materialId, JSON.stringify(existingRows[0])]
     );
     res.json({ success: true });
+  })
+);
+
+// ---- Trainer Space / Trainer Reports (migration 040) ------------------------
+// Private training-team content: the caller's Group's Master Trainer + ToTs
+// (or the one trainer an item was shared with). Every query here is
+// visibility = 'training_team' AND scoped to the caller -- a trainee can't
+// reach this router at all (requireSupervisor), and files.js refuses a
+// trainee download of any 'training_team' file independently of this.
+
+/** Items of the private training-team space the caller may see. */
+function teamSpaceScopeSql() {
+  return `lm.visibility = 'training_team' AND lm.material_type != 'book' AND (
+            lm.supervisor_id = ?
+            OR lm.shared_with_supervisor_id = ?
+            OR (lm.group_id IS NOT NULL AND lm.group_id = (SELECT group_id FROM supervisors WHERE id = ?))
+          )`;
+}
+
+// GET /api/supervisor/team-space?section=documents|materials|feedback|reports&search=
+router.get(
+  "/team-space",
+  asyncRoute(async (req, res, db) => {
+    const section = req.query.section ? String(req.query.section) : null;
+    if (section && !TEAM_SECTIONS.includes(section)) return res.status(400).json({ error: "Unknown Trainer Space section" });
+    const search = req.query.search ? `%${String(req.query.search).slice(0, 100)}%` : null;
+    const params = [req.user.id, req.user.id, req.user.id];
+    let extra = "";
+    if (section) {
+      extra += " AND lm.team_section = ?";
+      params.push(section);
+    }
+    if (search) {
+      extra += " AND (lm.title LIKE ? OR lm.description LIKE ? OR lm.original_name LIKE ?)";
+      params.push(search, search, search);
+    }
+    const { rows } = await db.query(
+      `SELECT lm.id, lm.title, lm.description, lm.material_type, lm.team_section, lm.filename, lm.original_name, lm.external_url,
+              lm.created_at, lm.updated_at, lm.supervisor_id, lm.group_id, lm.shared_with_supervisor_id,
+              author.full_name AS author_name, author.supervisor_type AS author_type,
+              shsup.full_name AS shared_supervisor_name, tg.name AS shared_group_name
+         FROM learning_materials lm
+         JOIN supervisors author ON author.id = lm.supervisor_id
+         LEFT JOIN supervisors shsup ON shsup.id = lm.shared_with_supervisor_id
+         LEFT JOIN trainer_groups tg ON tg.id = lm.group_id
+        WHERE ${teamSpaceScopeSql()}${extra}
+        ORDER BY lm.created_at DESC
+        LIMIT 300`,
+      params
+    );
+    res.json({
+      items: rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        materialType: r.material_type,
+        section: r.team_section || "materials",
+        filename: r.filename,
+        originalName: r.original_name,
+        externalUrl: r.external_url,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        uploadedBy: { id: r.supervisor_id, name: r.author_name, role: r.author_type === "primary" ? "Master Trainer" : "ToT" },
+        sharedWith: r.shared_with_supervisor_id
+          ? { kind: "trainer", id: r.shared_with_supervisor_id, name: r.shared_supervisor_name }
+          : { kind: "team", groupId: r.group_id, name: r.shared_group_name },
+        canEdit: Number(r.supervisor_id) === Number(req.user.id),
+        canDelete: Number(r.supervisor_id) === Number(req.user.id),
+      })),
+    });
+  })
+);
+
+// PATCH /api/supervisor/team-space/:id  { title?, description?, section? }
+// Only the item's own uploader may edit it.
+router.patch(
+  "/team-space/:id",
+  asyncRoute(async (req, res, db) => {
+    const id = Number(req.params.id);
+    const { rows } = await db.query(
+      "SELECT id, title, description, team_section FROM learning_materials WHERE id = ? AND supervisor_id = ? AND visibility = 'training_team'",
+      [id, req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Item not found" });
+    const body = req.body || {};
+    const title = body.title === undefined ? rows[0].title : String(body.title).trim();
+    if (!title) return res.status(400).json({ error: "Title is required" });
+    if (title.length > 255) return res.status(400).json({ error: "Title is too long" });
+    const description = body.description === undefined ? rows[0].description : String(body.description).trim() || null;
+    const section = body.section === undefined ? rows[0].team_section : String(body.section);
+    if (section && !TEAM_SECTIONS.includes(section)) return res.status(400).json({ error: "Unknown Trainer Space section" });
+    await db.query("UPDATE learning_materials SET title = ?, description = ?, team_section = ?, updated_at = NOW() WHERE id = ?", [
+      title,
+      description,
+      section,
+      id,
+    ]);
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values) VALUES (?, 'team space item updated', 'learning_materials', ?, ?)",
+      [req.user.id, id, JSON.stringify(rows[0])]
+    );
+    res.json({ updated: true });
   })
 );
 
@@ -3438,7 +3628,8 @@ router.get(
       })),
     ];
 
-    res.json({ events });
+    // Each day names its own trainers (migration 040).
+    res.json({ events: await attachContributions(db, events, (e) => (e.kind === "single" ? ["session", e.id] : ["occasion", e.id])) });
   })
 );
 

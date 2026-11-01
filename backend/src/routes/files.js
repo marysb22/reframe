@@ -175,11 +175,36 @@ const AUTHORIZERS = Object.assign(Object.create(null), {
     // feature's book cover) -- matched here too, since it's served from
     // this same /uploads/materials/ folder.
     const { rows } = await pool.query(
-      "SELECT material_type, supervisor_id, admin_id, student_id FROM learning_materials WHERE filename = ? OR cover_image = ?",
+      "SELECT material_type, supervisor_id, admin_id, student_id, group_id, shared_with_supervisor_id, visibility FROM learning_materials WHERE filename = ? OR cover_image = ?",
       [filename, filename]
     );
     if (!rows.length) return false;
-    const { material_type: materialType, supervisor_id: supervisorId, admin_id: adminId, student_id: studentId } = rows[0];
+    const {
+      material_type: materialType,
+      supervisor_id: supervisorId,
+      admin_id: adminId,
+      student_id: studentId,
+      group_id: groupId,
+      shared_with_supervisor_id: sharedWithSupervisorId,
+      visibility,
+    } = rows[0];
+    // Private training-team content (Trainer Space / Trainer Reports,
+    // migration 040) -- and any Group / single-trainer share, which has
+    // always been trainer-only. Checked FIRST: a trainee is refused here
+    // whatever the file's other columns say (the caseload rule below
+    // would otherwise let any trainee of the author download a private
+    // file by URL). Readable by the uploader, the one trainer it was
+    // shared with, or any trainer of its Group.
+    if (visibility === "training_team" || groupId != null || sharedWithSupervisorId != null) {
+      if (user.role === "admin") return true;
+      if (user.role !== "supervisor") return false;
+      if (noticeRequiredForRole(user.role) && !(await hasAcceptedCurrentVersion(pool, user.id))) return false;
+      if (Number(user.id) === Number(supervisorId)) return true;
+      if (sharedWithSupervisorId != null) return Number(user.id) === Number(sharedWithSupervisorId);
+      if (groupId == null) return false;
+      const { rows: memberRows } = await pool.query("SELECT 1 FROM supervisors WHERE id = ? AND group_id = ?", [user.id, groupId]);
+      return memberRows.length > 0;
+    }
     // Books (the standalone Library feature) have no per-student/caseload
     // targeting at all -- every authenticated user may read one, matching
     // the Library route's own "one shared list" rule.

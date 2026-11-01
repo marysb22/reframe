@@ -7,6 +7,7 @@
  */
 
 const { TRAINING_DURATION_YEARS, calculateTrainingProgress } = require("./trainingTimeline");
+const { creditRowsSql } = require("./contributions");
 
 /** Event forms send either a real array or newline-separated bullet text -- normalize to an array either way. Shared by admin.js and designer.js, both of which manage the `events` table. */
 function toArray(value) {
@@ -521,32 +522,15 @@ async function computeHoursByType(db, { studentId, supervisorId } = {}) {
           // Trainer's behalf correctly stops counting toward the ToT's own
           // delivered-hours total and starts counting toward the Master
           // Trainer's.
-          sql: `SELECT code, SUM(hours) AS hours FROM (
-                  -- Standalone (non-Group-Session) sessions: one row per real
-                  -- session, unchanged from before.
-                  SELECT s.session_type AS code,
-                         CASE WHEN a.status = 'present' THEN s.duration_minutes
-                              WHEN a.status = 'partial' THEN COALESCE(a.minutes_completed, 0)
-                              ELSE 0 END / 60 AS hours
-                  FROM sessions s
-                  JOIN attendance a ON a.session_id = s.id AND a.status IN ('present', 'partial')
-                  WHERE IF(s.provided_by_guest_trainer_id IS NULL AND s.provided_by_external_trainer_id IS NULL, COALESCE(s.provided_by_supervisor_id, s.supervisor_id), NULL) = ? AND s.status != 'cancelled' AND s.occasion_id IS NULL
-
-                  UNION ALL
-
-                  -- Group Session occasions: the occasion's own duration counts
-                  -- exactly once, never once per attendee.
-                  SELECT so.session_type AS code, so.duration_minutes / 60 AS hours
-                  FROM session_occasions so
-                  WHERE IF(so.provided_by_guest_trainer_id IS NULL AND so.provided_by_external_trainer_id IS NULL, COALESCE(so.provided_by_supervisor_id, so.supervisor_id), NULL) = ?
-                    AND EXISTS (
-                      SELECT 1 FROM sessions s2
-                      JOIN attendance a2 ON a2.session_id = s2.id AND a2.status IN ('present', 'partial')
-                      WHERE s2.occasion_id = so.id AND s2.status != 'cancelled'
-                    )
-                ) combined
-                GROUP BY code`,
-          params: [id, id],
+          // Since migration 040 a day can have several trainers: the
+          // shared credit rows (utils/contributions.js) give each trainer
+          // only their own minutes, and fall back to the single legacy
+          // provider for a day/session with no contributions -- same totals
+          // as before for every existing record.
+          ...(() => {
+            const credits = creditRowsSql({ internalProviderId: true }, { internalProviderId: id });
+            return { sql: `SELECT code, SUM(hours) AS hours FROM (${credits.sql}) combined GROUP BY code`, params: credits.params };
+          })(),
         };
 
   const [legacyRes, derivedRes, adjRes, typesRes] = await Promise.all([
