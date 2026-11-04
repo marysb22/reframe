@@ -240,6 +240,23 @@ async function main() {
     assert(!feed.body.materials.some((m) => m.id === f.id), "not in feed");
   });
 
+  await test("ToT 'Trainers only' share (the Learning materials form's payload) reaches trainers, never trainees", async () => {
+    const r = await api("POST", "/supervisor/materials", T.tot1, {
+      title: "ZZTTS trainers-only link",
+      materialType: "link",
+      externalUrl: "https://example.org/zztts",
+      shareWithGroup: true,
+      teamSection: "materials",
+      idempotencyKey: crypto.randomUUID(),
+    });
+    assertEqual(r.status, 201, "created");
+    assertEqual(r.body.visibility, "training_team", "stored as private");
+    const space = await api("GET", "/supervisor/team-space", T.mt);
+    assert(space.body.items.some((i) => i.id === r.body.id), "the Master Trainer sees it in Trainer Space");
+    const feed = await api("GET", "/profile/materials-feed", T.trainee);
+    assert(!feed.body.materials.some((m) => m.id === r.body.id), "not in the trainee feed");
+  });
+
   console.log("\nCleaning up ZZTTS fixtures...");
   await cleanup();
   const passed = results.filter((r) => r.ok).length;

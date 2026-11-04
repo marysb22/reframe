@@ -5415,6 +5415,11 @@
             <button class="close-modal" onclick="closeModal('materialModal')">&times;</button>
             <h3>Share a learning material</h3>
             <form id="materialForm">
+                <label>Share with</label>
+                <select id="matAudience">
+                    <option value="trainees">My trainees</option>
+                    <option value="trainers">Trainers only (private -- trainees can't see it)</option>
+                </select>
                 <label>Title</label>
                 <input type="text" id="matTitle" dir="auto" required>
                 <label>Description (optional)</label>
@@ -7593,9 +7598,9 @@ function renderMaterialRows(list, groupByType) {
 function materialRowHtml(m) {
   const fileHref = m.externalUrl ? escapeHtml(m.externalUrl) : `${UPLOADS}/materials/${m.filename}${TOKEN_Q}`;
   const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
-  const sharedText = m.sharedWith
-    ? ` &middot; Shared by ${escapeHtml(m.supervisorName || "")}`
-    : "";
+  const sharedText =
+    (m.visibility === "training_team" ? ` &middot; <i class="fa fa-lock"></i> Trainers only` : "") +
+    (m.sharedWith ? ` &middot; Shared by ${escapeHtml(m.supervisorName || "")}` : "");
   return `
     <div class="material-row">
       <div class="mrow-icon"><i class="fa ${MATERIAL_ICONS[m.materialType] || "fa-file"}"></i></div>
@@ -7858,6 +7863,9 @@ document.getElementById("materialForm").addEventListener("submit", async (e) => 
   const description = document.getElementById("matDescription").value;
   const materialType = document.getElementById("matType").value;
   const idempotencyKey = materialIdempotencyKey || generateIdempotencyKey();
+  // "Trainers only" goes to the private Trainer Space of this ToT's Group
+  // (Master Trainer + ToTs), never to any trainee -- see migration 040.
+  const trainersOnly = document.getElementById("matAudience").value === "trainers";
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const originalLabel = submitBtn.textContent;
@@ -7872,7 +7880,7 @@ document.getElementById("materialForm").addEventListener("submit", async (e) => 
       result = await apiRequest("/supervisor/materials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, materialType, externalUrl, idempotencyKey }),
+        body: JSON.stringify({ title, description, materialType, externalUrl, idempotencyKey, ...(trainersOnly ? { shareWithGroup: true, teamSection: "materials" } : {}) }),
       });
       if (!result) return; // apiRequest already toasted the error
     } else {
@@ -7887,6 +7895,10 @@ document.getElementById("materialForm").addEventListener("submit", async (e) => 
       form.append("description", description);
       form.append("materialType", materialType);
       form.append("idempotencyKey", idempotencyKey);
+      if (trainersOnly) {
+        form.append("shareWithGroup", "true");
+        form.append("teamSection", "materials");
+      }
       form.append("file", file);
       submitBtn.textContent = "Uploading… 0%";
       try {
@@ -7908,7 +7920,12 @@ document.getElementById("materialForm").addEventListener("submit", async (e) => 
         renderMaterialTypePills();
         applyMaterialsFilters();
       }
-      showSuccessNotification("Material Shared", "The material has been shared with your trainees successfully.");
+      showSuccessNotification(
+        "Material Shared",
+        trainersOnly
+          ? "Shared with the trainers of your Group only. Trainees can't see it -- find it in Trainer Space."
+          : "The material has been shared with your trainees successfully."
+      );
       closeModal("materialModal");
     }
   } finally {

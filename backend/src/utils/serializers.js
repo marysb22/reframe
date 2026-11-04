@@ -393,6 +393,8 @@ function toMaterial(row) {
     // (undefined, not just false, on any query that doesn't select student_id.)
     isGroupShared: row.student_id === undefined ? undefined : row.student_id === null,
     sharedWith: materialSharedWith(row),
+    // 'trainees' or 'training_team' (private Trainer Space, migration 040).
+    visibility: row.visibility,
     createdAt: row.created_at,
     // Best-effort link from an 'assignment'-tagged material to a real row in
     // the separate `assignments` table -- there is no actual foreign key

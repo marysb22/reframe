@@ -4510,8 +4510,8 @@
                     <form id="addMtMaterialForm">
                         <label>Share with</label>
                         <select id="ammTargetType">
-                            <option value="group">Whole Group</option>
-                            <option value="all-tots">All Trainers (ToTs)</option>
+                            <option value="group">All trainers of my Group (private -- trainees can't see it)</option>
+                            <option value="all-tots">Each ToT separately</option>
                         </select>
                         <label>Title</label>
                         <input type="text" id="ammTitle" dir="auto" required>
@@ -4644,8 +4644,9 @@
                     <form id="addMtDocumentForm">
                         <label>Share with</label>
                         <select id="admtTargetType">
-                            <option value="group">Whole Group</option>
+                            <option value="group">Whole Group (trainers and trainees)</option>
                             <option value="all-tots">All Trainers (ToTs)</option>
+                            <option value="trainers">Trainers only (private -- trainees can't see it)</option>
                         </select>
                         <label>File (PDF, Word, or image)</label>
                         <input type="file" id="admtFileInput" accept=".pdf,.doc,.docx,image/*" required>
@@ -8476,6 +8477,7 @@
             if (!file) return showToast("Choose a file", "error");
 
             const targetType = document.getElementById("admtTargetType").value;
+            if (targetType === "trainers") return shareMtDocumentWithTrainers(e, file);
             const isAllTots = targetType === "all-tots";
             if (isAllTots && !allTots.length) return showToast("No Trainers (ToTs) in your Group yet", "error");
             const targets = isAllTots ? allTots.map((t) => t.id) : [null];
@@ -8517,6 +8519,39 @@
                 submitBtn.textContent = originalLabel;
             }
         });
+
+        // "Trainers only": stored in the private Trainer Space (Documents
+        // section) of this Group -- the Master Trainer and ToTs see it,
+        // no trainee can list or download it (migration 040).
+        async function shareMtDocumentWithTrainers(e, file) {
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalLabel = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Uploading…";
+            try {
+                const form = new FormData();
+                form.append("title", file.name);
+                form.append("materialType", (file.type || "").startsWith("image/") ? "image" : "document");
+                form.append("shareWithGroup", "true");
+                form.append("teamSection", "documents");
+                form.append("idempotencyKey", generateIdempotencyKey());
+                form.append("file", file);
+                const response = await fetch(`${API}/supervisor/materials`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: form,
+                });
+                const body = await response.json().catch(() => null);
+                if (!response.ok) throw new Error((body && body.error) || "Upload failed");
+                closeModal("addMtDocumentModal");
+                showToast("Shared with the trainers of your Group only -- find it in Trainer Space", "success");
+            } catch (err) {
+                showToast(err.message, "error");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            }
+        }
 
         async function loadAllDocuments() {
             const list = document.getElementById("allDocsList");
