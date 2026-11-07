@@ -79,9 +79,10 @@ These live in `backend/src/utils/libraryAccess.js` and are enforced on the bytes
 - Library browsing, covers, search and Add/Edit/Remove work as before.
 - Admin and Master Trainer download as before. A ToT can always download the books they uploaded.
 - **Behaviour change (intended):**
-  - Trainees and ToTs can no longer open or download someone else's book without an approval.
-  - This covers Download, Open & Read, the inline PDF/image/video reader and the Google Docs Viewer preview link.
-  - Old copied `/uploads/materials/<file>?token=…` URLs are refused for them too. The check runs on every request, so an old link has no special standing.
+  - Everyone can still **open and read** every book: the PDF/image/video reader and the Google Docs Viewer preview for Word/PowerPoint/Excel.
+  - Without an approval, the file is served `inline` and `no-store`, the reader hides its Download button and the PDF toolbar, and a format the browser can't display is not served at all.
+  - A real **download** (`?mode=download`, the Download buttons) needs an approval for Trainees and ToTs. Without one it returns 403.
+  - Limitation: a file that is displayed in a browser has reached the browser. A determined user can still save what they can read, for example with the browser's own save or print. The approval controls the app's download, not copying of what is shown.
 - No existing data is touched. Nobody starts with an approval.
 
 ## Rollback

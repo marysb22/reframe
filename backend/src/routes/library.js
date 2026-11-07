@@ -111,8 +111,10 @@ function toBook(row) {
 
 function withAccess(book, access) {
   const a = access || { required: true, status: "none" };
+  // Every account may READ a book (the file route serves it inline, no
+  // download); canDownload says whether it may also be saved as a file.
   const canDownload = a.status === "granted" || a.status === "approved";
-  return { ...book, filename: canDownload ? book.filename : null, access: a };
+  return { ...book, access: { ...a, canDownload } };
 }
 
 // GET /api/library/books -- the one shared list, every role sees the same
@@ -639,7 +641,7 @@ router.get(
     const who = await libraryAccess.describeUser(db, req.user);
     const access = (await libraryAccess.accessForBooks(db, req.user, who, rows)).get(bookId);
     const canDownload = access.status === "granted" || access.status === "approved";
-    res.json({ access, filename: canDownload ? rows[0].filename : null });
+    res.json({ access: { ...access, canDownload }, filename: rows[0].filename });
   })
 );
 

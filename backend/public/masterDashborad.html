@@ -5280,7 +5280,7 @@
     </div>
 
     <script src="scripts/api-config.js?v=20261104"></script>
-    <script src="scripts/library-access.js?v=20261107"></script>
+    <script src="scripts/library-access.js?v=20261108"></script>
     <script src="scripts/guest-providers.js?v=20261104"></script>
     <script src="scripts/trainer-space.js?v=20261104"></script>
     <script src="scripts/charts.js?v=20261104"></script>
@@ -10604,6 +10604,7 @@ function openBookDetails(id) {
 }
 
 function bookUnsupportedPreviewHtml(b, fileUrl) {
+  if (!LibraryAccess.canDownload(b)) return LibraryAccess.readOnlyUnsupportedHtml(b);
   return `
       <div style="text-align:center;padding:40px 24px;background:#fff;border-radius:14px;max-width:360px;">
         <i class="fa fa-file-lines" style="font-size:40px;color:var(--faint);margin-bottom:16px;display:block;"></i>
@@ -10625,6 +10626,7 @@ async function openBookReader(id) {
   const ext = libraryFileExt(b.originalName).toLowerCase();
   const body = document.getElementById("readerBody");
   document.getElementById("readerDownload").href = fileUrl;
+  LibraryAccess.prepareReader(b);
   document.getElementById("readerOverlay").classList.add("open");
 
   if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
@@ -10632,7 +10634,7 @@ async function openBookReader(id) {
   } else if (["mp4", "mov"].includes(ext)) {
     body.innerHTML = `<video src="${fileUrl}" controls></video>`;
   } else if (ext === "pdf") {
-    body.innerHTML = `<iframe src="${fileUrl}" title="${escapeHtml(b.title)}"></iframe>`;
+    body.innerHTML = `<iframe src="${fileUrl}${LibraryAccess.canDownload(b) ? "" : "#toolbar=0"}" title="${escapeHtml(b.title)}"></iframe>`;
   } else if (OFFICE_PREVIEW_EXTS.includes(ext)) {
     // Word/PowerPoint/Excel can't render in any browser natively -- route
     // through Google Docs Viewer instead via a short-lived (5 min),

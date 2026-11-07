@@ -24,16 +24,16 @@
   // on every dashboard (the dashboards have no language switcher).
   const COPY = {
     note: {
-      en: "Files in the Library are downloaded with approval. Open a title and choose Request access; an Admin or your Master Trainer will review it.",
-      ar: "يتم تنزيل ملفات المكتبة بعد الموافقة. افتح العنوان واختر «طلب الوصول»، وسيقوم المسؤول أو المدرّب الرئيسي بمراجعة طلبك.",
+      en: "You can open and read every title here. Downloading a file needs approval: open the title and choose Request download; an Admin or your Master Trainer will review it.",
+      ar: "يمكنك فتح وقراءة جميع العناوين هنا. تنزيل الملف يحتاج إلى موافقة: افتح العنوان واختر «طلب تنزيل»، وسيقوم المسؤول أو المدرّب الرئيسي بمراجعة طلبك.",
     },
     none: {
-      en: "Downloading this file requires approval from an Admin or Master Trainer.",
-      ar: "يتطلب تنزيل هذا الملف موافقة من المسؤول أو المدرّب الرئيسي.",
+      en: "You can open and read this file here. Downloading it requires approval from an Admin or Master Trainer.",
+      ar: "يمكنك فتح وقراءة هذا الملف هنا. يتطلب تنزيله موافقة من المسؤول أو المدرّب الرئيسي.",
     },
     pending: {
-      en: "Your download request has been submitted. Please wait for approval from an Admin or Master Trainer.",
-      ar: "تم إرسال طلب التنزيل. يرجى انتظار موافقة المسؤول أو المدرّب الرئيسي.",
+      en: "Your download request has been submitted. Please wait for approval from an Admin or Master Trainer. You can still open and read the file.",
+      ar: "تم إرسال طلب التنزيل. يرجى انتظار موافقة المسؤول أو المدرّب الرئيسي. يمكنك متابعة قراءة الملف.",
     },
     approved: {
       en: "Your download request has been approved. You can now download this file.",
@@ -170,9 +170,16 @@
 
   // ---------------------------------------------------------------- requester
 
+  // Reading is open to everyone who can see the Library; only downloading
+  // needs an approval (the file route enforces both).
   function canOpen(book) {
-    const s = book && book.access ? book.access.status : "granted";
-    return (s === "granted" || s === "approved") && !!book.filename;
+    return !!(book && book.filename);
+  }
+  function canDownload(book) {
+    if (!book || !book.filename) return false;
+    const a = book.access;
+    if (!a) return true;
+    return a.canDownload === true || a.status === "granted" || a.status === "approved";
   }
 
   function cardBadgeHtml(book) {
@@ -182,12 +189,25 @@
     return `<span class="lda-pill ${esc(a.status)} lda-card-badge" title="${esc(STATUS_LABEL[a.status])}">${esc(CARD_LABEL[a.status])}</span>`;
   }
 
+  function readButtonHtml(book, primary) {
+    return `<button type="button" class="btn${primary ? "" : " btn-secondary"}" style="flex:none;" onclick="closeModal('bookDetailsModal'); openBookReader(${Number(book.id)});"><i class="fa fa-book-open"></i> Open &amp; Read</button>`;
+  }
+
   function grantedActionsHtml(book) {
-    const fileUrl = `${UPLOADS}/materials/${encodeURIComponent(book.filename)}${TOKEN_Q}`;
+    const fileUrl = `${UPLOADS}/materials/${encodeURIComponent(book.filename)}${TOKEN_Q}&mode=download`;
     return `
       <div class="modal-actions" style="justify-content:flex-start;">
-        <button type="button" class="btn" style="flex:none;" onclick="closeModal('bookDetailsModal'); openBookReader(${Number(book.id)});"><i class="fa fa-book-open"></i> Open &amp; Read</button>
+        ${readButtonHtml(book, true)}
         <a class="btn btn-secondary" style="flex:none;text-decoration:none;" href="${fileUrl}" download="${esc(book.originalName || "")}"><i class="fa fa-download"></i> Download</a>
+      </div>`;
+  }
+
+  // Open & Read always; Download replaced by the request action.
+  function readOnlyActionsHtml(book, requestLabel, requestIcon) {
+    return `
+      <div class="lda-actions">
+        ${book.filename ? readButtonHtml(book, true) : ""}
+        ${requestLabel ? `<button type="button" class="btn btn-secondary" data-lda-request="${Number(book.id)}"><i class="fa ${requestIcon}"></i> ${requestLabel}</button>` : ""}
       </div>`;
   }
 
@@ -211,6 +231,7 @@
             <div class="lda-state-head"><span class="lda-pill pending">Pending approval</span>${a.requestedAt ? `<span class="lda-state-meta">Requested ${esc(fmtDateTime(a.requestedAt))}</span>` : ""}</div>
             ${bi("pending")}
           </div>
+          ${readOnlyActionsHtml(book, null)}
         </div>`;
     }
     if (a.status === "rejected") {
@@ -221,26 +242,22 @@
             ${bi("rejected")}
             ${a.rejectionReason ? `<div class="lda-reason"><strong>Reason:</strong> ${esc(a.rejectionReason)}</div>` : ""}
           </div>
-          <div class="lda-actions">
-            <button type="button" class="btn btn-secondary" data-lda-request="${Number(book.id)}"><i class="fa fa-rotate-right"></i> Request again</button>
-          </div>
+          ${readOnlyActionsHtml(book, "Request download again", "fa-rotate-right")}
         </div>`;
     }
     return `
       <div class="lda-access">
         <div class="lda-state">
-          <div class="lda-state-head"><span class="lda-pill cancelled locked"><i class="fa fa-lock" aria-hidden="true"></i> Approval required</span></div>
+          <div class="lda-state-head"><span class="lda-pill cancelled locked"><i class="fa fa-lock" aria-hidden="true"></i> Download needs approval</span></div>
           ${bi("none")}
         </div>
-        <div class="lda-actions">
-          <button type="button" class="btn" data-lda-request="${Number(book.id)}"><i class="fa fa-paper-plane"></i> Request access</button>
-        </div>
+        ${readOnlyActionsHtml(book, "Request download", "fa-download")}
       </div>`;
   }
 
   function applyAccess(book, access, filename) {
     book.access = access;
-    book.filename = filename || null;
+    if (filename) book.filename = filename;
     if (typeof applyLibraryFilters === "function") {
       try { applyLibraryFilters(); } catch (e) { /* the shelf just keeps its old chip */ }
     }
@@ -585,9 +602,36 @@
     return false;
   }
 
+  // The reader overlay's own Download button: shown (as a real download)
+  // only with approval, hidden otherwise.
+  function prepareReader(book) {
+    const link = document.getElementById("readerDownload");
+    if (!link) return;
+    if (canDownload(book)) {
+      link.href = `${UPLOADS}/materials/${encodeURIComponent(book.filename)}${TOKEN_Q}&mode=download`;
+      link.style.display = "";
+    } else {
+      link.removeAttribute("href");
+      link.style.display = "none";
+    }
+  }
+
+  // A file type the browser can't display, opened without download approval.
+  function readOnlyUnsupportedHtml(book) {
+    return `
+      <div style="text-align:center;padding:32px 24px;background:#fff;border-radius:14px;max-width:380px;">
+        <i class="fa fa-lock" style="font-size:32px;color:var(--faint);margin-bottom:14px;display:block;"></i>
+        <p style="margin:0 0 6px;color:var(--text);font-size:13.5px;">This file type can't be shown in the browser.</p>
+        <p style="margin:0;color:var(--muted);font-size:12.5px;">To get the file, request a download from the title's details. An Admin or Master Trainer will review it.</p>
+      </div>`;
+  }
+
   window.LibraryAccess = {
     onLibraryLoaded,
     canOpen,
+    canDownload,
+    prepareReader,
+    readOnlyUnsupportedHtml,
     cardBadgeHtml,
     renderDetailsActions,
     decorateNotifications,

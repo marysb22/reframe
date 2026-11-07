@@ -5695,7 +5695,7 @@
     </div>
 
     <script src="scripts/api-config.js?v=20261104"></script>
-    <script src="scripts/library-access.js?v=20261107"></script>
+    <script src="scripts/library-access.js?v=20261108"></script>
     <script src="scripts/guest-providers.js?v=20261104"></script>
     <script src="scripts/trainer-space.js?v=20261104"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
@@ -11442,6 +11442,7 @@ function openBookDetails(id) {
 }
 
 function bookUnsupportedPreviewHtml(b, fileUrl) {
+  if (!LibraryAccess.canDownload(b)) return LibraryAccess.readOnlyUnsupportedHtml(b);
   // No browser can render this inline -- offer a clear download instead.
   return `
       <div style="text-align:center;padding:40px 24px;background:#fff;border-radius:14px;max-width:360px;">
@@ -11464,6 +11465,7 @@ async function openBookReader(id) {
   const ext = libraryFileExt(b.originalName).toLowerCase();
   const body = document.getElementById("readerBody");
   document.getElementById("readerDownload").href = fileUrl;
+  LibraryAccess.prepareReader(b);
   document.getElementById("readerOverlay").classList.add("open");
 
   if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
@@ -11473,7 +11475,7 @@ async function openBookReader(id) {
   } else if (ext === "pdf") {
     // The browser's own built-in PDF viewer already provides page
     // navigation, zoom, fullscreen, and find-in-document for free.
-    body.innerHTML = `<iframe src="${fileUrl}" title="${escapeHtml(b.title)}"></iframe>`;
+    body.innerHTML = `<iframe src="${fileUrl}${LibraryAccess.canDownload(b) ? "" : "#toolbar=0"}" title="${escapeHtml(b.title)}"></iframe>`;
   } else if (OFFICE_PREVIEW_EXTS.includes(ext)) {
     // Word/PowerPoint/Excel can't render in any browser natively -- route
     // through Google Docs Viewer instead, which needs a URL its own

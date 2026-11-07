@@ -186,8 +186,10 @@ async function setup() {
 }
 
 const fileUrl = (b) => `/uploads/materials/${b.filename}`;
-const fileGet = (b, token, q = "") => request("GET", fileUrl(b) + q, { token });
-const fileGetQ = (b, token) => request("GET", `${fileUrl(b)}?token=${encodeURIComponent(token)}`);
+// fileGet / fileGetQ = a DOWNLOAD (the approval-gated action); fileRead = Open & Read.
+const fileGet = (b, token) => request("GET", fileUrl(b) + "?mode=download", { token });
+const fileGetQ = (b, token) => request("GET", `${fileUrl(b)}?token=${encodeURIComponent(token)}&mode=download`);
+const fileRead = (b, token) => request("GET", fileUrl(b), { token });
 const previewLink = (b, token) => request("GET", `/uploads/preview-link?subfolder=materials&filename=${encodeURIComponent(b.filename)}`, { token });
 const ask = (token, book) => api("POST", `/library/books/${book.id}/download-requests`, { token });
 const decide = (token, id, decision, reason) => api("POST", `/library/download-requests/${id}/decision`, { token, body: { decision, reason } });
@@ -233,33 +235,47 @@ async function main() {
   });
 
   console.log("\nC. Nothing is downloadable before approval (every route)\n");
-  await test("Trainee's book list withholds the filename and says approval is required", async () => {
+  await test("Trainee's book list: readable (filename present), download not allowed, approval required", async () => {
     const r = await api("GET", "/library/books", { token: T.a1 });
     const b = r.body.books.find((x) => x.id === fx.book1.id);
-    assert(b && b.filename === null && b.access.required === true && b.access.status === "none", JSON.stringify(b && b.access));
+    assert(b && b.filename === fx.book1.filename && b.access.canDownload === false && b.access.required === true && b.access.status === "none", JSON.stringify(b && b.access));
     assert(r.body.reviewer === false, "trainee must not be flagged as reviewer");
   });
   for (const who of ["a1", "totA", "nog"]) {
-    await test(`[${who}] file route with Bearer header: 403`, async () => {
+    await test(`[${who}] Open & Read (no mode): 200, inline only, no filename offered, not cached`, async () => {
+      const r = await fileRead(fx.book1, T[who]);
+      assert(r.status === 200 && r.raw.equals(fx.pdf1), `got ${r.status}`);
+      assert(r.headers["content-disposition"] === "inline", `disposition: ${r.headers["content-disposition"]}`);
+      assert(r.headers["cache-control"] === "no-store", `cache: ${r.headers["cache-control"]}`);
+    });
+    await test(`[${who}] Download (?mode=download, Bearer header): 403`, async () => {
       const r = await fileGet(fx.book1, T[who]);
       assert(r.status === 403, `got ${r.status}`);
     });
-    await test(`[${who}] old-style ?token= URL: 403`, async () => {
+    await test(`[${who}] Download via old-style ?token=&mode=download URL: 403`, async () => {
       const r = await fileGetQ(fx.book1, T[who]);
       assert(r.status === 403, `got ${r.status}`);
     });
-    await test(`[${who}] ?mode=download: 403`, async () => {
-      const r = await fileGet(fx.book1, T[who], "?mode=download");
-      assert(r.status === 403, `got ${r.status}`);
-    });
-    await test(`[${who}] preview-link (Google viewer relay): 403, no token minted`, async () => {
+    await test(`[${who}] preview-link (reading via Google viewer): allowed`, async () => {
       const r = await previewLink(fx.book1, T[who]);
-      assert(r.status === 403 && !(r.body && r.body.url), `got ${r.status}`);
+      assert(r.status === 200 && r.body && r.body.url, `got ${r.status}`);
     });
   }
-  await test("No session at all: 401", async () => {
-    const r = await fileGet(fx.book1, null);
-    assert(r.status === 401, `got ${r.status}`);
+  await test("No session at all: 401 for both reading and downloading", async () => {
+    assert((await fileGet(fx.book1, null)).status === 401);
+    assert((await fileRead(fx.book1, null)).status === 401);
+  });
+  await test("A format the browser can't display (.docx) is not handed out for 'reading' without approval (403)", async () => {
+    const name = `zzlda-${Date.now()}.docx`;
+    fs.writeFileSync(path.join(cfg.uploadsDir, "materials", name), Buffer.from("PK\x03\x04zzlda"));
+    await pool.query(
+      "INSERT INTO learning_materials (supervisor_id, title, material_type, filename, original_name, resource_type) VALUES (?, ?, 'book', ?, 'x.docx', 'book')",
+      [fx.mtA, `${P} Docx Book`, name]
+    );
+    const r = await request("GET", `/uploads/materials/${name}`, { token: T.a1 });
+    assert(r.status === 403, `got ${r.status}`);
+    const owner = await request("GET", `/uploads/materials/${name}`, { token: T.mtA });
+    assert(owner.status === 200, `MT got ${owner.status}`);
   });
   await test("Cover image stays visible to a trainee (it is the shelf, not the document)", async () => {
     const r = await request("GET", `/uploads/materials/${fx.book1.coverImage}`, { token: T.a1 });
@@ -327,7 +343,8 @@ async function main() {
     assert(r.status === 200 && r.raw.equals(fx.pdf1), `got ${r.status}`);
     const l = await api("GET", "/library/books", { token: T.totA });
     const b = l.body.books.find((x) => x.id === fx.book1.id);
-    assert(b.filename === fx.book1.filename && b.access.status === "approved", JSON.stringify(b.access));
+    assert(b.filename === fx.book1.filename && b.access.status === "approved" && b.access.canDownload === true, JSON.stringify(b.access));
+    assert(/^attachment;/.test(r.headers["content-disposition"] || ""), `disposition: ${r.headers["content-disposition"]}`);
   });
   await test("ToT's approval for Book One does NOT open Book Two (file id swap)", async () => {
     const r = await fileGet(fx.book2, T.totA);
@@ -358,12 +375,12 @@ async function main() {
     const d = await decide(T.mtA, a2Req.id, "reject", "Not part of this module");
     assert(d.status === 200 && d.body.request.status === "rejected" && d.body.request.rejectionReason === "Not part of this module", JSON.stringify(d.body));
     assert((await notifCount(fx.a2, "library_book", fx.book1.id)) === 1, "not notified");
-    for (const res of [await fileGet(fx.book1, T.a2), await fileGetQ(fx.book1, T.a2), await previewLink(fx.book1, T.a2)]) {
+    for (const res of [await fileGet(fx.book1, T.a2), await fileGetQ(fx.book1, T.a2)]) {
       assert(res.status === 403, `got ${res.status}`);
     }
     const l = await api("GET", "/library/books", { token: T.a2 });
     const b = l.body.books.find((x) => x.id === fx.book1.id);
-    assert(b.filename === null && b.access.status === "rejected" && b.access.rejectionReason === "Not part of this module", JSON.stringify(b.access));
+    assert(b.access.canDownload === false && b.access.status === "rejected" && b.access.rejectionReason === "Not part of this module", JSON.stringify(b.access));
   });
   await test("A rejected request cannot be re-decided (409) and is not reusable", async () => {
     const d = await decide(T.admin, a2Req.id, "approve");
@@ -442,7 +459,7 @@ async function main() {
   await test("8. Changing the file id/filename does not reach another file (A1 approved for One, not Two)", async () => {
     assert((await fileGet(fx.book2, T.a1)).status === 403);
     const acc = await api("GET", `/library/books/${fx.book2.id}/access`, { token: T.a1 });
-    assert(acc.body.filename === null && acc.body.access.status === "none", JSON.stringify(acc.body));
+    assert(acc.body.access.canDownload === false && acc.body.access.status === "none", JSON.stringify(acc.body));
   });
   await test("9. Invalid decision values / ids are refused (400)", async () => {
     assert((await decide(T.admin, b1Req.id, "grant")).status === 400);
@@ -457,7 +474,7 @@ async function main() {
       assert((await fileGet(fx.book1, T.a1)).status === 403, "old approval still served new content");
       const l = await api("GET", "/library/books", { token: T.a1 });
       const b = l.body.books.find((x) => x.id === fx.book1.id);
-      assert(b.filename === null && b.access.status === "none", JSON.stringify(b.access));
+      assert(b.access.canDownload === false && b.access.status === "none", JSON.stringify(b.access));
     } finally {
       await pool.query("UPDATE learning_materials SET file_hash = ? WHERE id = ?", [original, fx.book1.id]);
     }

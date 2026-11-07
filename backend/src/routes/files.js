@@ -171,7 +171,7 @@ const AUTHORIZERS = Object.assign(Object.create(null), {
     return false;
   },
 
-  materials: async (user, filename) => {
+  materials: async (user, filename, ctx = {}) => {
     // A row's cover_image is a second, independent filename (the Library
     // feature's book cover) -- matched here too, since it's served from
     // this same /uploads/materials/ folder.
@@ -219,7 +219,17 @@ const AUTHORIZERS = Object.assign(Object.create(null), {
     if (materialType === "book") {
       const asFile = rows.find((r) => r.material_type === "book" && r.filename === filename);
       if (!asFile) return true; // the request is for a cover image
-      return canReceiveBookFile(pool, user, asFile);
+      if (await canReceiveBookFile(pool, user, asFile)) return true;
+      // READING stays open to every signed-in account (the Library has
+      // always been readable by every role); only a DOWNLOAD needs the
+      // approval. Without one the file is served for reading only: inline,
+      // never as an attachment, never cached ("read-only", see the route
+      // below), and only in a format the browser displays itself
+      // (PDF/image/audio/video) -- or through the 5-minute Google Docs
+      // Viewer link for Word/PowerPoint/Excel.
+      if (ctx.mode === "preview") return "read-only";
+      if (ctx.mode === "read" && INLINE_SAFE_EXTENSIONS.has(path.extname(filename).toLowerCase())) return "read-only";
+      return false;
     }
     if (adminId) return true;
     if (user.role === "admin") return true;
@@ -332,7 +342,7 @@ router.get("/preview-link", authenticateForFile, async (req, res) => {
   if (!authorizer) return res.status(404).json({ error: "Not found" });
 
   try {
-    const allowed = await authorizer(req.fileUser, filename);
+    const allowed = await authorizer(req.fileUser, filename, { mode: "preview" });
     if (!allowed) return res.status(403).json({ error: "You don't have access to this file" });
   } catch (err) {
     console.error("[files] preview-link authorization check failed:", err);
@@ -384,19 +394,29 @@ router.get("/:subfolder/:filename", authenticateForFile, async (req, res) => {
   const authorizer = AUTHORIZERS[subfolder];
   if (!authorizer) return res.status(404).json({ error: "Not found" });
 
+  let allowed;
   try {
-    const allowed = await authorizer(req.fileUser, filename);
-    if (!allowed) return res.status(403).json({ error: "You don't have access to this file" });
+    allowed = await authorizer(req.fileUser, filename, { mode: req.query.mode === "download" ? "download" : "read" });
+    if (!allowed) {
+      return res.status(403).json({
+        error: req.query.mode === "download" && subfolder === "materials"
+          ? "Downloading this file requires approval from an Admin or Master Trainer."
+          : "You don't have access to this file",
+      });
+    }
   } catch (err) {
     console.error("[files] authorization check failed:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
+  // A Library book opened for reading without a download approval: shown
+  // in the browser only -- never offered as a file and never cached.
+  const readOnly = allowed === "read-only";
 
   // "private" (not "public") so only the requesting browser's own cache may
   // store this response -- it still skips re-downloading the same file on
   // every view within a day, without letting a shared/proxy cache serve one
   // user's private file to a different user who happens to guess the URL.
-  res.set("Cache-Control", "private, max-age=86400");
+  res.set("Cache-Control", readOnly ? "no-store" : "private, max-age=86400");
 
   // Tells the browser to trust the Content-Type header above its own
   // content-sniffing -- without this, some browsers will inspect a
@@ -431,8 +451,8 @@ router.get("/:subfolder/:filename", authenticateForFile, async (req, res) => {
   // same route).
   const ext = path.extname(filename).toLowerCase();
   const requestedInline = req.query.mode !== "download";
-  const disposition = requestedInline && INLINE_SAFE_EXTENSIONS.has(ext) ? "inline" : "attachment";
-  res.set("Content-Disposition", `${disposition}; filename="${filename}"`);
+  const disposition = (requestedInline || readOnly) && INLINE_SAFE_EXTENSIONS.has(ext) ? "inline" : "attachment";
+  res.set("Content-Disposition", readOnly ? "inline" : `${disposition}; filename="${filename}"`);
 
   const filePath = path.join(config.uploadsDir, subfolder, filename);
   res.sendFile(filePath, (err) => {
