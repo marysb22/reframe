@@ -45,6 +45,11 @@
 -- with mysqldump --no-data from the local dev database AFTER applying
 -- 040_session_contributions_and_trainer_space.sql to it. Seed rows for
 -- trainer_titles live in the migration, not here.
+--
+-- UPDATED 2026-11-07 for migration 041: library_download_requests (new) taken
+-- with SHOW CREATE TABLE from the local dev database AFTER applying
+-- 041_library_download_requests.sql to it. The library.approve_downloads
+-- admin_permissions rows are data, granted by the migration, not here.
 -- =============================================================================
 
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1446,3 +1451,36 @@ CREATE TABLE `session_contributions` (
   CONSTRAINT `chk_scontrib_minutes` CHECK ((`minutes` >= 0))
 ) ENGINE=InnoDB AUTO_INCREMENT=76 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='One row per trainer per training day (migration 040). Sequential: a day''s duration = SUM(minutes). A parent with no rows uses its legacy single provided_by_* provider.';
 
+-- ---- Added by migration 041 (taken from the dev database after applying it) ----
+CREATE TABLE `library_download_requests` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `material_id` bigint DEFAULT NULL,
+  `requested_material_id` bigint NOT NULL,
+  `material_title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `material_original_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_hash` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `requester_id` bigint DEFAULT NULL,
+  `requester_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `requester_role` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `group_id` bigint DEFAULT NULL,
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `reviewer_id` bigint DEFAULT NULL,
+  `reviewer_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `rejection_reason` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `decided_at` datetime DEFAULT NULL,
+  `pending_key` bigint GENERATED ALWAYS AS ((case when (`status` = _utf8mb4'pending') then `requested_material_id` else NULL end)) VIRTUAL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_ldr_one_pending` (`requester_id`,`pending_key`),
+  KEY `idx_ldr_requester_material` (`requester_id`,`requested_material_id`,`status`),
+  KEY `idx_ldr_status_created` (`status`,`created_at`),
+  KEY `idx_ldr_group_status` (`group_id`,`status`),
+  KEY `idx_ldr_material` (`material_id`),
+  KEY `idx_ldr_reviewer` (`reviewer_id`),
+  CONSTRAINT `fk_ldr_group` FOREIGN KEY (`group_id`) REFERENCES `trainer_groups` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_ldr_material` FOREIGN KEY (`material_id`) REFERENCES `learning_materials` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_ldr_requester` FOREIGN KEY (`requester_id`) REFERENCES `user_credentials` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_ldr_reviewer` FOREIGN KEY (`reviewer_id`) REFERENCES `user_credentials` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `chk_ldr_decision` CHECK ((((`status` = _utf8mb4'pending') and (`decided_at` is null)) or ((`status` <> _utf8mb4'pending') and (`decided_at` is not null)))),
+  CONSTRAINT `chk_ldr_status` CHECK ((`status` in (_utf8mb4'pending',_utf8mb4'approved',_utf8mb4'rejected',_utf8mb4'cancelled')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Library download approval requests (migration 041). One row per request; decided rows are the audit trail and are never deleted by the app.';

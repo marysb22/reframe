@@ -4383,6 +4383,7 @@
                         </div>
                     </div>
 
+                    <div id="libraryAccessPanel"></div>
                     <div class="toolbar" style="margin-top:14px;">
                         <input type="text" id="librarySearch" placeholder="Search by title, author, publisher, category, or type..." oninput="applyLibraryFilters()">
                     </div>
@@ -5279,6 +5280,7 @@
     </div>
 
     <script src="scripts/api-config.js?v=20261104"></script>
+    <script src="scripts/library-access.js?v=20261107"></script>
     <script src="scripts/guest-providers.js?v=20261104"></script>
     <script src="scripts/trainer-space.js?v=20261104"></script>
     <script src="scripts/charts.js?v=20261104"></script>
@@ -5890,6 +5892,7 @@
                     </div>
                 </div>
             `).join("");
+            LibraryAccess.decorateNotifications(list, data.notifications);
         }
 
         async function toggleNotifWeekPicker() {
@@ -5935,6 +5938,10 @@
             await apiRequest(`/profile/notifications/${id}/read`, { method: "PATCH" });
             loadNotifUnreadCount();
             loadNotifList();
+            if (LibraryAccess.handleNotification(relatedEntityType, relatedEntityId)) {
+                if (typeof closeNotifDropdown === "function") closeNotifDropdown();
+                return;
+            }
             if (relatedEntityType === "message" && relatedEntityId) {
                 showSection("chat");
                 switchChatMode("direct");
@@ -10441,6 +10448,7 @@ async function loadLibrary() {
   const data = await apiRequest("/library/books");
   if (!data) return;
   libraryBooksRaw = data.books;
+  LibraryAccess.onLibraryLoaded(data);
   applyLibraryFilters();
 }
 
@@ -10520,6 +10528,7 @@ function renderBookItem(b) {
     <div class="book-card">
       <div class="book-cover" onclick="openBookDetails(${b.id})" title="${escapeHtml(tooltipParts.join(" — "))}">
         ${b.coverImage ? `<img src="${UPLOADS}/materials/${b.coverImage}${TOKEN_Q}" alt="">` : `<i class="fa fa-book"></i>`}
+        ${LibraryAccess.cardBadgeHtml(b)}
         ${b.canEdit || b.canDelete ? `<div class="book-cover-actions">
           ${b.canEdit ? `<button type="button" class="book-menu-btn" title="Edit this book" onclick="event.stopPropagation(); editLibraryBook(${b.id})"><i class="fa fa-pen"></i></button>` : ""}
           ${b.canDelete ? `<button type="button" class="book-menu-btn" title="Remove this book" onclick="event.stopPropagation(); deleteLibraryBook(${b.id})"><i class="fa fa-trash"></i></button>` : ""}
@@ -10587,13 +10596,11 @@ function openBookDetails(id) {
           ${addedDate ? `<dt>Date added</dt><dd>${addedDate}</dd>` : ""}
           <dt>File</dt><dd>${escapeHtml(bookFileInfo(b))} &middot; ${escapeHtml(b.originalName || "")}</dd>
         </dl>
-        <div class="modal-actions" style="justify-content:flex-start;">
-          <button type="button" class="btn" style="flex:none;" onclick="closeModal('bookDetailsModal'); openBookReader(${b.id});"><i class="fa fa-book-open"></i> Open &amp; Read</button>
-          <a class="btn btn-secondary" style="flex:none;text-decoration:none;" href="${fileUrl}" download="${escapeHtml(b.originalName || "")}"><i class="fa fa-download"></i> Download</a>
-        </div>
+        <div id="bookAccessActions"></div>
       </div>
     </div>`;
   openModal("bookDetailsModal");
+  LibraryAccess.renderDetailsActions(b, document.getElementById("bookAccessActions"));
 }
 
 function bookUnsupportedPreviewHtml(b, fileUrl) {
@@ -10610,6 +10617,7 @@ const OFFICE_PREVIEW_EXTS = ["doc", "docx", "ppt", "pptx", "xls", "xlsx"];
 async function openBookReader(id) {
   const b = libraryBooksRaw.find((x) => x.id === id);
   if (!b) return;
+  if (!LibraryAccess.canOpen(b)) { openBookDetails(id); return; }
   document.getElementById("readerTitle").textContent = b.title;
   document.getElementById("readerMeta").textContent =
     `${b.author ? b.author + " · " : ""}Added by: ${b.createdByName} · ${b.createdByRole}`;

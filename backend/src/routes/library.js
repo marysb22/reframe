@@ -15,6 +15,8 @@ const { optimizeImageIfPossible } = require("../utils/imageOptimize");
 const { checkFileContent } = require("../utils/fileTypeCheck");
 const { createUploadGuard, hashFile } = require("../utils/uploadGuard");
 const { checkAndRecord } = require("../utils/rateLimit");
+const libraryAccess = require("../utils/libraryAccess");
+const { createNotification } = require("../utils/notifications");
 
 const router = express.Router();
 
@@ -107,6 +109,12 @@ function toBook(row) {
   };
 }
 
+function withAccess(book, access) {
+  const a = access || { required: true, status: "none" };
+  const canDownload = a.status === "granted" || a.status === "approved";
+  return { ...book, filename: canDownload ? book.filename : null, access: a };
+}
+
 // GET /api/library/books -- the one shared list, every role sees the same
 // set (books have no per-student/caseload targeting, unlike Materials).
 router.get(
@@ -135,14 +143,22 @@ router.get(
       adminGranted = new Set(permRows.map((p) => p.permission_code));
     }
 
+    // Download approval (migration 041): each book carries the caller's own
+    // access state, and the stored filename is withheld until the caller
+    // may actually receive the file -- the file route enforces the same
+    // rule independently (routes/files.js), so this only keeps the page
+    // from holding a link that would 403 anyway.
+    const who = await libraryAccess.describeUser(db, req.user);
+    const access = await libraryAccess.accessForBooks(db, req.user, who, rows);
+
     const books = rows.map((r) => ({
-      ...toBook(r),
+      ...withAccess(toBook(r), access.get(Number(r.id))),
       canDelete:
         (req.user.role === "admin" && adminGranted.has("library.delete")) ||
         (req.user.role === "supervisor" && Number(r.supervisor_id) === Number(req.user.id)),
       canEdit: req.user.role === "admin" && adminGranted.has("library.edit"),
     }));
-    res.json({ books });
+    res.json({ books, reviewer: Boolean(await libraryAccess.reviewerScope(db, req.user, who)) });
   })
 );
 
@@ -310,6 +326,14 @@ router.delete(
     const isOwner = req.user.role === "admin" || (req.user.role === "supervisor" && Number(book.supervisor_id) === Number(req.user.id));
     if (!isOwner) return res.status(403).json({ error: "You can only remove a book you added" });
 
+    // Pending download requests for this book can no longer be decided --
+    // close them (status 'cancelled', kept as history) in the same
+    // transaction, so no reviewer is left with an Accept button for a file
+    // that no longer exists. Decided requests are left exactly as they are.
+    await db.query(
+      "UPDATE library_download_requests SET status = 'cancelled', decided_at = NOW() WHERE requested_material_id = ? AND status = 'pending'",
+      [req.params.id]
+    );
     await db.query("DELETE FROM learning_materials WHERE id = ?", [req.params.id]);
     for (const field of ["filename", "cover_image"]) {
       if (book[field]) {
@@ -466,6 +490,331 @@ router.get(
       coverImageUrl: null,
       doi,
     });
+  })
+);
+
+// ============================================================================
+// Download approval (migration 041)
+//
+//   POST /books/:id/download-requests        requester asks for one file
+//   GET  /books/:id/access                   requester's live state for one book
+//   GET  /download-requests/mine             requester's own history
+//   GET  /download-requests                  reviewer list (scoped), ?status=pending|decided|all&q=&ids=
+//   GET  /download-requests/pending-count    reviewer badge
+//   GET  /download-requests/:id              reviewer (in scope) or the requester
+//   POST /download-requests/:id/decision     reviewer: { decision: 'approve'|'reject', reason? }
+//
+// Every rule lives in utils/libraryAccess.js; files.js enforces the same
+// rule on the bytes themselves.
+// ============================================================================
+
+const REQUEST_SELECT = `
+  SELECT r.*, tg.name AS group_name, lm.resource_type, lm.category, lm.author,
+         lm.id AS live_material_id
+    FROM library_download_requests r
+    LEFT JOIN trainer_groups tg ON tg.id = r.group_id
+    LEFT JOIN learning_materials lm ON lm.id = r.material_id`;
+
+function toRequest(r) {
+  return {
+    id: r.id,
+    bookId: r.requested_material_id,
+    bookAvailable: r.live_material_id != null,
+    title: r.material_title,
+    originalName: r.material_original_name,
+    author: r.author || null,
+    resourceType: r.resource_type || null,
+    category: r.category || null,
+    requesterId: r.requester_id,
+    requesterName: r.requester_name,
+    requesterRole: r.requester_role,
+    requesterRoleLabel: libraryAccess.ROLE_LABELS[r.requester_role] || r.requester_role,
+    groupId: r.group_id,
+    groupName: r.group_name || null,
+    status: r.status,
+    reviewerName: r.reviewer_name,
+    rejectionReason: r.rejection_reason,
+    createdAt: r.created_at,
+    decidedAt: r.decided_at,
+  };
+}
+
+function parseId(v) {
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+// POST /api/library/books/:id/download-requests
+// Idempotent: a second click (or a retried request) returns the request
+// that is already pending -- or the approval already held -- instead of
+// creating another row or another round of notifications.
+router.post(
+  "/books/:id/download-requests",
+  asyncRoute(async (req, res, db) => {
+    const bookId = parseId(req.params.id);
+    if (!bookId) return res.status(400).json({ error: "Invalid book" });
+
+    const who = await libraryAccess.describeUser(db, req.user);
+    if (libraryAccess.bypassesApproval(who)) {
+      return res.status(400).json({ error: "You can already download Library files; no request is needed." });
+    }
+    if (who.kind === "other") return res.status(403).json({ error: "You don't have access to the Library" });
+
+    // Lock the book row: a concurrent delete can't slip between this check
+    // and the insert, and two submissions by the same user serialize here.
+    const { rows: books } = await db.query(
+      "SELECT id, title, original_name, file_hash, supervisor_id, filename FROM learning_materials WHERE id = ? AND material_type = 'book' FOR UPDATE",
+      [bookId]
+    );
+    const book = books[0];
+    if (!book) return res.status(404).json({ error: "Book not found" });
+    if (!book.filename) return res.status(409).json({ error: "This item has no file to download." });
+
+    const access = (await libraryAccess.accessForBooks(db, req.user, who, [book])).get(bookId);
+    if (access.status === "granted" || access.status === "approved" || access.status === "pending") {
+      return res.json({ created: false, access });
+    }
+
+    const rate = checkAndRecord(`library-download-request:${req.user.id}`, { max: 30, windowMs: 60 * 60 * 1000 });
+    if (rate.blocked) {
+      return res.status(429).json({ error: `Too many requests -- try again in ${rate.retryAfterSeconds}s.` });
+    }
+
+    let insertId;
+    try {
+      const ins = await db.query(
+        `INSERT INTO library_download_requests
+           (material_id, requested_material_id, material_title, material_original_name, file_hash,
+            requester_id, requester_name, requester_role, group_id, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+        [book.id, book.id, book.title, book.original_name, book.file_hash || null,
+         req.user.id, who.name, who.kind, who.groupId]
+      );
+      insertId = ins.insertId;
+    } catch (e) {
+      // uniq_ldr_one_pending: a concurrent submission already created the
+      // pending row -- report that one, create nothing.
+      if (e.code === "ER_DUP_ENTRY") {
+        const again = (await libraryAccess.accessForBooks(db, req.user, who, [book])).get(bookId);
+        return res.json({ created: false, access: again });
+      }
+      throw e;
+    }
+
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, new_values) VALUES (?, 'library download requested', 'library_download_requests', ?, ?)",
+      [req.user.id, insertId, JSON.stringify({ bookId: book.id, fileHash: book.file_hash || null, groupId: who.groupId })]
+    );
+
+    const reviewers = (await libraryAccess.reviewersFor(db, who.groupId)).filter((id) => id !== Number(req.user.id));
+    const roleLabel = libraryAccess.ROLE_LABELS[who.kind] || who.kind;
+    for (const recipientId of reviewers) {
+      await createNotification(db, {
+        recipientId,
+        type: "system",
+        title: "Library download request",
+        body: `${who.name} (${roleLabel}) asked to download “${book.title}”.`,
+        relatedEntityType: "download_request",
+        relatedEntityId: insertId,
+      });
+    }
+
+    const created = (await libraryAccess.accessForBooks(db, req.user, who, [book])).get(bookId);
+    res.status(201).json({ created: true, access: created, reviewersNotified: reviewers.length });
+  })
+);
+
+// GET /api/library/books/:id/access -- the requester's live state for one
+// book, so the details dialog never acts on a stale list.
+router.get(
+  "/books/:id/access",
+  asyncRoute(async (req, res, db) => {
+    const bookId = parseId(req.params.id);
+    if (!bookId) return res.status(400).json({ error: "Invalid book" });
+    const { rows } = await db.query(
+      "SELECT id, filename, file_hash, supervisor_id FROM learning_materials WHERE id = ? AND material_type = 'book'",
+      [bookId]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Book not found" });
+    const who = await libraryAccess.describeUser(db, req.user);
+    const access = (await libraryAccess.accessForBooks(db, req.user, who, rows)).get(bookId);
+    const canDownload = access.status === "granted" || access.status === "approved";
+    res.json({ access, filename: canDownload ? rows[0].filename : null });
+  })
+);
+
+// GET /api/library/download-requests/mine
+router.get(
+  "/download-requests/mine",
+  asyncRoute(async (req, res, db) => {
+    const { rows } = await db.query(`${REQUEST_SELECT} WHERE r.requester_id = ? ORDER BY r.id DESC LIMIT 200`, [req.user.id]);
+    res.json({ requests: rows.map(toRequest) });
+  })
+);
+
+async function scopeOr403(req, res, db) {
+  const who = await libraryAccess.describeUser(db, req.user);
+  const scope = await libraryAccess.reviewerScope(db, req.user, who);
+  if (!scope) {
+    res.status(403).json({ error: "You don't have permission to review download requests" });
+    return null;
+  }
+  return { who, scope };
+}
+
+// GET /api/library/download-requests/pending-count
+router.get(
+  "/download-requests/pending-count",
+  asyncRoute(async (req, res, db) => {
+    const who = await libraryAccess.describeUser(db, req.user);
+    const scope = await libraryAccess.reviewerScope(db, req.user, who);
+    if (!scope) return res.json({ count: 0, reviewer: false });
+    const { rows } = await db.query(
+      `SELECT COUNT(*) AS c FROM library_download_requests r WHERE r.status = 'pending' AND ${scope.sql}`,
+      scope.params
+    );
+    res.json({ count: Number(rows[0].c), reviewer: true });
+  })
+);
+
+// GET /api/library/download-requests?status=pending|decided|all&q=&ids=1,2
+router.get(
+  "/download-requests",
+  asyncRoute(async (req, res, db) => {
+    const ctx = await scopeOr403(req, res, db);
+    if (!ctx) return;
+    const clauses = [ctx.scope.sql];
+    const params = [...ctx.scope.params];
+    const status = String(req.query.status || "pending");
+    if (status === "pending") clauses.push("r.status = 'pending'");
+    else if (status === "decided") clauses.push("r.status <> 'pending'");
+    if (req.query.ids) {
+      const ids = String(req.query.ids).split(",").map(parseId).filter(Boolean).slice(0, 100);
+      if (!ids.length) return res.json({ requests: [] });
+      clauses.push("r.id IN (?)");
+      params.push(ids);
+    }
+    const q = String(req.query.q || "").trim().slice(0, 100);
+    if (q) {
+      clauses.push("(r.requester_name LIKE ? OR r.material_title LIKE ? OR r.material_original_name LIKE ? OR tg.name LIKE ?)");
+      const like = `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
+      params.push(like, like, like, like);
+    }
+    const { rows } = await db.query(
+      `${REQUEST_SELECT} WHERE ${clauses.join(" AND ")}
+        ORDER BY (r.status = 'pending') DESC, r.created_at DESC, r.id DESC LIMIT 200`,
+      params
+    );
+    res.json({ requests: rows.map(toRequest) });
+  })
+);
+
+// GET /api/library/download-requests/:id
+router.get(
+  "/download-requests/:id",
+  asyncRoute(async (req, res, db) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid request" });
+    const { rows } = await db.query(`${REQUEST_SELECT} WHERE r.id = ?`, [id]);
+    const row = rows[0];
+    // Same 404 for "doesn't exist" and "not yours to see": an id outside
+    // the caller's scope reveals nothing about whether it exists.
+    if (!row) return res.status(404).json({ error: "Request not found" });
+    if (row.requester_id != null && Number(row.requester_id) === Number(req.user.id)) {
+      return res.json({ request: toRequest(row), canDecide: false });
+    }
+    const who = await libraryAccess.describeUser(db, req.user);
+    const scope = await libraryAccess.reviewerScope(db, req.user, who);
+    if (!scope) return res.status(404).json({ error: "Request not found" });
+    const { rows: inScope } = await db.query(
+      `SELECT 1 FROM library_download_requests r WHERE r.id = ? AND ${scope.sql}`,
+      [id, ...scope.params]
+    );
+    if (!inScope.length) return res.status(404).json({ error: "Request not found" });
+    res.json({ request: toRequest(row), canDecide: row.status === "pending" && row.live_material_id != null });
+  })
+);
+
+// POST /api/library/download-requests/:id/decision  { decision, reason? }
+// The first valid decision wins: the row is locked (FOR UPDATE) and the
+// UPDATE itself is conditional on status = 'pending', so a second reviewer
+// -- or a retried click -- gets 409 and changes nothing.
+router.post(
+  "/download-requests/:id/decision",
+  asyncRoute(async (req, res, db) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid request" });
+    const { decision } = req.body || {};
+    if (!["approve", "reject"].includes(decision)) {
+      return res.status(400).json({ error: "decision must be 'approve' or 'reject'" });
+    }
+    let reason = (req.body || {}).reason;
+    reason = reason == null ? null : String(reason).trim();
+    if (reason && reason.length > 500) return res.status(400).json({ error: "Reason must be 500 characters or fewer" });
+    if (decision === "approve") reason = null;
+
+    const ctx = await scopeOr403(req, res, db);
+    if (!ctx) return;
+
+    const { rows } = await db.query(
+      `SELECT r.* FROM library_download_requests r WHERE r.id = ? AND ${ctx.scope.sql} FOR UPDATE`,
+      [id, ...ctx.scope.params]
+    );
+    const row = rows[0];
+    if (!row) return res.status(404).json({ error: "Request not found" });
+    if (row.requester_id != null && Number(row.requester_id) === Number(req.user.id)) {
+      return res.status(403).json({ error: "You can't decide your own request" });
+    }
+    if (row.status !== "pending") {
+      return res.status(409).json({
+        error: `This request was already ${row.status}${row.reviewer_name ? " by " + row.reviewer_name : ""}.`,
+        status: row.status,
+      });
+    }
+    if (row.requester_id == null) return res.status(409).json({ error: "The requesting account no longer exists." });
+    if (row.material_id == null) return res.status(409).json({ error: "This file is no longer in the Library." });
+
+    const newStatus = decision === "approve" ? "approved" : "rejected";
+    const upd = await db.query(
+      `UPDATE library_download_requests
+          SET status = ?, reviewer_id = ?, reviewer_name = ?, rejection_reason = ?, decided_at = NOW()
+        WHERE id = ? AND status = 'pending'`,
+      [newStatus, req.user.id, ctx.who.name, reason || null, id]
+    );
+    if (!upd.affectedRows) return res.status(409).json({ error: "This request was already decided." });
+
+    await db.query(
+      "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, old_values, new_values) VALUES (?, ?, 'library_download_requests', ?, ?, ?)",
+      [
+        req.user.id,
+        decision === "approve" ? "library download approved" : "library download rejected",
+        id,
+        JSON.stringify({ status: "pending" }),
+        JSON.stringify({ status: newStatus, reason: reason || null, bookId: row.material_id, requesterId: row.requester_id }),
+      ]
+    );
+
+    await createNotification(db, {
+      recipientId: row.requester_id,
+      type: "system",
+      title: decision === "approve" ? "Download approved" : "Download request rejected",
+      body:
+        decision === "approve"
+          ? `You can now download “${row.material_title}” from the Library.`
+          : `Your request to download “${row.material_title}” was not approved.${reason ? " Reason: " + reason : ""}`,
+      relatedEntityType: "library_book",
+      relatedEntityId: row.material_id,
+    });
+
+    // The request is settled for every reviewer, not just this one: clear
+    // its unread notifications so no one else is prompted to act on it.
+    await db.query(
+      "UPDATE notifications SET is_read = TRUE WHERE related_entity_type = 'download_request' AND related_entity_id = ? AND is_read = FALSE",
+      [id]
+    );
+
+    const { rows: fresh } = await db.query(`${REQUEST_SELECT} WHERE r.id = ?`, [id]);
+    res.json({ request: toRequest(fresh[0]) });
   })
 );
 

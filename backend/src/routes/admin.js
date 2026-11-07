@@ -633,7 +633,7 @@ router.patch(
 // scoped today (see migration 025), but the admin_permissions table itself
 // is deliberately not Library-specific, so this list is the one place a
 // future non-Library permission would also get added.
-const KNOWN_PERMISSION_CODES = ["library.view", "library.add", "library.edit", "library.delete"];
+const KNOWN_PERMISSION_CODES = ["library.view", "library.add", "library.edit", "library.delete", "library.approve_downloads"];
 
 // GET /api/admin/admins -- the one place admin accounts themselves are
 // listed. GET /users above deliberately excludes role='admin' (it's the

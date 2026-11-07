@@ -19,6 +19,7 @@ const jwt = require("jsonwebtoken");
 const config = require("../config");
 const { pool } = require("../db");
 const { noticeRequiredForRole, hasAcceptedCurrentVersion } = require("../utils/trainingMaterialsNotice");
+const { canReceiveBookFile } = require("../utils/libraryAccess");
 
 const router = express.Router();
 
@@ -175,7 +176,7 @@ const AUTHORIZERS = Object.assign(Object.create(null), {
     // feature's book cover) -- matched here too, since it's served from
     // this same /uploads/materials/ folder.
     const { rows } = await pool.query(
-      "SELECT material_type, supervisor_id, admin_id, student_id, group_id, shared_with_supervisor_id, visibility FROM learning_materials WHERE filename = ? OR cover_image = ?",
+      "SELECT id, material_type, supervisor_id, admin_id, student_id, group_id, shared_with_supervisor_id, visibility, filename, cover_image, file_hash FROM learning_materials WHERE filename = ? OR cover_image = ?",
       [filename, filename]
     );
     if (!rows.length) return false;
@@ -208,7 +209,19 @@ const AUTHORIZERS = Object.assign(Object.create(null), {
     // Books (the standalone Library feature) have no per-student/caseload
     // targeting at all -- every authenticated user may read one, matching
     // the Library route's own "one shared list" rule.
-    if (materialType === "book" || adminId) return true;
+    //
+    // A book's FILE (not its cover) is the exception: since migration 041 a
+    // Library book's bytes go only to an account that needs no approval
+    // (Admin, Master Trainer, the uploader) or holds an APPROVED download
+    // request for this exact book and this exact content -- see
+    // utils/libraryAccess.js. The cover stays readable by everyone: it is
+    // shown on the Library shelf itself and is not the document.
+    if (materialType === "book") {
+      const asFile = rows.find((r) => r.material_type === "book" && r.filename === filename);
+      if (!asFile) return true; // the request is for a cover image
+      return canReceiveBookFile(pool, user, asFile);
+    }
+    if (adminId) return true;
     if (user.role === "admin") return true;
     // Defense in depth for the Training Materials Usage & Distribution
     // Notice: the dashboard modal already blocks normal use, but this is

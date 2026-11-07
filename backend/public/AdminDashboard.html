@@ -2122,6 +2122,7 @@
                             <button class="btn" onclick="openAddBookModal()"><i class="fa fa-plus"></i> Add Book</button>
                         </div>
                     </div>
+                    <div id="libraryAccessPanel"></div>
                     <div class="toolbar" style="margin-top:14px;">
                         <input type="text" id="librarySearch" placeholder="Search by title, author, publisher, category, or type..." oninput="applyLibraryFilters()" style="flex:1;">
                     </div>
@@ -3213,6 +3214,7 @@
     </div>
 
     <script src="scripts/api-config.js?v=20261104"></script>
+    <script src="scripts/library-access.js?v=20261107"></script>
     <script>
         const API_BASE = window.API_BASE;
         const API = API_BASE + "/api";
@@ -6409,6 +6411,7 @@ async function loadLibrary() {
   const data = await apiRequest("/library/books");
   if (!data) return;
   libraryBooksRaw = data.books;
+  LibraryAccess.onLibraryLoaded(data);
   applyLibraryFilters();
 }
 
@@ -6817,6 +6820,7 @@ const PERMISSION_LABELS = {
   "library.add": "Add Book / Material",
   "library.edit": "Edit Book / Material",
   "library.delete": "Delete Book / Material",
+  "library.approve_downloads": "Approve Download Requests",
 };
 let permAdmins = [];
 
